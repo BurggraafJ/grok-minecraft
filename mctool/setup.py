@@ -123,6 +123,10 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
             raise Fout(f"{svc} komt niet op; laatste log:\n" + "\n".join(core._tail_log(svc)))
     for line in ops.spelers_sync(cfg):
         say("  " + line)
+    actions = applymod.runtime_plan(cfg, spec)
+    if actions:
+        done = applymod.runtime_apply(cfg, spec, actions)
+        say(f"  gamerules en rechten live: {len(done)} van {len(actions)}")
 
     say("6/7 GitHub koppelen")
     pub = None
