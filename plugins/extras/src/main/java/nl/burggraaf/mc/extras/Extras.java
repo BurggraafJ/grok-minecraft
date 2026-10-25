@@ -65,9 +65,12 @@ public final class Extras extends JavaPlugin implements Listener {
             new Schakelaar("handlicht", "Handlicht", Material.TORCH, "Fakkel of lantaarn in je hand geeft licht"),
             new Schakelaar("kist", "Kist", Material.ENDER_CHEST, "Persoonlijke opslag van 54 vakken (/kist)"),
             new Schakelaar("huisdieren", "Huisdieren", Material.BONE, "Getemde dieren gaan niet dood maar raken even uitgeteld"),
-            new Schakelaar("afk", "Veilige AFK", Material.CLOCK, "/afk: na 10 s stilstaan beschermd tot je beweegt"));
-    /** Indeling: drie rijen van 4 (kolommen 1,3,5,7), status-ruitje steeds eronder. */
-    private static final int[] SLOTS = {1, 3, 5, 7, 19, 21, 23, 25, 37, 39, 41, 43};
+            new Schakelaar("afk", "Veilige AFK", Material.CLOCK, "/afk: na 10 s stilstaan beschermd tot je beweegt"),
+            new Schakelaar("kistzicht", "Kist-hologram", Material.BARREL, "Kijk naar een kist: erboven zie je wat erin zit"),
+            new Schakelaar("unload", "Unload", Material.HOPPER, "/unload: spullen naar kisten in de buurt met dat item"),
+            new Schakelaar("tips", "Tips", Material.BOOK, "Elke 5 minuten een tip in de chat"));
+    /** Indeling: drie rijen van 5 (kolommen 0,2,4,6,8), status-ruitje steeds eronder. */
+    private static final int[] SLOTS = {0, 2, 4, 6, 8, 18, 20, 22, 24, 26, 36, 38, 40, 42, 44};
 
     private File bestand;
     private YamlConfiguration stand;
@@ -136,6 +139,9 @@ public final class Extras extends JavaPlugin implements Listener {
             case "kist" -> eigenVlag("Kist", v);
             case "huisdieren" -> eigenVlag("Huisdieren", v);
             case "afk" -> eigenVlag("VeiligAfk", v);
+            case "kistzicht" -> eigenVlag("Kistzicht", "aan", v);
+            case "unload" -> eigenVlag("Kistzicht", "unload", v);
+            case "tips" -> eigenVlag("Kistzicht", "tips", v);
             case "slapen" -> {
                 // aan: alleen terugzetten als wij hem eerder op 100 hadden gezet (de waarde uit server.json is 0)
                 for (World w : Bukkit.getWorlds()) {
@@ -150,10 +156,14 @@ public final class Extras extends JavaPlugin implements Listener {
     }
 
     private void eigenVlag(String plugin, boolean v) {
+        eigenVlag(plugin, "aan", v);
+    }
+
+    private void eigenVlag(String plugin, String sleutel, boolean v) {
         Plugin pl = Bukkit.getPluginManager().getPlugin(plugin);
         if (pl instanceof JavaPlugin jp) {
-            if (jp.getConfig().getBoolean("aan", true) == v) return;
-            jp.getConfig().set("aan", v);
+            if (jp.getConfig().getBoolean(sleutel, true) == v) return;
+            jp.getConfig().set(sleutel, v);
             jp.saveConfig();
         }
     }

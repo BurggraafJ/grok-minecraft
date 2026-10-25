@@ -346,6 +346,14 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "kistzicht",
+      "bron": "eigen",
+      "pad": "plugins/kistzicht",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {

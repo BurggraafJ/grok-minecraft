@@ -1,0 +1,19 @@
+name: Kistzicht
+version: '${version}'
+main: nl.burggraaf.mc.kistzicht.Kistzicht
+api-version: '${apiVersion}'
+description: "Kijk naar een kist/barrel = hologram met de inhoud; /unload legt je spullen in kisten om je heen die dat item al hebben; elke 5 min een tip."
+author: Minecraft Bot
+commands:
+  unload:
+    description: "Leg je inventory (niet je hotbar) in kisten binnen 10 blokken die dat item al hebben"
+    aliases: [ul]
+    permission: kistzicht.unload
+  kistzicht:
+    description: "kistzicht tip (console: stuur nu een tip) | zelftest"
+    permission: kistzicht.beheer
+permissions:
+  kistzicht.unload:
+    default: true
+  kistzicht.beheer:
+    default: op

@@ -242,11 +242,17 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   aanvallen of blokken breken/plaatsen/gebruiken heft het op («Je bent weer kwetsbaar»). [AFK] in TAB en naamlabel
   via opmaak; Essentials' auto-AFK geeft alleen die tag, geen bescherming. In /admin uit = gewone Essentials-/afk.
 - **Instant oven** (plugin Extras): ovens, blast furnaces en smokers smelten in 1 tick per item; brandstof blijft nodig.
+- **Kistzicht** (eigen plugin, survival): kijk je binnen 5 blokken naar een kist, trapped chest of barrel, dan zie
+  alleen jij erboven een klein hologram (TextDisplay, niet-persistent, één per speler, elke 5 ticks bijgewerkt) met de
+  top 3 items + aantal en "+n andere soorten" (dubbele kist = samen). `/unload` (ook /ul): vakken 9-35 (niet hotbar,
+  armor, offhand) naar kisten/barrels binnen 10 blokken die dat item al hebben; groene deeltjeslijnen naar elke kist die
+  iets kreeg. Elke 5 min een tip uit `tips-lijst` (om de beurt; niet als niemand online is). Schakelaars `aan`
+  (hologram), `unload`, `tips` in de config. Console: `kistzicht tip` / `kistzicht zelftest`.
 - **`/admin`** (plugin Extras, alleen OP's): menu om server-extra's live aan/uit te zetten: TreeFeller, Veinminer,
-  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht, Kist, Huisdieren, Veilige AFK. Console: `admin` (overzicht) en
+  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht, Kist, Huisdieren, Veilige AFK, Kist-hologram, Unload, Tips. Console: `admin` (overzicht) en
   `admin <naam> aan|uit`. Hoe het werkt: TreeFeller eist `extras.treefeller` (patch in server.json), ChestSort+
   `chestsort.use`, GravesX `graves.place`: uit = die permissie tijdelijk afnemen (Bukkit-attachment, niet in
-  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht/Kist/Huisdieren/VeiligAfk via `aan:` in hun config.
+  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht/Kist/Huisdieren/VeiligAfk via `aan:` in hun config; Kistzicht via `aan:`/`unload:`/`tips:`.
   Slapen = gamerule 0 ↔ 100.
   **Verhouding met "repo is de waarheid":** de repo legt vast wát er geïnstalleerd en ingesteld is; de /admin-stand is
   bewuste live-bediening en staat in `servers/survival/plugins/Extras/schakelaars.yml` (in backups, niet in git).

@@ -1,0 +1,18 @@
+# Schakelaars (live te wisselen in /admin):
+aan: true        # hologram boven een kist/barrel waar je naar kijkt
+unload: true     # /unload
+tips: true       # elke tip-minuten een tip in de chat (alleen als er iemand online is)
+
+hologram-afstand: 5      # binnen zoveel blokken kijkend naar een kist
+hologram-regels: 3       # top zoveel items
+unload-straal: 10        # /unload: kisten binnen zoveel blokken
+tip-minuten: 5
+tips-lijst:
+  - "Kijk naar een kist of barrel: erboven zie je wat erin zit, zonder hem open te maken."
+  - "Typ /unload: je spullen (niet je hotbar) gaan naar kisten binnen 10 blokken die dat item al hebben."
+  - "Een grote opslag? Leg één exemplaar van elk item in een kist en typ daarna /unload als je terugkomt van het mijnen."
+  - "Typ /kist voor je eigen opslag van 54 vakken, tot 99 per vak."
+  - "Kijk naar een dubbele kist: het hologram telt beide helften samen."
+  - "Typ /pijl om je vrienden of eigen plekken (/pijl opslaan <naam>) in je actionbar te volgen."
+  - "Typ /unload na een mijntocht: je ziet groene lijntjes naar de kisten die iets kregen."
+  - "Even weg? Typ /afk: na 10 seconden stilstaan ben je veilig tot je weer beweegt."
