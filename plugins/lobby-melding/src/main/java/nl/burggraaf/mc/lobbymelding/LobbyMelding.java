@@ -132,6 +132,15 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     /** Een vloer van 9×9 (glas waar geen vaste grond is) op de spawn, met lucht erboven; geeft de plek erop. */
     private Location maakVloer() {
         World w = Bukkit.getWorlds().get(0);
+        File marker = new File(getDataFolder(), "gebouwd.txt");
+        if (marker.exists()) {   // lobby staat al: grondhoogte uit de vorige bouw (de fontein mag die niet verschuiven)
+            try {
+                grondY = Integer.parseInt(java.nio.file.Files.readString(marker.toPath()).trim().split(":")[1]);
+                return new Location(w, 0.5, grondY + 1, 9.5, 180f, 0f);
+            } catch (Exception e) {
+                getLogger().warning("gebouwd.txt onleesbaar: " + e.getMessage());
+            }
+        }
         Location s = w.getSpawnLocation();
         int y = Math.max(w.getMinHeight() + 2, Math.min(w.getMaxHeight() - 20, w.getHighestBlockYAt(s)));
         grondY = y;
@@ -162,31 +171,58 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         if (!p.isDead() && max != null && p.getHealth() < max.getValue()) p.setHealth(max.getValue());
     }
 
-    // ── parkour: levels ─────────────────────────────────────────────────────────────────────
+    // ── lobby: plaza, lanen en parkour-levels ───────────────────────────────────────────────
 
-    /** Een level: naam, kleur van de blokken, en sprongen (dx, dy, dz) vanaf het vorige blok. Baan loopt in +x. */
-    private record Level(String naam, Material blok, int[][] sprongen) {}
+    /** Eén stap van een baan. t: B blok, I ijs, S slijm, H honing, L ladderpilaar (h hoog), W waterbad,
+     *  C plafond (hoofdstoter) boven het huidige blok, N muurtje om omheen te springen (neo). dx = vooruit, dz = opzij. */
+    private record Stap(char t, int dx, int dy, int dz, int h) {}
+
+    private record Level(String naam, String moeite, Material blok, Stap[] stappen) {}
+
+    private static Stap b(int dx, int dy, int dz) { return new Stap('B', dx, dy, dz, 0); }
+    private static Stap ijs(int dx, int dy, int dz) { return new Stap('I', dx, dy, dz, 0); }
+    private static Stap slijm(int dx, int dy, int dz) { return new Stap('S', dx, dy, dz, 0); }
+    private static Stap honing(int dx, int dy, int dz) { return new Stap('H', dx, dy, dz, 0); }
+    private static Stap ladder(int dx, int dz, int h) { return new Stap('L', dx, 0, dz, h); }
+    private static Stap water(int dx, int dy, int dz) { return new Stap('W', dx, dy, dz, 0); }
+    private static final Stap PLAFOND = new Stap('C', 0, 0, 0, 0);
+    private static final Stap MUUR = new Stap('N', 0, 0, 0, 0);
 
     private static final Level[] LEVELS = {
-            new Level("Opwarmer", Material.LIGHT_BLUE_CONCRETE, new int[][]{
-                    {2, 0, 0}, {2, 0, 0}, {2, 1, 0}, {2, 0, 1}, {2, 0, -1}, {2, 1, 0}, {2, 0, 0}, {2, 1, 1}, {2, 0, -1}, {2, 0, 0}}),
-            new Level("Sprongen", Material.LIME_TERRACOTTA, new int[][]{
-                    {3, 0, 0}, {3, 0, 0}, {2, 1, 1}, {3, 0, 0}, {2, 1, -1}, {3, 0, 1}, {3, 0, 0}, {2, 1, 0}, {3, 0, -1}, {3, 0, 0}}),
-            new Level("Zigzag", Material.ORANGE_CONCRETE, new int[][]{
-                    {2, 0, 2}, {2, 0, -2}, {2, 1, 2}, {3, 0, -1}, {2, 0, -2}, {2, 1, 2}, {3, 0, 0}, {2, 0, -2}, {2, 1, 2}, {3, 0, -1}, {3, 0, 0}}),
-            new Level("Hoogtevrees", Material.PURPLE_CONCRETE, new int[][]{
-                    {3, 1, 0}, {3, 1, 1}, {3, 1, -1}, {4, 0, 0}, {3, 1, 0}, {2, 1, 2}, {3, 1, -1}, {4, 0, 0}, {3, 1, 1}, {3, 0, 0}}),
-            new Level("Meester", Material.RED_CONCRETE, new int[][]{
-                    {4, 0, 0}, {3, 1, 1}, {4, 0, -1}, {4, 1, 0}, {3, 0, 2}, {4, -1, 0}, {3, 1, -2}, {4, 0, 0}, {3, 1, 1}, {4, 0, 0}, {3, 0, 0}}),
+            new Level("Opwarmer", "★", Material.LIGHT_BLUE_CONCRETE, new Stap[]{
+                    b(2, 0, 0), b(2, 0, 0), b(2, 1, 0), b(2, 0, 1), b(2, 0, -1), b(2, 1, 0), b(2, 0, 0), b(2, 1, 1), b(2, 0, -1), b(2, 0, 0)}),
+            new Level("Sprongen", "★★", Material.LIME_TERRACOTTA, new Stap[]{
+                    b(3, 0, 0), b(3, 0, 0), b(2, 1, 1), b(3, 0, 0), b(2, 1, -1), b(3, 0, 1), b(3, 0, 0), b(2, 1, 0), b(3, 0, -1), b(4, 0, 0), b(3, 0, 0)}),
+            new Level("Zigzag", "★★", Material.ORANGE_CONCRETE, new Stap[]{
+                    b(2, 0, 2), b(2, 0, -2), b(2, 1, 2), b(3, 0, -1), b(2, 0, -2), b(2, 1, 2), b(3, 0, 0), b(2, 0, -2), b(2, 1, 2), b(3, 0, -1), b(3, 0, 0)}),
+            new Level("IJsbaan", "★★★", Material.PACKED_ICE, new Stap[]{
+                    ijs(2, 0, 0), ijs(1, 0, 0), ijs(1, 0, 0), ijs(4, 0, 0), ijs(1, 0, 0), ijs(1, 0, 0), b(4, 1, 0),
+                    ijs(2, 0, 1), ijs(1, 0, 0), ijs(1, 0, 0), ijs(4, 0, 0), ijs(1, 0, -1), b(3, 1, 0)}),
+            new Level("Ladders", "★★★", Material.YELLOW_CONCRETE, new Stap[]{
+                    b(2, 0, 0), ladder(2, 0, 4), b(3, 0, 0), b(2, -1, 1), ladder(2, 0, 3), b(3, 0, -1), b(3, 0, 0),
+                    ladder(2, 0, 4), b(2, 0, 2), b(3, -1, 0), b(3, 0, 0)}),
+            new Level("Honing", "★★★", Material.HONEYCOMB_BLOCK, new Stap[]{
+                    honing(2, 0, 0), honing(2, 0, 0), honing(2, 0, 1), b(2, 0, 0), PLAFOND, b(3, 0, 0), honing(2, 0, -1),
+                    honing(2, 0, 0), b(2, 0, 0), b(2, 1, 0), PLAFOND, b(3, 0, 0), honing(2, 0, 1), b(2, 0, 0), b(2, 1, 0)}),
+            new Level("Slijm", "★★★★", Material.GREEN_CONCRETE, new Stap[]{
+                    b(2, 1, 0), b(2, 1, 0), b(2, 1, 0), b(2, 1, 0), slijm(2, -4, 0), b(3, 2, 0), b(2, 1, 0), b(2, 1, 0),
+                    b(2, 1, 1), slijm(2, -5, 0), b(3, 2, 0), b(2, 0, -1), b(3, 0, 0)}),
+            new Level("Waterval", "★★★★", Material.CYAN_CONCRETE, new Stap[]{
+                    b(2, 0, 0), ladder(2, 0, 6), b(2, 0, 0), b(2, 1, 0), water(3, -5, 0), b(2, 0, 0), b(2, 1, 0),
+                    b(2, 1, 1), b(3, 0, 0), b(2, 1, -1), b(3, 0, 0)}),
+            new Level("Neo", "★★★★", Material.PURPLE_CONCRETE, new Stap[]{
+                    b(2, 0, 0), MUUR, b(2, 0, 0), b(3, 0, 1), b(2, 1, 0), MUUR, b(2, 0, 0), b(3, 0, 0), b(3, 1, 1), MUUR,
+                    b(2, 0, 0), b(4, 0, 0), b(3, 0, 0)}),
+            new Level("Meester", "★★★★★", Material.RED_CONCRETE, new Stap[]{
+                    b(3, 1, 0), b(4, 0, 1), honing(2, 0, 0), honing(2, 0, 0), b(2, 0, 1), PLAFOND, b(4, 0, 0), ladder(2, 0, 4),
+                    b(4, 0, -1), MUUR, b(2, 0, 0), b(3, 1, 1), ijs(3, 0, 0), ijs(1, 0, 0), ijs(1, 0, 0), b(5, 0, 0),
+                    b(3, 1, -1), b(4, 0, 0)}),
     };
-    /** z-baan per level t.o.v. de spawn (12 uit elkaar), en x van het startblok. */
-    private static final int[] BAAN_Z = {0, 12, -12, 24, -24};
-    private static final int START_X = 11;
-
-    /** Blokken van de oude enkele parkour (vorige versie), om op te ruimen. */
-    private static final int[][] OUDE_BAAN = {
-            {3, 1, 0}, {5, 1, 0}, {7, 2, 0}, {9, 2, 1}, {9, 3, 3}, {9, 3, 5}, {7, 4, 6}, {5, 4, 6},
-            {3, 5, 6}, {2, 5, 8}, {2, 6, 10}, {4, 6, 11}, {6, 7, 11}, {8, 7, 12}, {10, 8, 12}};
+    /** Levels 1-5 oost (+x), 6-10 west (−x); z van de laan. */
+    private static final int[] LAAN_Z = {-40, -20, 0, 20, 40};
+    private static final int HUT_X = 24;       // binnenkant laan: hut van x=24..30 (oost) / −30..−24 (west)
+    private static final int AVENUE_X = 19;    // laan-boulevard x=19..21
+    private static final int BOUW_VERSIE = 3;  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
 
     private int vloerY;                                   // y van de vloer in de huisjes = y van de startblokken
     private Location[][] banen;                           // per level de sta-plek op elk blok
@@ -195,89 +231,275 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     private final Map<UUID, Integer> bezigLevel = new HashMap<>();
     private YamlConfiguration voortgang;
     private File voortgangBestand;
+    private boolean plaats = true;                        // false = alleen uitrekenen (staat al gebouwd)
 
     private static long sleutel(int x, int y, int z) {
         return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
     }
 
     private void zet(World w, int x, int y, int z, Material m) {
-        w.getBlockAt(x, y, z).setType(m, false);
+        if (plaats) w.getBlockAt(x, y, z).setType(m, false);
+    }
+
+    private void zet(World w, int x, int y, int z, org.bukkit.block.data.BlockData d) {
+        if (plaats) w.getBlockAt(x, y, z).setBlockData(d, false);
     }
 
     private void vul(World w, int x1, int y1, int z1, int x2, int y2, int z2, Material m) {
+        if (!plaats) return;
         for (int x = Math.min(x1, x2); x <= Math.max(x1, x2); x++)
             for (int y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
-                for (int z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) zet(w, x, y, z, m);
+                for (int z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+                    Block bl = w.getBlockAt(x, y, z);
+                    if (bl.getType() != m) bl.setType(m, false);
+                }
     }
 
     private void bouwParkour() {
         World w = veilig.getWorld();
-        int bx = veilig.getBlockX(), bz = veilig.getBlockZ();
-        // oude enkele baan opruimen
-        for (int[] b : OUDE_BAAN) zet(w, bx + b[0], grondY + b[1], bz + b[2], Material.AIR);
-        vul(w, bx + 9, grondY + 7, bz + 11, bx + 11, grondY + 7, bz + 13, Material.AIR);
-
+        File marker = new File(getDataFolder(), "gebouwd.txt");
+        String versie = BOUW_VERSIE + ":" + grondY;
+        try {
+            plaats = !marker.exists() || !java.nio.file.Files.readString(marker.toPath()).trim().equals(versie);
+        } catch (IOException e) {
+            plaats = true;
+        }
+        long t0 = System.currentTimeMillis();
         vloerY = grondY + 1;
+        if (plaats) {
+            vul(w, -90, grondY + 1, -60, 95, grondY + 30, 60, Material.AIR);   // oude bouwsels weg
+            vul(w, -90, grondY, -60, 95, grondY, 60, Material.GRASS_BLOCK);
+        }
+        bouwPlaza(w);
         banen = new Location[LEVELS.length][];
         huisje = new Location[LEVELS.length];
         blokNaarPunt.clear();
-        for (int l = 0; l < LEVELS.length; l++) {
-            Level lv = LEVELS[l];
-            int zc = bz + BAAN_Z[l];
-            int x0 = bx + START_X;
-            bouwHuisje(w, x0 - 5, zc, l);
-            huisje[l] = new Location(w, x0 - 2.5, vloerY + 1, zc + 0.5, -90f, 0f);
-            Location[] baan = new Location[lv.sprongen().length + 1];
-            int x = x0, y = vloerY, z = zc;
-            for (int i = 0; i < baan.length; i++) {
-                if (i > 0) {
-                    int[] d = lv.sprongen()[i - 1];
-                    x += d[0];
-                    y += d[1];
-                    z += d[2];
-                }
-                boolean eerste = i == 0, laatste = i == baan.length - 1;
-                Material m = eerste ? Material.LIME_CONCRETE : laatste ? Material.EMERALD_BLOCK : lv.blok();
-                vul(w, x, y + 1, z, x, y + 3, z, Material.AIR);
-                zet(w, x, y, z, m);
-                baan[i] = new Location(w, x + 0.5, y + 1, z + 0.5, -90f, 0f);
-                blokNaarPunt.put(sleutel(x, y, z), new int[]{l, i});
-                if (laatste) bouwFinish(w, x, y, z);
+        for (int l = 0; l < LEVELS.length; l++) bouwLevel(w, l);
+        bouwBoulevards(w);
+        Location spawn = new Location(w, 0.5, grondY + 1, 9.5, 180f, 0f);
+        w.setSpawnLocation(spawn);
+        veilig = spawn;
+        if (plaats) {
+            try {
+                java.nio.file.Files.writeString(marker.toPath(), versie);
+            } catch (IOException e) {
+                getLogger().warning("gebouwd.txt: " + e.getMessage());
             }
-            banen[l] = baan;
-            label(new Location(w, x0 - 2.5, vloerY + 5.6, zc + 0.5),
-                    Component.text("Level " + (l + 1), NamedTextColor.GOLD, TextDecoration.BOLD)
-                            .append(Component.newline()).append(Component.text(lv.naam(), NamedTextColor.WHITE)));
-            label(baan[0].clone().add(0, 1.3, 0), Component.text("Start", NamedTextColor.GREEN, TextDecoration.BOLD));
-            label(baan[baan.length - 1].clone().add(0, 1.6, 0), Component.text("Finish level " + (l + 1), NamedTextColor.GREEN, TextDecoration.BOLD));
+            getLogger().info("lobby gebouwd in " + (System.currentTimeMillis() - t0) + " ms");
         }
     }
 
-    /** Huisje van 5×5 (x1..x1+4), deur aan de baankant (+x) en aan de spawnkant (−x), raampjes, dakje, lantaarn. */
-    private void bouwHuisje(World w, int x1, int zc, int l) {
-        Material[] planken = {Material.OAK_PLANKS, Material.SPRUCE_PLANKS, Material.BIRCH_PLANKS, Material.CHERRY_PLANKS, Material.DARK_OAK_PLANKS};
-        Material[] stammen = {Material.OAK_LOG, Material.SPRUCE_LOG, Material.BIRCH_LOG, Material.CHERRY_LOG, Material.DARK_OAK_LOG};
-        Material[] daken = {Material.RED_TERRACOTTA, Material.BLUE_TERRACOTTA, Material.GREEN_TERRACOTTA, Material.PINK_TERRACOTTA, Material.BLACK_TERRACOTTA};
-        Material plank = planken[l % planken.length], stam = stammen[l % stammen.length], dak = daken[l % daken.length];
-        int x2 = x1 + 4, z1 = zc - 2, z2 = zc + 2, y = vloerY;
-        vul(w, x1 - 1, y + 1, z1 - 1, x2 + 1, y + 5, z2 + 1, Material.AIR);
-        vul(w, x1, y, z1, x2, y, z2, plank);                       // vloer
-        vul(w, x1, y + 1, z1, x2, y + 3, z2, plank);               // wanden (binnen straks leeg)
-        vul(w, x1 + 1, y + 1, z1 + 1, x2 - 1, y + 3, z2 - 1, Material.AIR);
-        for (int[] c : new int[][]{{x1, z1}, {x1, z2}, {x2, z1}, {x2, z2}}) vul(w, c[0], y + 1, c[1], c[0], y + 3, c[1], stam);
-        vul(w, x2, y + 1, zc, x2, y + 2, zc, Material.AIR);         // deur naar de baan
-        vul(w, x1, y + 1, zc, x1, y + 2, zc, Material.AIR);         // deur naar de spawn
-        zet(w, x1 + 2, y + 2, z1, Material.GLASS_PANE);            // raampjes
-        zet(w, x1 + 2, y + 2, z2, Material.GLASS_PANE);
-        vul(w, x1 - 1, y + 4, z1 - 1, x2 + 1, y + 4, z2 + 1, dak); // dak
-        vul(w, x1, y + 5, z1, x2, y + 5, z2, dak);
-        zet(w, x1 + 1, y + 1, z1 + 1, Material.LANTERN);
-        zet(w, x1 + 3, y + 1, z2 - 1, Material.FLOWER_POT);
-        zet(w, x1 + 1, y + 1, z2 - 1, Material.POTTED_POPPY);
-        zet(w, x1 + 3, y + 1, z1 + 1, Material.POTTED_DANDELION);
-        // paadje naar de spawn
-        for (int x = x1 - 1; x > x1 - 6; x--) zet(w, x, grondY, zc, Material.DIRT_PATH);
-        zet(w, x1 - 1, y, zc, Material.OAK_SLAB);                  // opstapje bij de achterdeur
+    /** Ronde plaza (straal 13) met fontein, lantaarnpalen, bankjes, bloemen en bomen. */
+    private void bouwPlaza(World w) {
+        int g = grondY;
+        for (int x = -13; x <= 13; x++)
+            for (int z = -13; z <= 13; z++) {
+                double r = Math.sqrt(x * x + z * z);
+                if (r > 13.4) continue;
+                Material m = r > 12.4 ? Material.POLISHED_ANDESITE
+                        : ((int) Math.round(r)) % 4 == 0 ? Material.CHISELED_STONE_BRICKS
+                        : (Math.abs(x) + Math.abs(z)) % 2 == 0 ? Material.STONE_BRICKS : Material.POLISHED_ANDESITE;
+                zet(w, x, g, z, m);
+            }
+        // fontein: rand op straal 4, water binnenin, zuil met zeelantaarn en water erop
+        for (int x = -4; x <= 4; x++)
+            for (int z = -4; z <= 4; z++) {
+                double r = Math.sqrt(x * x + z * z);
+                if (r <= 3.4) {
+                    zet(w, x, g - 1, z, Material.SEA_LANTERN);
+                    zet(w, x, g, z, Material.WATER);
+                } else if (r <= 4.4) {
+                    zet(w, x, g, z, Material.QUARTZ_BRICKS);
+                    zet(w, x, g + 1, z, Material.SMOOTH_QUARTZ_SLAB);
+                }
+            }
+        vul(w, 0, g, 0, 0, g + 3, 0, Material.QUARTZ_PILLAR);
+        zet(w, 0, g + 4, 0, Material.SEA_LANTERN);
+        zet(w, 0, g + 5, 0, Material.WATER);
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) zet(w, d[0], g + 4, d[1], Material.WATER);
+        // lantaarnpalen op straal 10
+        for (int i = 0; i < 8; i++) {
+            double a = Math.PI / 4 * i + Math.PI / 8;
+            int x = (int) Math.round(Math.cos(a) * 10), z = (int) Math.round(Math.sin(a) * 10);
+            lantaarnpaal(w, x, z);
+        }
+        // bankjes en bloembakken tussen de palen
+        for (int i = 0; i < 8; i++) {
+            double a = Math.PI / 4 * i;
+            int x = (int) Math.round(Math.cos(a) * 8), z = (int) Math.round(Math.sin(a) * 8);
+            if (Math.abs(z) <= 1 && Math.abs(x) > 6) continue; // doorgang naar de boulevards
+            if (i % 2 == 0) {
+                zet(w, x, g + 1, z, Material.SPRUCE_SLAB);
+            } else {
+                zet(w, x, g + 1, z, Material.MOSS_BLOCK);
+                zet(w, x, g + 2, z, i % 4 == 1 ? Material.AZURE_BLUET : Material.ALLIUM);
+            }
+        }
+        // bloemen en bomen rond de plaza
+        Material[] bloemen = {Material.POPPY, Material.DANDELION, Material.CORNFLOWER, Material.OXEYE_DAISY, Material.ALLIUM, Material.PINK_TULIP};
+        for (int i = 0; i < 48; i++) {
+            double a = Math.PI * 2 / 48 * i;
+            int x = (int) Math.round(Math.cos(a) * 14.5), z = (int) Math.round(Math.sin(a) * 14.5);
+            if (Math.abs(z) <= 2) continue;
+            zet(w, x, g + 1, z, bloemen[i % bloemen.length]);
+        }
+        for (int[] p : new int[][]{{-16, -11}, {-16, 11}, {16, -11}, {16, 11}, {-8, -16}, {8, -16}, {-8, 16}, {8, 16}}) {
+            boom(w, p[0], p[1], (p[0] + p[1]) % 3 == 0 ? org.bukkit.TreeType.CHERRY : org.bukkit.TreeType.BIRCH);
+        }
+    }
+
+    private void lantaarnpaal(World w, int x, int z) {
+        zet(w, x, grondY + 1, z, Material.ANDESITE_WALL);
+        vul(w, x, grondY + 2, z, x, grondY + 3, z, Material.DARK_OAK_FENCE);
+        zet(w, x, grondY + 4, z, Material.LANTERN);
+    }
+
+    private void boom(World w, int x, int z, org.bukkit.TreeType type) {
+        if (!plaats) return;
+        zet(w, x, grondY, z, Material.GRASS_BLOCK);
+        if (!w.generateTree(new Location(w, x, grondY + 1, z), new java.util.Random(x * 31L + z), type)) {
+            w.generateTree(new Location(w, x, grondY + 1, z), new java.util.Random(x * 31L + z), org.bukkit.TreeType.TREE);
+        }
+    }
+
+    /** Boulevards oost en west (3 breed) van z=−46..46 met lantaarns en bomen, paden naar de plaza en de huizen. */
+    private void bouwBoulevards(World w) {
+        int g = grondY;
+        for (int sx : new int[]{1, -1}) {
+            int x1 = sx * AVENUE_X, x2 = sx * (AVENUE_X + 2);
+            vul(w, x1, g, -46, x2, g, 46, Material.STONE_BRICKS);
+            vul(w, sx * (AVENUE_X + 1), g, -46, sx * (AVENUE_X + 1), g, 46, Material.POLISHED_ANDESITE);
+            vul(w, sx * 13, g, -1, sx * (AVENUE_X - 1), g, 1, Material.STONE_BRICKS);          // pad plaza → boulevard
+            for (int z = -44; z <= 44; z += 8) {
+                lantaarnpaal(w, sx * (AVENUE_X - 1), z);
+                lantaarnpaal(w, sx * (AVENUE_X + 3), z + 4);
+            }
+            for (int z = -36; z <= 36; z += 16) {
+                if (Math.abs(z) < 6) continue;
+                boom(w, sx * (AVENUE_X - 4), z + 6, z % 32 == 0 ? org.bukkit.TreeType.CHERRY : org.bukkit.TreeType.TREE);
+            }
+            for (int lz : LAAN_Z) vul(w, sx * (AVENUE_X + 3), g, lz - 1, sx * (HUT_X - 1), g, lz + 1, Material.DIRT_PATH);
+        }
+    }
+
+    /** Huis (7×7, schilddak) met deur naar de boulevard en deur naar de baan, ramen, lantaarns en inrichting. */
+    private void bouwHuis(World w, int sx, int zc, int l) {
+        Material[] planken = {Material.OAK_PLANKS, Material.SPRUCE_PLANKS, Material.BIRCH_PLANKS, Material.CHERRY_PLANKS,
+                Material.DARK_OAK_PLANKS, Material.JUNGLE_PLANKS, Material.MANGROVE_PLANKS, Material.ACACIA_PLANKS,
+                Material.BAMBOO_PLANKS, Material.CRIMSON_PLANKS};
+        Material[] stammen = {Material.STRIPPED_OAK_LOG, Material.SPRUCE_LOG, Material.BIRCH_LOG, Material.CHERRY_LOG,
+                Material.DARK_OAK_LOG, Material.JUNGLE_LOG, Material.MANGROVE_LOG, Material.ACACIA_LOG,
+                Material.STRIPPED_BAMBOO_BLOCK, Material.CRIMSON_STEM};
+        Material[] daken = {Material.RED_TERRACOTTA, Material.BLUE_TERRACOTTA, Material.GREEN_TERRACOTTA, Material.PINK_TERRACOTTA,
+                Material.BLACK_TERRACOTTA, Material.ORANGE_TERRACOTTA, Material.CYAN_TERRACOTTA, Material.YELLOW_TERRACOTTA,
+                Material.LIME_TERRACOTTA, Material.PURPLE_TERRACOTTA};
+        Material plank = planken[l], stam = stammen[l], dak = daken[l];
+        int xa = sx * HUT_X, xb = sx * (HUT_X + 6);
+        int x1 = Math.min(xa, xb), x2 = Math.max(xa, xb), z1 = zc - 3, z2 = zc + 3, y = vloerY;
+        vul(w, x1, y - 1, z1, x2, y - 1, z2, Material.COBBLESTONE);
+        vul(w, x1, y, z1, x2, y, z2, plank);                                 // vloer
+        vul(w, x1, y + 1, z1, x2, y + 4, z2, plank);                         // wanden
+        vul(w, x1 + 1, y + 1, z1 + 1, x2 - 1, y + 4, z2 - 1, Material.AIR);
+        for (int[] c : new int[][]{{x1, z1}, {x1, z2}, {x2, z1}, {x2, z2}}) vul(w, c[0], y + 1, c[1], c[0], y + 4, c[1], stam);
+        vul(w, x1, y + 1, zc, x1, y + 2, zc, Material.AIR);                  // deuren
+        vul(w, x2, y + 1, zc, x2, y + 2, zc, Material.AIR);
+        for (int x : new int[]{x1 + 2, x2 - 2}) {                            // ramen
+            vul(w, x, y + 2, z1, x, y + 3, z1, Material.GLASS_PANE);
+            vul(w, x, y + 2, z2, x, y + 3, z2, Material.GLASS_PANE);
+        }
+        for (int i = 0; i < 4; i++) vul(w, x1 - 1 + i, y + 5 + i, z1 - 1 + i, x2 + 1 - i, y + 5 + i, z2 + 1 - i, dak); // dak
+        zet(w, (x1 + x2) / 2, y + 9, zc, Material.LANTERN);
+        // inrichting
+        zet(w, x1 + 1, y + 1, z1 + 1, Material.BOOKSHELF);
+        zet(w, x1 + 1, y + 2, z1 + 1, Material.LANTERN);
+        zet(w, x2 - 1, y + 1, z1 + 1, Material.CRAFTING_TABLE);
+        zet(w, x1 + 1, y + 1, z2 - 1, Material.POTTED_RED_TULIP);
+        zet(w, x2 - 1, y + 1, z2 - 1, Material.BARREL);
+        zet(w, x2 - 1, y + 2, z2 - 1, Material.LANTERN);
+        vul(w, x1 + 2, y + 1, zc - 1, x2 - 2, y + 1, zc + 1, Material.AIR);
+        for (int x = x1 + 1; x <= x2 - 1; x++) zet(w, x, y + 1, zc, Material.RED_CARPET);
+        zet(w, x1 + 3, y + 4, zc, Material.GLOWSTONE);
+        // opstapjes en lantaarns bij de deuren
+        zet(w, x1 - 1, y, zc, Material.STONE_BRICK_SLAB);
+        zet(w, x2 + 1, y, zc, Material.STONE_BRICK_SLAB);
+        lantaarnpaal(w, x1 - 1, zc - 2);
+        lantaarnpaal(w, x1 - 1, zc + 2);
+    }
+
+    private void bouwLevel(World w, int l) {
+        Level lv = LEVELS[l];
+        int sx = l < 5 ? 1 : -1;
+        int zc = LAAN_Z[l % 5];
+        bouwHuis(w, sx, zc, l);
+        huisje[l] = new Location(w, sx * (HUT_X + 3) + 0.5, vloerY + 1, zc + 0.5, sx > 0 ? -90f : 90f, 0f);
+        java.util.List<Location> punten = new java.util.ArrayList<>();
+        int x = sx * (HUT_X + 7), y = vloerY, z = zc;     // startblok vlak buiten de deur
+        org.bukkit.block.BlockFace ladderKant = sx > 0 ? org.bukkit.block.BlockFace.WEST : org.bukkit.block.BlockFace.EAST;
+        punt(w, x, y, z, Material.LIME_CONCRETE, l, punten);
+        Stap[] st = lv.stappen();
+        for (int s = 0; s < st.length; s++) {
+            Stap k = st[s];
+            boolean laatste = s == st.length - 1;
+            switch (k.t()) {
+                case 'C' -> zet(w, x, y + 3, z, lv.blok() == Material.HONEYCOMB_BLOCK ? Material.OAK_PLANKS : lv.blok());
+                case 'N' -> {
+                    vul(w, x + sx, y + 1, z, x + sx, y + 3, z, Material.STONE_BRICKS);
+                    vul(w, x + sx, y + 1, z - 1, x + sx, y + 3, z - 1, Material.STONE_BRICKS);
+                }
+                case 'L' -> {
+                    int px = x + sx * k.dx(), pz = z + k.dz();
+                    vul(w, px, y, pz, px, y + k.h(), pz, lv.blok());
+                    org.bukkit.block.data.type.Ladder ld = (org.bukkit.block.data.type.Ladder) Material.LADDER.createBlockData();
+                    ld.setFacing(ladderKant);
+                    for (int yy = y + 1; yy <= y + k.h(); yy++) zet(w, px - sx, yy, pz, ld);
+                    x = px;
+                    z = pz;
+                    y = y + k.h();
+                    punt(w, x, y, z, null, l, punten);
+                }
+                case 'W' -> {
+                    x += sx * k.dx();
+                    y += k.dy();
+                    z += k.dz();
+                    for (int dx = -2; dx <= 2; dx++)
+                        for (int dz = -2; dz <= 2; dz++) {
+                            zet(w, x + dx, y - 1, z + dz, Material.GLASS);
+                            boolean rand = Math.abs(dx) == 2 || Math.abs(dz) == 2;
+                            zet(w, x + dx, y, z + dz, rand ? Material.GLASS : Material.WATER);
+                            vul(w, x + dx, y + 1, z + dz, x + dx, y + 3, z + dz, Material.AIR);
+                        }
+                }
+                default -> {
+                    x += sx * k.dx();
+                    y += k.dy();
+                    z += k.dz();
+                    Material m = laatste ? Material.EMERALD_BLOCK : switch (k.t()) {
+                        case 'I' -> Material.BLUE_ICE;
+                        case 'S' -> Material.SLIME_BLOCK;
+                        case 'H' -> Material.HONEY_BLOCK;
+                        default -> lv.blok();
+                    };
+                    punt(w, x, y, z, m, l, punten);
+                    if (laatste) bouwFinish(w, x, y, z);
+                }
+            }
+        }
+        banen[l] = punten.toArray(new Location[0]);
+        label(new Location(w, sx * (HUT_X + 3) + 0.5, vloerY + 11, zc + 0.5),
+                Component.text("Level " + (l + 1), NamedTextColor.GOLD, TextDecoration.BOLD)
+                        .append(Component.newline()).append(Component.text(lv.naam(), NamedTextColor.WHITE))
+                        .append(Component.newline()).append(Component.text(lv.moeite(), NamedTextColor.YELLOW)));
+        label(banen[l][0].clone().add(0, 1.3, 0), Component.text("Start", NamedTextColor.GREEN, TextDecoration.BOLD));
+        label(banen[l][banen[l].length - 1].clone().add(0, 1.8, 0), Component.text("Finish level " + (l + 1), NamedTextColor.GREEN, TextDecoration.BOLD));
+    }
+
+    private void punt(World w, int x, int y, int z, Material m, int l, java.util.List<Location> punten) {
+        if (m != null) {
+            vul(w, x, y + 1, z, x, y + 3, z, Material.AIR);
+            zet(w, x, y, z, m);
+        }
+        blokNaarPunt.put(sleutel(x, y, z), new int[]{l, punten.size()});
+        punten.add(new Location(w, x + 0.5, y + 1, z + 0.5, 0f, 0f));
     }
 
     private void bouwFinish(World w, int x, int y, int z) {
