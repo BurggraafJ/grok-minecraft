@@ -70,11 +70,12 @@ class ConfigFiles(unittest.TestCase):
 class Memory(unittest.TestCase):
     def test_plan(self):
         p16 = core.memory_plan(16 * GB)
-        self.assertGreaterEqual(p16["survival"], 6144)
-        self.assertLessEqual(sum(p16.values()) + 4 * 450, 16 * 1024 - 3072)
+        self.assertTrue(4096 <= p16["survival"] <= 5120)   # 16 GB-box: survival, lobby, kitpvp, velocity en staging
+        self.assertIn("kitpvp", p16)
+        self.assertLessEqual(sum(p16.values()) + 5 * 450, 16 * 1024 - 3072)
         p16s = core.memory_plan(16 * GB, gedeeld=True)
         self.assertLess(p16s["survival"], p16["survival"])
-        self.assertEqual(core.memory_plan(64 * GB)["survival"], 10240)
+        self.assertEqual(core.memory_plan(64 * GB)["survival"], 6144)
         self.assertGreaterEqual(core.memory_plan(6 * GB)["survival"], 1536)
 
 

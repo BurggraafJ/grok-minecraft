@@ -114,8 +114,9 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
         cfg["velocity"] = {k: velocity[k] for k in ("version", "build", "name", "sha256", "java")}
     core.save(cfg)
 
-    say("3/8 Servers inrichten (lobby, survival, Velocity)")
-    for svc in ("lobby", "survival"):
+    servers = applymod.gewenste_servers(spec)          # lobby, survival en (als server.json hem heeft) kitpvp
+    say(f"3/8 Servers inrichten ({', '.join(servers)}, Velocity)")
+    for svc in servers:
         if core.running(svc):
             continue
         core.configure_paper(cfg, svc)
@@ -134,7 +135,7 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
     for a in admins:
         ops.spelers_add(a, admin=True)
     supervisor.spawn()
-    for svc in ("lobby", "survival", "velocity") + (("tunnel",) if tunnel in ("bore", "ngrok", "playit") else ()):
+    for svc in tuple(servers) + ("velocity",) + (("tunnel",) if tunnel in ("bore", "ngrok", "playit") else ()):
         ok = core.wait_ready(cfg, svc, 900 if svc != "tunnel" else 90)
         say(f"  {'✓' if ok else '✗'} {svc}")
         if not ok and svc != "tunnel":

@@ -12,8 +12,10 @@ from . import net
 from .base import (CONFIG, EVENTS, JARS, MB, REPO, SECRETS, SERVERS, SPELERS, STATE, Fout, meminfo,
                    now_iso, proc_alive, proc_cmdline, read_json, read_text, say, write_json, write_text)
 
-PAPER = ("lobby", "survival", "staging")
-ORDER = ("lobby", "survival", "velocity", "tunnel", "staging")
+PAPER = ("lobby", "survival", "kitpvp", "staging")
+SPEL = ("survival", "kitpvp")          # spelservers: spelers wachten in de lobby als die herstarten
+BACKENDS = ("lobby", "survival", "kitpvp")
+ORDER = ("lobby", "survival", "kitpvp", "velocity", "tunnel", "staging")
 
 DEFAULT = {
     "versie": 1,
@@ -23,10 +25,10 @@ DEFAULT = {
     "velocity": None,
     "java": 25,
     "geheugen_mb": {},
-    "poorten": {"velocity": 25565, "lobby": 30066, "survival": 30067, "staging": 30068},
-    "rcon": {"lobby": 30076, "survival": 30077, "staging": 30078},
+    "poorten": {"velocity": 25565, "lobby": 30066, "survival": 30067, "staging": 30068, "kitpvp": 30069},
+    "rcon": {"lobby": 30076, "survival": 30077, "staging": 30078, "kitpvp": 30079},
     "tunnel": {"modus": "bore", "bore_server": "bore.pub", "bore_poort": None, "adres": None},
-    "plugins": {"survival": {}, "lobby": {}, "velocity": {}},
+    "plugins": {"survival": {}, "lobby": {}, "kitpvp": {}, "velocity": {}},
     "motd": "<gold>Burggraaf Craft</gold> <gray>— alleen op uitnodiging</gray>",
     "offline_test": False,
     "gedeeld": False,
@@ -47,7 +49,17 @@ def load():
         raise Fout("nog niet geïnstalleerd: draai eerst `mc install`")
     for k, v in DEFAULT.items():
         cfg.setdefault(k, v if not isinstance(v, dict) else dict(v))
+    _migreer(cfg)
     return cfg
+
+
+def _migreer(cfg):
+    """Nieuwe diensten (kitpvp) in een bestaande config: poorten, RCON en geheugen erbij."""
+    for k in ("poorten", "rcon"):
+        for svc, v in DEFAULT[k].items():
+            cfg[k].setdefault(svc, v)
+    if cfg.get("geheugen_mb") and "kitpvp" not in cfg["geheugen_mb"]:
+        cfg["geheugen_mb"]["kitpvp"] = 1024
 
 
 def load_or_default():
@@ -68,6 +80,10 @@ def secrets():
         s = {"forwarding": _secrets.token_urlsafe(24),
              "rcon": {k: _secrets.token_urlsafe(18) for k in PAPER}}
         write_json(path, s, mode=0o600)
+    elif any(k not in s.get("rcon", {}) for k in PAPER):  # nieuwe dienst: eigen RCON-wachtwoord
+        for k in PAPER:
+            s.setdefault("rcon", {}).setdefault(k, _secrets.token_urlsafe(18))
+        write_json(path, s, mode=0o600)
     return s
 
 
@@ -84,13 +100,15 @@ def memory_plan(total_bytes, gedeeld=False):
     total = total_bytes // MB
     reserve = 4096 + (6144 if gedeeld else 0)  # OS, de Bot, zijn browser en de page cache
     if total < 8192:
-        plan = {"velocity": 384, "lobby": 512, "staging": 1024}
+        plan = {"velocity": 384, "lobby": 512, "kitpvp": 512, "staging": 1024}
     else:
-        plan = {"velocity": 512, "lobby": 768, "staging": 2048}
+        plan = {"velocity": 512, "lobby": 768, "kitpvp": 1024, "staging": 1536}
     overhead = 450  # per JVM buiten de heap (metaspace, netty, threads)
     survival_overhead = 1200  # gemeten: survival-RSS ≈ heap + 1,1 GB (G1, netty, chunk-caches)
     rest = total - reserve - sum(v + overhead for v in plan.values()) - survival_overhead
     survival = max(1536, min(6144, rest))  # 6 GB is ruim voor een vriendenserver met simulation-distance 6
+    if total <= 16384:
+        survival = min(survival, 4864)      # 16 GB-box (gemeten 26-10: ~1,5-3 GB in gebruik met 2 spelers)
     plan["survival"] = survival // 256 * 256
     return plan
 
@@ -352,7 +370,7 @@ def players(cfg, svc):
 
 def desired():
     d = read_json(os.path.join(STATE, "desired.json"), {})
-    out = {"lobby": "up", "survival": "up", "velocity": "up", "tunnel": "up", "staging": "down"}
+    out = {"lobby": "up", "survival": "up", "kitpvp": "up", "velocity": "up", "tunnel": "up", "staging": "down"}
     out.update(d)
     return out
 
@@ -447,7 +465,7 @@ def configure_paper(cfg, svc):
         "broadcast-rcon-to-ops": "false",
         "network-compression-threshold": "-1", "enable-query": "false", "prevent-proxy-connections": "false",
         "max-players": "20", "enable-status": "true", "management-server-enabled": "false",
-        "motd": {"lobby": "Lobby", "survival": "Survival", "staging": "STAGING"}[svc],
+        "motd": {"lobby": "Lobby", "survival": "Survival", "kitpvp": "KitPvP", "staging": "STAGING"}[svc],
     }
     # spelinstellingen (moeilijkheid, zichtafstand, lobbywereld) komen uit server/server.json
     cf.props_set(os.path.join(d, "server.properties"), props)
@@ -503,7 +521,8 @@ def configure_velocity(cfg):
         f'survival = "127.0.0.1:{p["survival"]}"',
         f'lobby = "127.0.0.1:{p["lobby"]}"',
         f'staging = "127.0.0.1:{p["staging"]}"',
-        'try = ["survival", "lobby"]',
+        f'kitpvp = "127.0.0.1:{p["kitpvp"]}"',
+        'try = ["lobby", "survival"]',   # iedereen eerst in de lobby (plugin netwerk telt af naar je vorige server)
     ])
     changed |= cf.toml_replace_section(path, "forced-hosts", [])
     return changed
@@ -517,6 +536,23 @@ def first_start(cfg, svc):
         raise Fout(f"{svc} start niet; laatste log:\n" + "\n".join(_tail_log(svc)))
     stop(cfg, svc)
     patch_paper_global(cfg, svc)
+
+
+def configured(svc):
+    """Is deze Paper-dienst ingericht (eula, poorten, forwarding)? Een nieuwe dienst (kitpvp) pas na `mc apply`."""
+    d = server_dir(svc)
+    return os.path.exists(os.path.join(d, "server.properties")) and os.path.exists(os.path.join(d, "config", "paper-global.yml"))
+
+
+def netwerk_wachtend():
+    """Wie wacht in de lobby op welke server (plugin netwerk op Velocity), of None als die plugin niet draait."""
+    path = os.path.join(server_dir("velocity"), "plugins", "netwerk", "wachtend.json")
+    try:
+        if os.path.getmtime(path) + 5 < (started_at("velocity") or 0):
+            return None
+    except OSError:
+        return None
+    return read_json(path, {}) or {}
 
 
 def _tail_log(svc, n=25):

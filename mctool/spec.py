@@ -11,7 +11,7 @@ from . import downloads as dl
 from .base import REPO, Fout, read_json, write_json
 
 SPEC = os.path.join(REPO, "server", "server.json")
-TARGETS = ("survival", "lobby", "velocity")
+TARGETS = ("survival", "lobby", "kitpvp", "velocity")
 
 
 def path():
@@ -83,7 +83,7 @@ def validate(s):
         if g.get("gewicht") is not None and not isinstance(g.get("gewicht"), int):
             errs.append(f"groepen.{group}.gewicht moet een getal zijn")
     for svc, rules in (s.get("gamerules") or {}).items():
-        if svc not in ("survival", "lobby"):
+        if svc not in ("survival", "lobby", "kitpvp"):
             errs.append(f"gamerules: onbekende server {svc}")
         for k in rules:
             if not re.fullmatch(r"[A-Za-z0-9_:]+", k):

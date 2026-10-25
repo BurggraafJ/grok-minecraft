@@ -62,10 +62,33 @@ public final class Opmaak extends JavaPlugin implements Listener {
     private static final String NICK_TEAM = "opmaak_nick";
     private long tik = 0;
 
+    static final String KANAAL = "netwerk:main";
+    /** Profielen van het netwerk (van Velocity, gemaakt door de server met LuckPerms/Essentials): uuid → {naam, prefix, afk}. */
+    private final Map<UUID, String[]> netProfiel = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, String> laatsteProfiel = new HashMap<>();
+
+    private boolean netwerk() {
+        return getConfig().getBoolean("netwerk", false);
+    }
+
+    /** Maakt deze server zelf de profielen (rang en nickname)? auto = als LuckPerms er is. */
+    private boolean profielBron() {
+        String v = getConfig().getString("profiel-bron", "auto");
+        if (v.equalsIgnoreCase("auto")) return Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
+        return Boolean.parseBoolean(v);
+    }
+
+    private Component tagComp() {
+        String t = getConfig().getString("server-tag", "");
+        return t == null || t.isBlank() || !netwerk() ? Component.empty() : mm.deserialize(t).append(Component.space());
+    }
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
         leesTerugkeer();
+        getServer().getMessenger().registerOutgoingPluginChannel(this, KANAAL);
+        getServer().getMessenger().registerIncomingPluginChannel(this, KANAAL, (kanaal, speler, data) -> ontvang(data));
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getScheduler().runTaskTimer(this, this::elkeTik, 20L, 1L);
     }
@@ -90,6 +113,16 @@ public final class Opmaak extends JavaPlugin implements Listener {
 
     /** De naam zoals iedereen hem ziet: de nickname (Essentials /nick) of anders de accountnaam. */
     Component naamVan(Player p) {
+        if (netwerk() && !profielBron()) {
+            String[] np = netProfiel.get(p.getUniqueId());
+            if (np != null && np[0] != null && !np[0].isBlank()) {
+                try {
+                    return mm.deserialize(np[0]);
+                } catch (RuntimeException ignored) {
+                }
+            }
+            return Component.text(p.getName());
+        }
         Component d = p.displayName();
         if (!plat(d).equals(p.getName())) return d;
         Long t = joinTijd.get(p.getUniqueId());
@@ -137,6 +170,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
     /** AFK: veilige /afk (plugin VeiligAfk, metadata) of Essentials' (auto-)AFK; die laatste geeft alleen de tag. */
     private boolean isAfk(Player p) {
         if (p.hasMetadata("afk-veilig")) return true;
+        if (netwerk() && !profielBron()) return false;
         var ess = Bukkit.getPluginManager().getPlugin("Essentials");
         if (ess == null || !ess.isEnabled()) return false;
         try {
@@ -205,6 +239,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
                 label.remove();
                 labels.remove(id);
             }
+            if (tik % 20 == 0 && netwerk() && profielBron()) stuurProfiel(p, afk);
             if (tik % 20 == 0) {
                 String sleutel = mm.serialize(naamVan(p)) + "|" + prefixVan(p) + "|" + afk;
                 if (!sleutel.equals(laatsteTab.get(id))) {
@@ -242,6 +277,10 @@ public final class Opmaak extends JavaPlugin implements Listener {
     }
 
     private String prefixVan(Player p) {
+        if (netwerk() && !profielBron()) {
+            String[] np = netProfiel.get(p.getUniqueId());
+            if (np != null && np[1] != null) return np[1];
+        }
         ConfigurationSection g = getConfig().getConfigurationSection("groepen");
         if (g == null) return "";
         for (String naam : g.getKeys(false)) {
@@ -255,6 +294,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
         TagResolver alles = TagResolver.resolver(
                 TagResolver.resolver(extra),
                 Placeholder.component("naam", naamVan(p)),
+                Placeholder.component("tag", tagComp()),
                 Placeholder.component("prefix", mm.deserialize(prefixVan(p))));
         return mm.deserialize(getConfig().getString(sleutel, ""), alles);
     }
@@ -278,8 +318,8 @@ public final class Opmaak extends JavaPlugin implements Listener {
         chestSortStandaardAan(p);
         zetTab(p);
         boolean terug = System.currentTimeMillis() < terugkeerTot && terugkeer.remove(p.getName().toLowerCase(Locale.ROOT));
-        if (!getConfig().getBoolean("toon-join-quit", true) || stil() || terug) {
-            e.joinMessage(null);
+        if (netwerk() || !getConfig().getBoolean("toon-join-quit", true) || stil() || terug) {
+            e.joinMessage(null);   // netwerk: Velocity meldt binnenkomen één keer voor het hele netwerk
         } else {
             e.joinMessage(tekst("join", p));
         }
@@ -291,11 +331,20 @@ public final class Opmaak extends JavaPlugin implements Listener {
         TextDisplay label = labels.remove(id);
         if (label != null) label.remove();
         laatsteTab.remove(id);
-        if (!getConfig().getBoolean("toon-join-quit", true) || stil()) {
+        laatsteProfiel.remove(id);
+        if (netwerk() || !getConfig().getBoolean("toon-join-quit", true) || stil()) {
             e.quitMessage(null);
         } else {
             e.quitMessage(tekst("quit", e.getPlayer()));
         }
+    }
+
+    private Component chatRegel(Player p, Component bericht) {
+        return mm.deserialize(getConfig().getString("chat", ""),
+                Placeholder.component("tag", tagComp()),
+                Placeholder.component("prefix", mm.deserialize(prefixVan(p))),
+                Placeholder.component("naam", naamVan(p)),
+                Placeholder.component("bericht", bericht));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -303,18 +352,77 @@ public final class Opmaak extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
         Component prefix = mm.deserialize(prefixVan(p));
         Component naamComp = naamVan(p);
+        Component tag = tagComp();
         String formaat = getConfig().getString("chat", "");
         e.renderer((bron, naam, bericht, kijker) -> mm.deserialize(formaat,
+                Placeholder.component("tag", tag),
                 Placeholder.component("prefix", prefix),
                 Placeholder.component("naam", naamComp),
                 Placeholder.component("bericht", bericht)));
     }
 
+    /** Netwerk: dezelfde regel naar Velocity, die hem aan iedereen op de andere servers geeft (hier zag men hem al). */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChatNetwerk(AsyncChatEvent e) {
+        if (!netwerk()) return;
+        Player p = e.getPlayer();
+        Component regel = chatRegel(p, e.message());
+        naarNetwerk(p, regel);
+    }
+
+    private void naarNetwerk(Player via, Component regel) {
+        String json = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().serialize(regel);
+        Bukkit.getScheduler().runTask(this, () -> {
+            Player p = via.isOnline() ? via : Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
+            if (p == null) return;
+            stuur(p, "chat", json);
+        });
+    }
+
+    private void stuur(Player p, String type, String... velden) {
+        try {
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            java.io.DataOutputStream out = new java.io.DataOutputStream(buf);
+            out.writeUTF(type);
+            for (String v : velden) out.writeUTF(v == null ? "" : v);
+            p.sendPluginMessage(this, KANAAL, buf.toByteArray());
+        } catch (IOException | RuntimeException ex) {
+            getLogger().warning("naar het netwerk: " + ex.getMessage());
+        }
+    }
+
+    private void stuurProfiel(Player p, boolean afk) {
+        String naam = mm.serialize(naamVan(p)), prefix = prefixVan(p);
+        String sleutel = naam + "|" + prefix + "|" + afk;
+        if (sleutel.equals(laatsteProfiel.get(p.getUniqueId()))) return;
+        laatsteProfiel.put(p.getUniqueId(), sleutel);
+        stuur(p, "profiel", p.getUniqueId().toString(), naam, prefix, String.valueOf(afk));
+    }
+
+    /** Van Velocity: profiel (rang, nickname, afk) van een speler die net op deze server kwam. */
+    private void ontvang(byte[] data) {
+        try {
+            java.io.DataInputStream in = new java.io.DataInputStream(new java.io.ByteArrayInputStream(data));
+            String type = in.readUTF();
+            if (!type.equals("profiel")) return;
+            UUID id = UUID.fromString(in.readUTF());
+            String naam = in.readUTF(), prefix = in.readUTF(), afk = in.readUTF();
+            netProfiel.put(id, new String[]{naam, prefix, afk});
+            laatsteTab.remove(id);
+            Player p = Bukkit.getPlayer(id);
+            if (p != null) zetTab(p);
+        } catch (IOException | RuntimeException ex) {
+            getLogger().fine("onleesbaar netwerkbericht: " + ex.getMessage());
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onAdvancement(PlayerAdvancementDoneEvent e) {
         if (e.message() == null) return; // geen aankondiging (recept, of gamerule uit)
-        e.message(tekst("advancement", e.getPlayer(),
-                Placeholder.component("advancement", e.getAdvancement().displayName())));
+        Component regel = tekst("advancement", e.getPlayer(),
+                Placeholder.component("advancement", e.getAdvancement().displayName()));
+        e.message(regel);
+        if (netwerk()) naarNetwerk(e.getPlayer(), regel);
     }
 
     @Override

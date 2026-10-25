@@ -7,10 +7,11 @@ het is de bron (`/workspace/minecraft/repo/BOT.md`, uit GitHub). Je skill `minec
 ## Hoe het in elkaar zit
 
 ```
-vrienden ──► tunnel (bore.pub:PORT of playit) ──► Velocity :25565 (alleen premium, online-mode)
-                                                      ├─► survival  127.0.0.1:30067  (de wereld)
-                                                      ├─► lobby     127.0.0.1:30066  (wachtkamer bij een herstart)
-                                                      └─► staging   127.0.0.1:30068  (kopie, alleen om te testen)
+vrienden ──► tunnel (ngrok/bore/playit) ──► Velocity :25565 (alleen premium, online-mode, plugin netwerk)
+                                                ├─► lobby     127.0.0.1:30066  (tuin, iedereen komt hier eerst binnen)
+                                                ├─► survival  127.0.0.1:30067  (de wereld)
+                                                ├─► kitpvp    127.0.0.1:30069  (arena met kits, RCON 30079)
+                                                └─► staging   127.0.0.1:30068  (kopie, alleen om te testen)
 watchdog (mc _supervisor): houdt alles in de lucht, backups, meldingen — kost geen Bot-beurten
 ```
 
@@ -44,7 +45,8 @@ watchdog (mc _supervisor): houdt alles in de lucht, backups, meldingen — kost 
 | "Update de server" | `mc update check`, dan `mc update apply` (zelfde Minecraft-versie) |
 | "Naar Minecraft 26.x" | alleen met Jelles letterlijke ja: `mc update apply --mc 26.x --jelle-akkoord` (wereld gaat onomkeerbaar om, vrienden moeten hun client bijwerken; ViaBackwards laat oudere clients wel binnen) |
 | "Zet de wereld terug" | `mc backups`, `mc restore <naam>` (maakt eerst zelf een backup van nu) |
-| "Herstart" | `mc restart survival` (spelers wachten even in de lobby en gaan vanzelf terug) |
+| "Herstart" | `mc restart survival` / `mc restart kitpvp` (spelers wachten even in de lobby en gaan vanzelf terug) |
+| iets voor KitPvP (kit, instelling) | kits staan in `plugins/kitpvp` (code), instellingen in `server.json` → `instellingen.kitpvp` / `gamerules.kitpvp`; `mc cmd kitpvp …` (RCON) |
 | "Ik wil een vast adres" | zie **Tunnel** |
 | een commando in de game | `mc cmd survival <commando>` (RCON), `mc cmd velocity <commando>` |
 
@@ -159,38 +161,58 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - `mc apply` en `mc restart` melden in de game `[Server] Herladen gestart…` en `[Server] Klaar!`.
 - Herladen terwijl er gespeeld wordt mag (Jelle 25-10: liever snel live); spelers zien `[Server] Herladen gestart…` /
   `Klaar!` en wachten zolang veilig in de lobby.
-- **Lobby = veilige wachtkamer** (plugin `lobby-melding`): onkwetsbaar, geen schade of honger, adventure, een vloer op de
-  spawn en terug naar boven als je valt; titel, chatregel en actionbar «Server herstart even, je gaat zo vanzelf terug».
-  `mc restart`/`apply` sturen iedereen terug; de watchdog stuurt ook wie anders in de lobby staat (na een crash, of
-  binnengekomen tijdens de herstart) binnen ~10 s terug zodra survival draait. Op staging (motd STAGING) doet de plugin niets.
-  Terugsturen gaat met groot aftellen 5-4-3-2-1 (titels + geluid; `mc cmd lobby lobbymelding terug`, `ops.terug_naar_survival`),
-  daarna stuurt de plugin via Velocity (BungeeCord-kanaal); wie dan nog in de lobby staat stuurt `mc` met `send`.
-- Vóór een herlading van survival met spelers online telt survival groot af (5-4-3-2-1, plugin `lobbyreis`), dan
-  gaat iedereen naar de lobby.
-- `/parkour` (`/parcours`) werkt altijd vanuit survival: plek onthouden, naar de lobby-parkour; `/terug` in de lobby
-  brengt je terug op die plek. `/blijf` in de lobby (tijdens een herstart): niet automatisch terug (ook niet door de
-  watchdog) tot je `/terug` typt. Vrijwillige bezoekers komen via `lobby/plugins/LobbyMelding/bezoekers.txt` binnen;
-  `mc` vraagt `lobbymelding wie-terug` wie wél terug moet.
-- In de lobby heeft iedereen in vak 5 een wol-blokje: groen «Blijven: uit» / rood «Blijven: aan»; rechtsklik wisselt
-  (= `/blijf` / `/terug`; uit terwijl survival er is = meteen aftellen en terug). Blijvers worden bewaard in
-  `blijvers.txt` (overleeft een lobbyherstart, vergeten na 3 min als ze niet terugkomen). Na een herstart krijgen
-  blijvers het aftellen ook, met «✔ Survival is weer open» en zonder teleport.
-- Geheugen: survival-heap 5,75 GB (`core.memory_plan`: max 6 GB, reserve 4 GB; survival-RSS ≈ heap + 1,1 GB).
+- **Netwerk** (Velocity-plugin `netwerk`, eigen code, `plugins/netwerk`): het hart van lobby, survival en kitpvp.
+  - **Lobby eerst:** iedereen komt binnen in de lobby. Na ~1 s telt de proxy 5-4-3-2-1 af (titels; de lobby geeft
+    geluid en zet een barrière «Annuleren» in vak 5) naar de server waar je de vorige keer was (nieuw: survival).
+    Annuleren: klik `[Annuleren]` in de chat, de barrière, of `/annuleer` (`/blijf`). Laatste server per speler in
+    `velocity/plugins/netwerk/laatste.json`.
+  - **Wisselen:** `/lobby` (`/hub`), `/survival`, `/kitpvp`, `/server <naam>`, `/terug` (= je laatste spelserver), de
+    ster in vak 5 in de lobby (menu Survival · KitPvP · Parkour · Tuin-spawn), de twee poorten bij de fontein, en de
+    deur in vak 9 op kitpvp.
+  - **Herstarts:** `mc restart survival|kitpvp` telt op die server af (`lobbyreis aftellen 5` / `arena aftellen 5`),
+    dan `netwerk wacht <server>` (console): iedereen naar de lobby, gemarkeerd als wachtend (`wachtend.json`, `mc` leest
+    het). Zodra de server twee keer achter elkaar antwoordt telt de proxy af en gaat iedereen terug. Rode wol in vak 5
+    of `/annuleer` = blijven. Crasht een spelserver, dan vangt de proxy de kick op en doet hetzelfde. Herstart de lobby,
+    dan gaat wie daar stond naar zijn laatste server.
+  - **Chat:** elke server maakt de regel zelf (opmaak: `[Survival] [Member] Jelle » hoi`) en geeft hem aan de proxy,
+    die hem alleen aan spelers op de **andere** servers geeft (nooit dubbel). Advancements gaan ook mee.
+  - **Join/leave/wissel** meldt alleen de proxy, één keer voor het hele netwerk (`[+] [Survival] … `, `[-] …`,
+    `» naam → KitPvP`); opmaak/Essentials/vanilla zwijgen (`netwerk: true` in opmaak). `netwerk stil 30` (console) =
+    30 s geen join/leave-regels.
+  - **TAB:** de proxy zet spelers van de andere servers erbij (met servertag), kop/voet met aantallen per server.
+  - **Rang en nick** komen van survival (LuckPerms/Essentials): opmaak daar stuurt elk profiel naar de proxy
+    (`profielen.json`), die het aan lobby en kitpvp doorgeeft.
+  - Console: `mc cmd velocity netwerk status` (wie waar, laatste, wachtend), `netwerk wacht <server>`, `netwerk stil <s>`.
+- **Lobby = de tuin** (plugin `lobby-melding`, `BOUW_VERSIE` 6, procedureel; klasse `Tuin`): ~250×250 blokken.
+  Plaza met fontein (spawn 0.5/9.5, kijkt naar het noorden), daarachter twee poorten: links Survival (hout/bladeren),
+  rechts KitPvP (zwart/rood) — erdoorheen lopen = naar die server. Gracht rond het midden met vier bruggen, lanen
+  noord-zuid en oost-west met hagen, bloemranden en lantaarns, een dorp van 20 huisjes langs de noord-zuidlaan,
+  muziektent, marktkraampjes, eendenvijver met brug, heggendoolhof met gouden blok, prieel, boomgaard met bijen en
+  pompoenen, picknickweide met bloemenspiraal, tulpenvelden langs de oost-westlaan, molen, kas, uitkijktoren,
+  bloemenhart. Alle chunks van de tuin houdt de plugin geladen (plugin-chunktickets), zodat borden en labels blijven.
+  Veilig: onkwetsbaar, geen honger, adventure; wie valt gaat naar de spawn. Op staging (motd STAGING) doet hij niets.
+  `/spawn` (`/tuin`) = naar de fontein. `mc cmd lobby lobbymelding info` = korte stand.
+- **Parkour (10 levels)** verspreid door de tuin: aan de **parkourlanen** (x = ±41) met per level een bloemenpoortje
+  en bord. Oost (x 46…): 1 Opwarmer (z −104), 2 Sprongen (−76), 3 Zigzag (−48), 4 IJsbaan (48), 5 Ladders (76); west
+  6 Honing, 7 Slijm, 8 Waterval, 9 Neo, 10 Meester (zelfde z). Per level een huis in de levelkleur met binnenmuur
+  «Ranglijst» (top 5), stadion met tribunes, vlaggen, schijnwerpers en scorebord. Beste tijd per speler per level in
+  `tijden.yml`, voortgang in `voortgang.yml` (blijven bewaard bij een herbouw). Val-check alleen tijdens een run.
+  Na een level «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
+  Hotbar in de lobby: vak 1 kompas «Level kiezen», vak 5 ster «Server kiezen» (tijdens aftellen barrière, tijdens
+  wachten rode wol), vak 9 «Opnieuw» (= `/parkour reset`). `/parkour` vanuit survival: plek onthouden (plugin
+  `lobbyreis`), naar je volgende level; `/terug` brengt je terug.
+- **KitPvP** (server `kitpvp`, plugin `kitpvp`, eigen code): vlakke wereld, adventure, geen mobs/weer/dag-nacht,
+  `immediate_respawn`. Colosseum (straal 30) met wachtplatform: 7 kits als pantserstandaards (krijger, boog, tank,
+  ninja, speer, heler, hamer) of het kitmenu (ster in vak 5, `/kit`). `/arena` = de arena in (3 s bescherming),
+  `/stats` (`/kd`) = kills/deaths/reeks; top-10 bord bij de spawn; `stats.yml`. Geen drops of oprapen, honger vast,
+  pijlen verdwijnen; een kill = volle gezondheid + gouden appel; reeksen worden omgeroepen. Console: `arena aftellen N`,
+  `arena bouw`, `arena zelftest`. Backups: `mc backup --dienst kitpvp` (dagelijks door de watchdog, net als lobby).
 - `mc apply` met spelers online altijd los starten (`setsid nohup mc apply > data/state/apply-laatste.out &`): wordt een
-  apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan.
-- **Lobby** (procedureel gebouwd door lobby-melding): ronde plaza met fontein, lantaarns, bankjes, bloemen en bomen;
-  boulevards oost en west (x=±19..21) met lantaarns; 10 parkour-levels in stadions: oost (z −40..40) Opwarmer,
-  Sprongen, Zigzag, IJsbaan, Ladders; west Honing, Slijm, Waterval, Neo, Meester. Per level een 11×11-huis in de
-  levelkleur met open voorkant en een binnenmuur «Ranglijst» (top 5), tribunes aan beide kanten, vlaggen,
-  schijnwerpers en een scorebord (top 5). Beste tijd per speler per level in `tijden.yml`; «Nieuw record!» bij een
-  PB, broadcast bij een levelrecord. Alleen herbouwd als `BOUW_VERSIE` of de grondhoogte verandert (`gebouwd.txt`).
-  Val-check alleen tijdens een run (PlayerMoveEvent + elke 2 ticks): 2 blokken onder het laatste/volgende blok, op
-  iets staan dat geen baan is (grond, tribune, huis; randjes van baanblokken tellen mee), of in ander water = terug
-  naar de start (600 ms debounce). Wie alleen achteruit/opzij van het startblok stapt stopt de run. Na een level: «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
-  Hotbar: vak 1 kompas «Level kiezen» (menu: groen = gehaald, geel = volgende, grijs = op slot; klik = naar de
-  start), vak 5 het blijven-blokje (één klik = één wissel, 400 ms debounce), vak 9 rode kleurstof «Opnieuw» (= `/parkour
-  reset`: naar de start van je huidige level, timer opnieuw; `/parkour kies` = level-kiezer). Een run start altijd
-  opnieuw op het startblok; het hele finishplatform (3×3) telt als finish. Voortgang per speler in `voortgang.yml`.
+  apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan. Velocity herstart pas
+  als er niemand online is, tenzij `--nu`.
+- **Geheugen** (box 16 GB, krap): survival 4864 MB heap (RSS ≈ heap + 1,1 GB), kitpvp 1024, staging 1536 (alleen tijdens
+  een test), lobby 768, velocity 512 (`core.memory_plan`; `mc install --herbereken-geheugen`). Op een VPS met meer RAM
+  krijgt survival vanzelf meer (max 6 GB).
 - Spelerslijsten gaan via `minecraft:list` (Essentials' `/list` toont groepen en nicknames).
 - Nicknames: iedereen mag `/nick <naam>` (EssentialsX, kleuren met `&c` enz.; `/nick off` haalt hem weg; geen `~`
   ervoor). `opmaak` toont de nick in chat, `[+]`/`[-]`, advancements en de tablijst, en boven het hoofd met een

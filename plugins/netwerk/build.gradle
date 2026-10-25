@@ -1,0 +1,25 @@
+// Velocity-plugin (proxy). Gebouwd door `mc apply`; paperApiVersion/mcVersion worden genegeerd, javaRelease niet.
+plugins {
+    id 'java'
+}
+
+group = 'nl.burggraaf.mc'
+version = '1.0.0'
+
+def javaRelease = (findProperty('javaRelease') ?: '25') as int
+def velocityApi = findProperty('velocityApiVersion') ?: '4.3.0'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly "com.velocitypowered:velocity-api:${velocityApi}"
+    annotationProcessor "com.velocitypowered:velocity-api:${velocityApi}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaRelease
+    options.encoding = 'UTF-8'
+}

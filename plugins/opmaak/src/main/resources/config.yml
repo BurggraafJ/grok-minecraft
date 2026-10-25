@@ -1,13 +1,16 @@
 # Teksten in MiniMessage (https://docs.advntr.dev/minimessage/format.html). Aanpassen via server.json → patches.
-# Placeholders: <naam>, <prefix>, <bericht>, <advancement>.
-toon-join-quit: true            # lobby: false (wachtkamer, geen meldingen)
+# Placeholders: <naam>, <prefix>, <tag>, <bericht>, <advancement>.
+toon-join-quit: true            # (zonder netwerk) [+]/[-] tonen
+netwerk: false                  # true: Velocity (plugin netwerk) meldt join/leave en deelt chat/advancements met de andere servers
+server-tag: ""                  # bv. "<green>[Survival]</green>": vóór de naam in chat en tablijst (alleen met netwerk)
+profiel-bron: auto              # auto = deze server bepaalt rang/nickname als LuckPerms er is; anders van het netwerk
 nicknames: true               # Essentials /nick overal tonen (chat, [+]/[-], advancements, tablijst, label boven het hoofd)
 chestsort-standaard-aan: true  # ChestSort+ (shift-klik op een leeg vakje) voor elke speler één keer aanzetten
 join: "<gray>[<green>+</green>]</gray> <white><naam>"
 quit: "<gray>[<red>-</red>]</gray> <white><naam>"
-chat: "<prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>"
+chat: "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>"
 advancement: "<gray>[<gold>★</gold>]</gray> <white><naam></white> <gray>heeft</gray> <advancement> <gray>behaald</gray>"
-tablijst: "<prefix> <white><naam>"
+tablijst: "<tag><prefix> <white><naam>"
 # Groepen van boven naar onder: de eerste waar de speler in zit (LuckPerms-permissie group.<naam>) telt.
 # default is de groep van iedereen.
 groepen:

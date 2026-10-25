@@ -99,6 +99,8 @@ class Supervisor:
         for svc in core.ORDER:
             if svc == "tunnel" and cfg["tunnel"]["modus"] in ("geen", "direct"):
                 continue
+            if svc in core.PAPER and svc != "staging" and not core.configured(svc):
+                continue   # nog niet ingericht (nieuwe server): dat doet `mc apply`
             if core.held(svc):
                 continue
             up = core.running(svc)
@@ -143,7 +145,9 @@ class Supervisor:
                 self.failed.add(svc)
         # Wie in de lobby staat terwijl survival gewoon draait (na een crash, of binnengekomen tijdens een herstart):
         # terug naar survival. Niet tijdens een geplande herstart (hold), die stuurt zelf terug.
+        # Met de Velocity-plugin netwerk is de lobby de hub en stuurt die plugin wachtenden zelf terug.
         if (core.running("velocity") and not core.held("survival") and core.ready(cfg, "survival")
+                and core.netwerk_wachtend() is None
                 and (self.need_send_back or time.time() - getattr(self, "last_lobby_check", 0) > 10)):
             self.last_lobby_check = time.time()
             wachtend = ops.terug_naar_survival(cfg)
@@ -175,7 +179,7 @@ class Supervisor:
         self.last_minute = time.time()
         self.beat()
         cfg = core.load()
-        online = [p for s in ("survival", "lobby") for p in (core.players(cfg, s) or [])]
+        online = [p for s in core.BACKENDS for p in (core.players(cfg, s) or [])]
         n = len(online)
         self.strangers(online)
         if n:
@@ -211,6 +215,15 @@ class Supervisor:
                     self.log("backup gemaakt")
                 except Fout as e:
                     core.event("MELD", f"backup mislukt: {e}")
+        for svc in ("lobby", "kitpvp"):   # klein: parkour-tijden en kitpvp-statistieken, één keer per dag
+            info = read_json(os.path.join(STATE, f"laatste-backup-{svc}.json"))
+            t = calendar.timegm(time.strptime(info["tijd"], "%Y-%m-%dT%H:%M:%SZ")) if info else 0
+            if time.time() - t > 24 * 3600 and core.ready(cfg, svc) and not core.held(svc):
+                try:
+                    ops.backup(cfg, svc=svc)
+                    self.log(f"backup {svc} gemaakt")
+                except Fout as e:
+                    core.event("MELD", f"backup {svc} mislukt: {e}")
 
     def strangers(self, online):
         """Zonder whitelist kan iedereen met het adres erin: meld elke naam die niet in data/spelers.json staat, één keer."""

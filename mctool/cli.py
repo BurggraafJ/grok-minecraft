@@ -43,11 +43,11 @@ def build_parser():
     sub.add_parser("down", help="alles stoppen (watchdog eerst)")
 
     s = sub.add_parser("restart", help="herstarten; survival via de lobby, spelers blijven verbonden")
-    s.add_argument("dienst", choices=["survival", "lobby", "velocity", "tunnel", "all"])
+    s.add_argument("dienst", choices=["survival", "lobby", "kitpvp", "velocity", "tunnel", "all"])
     s.add_argument("--als-leeg", action="store_true", help="wacht tot niemand online is (velocity)")
 
-    s = sub.add_parser("cmd", help="servercommando (survival/lobby via RCON, velocity via console)")
-    s.add_argument("dienst", choices=["survival", "lobby", "staging", "velocity"])
+    s = sub.add_parser("cmd", help="servercommando (survival/lobby/kitpvp via RCON, velocity via console)")
+    s.add_argument("dienst", choices=["survival", "lobby", "kitpvp", "staging", "velocity"])
     s.add_argument("commando", nargs=argparse.REMAINDER)
 
     s = sub.add_parser("logs", help="laatste regels van een log")
@@ -64,6 +64,7 @@ def build_parser():
     s = sub.add_parser("backup", help="backup van de survivalwereld (--github: de nieuwste ook naar GitHub)")
     s.add_argument("--label")
     s.add_argument("--github", action="store_true", help="zet de nieuwste backup als release in de privé backup-repo")
+    s.add_argument("--dienst", default="survival", choices=["survival", "lobby", "kitpvp"], help="welke server (standaard survival)")
     s.add_argument("--stil", action="store_true")
     s = sub.add_parser("backups", help="lijst van backups (--github: die op GitHub)")
     s.add_argument("--github", action="store_true")
@@ -81,7 +82,7 @@ def build_parser():
     s = sub.add_parser("plugin", help="plugins: zoek, add, remove, lijst, nieuw, build")
     s.add_argument("actie", choices=["zoek", "add", "remove", "lijst", "nieuw", "build"])
     s.add_argument("naam", nargs="?")
-    s.add_argument("--op", default="survival", help="survival, lobby, velocity (komma-gescheiden)")
+    s.add_argument("--op", default="survival", help="survival, lobby, kitpvp, velocity (komma-gescheiden)")
     s.add_argument("--zonder-staging", action="store_true")
 
     s = sub.add_parser("staging", help="testserver met een kopie van de wereld")
@@ -162,7 +163,7 @@ def h_up(a):
 def h_down(a):
     cfg = core.load()
     supervisor.stop()
-    for svc in ("tunnel", "velocity", "staging", "survival", "lobby"):
+    for svc in ("tunnel", "velocity", "staging", "survival", "kitpvp", "lobby"):
         if core.stop(cfg, svc):
             say(f"  {svc} gestopt")
     say("alles uit. `mc up` start het weer.")
@@ -196,7 +197,7 @@ def h_logs(a):
 
 
 def h_errors(a):
-    svcs = [a.dienst] if a.dienst else ["survival", "lobby", "velocity", "tunnel", "supervisor"]
+    svcs = [a.dienst] if a.dienst else ["survival", "lobby", "kitpvp", "velocity", "tunnel", "supervisor"]
     for svc in svcs:
         path = os.path.join(core.STATE, "supervisor.log") if svc == "supervisor" else core.latest_log(svc)
         hits = [l for l in tail(path, 3000) if re.search(r"ERROR|SEVERE|Exception|fout:|WARN.*(plugin|Plugin)", l)]
@@ -232,7 +233,7 @@ def h_backup(a):
     from . import offsite
     cfg = core.load()
     if not a.github:
-        say(f"backup: {ops.backup(cfg, a.label)}")
+        say(f"backup: {ops.backup(cfg, a.label, svc=a.dienst)}")
         return
     try:
         if not offsite._newest_local():

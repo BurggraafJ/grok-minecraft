@@ -1,0 +1,19 @@
+name: KitPvP
+version: '${version}'
+main: nl.burggraaf.mc.kitpvp.KitPvP
+api-version: '${apiVersion}'
+description: "KitPvP-arena: arena en wachtplatform bouwen, kits kiezen, kills/doden/reeksen, geen drops, direct respawnen."
+author: Minecraft Bot
+softdepend: [Opmaak]
+commands:
+  kit:
+    description: "Kies een kit (menu)"
+    aliases: [kits]
+  arena:
+    description: "Terug naar het wachtplatform (buiten een gevecht). Console: /arena aftellen <s> | bouw | zelftest"
+  stats:
+    description: "Jouw KitPvP-statistieken"
+    aliases: [kd]
+permissions:
+  kitpvp.beheer:
+    default: op

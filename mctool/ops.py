@@ -24,7 +24,7 @@ def velocity_cmd(line):
 _AANKONDIGING = {"diepte": 0}
 
 
-def meld_spelers(cfg, tekst, kleur="yellow", servers=("survival", "lobby")):
+def meld_spelers(cfg, tekst, kleur="yellow", servers=core.BACKENDS):
     """Chatregel `[Server] <tekst>` voor iedereen op de draaiende Paper-servers (stil als er niemand is)."""
     regel = json.dumps([{"text": "[", "color": "gray"}, {"text": "Server", "color": "gold"},
                         {"text": "] ", "color": "gray"}, {"text": tekst, "color": kleur}], ensure_ascii=False)
@@ -72,7 +72,11 @@ class aankondiging:
 
 
 def _lobby_terug(cfg):
-    """Wie in de lobby moet terug naar survival? Niet wie /blijf typte of via /parkour kwam (plugin lobby-melding)."""
+    """Wie in de lobby moet terug naar zijn server? Met de plugin netwerk (Velocity): wie daar als wachtend staat
+    (die stuurt ze zelf terug zodra hun server er is). Zonder: plugin lobby-melding (niet wie /blijf typte)."""
+    net_w = core.netwerk_wachtend()
+    if net_w is not None:
+        return sorted(net_w)
     wachtend = core.players(cfg, "lobby") or []
     try:
         out = core.rcon(cfg, "lobby", "lobbymelding wie-terug")
@@ -89,6 +93,12 @@ def terug_naar_survival(cfg, aftellen=True, ook_blijvers=False):
     lobby-melding: titels 5-4-3-2-1 met geluid, daarna stuurt die zelf via Velocity); wie na een paar seconden nog in
     de lobby staat stuurt Velocity. ook_blijvers (na een herstart): wie blijft krijgt het aftellen ook mee, met aan het
     eind «Survival is weer open», maar blijft staan."""
+    if core.netwerk_wachtend() is not None:   # de plugin netwerk stuurt wachtenden zelf terug (met aftellen)
+        for _ in range(60):
+            if not _lobby_terug(cfg):
+                break
+            time.sleep(0.5)
+        return []
     wachtend = _lobby_terug(cfg)
     if not wachtend and not (ook_blijvers and core.players(cfg, "lobby")):
         return []
@@ -115,7 +125,9 @@ def restart(cfg, svc, als_leeg=False, between=None):
     """
     if svc == "all":
         with aankondiging(cfg):
-            for s in ("lobby", "survival"):
+            for s in core.BACKENDS:
+                if s == "kitpvp" and not core.configured(s):
+                    continue
                 restart(cfg, s, between=between if s == "survival" else None)
             if core.running("velocity"):
                 restart(cfg, "velocity", als_leeg=als_leeg)
@@ -124,11 +136,11 @@ def restart(cfg, svc, als_leeg=False, between=None):
         core.hold(svc, 1800)
         try:
             if svc == "velocity":
-                _restart_velocity(cfg, als_leeg)
+                _restart_velocity(cfg, als_leeg, between)
             elif svc == "lobby":
                 _restart_plain(cfg, svc, between)
-            elif svc == "survival":
-                _restart_survival(cfg, between)
+            elif svc in core.SPEL:
+                _restart_spel(cfg, svc, between)
             else:
                 _restart_plain(cfg, svc, between)
         finally:
@@ -145,53 +157,74 @@ def _restart_plain(cfg, svc, between):
     say(f"  {svc} herstart")
 
 
-def _restart_survival(cfg, between):
-    spelers = core.players(cfg, "survival") or []
+AFTEL_CMD = {"survival": "lobbyreis aftellen 5", "kitpvp": "arena aftellen 5"}
+
+
+def _restart_spel(cfg, svc, between):
+    """Herstart een spelserver (survival, kitpvp): groot aftellen, iedereen wacht in de lobby, daarna stuurt de plugin
+    netwerk (Velocity) ze met 5-4-3-2-1 vanzelf terug. Zonder die plugin: het oude pad via lobby-melding."""
+    spelers = core.players(cfg, svc) or []
     moved = False
+    netwerk = core.netwerk_wachtend() is not None
     if spelers and core.running("velocity") and core.ready(cfg, "lobby"):
-        try:  # plugin Lobbyreis: groot aftellen 5-4-3-2-1 op survival, dan pas naar de lobby
-            if "aftellen" in core.rcon(cfg, "survival", "lobbyreis aftellen 5"):
+        try:  # groot aftellen 5-4-3-2-1 op de server zelf, dan pas naar de lobby
+            if "aftellen" in core.rcon(cfg, svc, AFTEL_CMD.get(svc, "")):
                 time.sleep(5.3)
         except (Fout, OSError):
             pass
-        try:  # plugin Opmaak: geen [-]-regels nu iedereen even naar de lobby gaat
-            core.rcon(cfg, "survival", "opmaak stil 60")
+        try:  # plugin Opmaak (zonder netwerk): geen [-]-regels nu iedereen even naar de lobby gaat
+            core.rcon(cfg, svc, "opmaak stil 60")
         except (Fout, OSError):
             pass
         time.sleep(1)
-        velocity_cmd("send all lobby")
+        if netwerk:
+            velocity_cmd(f"netwerk wacht {svc}")
+        else:
+            for naam in spelers:
+                velocity_cmd(f"send {naam} lobby")
         moved = True
         for _ in range(20):
-            if not core.players(cfg, "survival"):
+            if not core.players(cfg, svc):
                 break
             time.sleep(0.5)
-    core.stop(cfg, "survival")
+        for naam in core.players(cfg, svc) or []:   # wie nog niet weg is
+            velocity_cmd(f"send {naam} lobby")
+    core.stop(cfg, svc)
     if between:
         between()
-    if moved:  # plugin Opmaak: wie zo terugkomt krijgt geen [+]-regel
-        odir = os.path.join(core.server_dir("survival"), "plugins", "Opmaak")
+    if moved and not netwerk:  # plugin Opmaak: wie zo terugkomt krijgt geen [+]-regel
+        odir = os.path.join(core.server_dir(svc), "plugins", "Opmaak")
         os.makedirs(odir, exist_ok=True)
         with open(os.path.join(odir, "terugkeer.txt"), "w") as fh:
             fh.write("\n".join(spelers) + "\n")
-    core.start(cfg, "survival")
-    if not core.wait_ready(cfg, "survival", 600):
-        raise Fout("survival komt niet terug; spelers staan in de lobby. Laatste log:\n" + "\n".join(core._tail_log("survival")))
-    if moved or core.players(cfg, "lobby"):
+    core.start(cfg, svc)
+    if not core.wait_ready(cfg, svc, 600):
+        raise Fout(f"{svc} komt niet terug; spelers staan in de lobby. Laatste log:\n" + "\n".join(core._tail_log(svc)))
+    if netwerk:
+        if moved:   # de plugin netwerk ziet de server terug en telt af; even wachten tot iedereen weg is uit de lobby
+            for _ in range(80):
+                time.sleep(0.5)
+                if not [n for n, s in (core.netwerk_wachtend() or {}).items() if s == svc]:
+                    break
+    elif svc == "survival" and (moved or core.players(cfg, "lobby")):
         terug_naar_survival(cfg, ook_blijvers=True)
-    say(f"  survival herstart{f' ({len(spelers)} spelers via de lobby teruggezet)' if spelers else ''}")
+    elif moved:
+        for naam in spelers:
+            velocity_cmd(f"send {naam} {svc}")
+    say(f"  {svc} herstart{f' ({len(spelers)} spelers via de lobby teruggezet)' if spelers else ''}")
 
 
-def _restart_velocity(cfg, als_leeg):
+def _restart_velocity(cfg, als_leeg, between=None):
     if als_leeg:
         deadline = time.time() + 6 * 3600
         while time.time() < deadline:
-            n = sum(len(core.players(cfg, s) or []) for s in ("survival", "lobby"))
+            n = sum(len(core.players(cfg, s) or []) for s in core.BACKENDS)
             if n == 0:
                 break
             time.sleep(30)
         else:
             raise Fout("velocity niet herstart: er bleven spelers online")
-    _restart_plain(cfg, "velocity", None)
+    _restart_plain(cfg, "velocity", between)
 
 
 # ── backups ────────────────────────────────────────────────────────────────────────────────────
@@ -226,7 +259,8 @@ def backup(cfg, label=None, svc="survival"):
                     core.rcon(cfg, svc, "save-on")
                 except (Fout, OSError):
                     core.event("MELD", f"save-on na backup mislukt op {svc}; draai `mc cmd {svc} save-on`")
-    write_json(os.path.join(STATE, "laatste-backup.json"), {"bestand": name, "tijd": now_iso(), "grootte": os.path.getsize(path)})
+    write_json(os.path.join(STATE, "laatste-backup.json" if svc == "survival" else f"laatste-backup-{svc}.json"),
+               {"bestand": name, "tijd": now_iso(), "grootte": os.path.getsize(path)})
     prune(cfg)
     return path
 
@@ -244,15 +278,17 @@ def prune(cfg):
     keep_hour, keep_day, keep_label = b.get("uur", 24), b.get("dag", 7), b.get("label", 5)
     items = list_backups()
     keep = set()
-    plain = [i for i in items if re.fullmatch(r"[a-z]+-\d{8}-\d{6}\.tar\.gz", i["naam"])]
-    labeled = [i for i in items if i not in plain]
-    keep.update(i["naam"] for i in plain[:keep_hour])
-    keep.update(i["naam"] for i in labeled[:keep_label])
-    days = {}
-    for i in plain:
-        day = i["naam"].split("-")[1]
-        days.setdefault(day, i["naam"])
-    keep.update(list(days.values())[:keep_day])
+    for svc in {i["naam"].split("-")[0] for i in items}:   # per dienst (survival, lobby, kitpvp) apart tellen
+        mine = [i for i in items if i["naam"].startswith(svc + "-")]
+        plain = [i for i in mine if re.fullmatch(r"[a-z]+-\d{8}-\d{6}\.tar\.gz", i["naam"])]
+        labeled = [i for i in mine if i not in plain]
+        keep.update(i["naam"] for i in plain[:keep_hour])
+        keep.update(i["naam"] for i in labeled[:keep_label])
+        days = {}
+        for i in plain:
+            day = i["naam"].split("-")[1]
+            days.setdefault(day, i["naam"])
+        keep.update(list(days.values())[:keep_day])
     removed = []
     for i in items:
         if i["naam"] not in keep:
@@ -328,7 +364,9 @@ def spelers_sync(cfg):
     d = core.spelers()
     want = {s["naam"].lower(): s for s in d["spelers"]}
     report = []
-    for svc in ("survival", "lobby"):
+    for svc in core.BACKENDS:
+        if svc == "kitpvp" and not core.configured(svc):
+            continue
         if not core.ready(cfg, svc):
             report.append(f"{svc}: draait niet, later opnieuw")
             continue
@@ -343,16 +381,16 @@ def spelers_sync(cfg):
         for naam_l in current - set(want):
             core.rcon(cfg, svc, f"whitelist remove {naam_l}")
             report.append(f"{svc}: {naam_l} van de whitelist")
-        if svc == "survival":
+        if svc in core.SPEL:   # admins zijn OP op survival en kitpvp (zelfde lijst)
             ops = _json_names(os.path.join(core.server_dir(svc), "ops.json"))
             for naam_l, s in want.items():
                 if s.get("admin") and naam_l not in ops:
                     core.rcon(cfg, svc, f"op {s['naam']}")
-                    report.append(f"survival: {s['naam']} is admin (OP)")
+                    report.append(f"{svc}: {s['naam']} is admin (OP)")
             for naam_l in ops:
                 if not (want.get(naam_l) or {}).get("admin"):
                     core.rcon(cfg, svc, f"deop {naam_l}")
-                    report.append(f"survival: {naam_l} is geen admin meer")
+                    report.append(f"{svc}: {naam_l} is geen admin meer")
         core.rcon(cfg, svc, "whitelist reload")
     return report
 
@@ -386,7 +424,8 @@ def status(cfg):
     st = {"tijd": now_iso(), "diensten": {}, "spelers": {}}
     for svc in core.ORDER:
         pid = core.pid_of(svc)
-        if not pid and (svc == "staging" or (svc == "tunnel" and cfg["tunnel"]["modus"] in ("geen", "direct"))):
+        if not pid and (svc == "staging" or (svc == "tunnel" and cfg["tunnel"]["modus"] in ("geen", "direct"))
+                        or (svc in core.PAPER and not core.configured(svc))):
             continue
         info = {"draait": bool(pid), "klaar": bool(pid) and core.ready(cfg, svc)}
         if pid:
@@ -396,7 +435,7 @@ def status(cfg):
             if started:
                 info["uptime_min"] = round((time.time() - started) / 60)
         st["diensten"][svc] = info
-    for svc in ("survival", "lobby"):
+    for svc in core.BACKENDS:
         p = core.players(cfg, svc)
         if p is not None:
             st["spelers"][svc] = p
@@ -454,6 +493,7 @@ def print_status(st):
 def selftest(cfg, login=None, extern=True):
     """Controleer de hele keten. Geeft (ok, regels)."""
     from . import configfiles as cf
+    from . import spec as specmod
     lines, ok = [], True
 
     def check(cond, good, bad):
@@ -464,7 +504,9 @@ def selftest(cfg, login=None, extern=True):
     s = core.secrets()["forwarding"]
     vsec = open(os.path.join(core.server_dir("velocity"), "forwarding.secret")).read().strip()
     check(vsec == s, "forwarding-geheim van Velocity klopt", "forwarding-geheim van Velocity wijkt af (mc ensure herstelt)")
-    for svc in ("lobby", "survival"):
+    for svc in core.BACKENDS:
+        if svc == "kitpvp" and not core.configured(svc):
+            continue
         pg = os.path.join(core.server_dir(svc), "config", "paper-global.yml")
         check(cf.yaml_get(pg, ["proxies", "velocity", "enabled"]) == "true" and cf.yaml_get(pg, ["proxies", "velocity", "secret"]) == s,
               f"{svc}: Velocity-forwarding aan met hetzelfde geheim", f"{svc}: Velocity-forwarding niet goed ingesteld")
@@ -502,6 +544,10 @@ def selftest(cfg, login=None, extern=True):
             except (OSError, ValueError, Fout) as e:
                 good, why, trace = False, f"geen verbinding ({e})", []
             check(good, f"testlogin {login} via Velocity → backend: {why}", f"testlogin mislukt: {why} [{' '.join(trace[-8:])}]")
+    vlog = tail(core.latest_log("velocity"), 5000)
+    if any(p.get("naam") == "netwerk" for p in specmod.load()["plugins"]):
+        check(any("Netwerk actief" in l for l in vlog) and core.netwerk_wachtend() is not None,
+              "Velocity-plugin netwerk actief (lobby eerst, gedeelde chat en TAB)", "Velocity-plugin netwerk is niet geladen")
     errs = [l for l in tail(core.latest_log("velocity"), 200) if "nable to connect" in l or "orwarding" in l and "ERROR" in l]
     check(not errs, "Velocity-log zonder verbindingsfouten", "Velocity-log: " + (errs[-1][-200:] if errs else ""))
     return ok, lines

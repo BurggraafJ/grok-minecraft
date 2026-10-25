@@ -51,6 +51,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.messaging.PluginMessageListener;
 
 /**
  * De lobby: de veilige wachtkamer tijdens een herstart van survival.
@@ -62,9 +63,15 @@ import org.bukkit.plugin.java.JavaPlugin;
  *   Velocity (BungeeCord-kanaal) iedereen naar survival.
  * Ook het sjabloon voor `mc plugin nieuw <naam>`.
  */
-public final class LobbyMelding extends JavaPlugin implements Listener {
+public final class LobbyMelding extends JavaPlugin implements Listener, PluginMessageListener {
 
     private static final String KANAAL = "BungeeCord";
+    private static final String NETWERK = "netwerk:main";
+    /** Wat de Velocity-plugin netwerk over een speler zegt: "aftellen:<server>:<Naam>" of "wacht:<server>:<Naam>". */
+    private final Map<UUID, String> modus = new HashMap<>();
+    private boolean netwerkGezien = false;
+    private final Map<UUID, Long> poortTot = new HashMap<>();
+    private Tuin tuin;
 
     private Location veilig;
     private int grondY;
@@ -97,6 +104,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         voortgangBestand = new File(getDataFolder(), "voortgang.yml");
         voortgang = YamlConfiguration.loadConfiguration(voortgangBestand);
         getServer().getMessenger().registerOutgoingPluginChannel(this, KANAAL);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, NETWERK);
+        getServer().getMessenger().registerIncomingPluginChannel(this, NETWERK, this);
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTask(this, () -> {
             veilig = maakVloer();
@@ -110,20 +119,22 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             }, 2L, 2L);
         });
         getServer().getScheduler().runTaskTimer(this, () -> {
-            String balk = getConfig().getString("actionbar", "");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 maakVeilig(p);
                 geefItem(p);
                 geefKiezer(p);
                 if (aftellend.contains(p.getUniqueId())) continue;
                 Long t = startTijd.get(p.getUniqueId());
+                String m = modus.get(p.getUniqueId());
                 if (t != null) {
                     p.sendActionBar(Component.text("Parkour ", NamedTextColor.AQUA)
                             .append(Component.text(tijd(System.currentTimeMillis() - t), NamedTextColor.WHITE)));
-                } else if (blijft.contains(p.getUniqueId())) {
-                    p.sendActionBar(Component.text("Parkour · /terug = terug naar survival", NamedTextColor.AQUA));
-                } else if (!balk.isBlank()) {
-                    p.sendActionBar(Component.text(balk, NamedTextColor.YELLOW));
+                } else if (m != null && m.startsWith("wacht:")) {
+                    p.sendActionBar(Component.text(m.split(":", 3)[2] + " herstart even · je gaat vanzelf terug · rode wol = blijven", NamedTextColor.YELLOW));
+                } else if (m != null && m.startsWith("aftellen:")) {
+                    p.sendActionBar(Component.text("Naar " + m.split(":", 3)[2] + " · klik de barrière (vak 5) of /annuleer om te blijven", NamedTextColor.GOLD));
+                } else {
+                    p.sendActionBar(Component.text("Ster (vak 5): naar Survival of KitPvP · kompas: parkour · of loop door een poort", NamedTextColor.AQUA));
                 }
             }
         }, 10L, 10L);
@@ -131,6 +142,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        getServer().getMessenger().unregisterIncomingPluginChannel(this);
         for (World w : Bukkit.getWorlds()) {
             w.getEntitiesByClass(TextDisplay.class).stream()
                     .filter(d -> d.getScoreboardTags().contains("lobbymelding")).forEach(TextDisplay::remove);
@@ -229,12 +241,12 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
                     b(3, 1, -1), b(4, 0, 0)}),
     };
     /** Levels 1-5 oost (+x), 6-10 west (−x); z van de laan. */
-    private static final int[] LAAN_Z = {-40, -20, 0, 20, 40};
-    private static final int HUT_X = 24;       // binnenkant laan: huis van x=24..32 (oost) / −32..−24 (west)
+    private static final int[] LAAN_Z = {-104, -76, -48, 48, 76};   // verspreid door de tuin (zie Tuin)
+    private static final int HUT_X = 46;       // huis van x=46..56 (oost) / −56..−46 (west), deur naar de parkourlaan
     private static final int HUIS = 11;        // huis is 11×11
     private static final String[] KLEUR = {"LIGHT_BLUE", "LIME", "ORANGE", "WHITE", "YELLOW", "BROWN", "GREEN", "CYAN", "PURPLE", "RED"};
     private static final int AVENUE_X = 19;    // laan-boulevard x=19..21
-    private static final int BOUW_VERSIE = 5;
+    private static final int BOUW_VERSIE = 6;   // 6 = de grote tuin
     private final Map<UUID, Integer> huidigLevel = new HashMap<>();  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
 
     private int vloerY;                                   // y van de vloer in de huisjes = y van de startblokken
@@ -281,16 +293,31 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         }
         long t0 = System.currentTimeMillis();
         vloerY = grondY + 1;
+        int R = Tuin.RAND + 4;
+        for (int cx = Math.floorDiv(-R, 16); cx <= Math.floorDiv(R, 16); cx++)      // tuin blijft geladen (borden, labels)
+            for (int cz = Math.floorDiv(-R, 16); cz <= Math.floorDiv(R, 16); cz++) w.addPluginChunkTicket(cx, cz, this);
         if (plaats) {
-            vul(w, -120, grondY + 1, -60, 120, grondY + 30, 60, Material.AIR);   // oude bouwsels weg
-            vul(w, -120, grondY, -60, 120, grondY, 60, Material.GRASS_BLOCK);
+            getLogger().info("tuin bouwen (versie " + BOUW_VERSIE + ")…");
+            vul(w, -R, grondY + 1, -R, R, grondY + 40, R, Material.AIR);   // oude bouwsels weg
+            vul(w, -R, grondY - 2, -R, R, grondY - 1, R, Material.DIRT);
+            vul(w, -R, grondY, -R, R, grondY, R, Material.GRASS_BLOCK);
+        }
+        tuin = new Tuin(w, grondY, plaats);
+        for (int l = 0; l < LEVELS.length; l++) {                            // levels: geen bomen of bloemenvelden daar
+            int sx = l < 5 ? 1 : -1, zc = LAAN_Z[l % 5];
+            tuin.reserveer(sx * (HUT_X - 1), zc - 10, sx * 112, zc + 10);
+        }
+        tuin.bouw();
+        for (int l = 0; l < LEVELS.length; l++) {
+            int sx = l < 5 ? 1 : -1;
+            tuin.levelPoortje(sx, LAAN_Z[l % 5], l + 1, LEVELS[l].naam(), LEVELS[l].moeite(), KLEUR[l]);
         }
         bouwPlaza(w);
         banen = new Location[LEVELS.length][];
         huisje = new Location[LEVELS.length];
         blokNaarPunt.clear();
         for (int l = 0; l < LEVELS.length; l++) bouwLevel(w, l);
-        bouwBoulevards(w);
+        for (Object[] lb : tuin.labels) tuinLabel((Location) lb[0], (String) lb[1], (Float) lb[2]);
         Location spawn = new Location(w, 0.5, grondY + 1, 9.5, 180f, 0f);
         w.setSpawnLocation(spawn);
         veilig = spawn;
@@ -342,7 +369,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         for (int i = 0; i < 8; i++) {
             double a = Math.PI / 4 * i;
             int x = (int) Math.round(Math.cos(a) * 8), z = (int) Math.round(Math.sin(a) * 8);
-            if (Math.abs(z) <= 1 && Math.abs(x) > 6) continue; // doorgang naar de boulevards
+            if (Math.abs(z) <= 1 || Math.abs(x) <= 1) continue; // doorgang naar de lanen
             if (i % 2 == 0) {
                 zet(w, x, g + 1, z, Material.SPRUCE_SLAB);
             } else {
@@ -355,11 +382,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         for (int i = 0; i < 48; i++) {
             double a = Math.PI * 2 / 48 * i;
             int x = (int) Math.round(Math.cos(a) * 14.5), z = (int) Math.round(Math.sin(a) * 14.5);
-            if (Math.abs(z) <= 2) continue;
+            if (Math.abs(z) <= 2 || Math.abs(x) <= 2) continue;
             zet(w, x, g + 1, z, bloemen[i % bloemen.length]);
-        }
-        for (int[] p : new int[][]{{-16, -11}, {-16, 11}, {16, -11}, {16, 11}, {-8, -16}, {8, -16}, {-8, 16}, {8, 16}}) {
-            boom(w, p[0], p[1], (p[0] + p[1]) % 3 == 0 ? org.bukkit.TreeType.CHERRY : org.bukkit.TreeType.BIRCH);
         }
     }
 
@@ -664,6 +688,25 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         });
     }
 
+    private void tuinLabel(Location plek, String mm, float schaal) {
+        Component tekst;
+        try {
+            tekst = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(mm);
+        } catch (RuntimeException e) {
+            tekst = Component.text(mm);
+        }
+        final Component t = tekst;
+        plek.getWorld().spawn(plek, TextDisplay.class, d -> {
+            d.setPersistent(false);
+            d.setBillboard(Display.Billboard.CENTER);
+            d.text(t);
+            d.setBackgroundColor(org.bukkit.Color.fromARGB(90, 0, 0, 0));
+            d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(), new org.joml.AxisAngle4f(),
+                    new org.joml.Vector3f(schaal, schaal, schaal), new org.joml.AxisAngle4f()));
+            d.addScoreboardTag("lobbymelding");
+        });
+    }
+
     private int[] puntOnder(Location l) {
         return blokNaarPunt.get(sleutel(l.getBlockX(), (int) Math.floor(l.getY() - 0.01), l.getBlockZ()));
     }
@@ -755,6 +798,16 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         if (to.getY() < grondY - 8) {
             p.teleport(veilig);
             return;
+        }
+        if (tuin != null && to.getBlockY() > grondY && to.getBlockY() <= grondY + 4) {
+            for (Tuin.Poort pt : tuin.poorten) {
+                if (to.getBlockZ() != pt.z() || to.getBlockX() < pt.x1() || to.getBlockX() > pt.x2()) continue;
+                long nu = System.currentTimeMillis();
+                if (poortTot.getOrDefault(p.getUniqueId(), 0L) > nu) break;
+                poortTot.put(p.getUniqueId(), nu + 4000);
+                naarServer(p, pt.server());
+                break;
+            }
         }
         if (banen == null || e.getFrom().getX() == to.getX() && e.getFrom().getY() == to.getY() && e.getFrom().getZ() == to.getZ()) return;
         UUID id = p.getUniqueId();
@@ -1002,12 +1055,13 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             else opnieuw(p);                                   // /parkour en /parkour reset
             return true;
         }
-        if (naam.equals("blijf") || naam.equals("terug")) {
-            if (!(sender instanceof Player p)) {
-                sender.sendMessage("Alleen voor spelers.");
-                return true;
+        if (naam.equals("spawn")) {
+            if (sender instanceof Player p && veilig != null) {
+                bezigLevel.remove(p.getUniqueId());
+                startTijd.remove(p.getUniqueId());
+                laatstePunt.remove(p.getUniqueId());
+                p.teleport(veilig);
             }
-            zetBlijven(p, naam.equals("blijf"));
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("terug")) {
@@ -1019,8 +1073,14 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("wie-terug")) {
-            sender.sendMessage("terug: " + String.join(",", Bukkit.getOnlinePlayers().stream()
-                    .filter(p -> !blijft.contains(p.getUniqueId())).map(Player::getName).toList()));
+            // Met de Velocity-plugin netwerk regelt de proxy wie terug gaat; dan hier niemand.
+            sender.sendMessage("terug: " + (netwerkGezien ? "" : String.join(",", Bukkit.getOnlinePlayers().stream()
+                    .filter(p -> !blijft.contains(p.getUniqueId())).map(Player::getName).toList())));
+            return true;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("info")) {
+            sender.sendMessage("lobby: tuin versie " + BOUW_VERSIE + ", grond " + grondY + ", poorten " + (tuin == null ? 0 : tuin.poorten.size())
+                    + ", levels " + (banen == null ? 0 : banen.length) + ", netwerk " + (netwerkGezien ? "ja" : "nee") + ", modus " + modus.size());
             return true;
         }
         sender.sendMessage("Gebruik: /lobbymelding terug | wie-terug");
@@ -1032,16 +1092,23 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     private static final int ITEM_SLOT = 4; // vak 5
     private NamespacedKey itemKey;
 
+    /** Vak 5: ster (server kiezen), tijdens het aftellen een barrière (annuleren), tijdens wachten rode wol (blijven). */
     private ItemStack blijfItem(boolean aan) {
-        ItemStack it = new ItemStack(aan ? Material.RED_WOOL : Material.LIME_WOOL);
-        ItemMeta m = it.getItemMeta();
-        m.displayName(Component.text(aan ? "Blijven: aan – klik om terug te gaan" : "Blijven: uit – klik om te blijven",
-                aan ? NamedTextColor.RED : NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
-        m.lore(List.of(Component.text(aan ? "Je blijft in de lobby tot je terug wilt (/terug)."
-                : "Je gaat vanzelf terug naar survival zodra die klaar is (/blijf om te blijven).", NamedTextColor.GRAY)
-                .decoration(TextDecoration.ITALIC, false)));
-        m.getPersistentDataContainer().set(itemKey, PersistentDataType.BYTE, (byte) 1);
-        it.setItemMeta(m);
+        return serverItem(null);
+    }
+
+    private ItemStack serverItem(String m) {
+        boolean aftel = m != null && m.startsWith("aftellen:"), wacht = m != null && m.startsWith("wacht:");
+        String naar = m == null ? "" : m.split(":", 3)[2];
+        ItemStack it = new ItemStack(aftel ? Material.BARRIER : wacht ? Material.RED_WOOL : Material.NETHER_STAR);
+        ItemMeta im = it.getItemMeta();
+        im.displayName(Component.text(aftel ? "✖ Annuleren: in de lobby blijven" : wacht ? "Blijven (niet vanzelf terug naar " + naar + ")" : "✦ Server kiezen",
+                aftel || wacht ? NamedTextColor.RED : NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false).decoration(TextDecoration.BOLD, true));
+        im.lore(List.of(Component.text(aftel ? "Klik: niet naar " + naar + " gaan (ook: /annuleer)"
+                : wacht ? "Klik: in de lobby blijven als " + naar + " klaar is (ook: /annuleer)"
+                : "Klik: Survival, KitPvP of parkour", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        im.getPersistentDataContainer().set(itemKey, PersistentDataType.BYTE, (byte) (aftel ? 2 : wacht ? 3 : 1));
+        it.setItemMeta(im);
         return it;
     }
 
@@ -1050,14 +1117,142 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     }
 
     private void geefItem(Player p) {
-        boolean aan = blijft.contains(p.getUniqueId());
+        if (itemKey == null) return;
+        String m = modus.get(p.getUniqueId());
         ItemStack huidig = p.getInventory().getItem(ITEM_SLOT);
-        Material want = aan ? Material.RED_WOOL : Material.LIME_WOOL;
-        if (isBlijfItem(huidig) && huidig.getType() == want) return;
+        ItemStack want = serverItem(m);
+        if (isBlijfItem(huidig) && huidig.getType() == want.getType()) return;
         for (int i = 0; i < p.getInventory().getSize(); i++) {
             if (i != ITEM_SLOT && isBlijfItem(p.getInventory().getItem(i))) p.getInventory().setItem(i, null);
         }
-        p.getInventory().setItem(ITEM_SLOT, blijfItem(aan));
+        p.getInventory().setItem(ITEM_SLOT, want);
+    }
+
+    // ── servermenu ──────────────────────────────────────────────────────────────────────────
+
+    private static final class ServerMenu implements org.bukkit.inventory.InventoryHolder {
+        org.bukkit.inventory.Inventory inv;
+        public org.bukkit.inventory.Inventory getInventory() { return inv; }
+    }
+
+    private final Set<UUID> openServerMenus = new HashSet<>();
+
+    private ItemStack knop(Material m, String naam, NamedTextColor kleur, String... regels) {
+        ItemStack it = new ItemStack(m);
+        ItemMeta im = it.getItemMeta();
+        im.displayName(Component.text(naam, kleur).decoration(TextDecoration.ITALIC, false).decoration(TextDecoration.BOLD, true));
+        List<Component> lore = new java.util.ArrayList<>();
+        for (String r : regels) lore.add(Component.text(r, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        im.lore(lore);
+        im.addItemFlags(org.bukkit.inventory.ItemFlag.values());
+        it.setItemMeta(im);
+        return it;
+    }
+
+    private void openServerMenu(Player p) {
+        ServerMenu sm = new ServerMenu();
+        sm.inv = Bukkit.createInventory(sm, 27, Component.text("Waar wil je heen?", NamedTextColor.DARK_AQUA));
+        ItemStack glas = new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS_PANE);
+        ItemMeta gm = glas.getItemMeta();
+        gm.setHideTooltip(true);
+        glas.setItemMeta(gm);
+        for (int i = 0; i < 27; i++) sm.inv.setItem(i, glas);
+        sm.inv.setItem(10, knop(Material.GRASS_BLOCK, "Survival", NamedTextColor.GREEN, "De survivalwereld", "Klik: erheen (/survival)"));
+        sm.inv.setItem(12, knop(Material.IRON_SWORD, "KitPvP", NamedTextColor.RED, "Kies een kit en vecht in de arena", "Klik: erheen (/kitpvp)"));
+        sm.inv.setItem(14, knop(Material.FEATHER, "Parkour", NamedTextColor.GOLD, "10 levels verstopt in de tuin", "Klik: kies een level"));
+        sm.inv.setItem(16, knop(Material.CHERRY_SAPLING, "Tuin-spawn", NamedTextColor.LIGHT_PURPLE, "Terug naar de fontein (/spawn)"));
+        p.openInventory(sm.inv);
+        openServerMenus.add(p.getUniqueId());
+    }
+
+    private void serverMenuKlik(InventoryClickEvent e) {
+        e.setCancelled(true);
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+        int slot = e.getRawSlot();
+        switch (slot) {
+            case 10 -> { p.closeInventory(); naarServer(p, "survival"); }
+            case 12 -> { p.closeInventory(); naarServer(p, "kitpvp"); }
+            case 14 -> { p.closeInventory(); Bukkit.getScheduler().runTask(this, () -> openKiezer(p)); }
+            case 16 -> {
+                p.closeInventory();
+                bezigLevel.remove(p.getUniqueId());
+                startTijd.remove(p.getUniqueId());
+                laatstePunt.remove(p.getUniqueId());
+                if (veilig != null) p.teleport(veilig);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.6f, 1.3f);
+            }
+            default -> { }
+        }
+    }
+
+    /** Naar een spelserver (via Velocity). De proxy zet dat als je laatste server. */
+    private void naarServer(Player p, String server) {
+        String naam = server.equals("kitpvp") ? "KitPvP" : Character.toUpperCase(server.charAt(0)) + server.substring(1);
+        p.showTitle(Title.title(Component.text("Naar " + naam, server.equals("kitpvp") ? NamedTextColor.RED : NamedTextColor.GREEN, TextDecoration.BOLD),
+                Component.text("even geduld…", NamedTextColor.GRAY), Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(300))));
+        p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, 0.25f, 1.6f);
+        stuurNaar(p, server);
+    }
+
+    private void stuurActie(Player p, String wat) {
+        try {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            DataOutputStream out = new DataOutputStream(buf);
+            out.writeUTF("actie");
+            out.writeUTF(p.getUniqueId().toString());
+            out.writeUTF(wat);
+            p.sendPluginMessage(this, NETWERK, buf.toByteArray());
+        } catch (IOException e) {
+            getLogger().warning("actie: " + e.getMessage());
+        }
+    }
+
+    /** Berichten van de Velocity-plugin netwerk (aftellen, wachten) voor de hotbar, geluid en actionbar. */
+    @Override
+    public void onPluginMessageReceived(String kanaal, Player via, byte[] data) {
+        if (!kanaal.equals(NETWERK)) return;
+        try {
+            java.io.DataInputStream in = new java.io.DataInputStream(new java.io.ByteArrayInputStream(data));
+            String type = in.readUTF();
+            if (type.equals("chat")) return;
+            UUID id = UUID.fromString(in.readUTF());
+            netwerkGezien = true;
+            Player p = Bukkit.getPlayer(id);
+            if (p == null) return;
+            switch (type) {
+                case "aftellen" -> {
+                    String server = in.readUTF(), naam = in.readUTF();
+                    modus.put(id, "aftellen:" + server + ":" + naam);
+                    bezigLevel.remove(id);
+                    startTijd.remove(id);
+                    laatstePunt.remove(id);
+                }
+                case "tik" -> {
+                    int n = Integer.parseInt(in.readUTF());
+                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.6f + 0.15f * Math.max(0, 5 - n));
+                }
+                case "aftellen-klaar" -> {
+                    modus.remove(id);
+                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
+                }
+                case "aftellen-stop" -> {
+                    modus.remove(id);
+                    p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 0.8f);
+                }
+                case "wacht" -> {
+                    String server = in.readUTF(), naam = in.readUTF();
+                    modus.put(id, "wacht:" + server + ":" + naam);
+                }
+                case "wacht-stop" -> {
+                    String m = modus.get(id);
+                    if (m != null && m.startsWith("wacht:")) modus.remove(id);
+                }
+                default -> { return; }
+            }
+            geefItem(p);
+        } catch (IOException | RuntimeException e) {
+            getLogger().fine("netwerk-bericht: " + e);
+        }
     }
 
     private static final int RESET_SLOT = 8;
@@ -1199,15 +1394,26 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             opnieuw(p);
             return;
         }
-        zetBlijven(p, !blijft.contains(p.getUniqueId()));
-        p.updateInventory();
-        p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, blijft.contains(p.getUniqueId()) ? 0.8f : 1.4f);
+        String m = modus.get(p.getUniqueId());
+        if (m != null) {
+            stuurActie(p, "annuleer");
+            modus.remove(p.getUniqueId());
+            geefItem(p);
+            p.updateInventory();
+            p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 0.8f);
+        } else {
+            openServerMenu(p);
+        }
     }
 
     @EventHandler
     public void onInventoryKlik(InventoryClickEvent e) {
         if (isKiezerMenu(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId())) {
             kiezerKlik(e);
+            return;
+        }
+        if (e.getView().getTopInventory().getHolder(false) instanceof ServerMenu) {
+            serverMenuKlik(e);
             return;
         }
         boolean eigenInv = e.getClickedInventory() != null && e.getClickedInventory().getType() == org.bukkit.event.inventory.InventoryType.PLAYER;
@@ -1222,7 +1428,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     @EventHandler
     public void onSleep(InventoryDragEvent e) {
         if (isBlijfItem(e.getOldCursor()) || isKiezer(e.getOldCursor()) || isReset(e.getOldCursor())
-                || isKiezerMenu(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId())) e.setCancelled(true);
+                || isKiezerMenu(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId())
+                || e.getView().getTopInventory().getHolder(false) instanceof ServerMenu) e.setCancelled(true);
     }
 
     @EventHandler
@@ -1271,28 +1478,15 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player speler = event.getPlayer();
         maakVeilig(speler);
+        speler.getInventory().clear();
         if (veilig != null) speler.teleport(veilig);
         boolean bezoeker = isBezoeker(speler.getUniqueId());
-        if (bezoeker) {
-            blijft.add(speler.getUniqueId());
-            bewaarBlijvers();
-        }
         geefItem(speler);
         geefKiezer(speler);
-        if (bezoeker) {
-            speler.sendMessage(Component.text("Welkom bij de parkour! Typ /terug om terug te gaan naar je plek in survival.", NamedTextColor.AQUA));
+        if (bezoeker) {                                     // kwam via /parkour uit survival: meteen naar je level
+            speler.sendMessage(Component.text("Welkom bij de parkour! /terug brengt je terug naar je plek in survival.", NamedTextColor.AQUA));
             if (banen != null) naarVolgendLevel(speler);
-            return;
         }
-        Component titel = Component.text(getConfig().getString("titel", "Even geduld"), NamedTextColor.GOLD);
-        Component onder = Component.text(getConfig().getString("ondertitel", ""), NamedTextColor.GRAY);
-        speler.showTitle(Title.title(titel, onder,
-                Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(8), Duration.ofMillis(800))));
-        String bericht = getConfig().getString("bericht", "");
-        if (!bericht.isBlank()) {
-            speler.sendMessage(Component.text(bericht, NamedTextColor.YELLOW));
-        }
-        if (banen != null) naarVolgendLevel(speler);
     }
 
     @EventHandler
@@ -1300,6 +1494,9 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         startTijd.remove(e.getPlayer().getUniqueId());
         bezigLevel.remove(e.getPlayer().getUniqueId());
         if (!Bukkit.isStopping() && blijft.remove(e.getPlayer().getUniqueId())) bewaarBlijvers(); // bij een lobbyherstart onthouden
+        modus.remove(e.getPlayer().getUniqueId());
+        poortTot.remove(e.getPlayer().getUniqueId());
+        openServerMenus.remove(e.getPlayer().getUniqueId());
         laatstePunt.remove(e.getPlayer().getUniqueId());
         aftellend.remove(e.getPlayer().getUniqueId());
     }

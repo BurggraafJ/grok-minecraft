@@ -26,7 +26,10 @@ DEPLOYED = os.path.join(STATE, "deployed.json")
 
 
 def deployed():
-    return read_json(DEPLOYED, {"plugins": {"survival": {}, "lobby": {}, "velocity": {}}, "instellingen": {}})
+    d = read_json(DEPLOYED, {"plugins": {}, "instellingen": {}})
+    for t in ("survival", "lobby", "kitpvp", "velocity"):
+        d.setdefault("plugins", {}).setdefault(t, {})
+    return d
 
 
 # ── artefacten ─────────────────────────────────────────────────────────────────────────────────
@@ -117,14 +120,14 @@ def settings_for(spec, svc):
 
 def plan(cfg, spec, arts):
     dep = deployed()
-    changes = {"paper": False, "velocity": False, "survival": [], "lobby": [], "velocity_plugins": []}
+    changes = {"paper": False, "velocity": False, "survival": [], "lobby": [], "kitpvp": [], "velocity_plugins": []}
     p = cfg.get("paper") or {}
     if p.get("version") != spec["minecraft"] or p.get("build") != spec["paper_build"]:
         changes["paper"] = True
     v = cfg.get("velocity") or {}
     if v.get("version") != spec["velocity"]["versie"] or v.get("build") != spec["velocity"]["build"]:
         changes["velocity"] = True
-    for target, key in (("survival", "survival"), ("lobby", "lobby"), ("velocity", "velocity_plugins")):
+    for target, key in (("survival", "survival"), ("lobby", "lobby"), ("kitpvp", "kitpvp"), ("velocity", "velocity_plugins")):
         want = {n: a["sha256"] for n, a in arts.items() if target in a["op"]}
         have = {n: d["sha256"] for n, d in (dep["plugins"].get(target) or {}).items()}
         for n in sorted(set(want) | set(have)):
@@ -139,7 +142,11 @@ def plan(cfg, spec, arts):
             changes["survival"].append(f"datapack {name}")
     for name in set(dep.get("datapacks") or {}) - set(datapack_hashes(spec)):
         changes["survival"].append(f"datapack {name} weg")
-    for svc in ("survival", "lobby"):
+    for svc in core.BACKENDS:
+        if not core.configured(svc):
+            if svc in gewenste_servers(spec):
+                changes[svc].append("nieuwe server")
+            continue
         props = cf.props_read(os.path.join(core.server_dir(svc), "server.properties"))
         diff = [k for k, val in settings_for(spec, svc).items() if props.get(k) != val]
         if diff:
@@ -156,6 +163,14 @@ def plan(cfg, spec, arts):
     if (spec.get("motd") or cfg["motd"]) != cfg["motd"]:
         changes["velocity_plugins"].append("motd")
     return changes
+
+
+def gewenste_servers(spec):
+    """lobby en survival altijd; kitpvp zodra server.json er instellingen of plugins voor heeft."""
+    out = ["lobby", "survival"]
+    if (spec.get("instellingen") or {}).get("kitpvp") or any("kitpvp" in p["op"] for p in spec["plugins"]):
+        out.append("kitpvp")
+    return out
 
 
 def _yaml_plain(v):
@@ -254,7 +269,7 @@ def evaluate(cfg, svc, arts, target):
     expected = {}
     for name, a in arts.items():
         if target == "staging":
-            if not set(a["op"]) & {"survival", "lobby", "staging"}:
+            if not set(a["op"]) & {"survival", "lobby", "kitpvp", "staging"}:
                 continue
         elif target not in a["op"]:
             continue
@@ -305,7 +320,7 @@ def admin_gamerules(svc):
 def runtime_plan(cfg, spec):
     """Wat er live nog anders is dan de spec (alleen als de server draait). Geeft een lijst acties."""
     actions = []
-    for svc in ("survival", "lobby"):
+    for svc in core.BACKENDS:
         rules = (spec.get("gamerules") or {}).get(svc) or {}
         door_admin = admin_gamerules(svc)
         if rules and core.ready(cfg, svc):
@@ -436,7 +451,7 @@ def prepare_staging(cfg, spec, arts, paper_jar):
         if live:
             core.rcon(cfg, "survival", "save-on")
     core.configure_paper(cfg, "staging")
-    staging_arts = {n: dict(a, op=list(set(a["op"]) | ({"staging"} if set(a["op"]) & {"survival", "lobby"} else set())))
+    staging_arts = {n: dict(a, op=list(set(a["op"]) | ({"staging"} if set(a["op"]) & {"survival", "lobby", "kitpvp"} else set())))
                     for n, a in arts.items()}
     sync_plugins("staging", staging_arts, "staging")
     sync_datapacks("staging", spec)
@@ -493,7 +508,7 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
         dl.ensure_jar(velocity)
         arts = fetch_artifacts(spec, spec["java"])
         changes = plan(cfg, spec, arts)
-        touched = [k for k in ("survival", "lobby", "velocity_plugins") if changes[k]]
+        touched = [k for k in ("survival", "lobby", "kitpvp", "velocity_plugins") if changes[k]]
         if not (changes["paper"] or changes["velocity"] or touched):
             if not dry_run:
                 dep = deployed()
@@ -511,7 +526,7 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
         unofficial = [n for n, a in arts.items() if not a["officieel"]]
         if unofficial:
             report.append("let op, niet officieel voor deze versie (getest op staging): " + ", ".join(unofficial))
-        paper_touch = changes["paper"] or changes["survival"] or changes["lobby"]
+        paper_touch = changes["paper"] or changes["survival"] or changes["lobby"] or changes["kitpvp"]
         if paper_touch and not zonder_staging and not first and os.path.exists(os.path.join(core.server_dir("survival"), "server.properties")):
             ok, problems, warnings = staging_test(cfg, spec, arts, paper_jar)
             if not ok:
@@ -525,9 +540,20 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
             new_vel = {k: velocity[k] for k in ("version", "build", "name", "sha256", "java")}
             dep = deployed()
             pending = {}
-            for svc in ("lobby", "survival"):
+            for svc in core.BACKENDS:
                 if not (changes["paper"] or changes[svc]):
                     continue
+                if not core.configured(svc):   # nieuwe server (bv. kitpvp): inrichten en één keer kaal starten
+                    cfg["paper"] = new_paper
+                    core.save(cfg)
+                    core.hold(svc, 1800)
+                    try:
+                        core.configure_paper(cfg, svc)
+                        apply_settings(cfg, spec, svc)
+                        core.first_start(cfg, svc)
+                    finally:
+                        core.unhold(svc)
+                    report.append(f"{svc}: nieuwe server ingericht")
 
                 def between(svc=svc):
                     cfg["paper"] = new_paper
@@ -564,7 +590,7 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
                     core.configure_velocity(cfg)
                     sync_plugins("velocity", arts, "velocity")
                 if core.running("velocity") and not first:
-                    online = sum(len(core.players(cfg, s) or []) for s in ("survival", "lobby"))
+                    online = sum(len(core.players(cfg, s) or []) for s in core.BACKENDS)
                     if online and not nu:
                         vbetween_deferred(cfg, new_vel, arts)
                         report.append(f"velocity: wordt bijgewerkt zodra niemand online is ({online} nu)")
@@ -602,7 +628,7 @@ def _describe(c):
         parts.append("Paper-versie")
     if c["velocity"]:
         parts.append("Velocity-versie")
-    for k, label in (("survival", "survival"), ("lobby", "lobby"), ("velocity_plugins", "velocity")):
+    for k, label in (("survival", "survival"), ("lobby", "lobby"), ("kitpvp", "kitpvp"), ("velocity_plugins", "velocity")):
         if c[k]:
             parts.append(f"{label}: {', '.join(c[k])}")
     return "; ".join(parts)

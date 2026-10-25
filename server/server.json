@@ -23,10 +23,22 @@
       "gamemode": "adventure",
       "force-gamemode": true,
       "difficulty": "peaceful",
-      "view-distance": 4,
+      "view-distance": 8,
       "simulation-distance": 4,
       "generate-structures": false,
       "spawn-protection": 0
+    },
+    "kitpvp": {
+      "level-type": "minecraft:flat",
+      "gamemode": "adventure",
+      "force-gamemode": true,
+      "difficulty": "easy",
+      "view-distance": 6,
+      "simulation-distance": 4,
+      "generate-structures": false,
+      "spawn-protection": 0,
+      "max-players": 30,
+      "pvp": true
     }
   },
   "gamerules": {
@@ -38,6 +50,13 @@
     "survival": {
       "respawn_radius": 3,
       "players_sleeping_percentage": 0
+    },
+    "kitpvp": {
+      "advance_time": false,
+      "advance_weather": false,
+      "spawn_mobs": false,
+      "immediate_respawn": true,
+      "show_death_messages": false
     }
   },
   "rechten": {
@@ -143,7 +162,8 @@
       "naam": "ViaVersion",
       "op": [
         "survival",
-        "lobby"
+        "lobby",
+        "kitpvp"
       ],
       "bron": "modrinth",
       "project": "viaversion",
@@ -157,7 +177,8 @@
       "naam": "ViaBackwards",
       "op": [
         "survival",
-        "lobby"
+        "lobby",
+        "kitpvp"
       ],
       "bron": "modrinth",
       "project": "viabackwards",
@@ -228,7 +249,8 @@
       "pad": "plugins/opmaak",
       "op": [
         "survival",
-        "lobby"
+        "lobby",
+        "kitpvp"
       ]
     },
     {
@@ -354,6 +376,22 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "netwerk",
+      "bron": "eigen",
+      "pad": "plugins/netwerk",
+      "op": [
+        "velocity"
+      ]
+    },
+    {
+      "naam": "kitpvp",
+      "bron": "eigen",
+      "pad": "plugins/kitpvp",
+      "op": [
+        "kitpvp"
+      ]
     }
   ],
   "datapacks": {
@@ -380,7 +418,9 @@
         "delay-motd": -1,
         "notify-no-new-mail": false,
         "send-fly-enable-on-join": false,
-        "nickname-prefix": ""
+        "nickname-prefix": "",
+        "custom-join-message": "none",
+        "custom-quit-message": "none"
       },
       "plugins/Chunky/config.yml": {
         "continue-on-restart": true
@@ -434,14 +474,30 @@
       },
       "plugins/Pijl/config.yml": {
         "bereik": 10000
+      },
+      "plugins/Opmaak/config.yml": {
+        "netwerk": true,
+        "server-tag": "<green>[Survival]</green> ",
+        "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
+        "tablijst": "<tag><prefix> <white><naam>",
+        "toon-join-quit": false
       }
     },
     "lobby": {
-      "plugins/LobbyMelding/config.yml": {
-        "bericht": "Server herstart even, je gaat zo vanzelf terug naar survival. Typ /blijf om te blijven parkouren, /terug om terug te gaan.",
-        "actionbar": "Server herstart even, je gaat zo vanzelf terug…"
-      },
       "plugins/Opmaak/config.yml": {
+        "toon-join-quit": false,
+        "netwerk": true,
+        "server-tag": "<aqua>[Lobby]</aqua> ",
+        "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
+        "tablijst": "<tag><prefix> <white><naam>"
+      }
+    },
+    "kitpvp": {
+      "plugins/Opmaak/config.yml": {
+        "netwerk": true,
+        "server-tag": "<red>[KitPvP]</red> ",
+        "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
+        "tablijst": "<tag><prefix> <white><naam>",
         "toon-join-quit": false
       }
     }
