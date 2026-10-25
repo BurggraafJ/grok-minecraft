@@ -300,6 +300,7 @@ public final class Pijl extends JavaPlugin implements Listener {
         vulMenu(p, menu);
         p.openInventory(menu.inv);
         openMenus.put(p.getUniqueId(), menu);
+        Bukkit.getScheduler().runTaskLater(this, () -> { if (openMenus.get(p.getUniqueId()) == menu) { vulMenu(p, menu); p.updateInventory(); } }, 2L);  // client toont soms eerst een oud beeld
     }
 
     /** Kolommen voor k items, symmetrisch rond het midden (bij een even aantal blijft het midden vrij). */

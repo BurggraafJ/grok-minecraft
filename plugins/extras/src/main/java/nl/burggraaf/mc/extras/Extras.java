@@ -226,6 +226,7 @@ public final class Extras extends JavaPlugin implements Listener {
         vul(m);
         p.openInventory(m.inv);
         openMenus.put(p.getUniqueId(), m);
+        Bukkit.getScheduler().runTaskLater(this, () -> { if (openMenus.get(p.getUniqueId()) == m) { vul(m); p.updateInventory(); } }, 2L);  // client toont soms eerst een oud beeld
         return true;
     }
 
