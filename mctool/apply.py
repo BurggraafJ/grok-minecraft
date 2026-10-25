@@ -110,6 +110,8 @@ def plugin_name(jar):
 
 def settings_for(spec, svc):
     s = dict((spec.get("instellingen") or {}).get(svc if svc != "staging" else "survival") or {})
+    wl = True if svc == "staging" else bool(spec.get("whitelist", True))  # staging blijft altijd alleen voor admins
+    s.update({"white-list": wl, "enforce-whitelist": wl})
     return {k: str(v).lower() if isinstance(v, bool) else str(v) for k, v in s.items()}
 
 

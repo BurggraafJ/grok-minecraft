@@ -12,7 +12,7 @@ klopte; dit zijn de punten waar de echte box en de echte versies anders bleken (
 | systemd of tmux | Niet zeker op de box, en "Computer Update" wist geïnstalleerde pakketten | Eigen **watchdog** in Python, alles onder `/workspace` (blijft staan), plus één routine die hem na een herstart weer start |
 | RCON of een MCP-brug | RCON op localhost is genoeg; Velocity heeft geen RCON | RCON voor Paper, de console van Velocity via een FIFO |
 | Alleen premium | Klopt | online-mode op Velocity, modern forwarding met geheim, backends offline op 127.0.0.1 |
-| — (ontbrak) | Een publiek tunneladres wordt gescand door bots | **Whitelist** altijd aan; OP alleen voor admins die Jelle noemt |
+| — (ontbrak) | Een publiek tunneladres wordt gescand door bots | Eerst whitelist aan; Jelle koos 25-10 voor **geen whitelist**. Dan: alleen premium-accounts, OP alleen voor admins, de watchdog meldt onbekende spelers, backups elk uur dat er gespeeld wordt |
 | — (ontbrak) | Via een tunnel komt iedereen van 127.0.0.1: Velocity's login-limiet per IP blokkeert dan vrienden die tegelijk joinen | `login-ratelimit = 0`, bans op naam |
 | — (ontbrak) | Grok Bot herschrijft skills stil; elke beurt kost usage | Bron in Git, skill is een dunne verwijzing; wachten en bewaken in een script, niet in Bot-beurten |
 | — (ontbrak) | De box pauzeert een paar minuten nadat de app niet meer verbonden is; processen tellen niet als activiteit (staff, [forum](https://forum.cursor.com/t/grok-bot-computer-freezes-reboots-repeatedly-and-kills-24-7-background-scripts/174272)) | Spelen = de Grok Bot-app open laten. De watchdog meet pauzes; voor 24/7 zonder app is een eigen VPS de route (zelfde repo en `mc`) |

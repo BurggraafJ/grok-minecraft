@@ -22,7 +22,9 @@ watchdog (mc _supervisor): houdt alles in de lucht, backups, meldingen — kost 
   komt ooit in Git, een chat of een bericht.
 - **Backups** maakt de watchdog elk uur dat er gespeeld is (op de box) en zet hij één keer per dag de nieuwste in de
   privé-repo `BurggraafJ/grok-minecraft-backups` als release (7 dagen bewaard). Terugzetten: `mc restore github`.
-- **De whitelist** staat in `data/spelers.json`, niet in Git (namen van vrienden zijn privé).
+- **Whitelist: uit** (Jelle 25-10: «ik wil geen whitelist»; `server.json` → `whitelist: false`). Iedereen met een
+  premium-account en het adres kan erin. `data/spelers.json` (niet in Git) is de lijst bekende spelers en admins; de
+  watchdog meldt elke onbekende naam één keer. Weer aan: `whitelist: true`, `mc apply`, `mc vastleggen`.
 - **`mc`** is je enige gereedschap: `/workspace/minecraft/repo/mc help`. Zet `alias mc=/workspace/minecraft/repo/mc`.
 
 ## Wat Jelle vraagt → wat jij doet
@@ -30,7 +32,8 @@ watchdog (mc _supervisor): houdt alles in de lucht, backups, meldingen — kost 
 | Jelle zegt | Jij doet |
 |---|---|
 | "Wat is het adres?" / "Draait hij?" | `mc status` → adres, spelers, TPS in één zin |
-| "Voeg X toe" (een speler) | `mc spelers add <naam>`; admin alleen als Jelle het zegt (`--admin`) |
+| "Voeg X toe" (een speler) | `mc spelers add <naam>` (bekende speler; admin alleen als Jelle het zegt: `--admin`) |
+| "Ban X" / een griefer | `mc cmd survival ban <naam>` (en `mc cmd lobby ban <naam>`); schade: `mc restore` van vóór de griefer |
 | "Installeer plugin X" | `mc plugin zoek X`, kies de juiste, `mc plugin add <project> --op survival` (test op staging, zet live, commit) |
 | "Haal X weg" | `mc plugin remove <naam>` |
 | "Zet <instelling> op …" (moeilijkheid, zichtafstand) | `server/server.json` → `instellingen` (server.properties), dan `mc apply` en `mc vastleggen "<wat>"` |
@@ -92,6 +95,7 @@ Elk uur draait je routine `mc ensure --stil`. Lege uitvoer = alles goed: zeg nie
 | `box heeft N min stilgestaan` | De box sliep: de server was onbereikbaar. Zie **De box slaapt**. |
 | `wijziging uit GitHub niet toegepast` | Lees de fout (meestal staging), herstel in de repo of revert, en meld het. |
 | `commits nog niet op GitHub` | Herinner Jelle één keer aan het GitHub-token (zie Wijzigen). |
+| `onbekende speler(s) online: X` | Zeg het Jelle in één zin ("X is online, ken je die?"). Op zijn woord: `mc spelers add X` of bannen. |
 | `backup naar GitHub mislukt` | Meestal het token (verlopen, of de backup-repo niet geselecteerd); zeg het Jelle één keer. |
 | `nog geen tunnel` / `tunnel (ngrok) werkt niet` | Zie **Tunnel**: Jelle moet een ngrok-token of creditcard-verificatie regelen; zeg precies wat. |
 | `updates beschikbaar: …` | Zelfde Minecraft-versie (Paper-build, Velocity, plugins): `mc update apply` als er niemand online is. Een nieuwe Minecraft-versie of een wachtlijst-plugin: zeg het Jelle in één zin met je advies. |
@@ -181,8 +185,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 
 ## Harde regels
 
-- **Veiligheid:** whitelist altijd aan; online-mode altijd aan (alleen premium-accounts); de backends en RCON alleen op
-  127.0.0.1; OP alleen voor wie Jelle als admin noemt; nooit `--offline-test` op de box.
+- **Veiligheid:** online-mode altijd aan (alleen premium-accounts); whitelist zoals `server.json` zegt (nu uit, op
+  Jelles woord); de backends en RCON alleen op 127.0.0.1; OP alleen voor wie Jelle als admin noemt; nooit
+  `--offline-test` op de box.
 - **Geheimen** (`data/secrets`, RCON-wachtwoorden, het forwarding-geheim, het GitHub- en ngrok-token) nooit in een
   chat, commit, PR, Cursor-brief of plugin. Vraag Jelle tokens altijd via de Secrets van de Bot, nooit in de chat.
 - **Plugins** alleen van Modrinth via `mc plugin add` (hashcontrole + staging), of eigen code in `plugins/`. Nooit een

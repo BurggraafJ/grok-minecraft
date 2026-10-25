@@ -440,11 +440,10 @@ def configure_paper(cfg, svc):
     if not cfg.get("eula"):
         raise Fout("de Minecraft EULA is niet geaccepteerd (mc install --eula-akkoord)")
     write_text(os.path.join(d, "eula.txt"), "# geaccepteerd door de eigenaar via mc install --eula-akkoord\neula=true\n")
-    wl = "false" if cfg.get("offline_test") else "true"
     props = {
         "server-ip": "127.0.0.1", "server-port": cfg["poorten"][svc], "online-mode": "false",
         "enable-rcon": "true", "rcon.port": cfg["rcon"][svc], "rcon.password": s["rcon"][svc],
-        "broadcast-rcon-to-ops": "false", "white-list": wl, "enforce-whitelist": wl,
+        "broadcast-rcon-to-ops": "false",
         "network-compression-threshold": "-1", "enable-query": "false", "prevent-proxy-connections": "false",
         "max-players": "20", "enable-status": "true", "management-server-enabled": "false",
         "motd": {"lobby": "Lobby", "survival": "Survival", "staging": "STAGING"}[svc],

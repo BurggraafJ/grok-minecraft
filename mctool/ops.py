@@ -370,8 +370,13 @@ def selftest(cfg, login=None, extern=True):
               f"{svc}: Velocity-forwarding aan met hetzelfde geheim", f"{svc}: Velocity-forwarding niet goed ingesteld")
         props = cf.props_read(os.path.join(core.server_dir(svc), "server.properties"))
         check(props.get("server-ip") == "127.0.0.1", f"{svc}: alleen bereikbaar op localhost", f"{svc}: server-ip is niet 127.0.0.1")
-        if not cfg.get("offline_test"):
+        from . import spec as specmod
+        want_wl = bool(specmod.load().get("whitelist", True))
+        if want_wl:
             check(props.get("white-list") == "true", f"{svc}: whitelist aan", f"{svc}: whitelist staat UIT")
+        elif svc == "survival":
+            lines.append("· whitelist uit (keuze in server.json): elke premium-speler met het adres kan erin; "
+                         "de watchdog meldt onbekende namen")
         check(core.ready(cfg, svc), f"{svc}: draait en antwoordt op RCON", f"{svc}: antwoordt niet")
     vel_online = cf.toml_get(os.path.join(core.server_dir("velocity"), "velocity.toml"), None, "online-mode")
     if not cfg.get("offline_test"):

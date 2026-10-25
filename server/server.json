@@ -8,6 +8,7 @@
   },
   "java": 25,
   "motd": "<gold>Burggraaf Craft</gold> <gray>— alleen op uitnodiging</gray>",
+  "whitelist": false,
   "instellingen": {
     "survival": {
       "difficulty": "normal",

@@ -170,7 +170,9 @@ class Supervisor:
         self.last_minute = time.time()
         self.beat()
         cfg = core.load()
-        n = sum(len(core.players(cfg, s) or []) for s in ("survival", "lobby"))
+        online = [p for s in ("survival", "lobby") for p in (core.players(cfg, s) or [])]
+        n = len(online)
+        self.strangers(online)
         if n:
             self.last_players = time.time()
             write_json(os.path.join(STATE, "spelers-gezien.json"), {"tijd": now_iso(), "aantal": n})
@@ -204,6 +206,19 @@ class Supervisor:
                     self.log("backup gemaakt")
                 except Fout as e:
                     core.event("MELD", f"backup mislukt: {e}")
+
+    def strangers(self, online):
+        """Zonder whitelist kan iedereen met het adres erin: meld elke naam die niet in data/spelers.json staat, één keer."""
+        if not online:
+            return
+        known = {s["naam"].lower() for s in core.spelers()["spelers"]}
+        path = os.path.join(STATE, "gemelde-spelers.json")
+        seen = set(read_json(path, []))
+        new = [p for p in online if p.lower() not in known and p.lower() not in seen]
+        if new:
+            core.event("MELD", f"onbekende speler(s) online: {', '.join(new)} (niet in spelers.json). "
+                               "Vraag Jelle: toevoegen (mc spelers add) of bannen (mc cmd survival ban <naam>)")
+            write_json(path, sorted(seen | {p.lower() for p in new}))
 
     def pregen(self, cfg, n):
         """Chunky genereert de wereld vooraf; pauzeer als er gespeeld wordt, ga door als het leeg is."""

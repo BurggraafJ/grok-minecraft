@@ -36,6 +36,8 @@ def validate(s):
     for k in ("minecraft", "paper_build", "velocity", "java", "plugins"):
         if k not in s:
             errs.append(f"sleutel '{k}' ontbreekt")
+    if "whitelist" in s and not isinstance(s["whitelist"], bool):
+        errs.append("whitelist moet true of false zijn")
     names = set()
     for i, p in enumerate(s.get("plugins", [])):
         where = f"plugins[{i}] ({p.get('naam', '?')})"

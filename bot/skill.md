@@ -15,7 +15,7 @@ De kern:
   `mc apply` (test op staging, zet live via de lobby) en `mc vastleggen "<wat>"`.
 - Eigen plugins: klein zelf (`mc plugin nieuw <naam>`), groot via een Cursor Cloud Agent op de repo, daarna
   `mc git merge <branch>`.
-- Harde regels: whitelist en online-mode aan; OP alleen voor admins die Jelle noemt; geen geheimen in chat of Git;
+- Harde regels: online-mode aan, whitelist zoals server.json zegt (nu uit; meld onbekende spelers); OP alleen voor admins die Jelle noemt; geen geheimen in chat of Git;
   plugins alleen via `mc plugin add` of eigen code; een nieuwe Minecraft-versie alleen op Jelles woord.
 - De routine: `mc ensure --stil`; geen uitvoer = niets doen en niets sturen.
 

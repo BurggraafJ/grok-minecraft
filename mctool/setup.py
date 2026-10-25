@@ -173,7 +173,10 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
     say("")
     say(f"KLAAR: {'alles groen' if ok else 'met fouten (zie ✗ hierboven)'}")
     say(f"Serveradres voor je vrienden: {adres or '— (tunnel niet klaar; mc tunnel status)'}")
-    say(f"Whitelist: {', '.join(s['naam'] for s in core.spelers()['spelers']) or 'nog leeg (mc spelers add <naam>)'}")
+    sp = core.spelers()["spelers"]
+    say(f"Whitelist: {'aan' if spec.get('whitelist', True) else 'uit (iedereen met een premium-account en het adres)'}"
+        f" · admins: {', '.join(s['naam'] for s in sp if s.get('admin')) or '—'}"
+        f" · bekende spelers: {', '.join(s['naam'] for s in sp if not s.get('admin')) or '—'}")
     todo = []
     if cfg["tunnel"]["modus"] == "geen" and not offline_test:
         todo.append("TUNNEL: de box laat alleen HTTPS naar buiten, dus bore kan niet. Jelle maakt een gratis "
