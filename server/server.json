@@ -306,6 +306,22 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "extras",
+      "bron": "eigen",
+      "pad": "plugins/extras",
+      "op": [
+        "survival"
+      ]
+    },
+    {
+      "naam": "handlicht",
+      "bron": "eigen",
+      "pad": "plugins/handlicht",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {
@@ -344,7 +360,10 @@
         "with-sneak": true,
         "without-sneak": false,
         "replant-saplings": true,
-        "startup-logs": false
+        "startup-logs": false,
+        "required-permissions": [
+          "extras.treefeller"
+        ]
       },
       "plugins/GravesX/config/grave.yml": {
         "settings.default.default.grave.time": -1,

@@ -1,0 +1,6 @@
+name: Handlicht
+version: '${version}'
+main: nl.burggraaf.mc.handlicht.Handlicht
+api-version: '${apiVersion}'
+description: "Lichtgevend item in je hand = licht om je heen (onzichtbaar light-blok dat meebeweegt)."
+author: Minecraft Bot

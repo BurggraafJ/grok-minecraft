@@ -1,0 +1,4 @@
+# Aan/uit voor de hele server (te wisselen in /admin).
+aan: true
+# Om de hoeveel ticks het licht meebeweegt.
+interval: 3

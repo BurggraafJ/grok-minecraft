@@ -42,7 +42,7 @@ public final class Honger extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onExhaustion(EntityExhaustionEvent e) {
-        if (e.getEntity() instanceof Player) e.setExhaustion(e.getExhaustion() * factor);
+        if (e.getEntity() instanceof Player && getConfig().getBoolean("aan", true)) e.setExhaustion(e.getExhaustion() * factor);   // aan = /admin
     }
 
     private void controleerVliegen(Player p) {

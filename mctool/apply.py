@@ -159,6 +159,8 @@ def plan(cfg, spec, arts):
 
 
 def _yaml_plain(v):
+    if isinstance(v, list):
+        return json.dumps(v)
     return str(v).lower() if isinstance(v, bool) else str(v)
 
 
@@ -167,6 +169,8 @@ def _yaml_literal(v):
         return "true" if v else "false"
     if isinstance(v, (int, float)):
         return str(v)
+    if isinstance(v, list):
+        return json.dumps(v)
     return cf.yaml_quote(v)
 
 
@@ -281,13 +285,33 @@ def _gamerule_value(out):
     return m.group(1).strip().rstrip(".").lower() if m else None
 
 
+def admin_gamerules(svc):
+    """Gamerules die een admin via /admin (plugin Extras) live heeft overschreven; die laat apply met rust.
+    Staat in <server>/plugins/Extras/schakelaars.yml onder `gamerules:` (sleutel: waarde)."""
+    pad = os.path.join(core.server_dir(svc), "plugins", "Extras", "schakelaars.yml")
+    uit, binnen = {}, False
+    for regel in (cf.read_text(pad, "") or "").splitlines():
+        if not regel.strip() or regel.lstrip().startswith("#"):
+            continue
+        if not regel.startswith(" "):
+            binnen = regel.split(":")[0].strip() == "gamerules"
+            continue
+        if binnen and ":" in regel:
+            k, v = regel.split(":", 1)
+            uit[k.strip()] = v.strip()
+    return uit
+
+
 def runtime_plan(cfg, spec):
     """Wat er live nog anders is dan de spec (alleen als de server draait). Geeft een lijst acties."""
     actions = []
     for svc in ("survival", "lobby"):
         rules = (spec.get("gamerules") or {}).get(svc) or {}
+        door_admin = admin_gamerules(svc)
         if rules and core.ready(cfg, svc):
             for k, v in rules.items():
+                if k in door_admin:
+                    continue
                 want = str(v).lower()
                 try:
                     have = _gamerule_value(core.rcon(cfg, svc, f"gamerule {k}"))

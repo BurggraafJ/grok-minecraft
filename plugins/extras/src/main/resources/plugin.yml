@@ -1,0 +1,18 @@
+name: Extras
+version: '${version}'
+main: nl.burggraaf.mc.extras.Extras
+api-version: '${apiVersion}'
+description: "/admin: server-extra's live aan/uit (TreeFeller, Veinminer, graven, ChestSort+, pijl, honger, slapen, instant oven, handlicht) + instant oven."
+author: Minecraft Bot
+softdepend: [TreeFeller, Veinminer, GravesX, chestsort-plus, Pijl, Honger, Handlicht, LuckPerms]
+commands:
+  admin:
+    description: "Server-extra's aan/uit zetten"
+    permission: extras.admin
+permissions:
+  extras.admin:
+    description: "Mag /admin gebruiken"
+    default: op
+  extras.treefeller:
+    description: "TreeFeller werkt (wordt tijdelijk afgenomen als TreeFeller in /admin uit staat)"
+    default: true

@@ -207,7 +207,26 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - **pijl** (eigen code): actionbar met een pijl naar de dichtstbijzijnde andere speler in dezelfde wereld («⬆ Lotte 132m»,
   relatief aan je kijkrichting, binnen 1000 blokken, 2× per seconde, even stil na bed/instappen/dood). `/pijl` opent een
   menu: per speler volgen aan/uit (hoofden, groen = zichtbaar), Kompas (extra N-pijl), Onvindbaar (jij staat in niemands
-  pijl), pijl aan/uit. Per speler bewaard in `plugins/Pijl/instellingen.yml`.
+  pijl), pijl aan/uit, en eigen plekken. Indeling: hoofden gecentreerd bovenaan, daaronder de plekken, onderste rij
+  Pijl · Kompas · Onvindbaar (met status-ruitje erboven), geen sluitknop. `/pijl opslaan <naam>` / `/pijl verwijder <naam>`
+  (max 27 per speler): actieve plekken staan in het aqua in de actionbar (2 dichtstbijzijnde, rest als +n, andere
+  wereld = "(andere wereld)"); in het menu klik = aan/uit, shift/rechtsklik 2× = verwijderen. Per speler bewaard in
+  `plugins/Pijl/instellingen.yml`.
+- **Handlicht** (eigen plugin, survival): fakkel/lantaarn/glowstone/lava-emmer enz. in main- of off-hand = onzichtbaar
+  `light`-blok op ooghoogte (anders voethoogte) dat elke 3 ticks meebeweegt; alleen in lucht/cave_air/stilstaand water,
+  nooit over bestaande blokken. Geplaatste blokken staan in `plugins/Handlicht/lichten.txt` en worden bij start/stop
+  (ook na een crash) opgeruimd.
+- **Instant oven** (plugin Extras): ovens, blast furnaces en smokers smelten in 1 tick per item; brandstof blijft nodig.
+- **`/admin`** (plugin Extras, alleen OP's): menu om server-extra's live aan/uit te zetten: TreeFeller, Veinminer,
+  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht. Console: `admin` (overzicht) en
+  `admin <naam> aan|uit`. Hoe het werkt: TreeFeller eist `extras.treefeller` (patch in server.json), ChestSort+
+  `chestsort.use`, GravesX `graves.place`: uit = die permissie tijdelijk afnemen (Bukkit-attachment, niet in
+  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht via `aan:` in hun config.
+  Slapen = gamerule 0 ↔ 100.
+  **Verhouding met "repo is de waarheid":** de repo legt vast wát er geïnstalleerd en ingesteld is; de /admin-stand is
+  bewuste live-bediening en staat in `servers/survival/plugins/Extras/schakelaars.yml` (in backups, niet in git).
+  `mc apply`/`ensure` raken dat bestand niet aan, patchen de `aan:`-sleutels niet, en slaan gamerules over die onder
+  `gamerules:` in dat bestand staan. Een extra permanent uitzetten = uit de spec halen (dan in git).
 - **spark** zit ingebouwd in Paper: `mc cmd survival spark tps` / `spark profiler` (alleen OP/console).
 
 ## De wereld en het startersdorp

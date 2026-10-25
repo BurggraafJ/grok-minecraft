@@ -2,11 +2,12 @@ name: Pijl
 version: '${version}'
 main: nl.burggraaf.mc.pijl.Pijl
 api-version: '${apiVersion}'
-description: "Richtingspijl in de actionbar naar de dichtstbijzijnde andere speler (⬆ Lotte 132m). /pijl zet hem aan of uit."
+description: "Richtingspijl in de actionbar naar de dichtstbijzijnde andere speler (⬆ Lotte 132m) en naar eigen opgeslagen plekken. /pijl opent het menu."
 author: Minecraft Bot
 commands:
   pijl:
-    description: "Menu: wie je pijl volgt, kompas, onvindbaar, pijl aan/uit"
+    description: "Menu: wie je pijl volgt, kompas, onvindbaar, pijl aan/uit, eigen plekken"
+    usage: "/pijl [opslaan|verwijder <naam>]"
     permission: pijl.gebruik
 permissions:
   pijl.gebruik:

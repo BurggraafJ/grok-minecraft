@@ -1,3 +1,5 @@
+# Honger-vertraging aan/uit (te wisselen in /admin; het vlieg-verbod blijft altijd).
+aan: true
 # Factor op alle exhaustion (lopen, rennen, springen, vechten, genezen). 1.0 = vanilla, 0.75 = 25% minder honger.
 factor: 0.75
 # Niemand vliegt in survival/adventure (ook OP's niet), behalve met permissie survival.vliegen.
