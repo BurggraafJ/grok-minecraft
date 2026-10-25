@@ -1,5 +1,5 @@
 # Pijl voor de hele server aan/uit (te wisselen in /admin).
 aan: true
-bereik: 1000          # blokken; verder weg = geen pijl
+bereik: 10000         # blokken; verder weg = geen pijl
 interval-ticks: 10    # 10 = twee keer per seconde
 pauze-seconden: 3     # zo lang geen pijl na iets anders in de actionbar (bed, instappen, dood)

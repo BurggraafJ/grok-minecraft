@@ -14,6 +14,10 @@ commands:
   terug:
     description: "Terug naar survival"
     permission: lobbymelding.speler
+  parkour:
+    description: "/parkour reset = terug naar de start van je level (timer opnieuw); /parkour kies = level-kiezer"
+    aliases: [parcours]
+    permission: lobbymelding.speler
 permissions:
   lobbymelding.beheer:
     default: op

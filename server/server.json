@@ -73,7 +73,7 @@
       "essentials.depth",
       "essentials.compass",
       "essentials.suicide",
-      "essentials.enderchest",
+      "-essentials.enderchest",
       "essentials.nick",
       "essentials.nick.color",
       "chestsort.use",
@@ -322,6 +322,14 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "kist",
+      "bron": "eigen",
+      "pad": "plugins/kist",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {
@@ -399,6 +407,9 @@
         "spawn-limits.animals": 9,
         "spawn-limits.water-ambient": 15,
         "spawn-limits.ambient": 10
+      },
+      "plugins/Pijl/config.yml": {
+        "bereik": 10000
       }
     },
     "lobby": {

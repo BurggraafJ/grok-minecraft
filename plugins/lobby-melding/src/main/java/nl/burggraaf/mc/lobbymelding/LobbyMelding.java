@@ -86,6 +86,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         }
         itemKey = new NamespacedKey(this, "blijf-item");
         kiezerKey = new NamespacedKey(this, "level-kiezer");
+        resetKey = new NamespacedKey(this, "reset-item");
         leesBlijvers();
         // Onthouden blijvers (van vóór een lobbyherstart) die niet binnen 3 minuten terug zijn: vergeten.
         Set<UUID> uitBestand = new HashSet<>(blijft);
@@ -226,7 +227,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     private static final int HUIS = 9;         // huis is 9×9
     private static final String[] KLEUR = {"LIGHT_BLUE", "LIME", "ORANGE", "WHITE", "YELLOW", "BROWN", "GREEN", "CYAN", "PURPLE", "RED"};
     private static final int AVENUE_X = 19;    // laan-boulevard x=19..21
-    private static final int BOUW_VERSIE = 4;  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
+    private static final int BOUW_VERSIE = 4;
+    private final Map<UUID, Integer> huidigLevel = new HashMap<>();  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
 
     private int vloerY;                                   // y van de vloer in de huisjes = y van de startblokken
     private Location[][] banen;                           // per level de sta-plek op elk blok
@@ -531,7 +533,12 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
                         default -> lv.blok();
                     };
                     punt(w, x, y, z, m, l, punten);
-                    if (laatste) bouwFinish(w, x, y, z);
+                    if (laatste) {
+                        bouwFinish(w, x, y, z);
+                        int idx = punten.size() - 1;              // het hele finishplatform telt als finish
+                        for (int dx = -1; dx <= 1; dx++)
+                            for (int dz = -1; dz <= 1; dz++) blokNaarPunt.put(sleutel(x + dx, y, z + dz), new int[]{l, idx});
+                    }
                 }
             }
         }
@@ -655,6 +662,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         if (huisje == null) return;
         int l = Math.min(gehaald(p.getUniqueId()), LEVELS.length - 1);
         p.teleport(huisje[l]);
+        huidigLevel.put(p.getUniqueId(), l);
         boolean alles = gehaald(p.getUniqueId()) >= LEVELS.length;
         p.sendMessage(Component.text(alles ? "Alle levels gehaald! Probeer ze nog eens sneller (huisjes langs de spawn)."
                 : "Parkour level " + (l + 1) + ": " + LEVELS[l].naam() + ". Loop het huisje uit en spring op het groene blok.", NamedTextColor.AQUA));
@@ -703,6 +711,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         if (i == 0) {
             if (bezig == null || bezig != l || laatstePunt.getOrDefault(id, 0) > 0) {
                 bezigLevel.put(id, l);
+                huidigLevel.put(id, l);
                 startTijd.put(id, System.currentTimeMillis());
                 laatstePunt.put(id, 0);
                 p.sendMessage(Component.text("Level " + (l + 1) + " gestart! Val je, dan begin je opnieuw.", NamedTextColor.AQUA));
@@ -743,6 +752,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
                     aftellendLevel.remove(id);
                     if (!p.isOnline() || aftellend.contains(id) || bezigLevel.containsKey(id)) return;
                     p.teleport(banen[l + 1][0]);
+                    huidigLevel.put(id, l + 1);
                     p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.4f);
                 }, 100L);
             }
@@ -843,6 +853,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             startTijd.remove(p.getUniqueId());
             laatstePunt.remove(p.getUniqueId());
             p.teleport(banen[l][0]);
+            huidigLevel.put(p.getUniqueId(), l);
             p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.6f, 1.3f);
             p.sendMessage(Component.text("Level " + (l + 1) + ": " + LEVELS[l].naam() + ". Spring van het groene blok!", NamedTextColor.AQUA));
             return;
@@ -912,6 +923,15 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             return true;
         }
         String naam = command.getName().toLowerCase();
+        if (naam.equals("parkour")) {
+            if (!(sender instanceof Player p)) {
+                sender.sendMessage("Alleen voor spelers.");
+                return true;
+            }
+            if (args.length > 0 && args[0].equalsIgnoreCase("kies")) openKiezer(p);
+            else opnieuw(p);                                   // /parkour en /parkour reset
+            return true;
+        }
         if (naam.equals("blijf") || naam.equals("terug")) {
             if (!(sender instanceof Player p)) {
                 sender.sendMessage("Alleen voor spelers.");
@@ -970,7 +990,46 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         p.getInventory().setItem(ITEM_SLOT, blijfItem(aan));
     }
 
+    private static final int RESET_SLOT = 8;
+    private NamespacedKey resetKey;
+
+    private ItemStack resetItem() {
+        ItemStack it = new ItemStack(Material.RED_DYE);
+        ItemMeta m = it.getItemMeta();
+        m.displayName(Component.text("Opnieuw", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+        m.lore(List.of(Component.text("Klik: terug naar de start van je level (timer opnieuw)", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        m.getPersistentDataContainer().set(resetKey, PersistentDataType.BYTE, (byte) 1);
+        it.setItemMeta(m);
+        return it;
+    }
+
+    private boolean isReset(ItemStack it) {
+        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(resetKey);
+    }
+
+    /** Naar de start van je huidige level (lopende run, anders het laatst gekozen/volgende level) en de timer weg. */
+    private void opnieuw(Player p) {
+        if (banen == null) return;
+        UUID id = p.getUniqueId();
+        Integer l = bezigLevel.get(id);
+        if (l == null) l = huidigLevel.get(id);
+        if (l == null) l = Math.min(gehaald(id), LEVELS.length - 1);
+        bezigLevel.remove(id);
+        startTijd.remove(id);
+        laatstePunt.remove(id);
+        huidigLevel.put(id, l);
+        p.teleport(banen[l][0]);
+        p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.6f, 1.3f);
+        p.sendActionBar(Component.text("Level " + (l + 1) + ": " + LEVELS[l].naam() + " · stap op het groene blok", NamedTextColor.AQUA));
+    }
+
     private void geefKiezer(Player p) {
+        if (resetKey != null && !isReset(p.getInventory().getItem(RESET_SLOT))) {
+            for (int i = 0; i < p.getInventory().getSize(); i++) {
+                if (i != RESET_SLOT && isReset(p.getInventory().getItem(i))) p.getInventory().setItem(i, null);
+            }
+            p.getInventory().setItem(RESET_SLOT, resetItem());
+        }
         if (kiezerKey == null || isKiezer(p.getInventory().getItem(KIEZER_SLOT))) return;
         for (int i = 0; i < p.getInventory().getSize(); i++) {
             if (i != KIEZER_SLOT && isKiezer(p.getInventory().getItem(i))) p.getInventory().setItem(i, null);
@@ -1049,10 +1108,10 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     public void onKlikItem(PlayerInteractEvent e) {
         if (e.getAction() == Action.PHYSICAL) return;
         ItemStack it = e.getHand() == EquipmentSlot.OFF_HAND ? null : e.getItem();
-        boolean blijf = isBlijfItem(it), kiezer = isKiezer(it);
-        if (!blijf && !kiezer) {
-            if (e.getHand() == EquipmentSlot.OFF_HAND && (isBlijfItem(e.getPlayer().getInventory().getItemInMainHand())
-                    || isKiezer(e.getPlayer().getInventory().getItemInMainHand()))) e.setCancelled(true);
+        boolean blijf = isBlijfItem(it), kiezer = isKiezer(it), reset = isReset(it);
+        if (!blijf && !kiezer && !reset) {
+            ItemStack hand = e.getPlayer().getInventory().getItemInMainHand();
+            if (e.getHand() == EquipmentSlot.OFF_HAND && (isBlijfItem(hand) || isKiezer(hand) || isReset(hand))) e.setCancelled(true);
             return;
         }
         e.setCancelled(true);
@@ -1064,6 +1123,10 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         laatsteKlik.put(p.getUniqueId(), nu);
         if (kiezer) {
             openKiezer(p);
+            return;
+        }
+        if (reset) {
+            opnieuw(p);
             return;
         }
         zetBlijven(p, !blijft.contains(p.getUniqueId()));
@@ -1079,26 +1142,29 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         }
         boolean eigenInv = e.getClickedInventory() != null && e.getClickedInventory().getType() == org.bukkit.event.inventory.InventoryType.PLAYER;
         if (isBlijfItem(e.getCurrentItem()) || isBlijfItem(e.getCursor()) || isKiezer(e.getCurrentItem()) || isKiezer(e.getCursor())
-                || e.getHotbarButton() == ITEM_SLOT || e.getHotbarButton() == KIEZER_SLOT
-                || (eigenInv && (e.getSlot() == ITEM_SLOT || e.getSlot() == KIEZER_SLOT))) {
+                || isReset(e.getCurrentItem()) || isReset(e.getCursor())
+                || e.getHotbarButton() == ITEM_SLOT || e.getHotbarButton() == KIEZER_SLOT || e.getHotbarButton() == RESET_SLOT
+                || (eigenInv && (e.getSlot() == ITEM_SLOT || e.getSlot() == KIEZER_SLOT || e.getSlot() == RESET_SLOT))) {
             e.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onSleep(InventoryDragEvent e) {
-        if (isBlijfItem(e.getOldCursor()) || isKiezer(e.getOldCursor())
+        if (isBlijfItem(e.getOldCursor()) || isKiezer(e.getOldCursor()) || isReset(e.getOldCursor())
                 || isKiezerMenu(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (isBlijfItem(e.getItemDrop().getItemStack()) || isKiezer(e.getItemDrop().getItemStack())) e.setCancelled(true);
+        ItemStack weg = e.getItemDrop().getItemStack();
+        if (isBlijfItem(weg) || isKiezer(weg) || isReset(weg)) e.setCancelled(true);
     }
 
     @EventHandler
     public void onWissel(PlayerSwapHandItemsEvent e) {
-        if (isBlijfItem(e.getMainHandItem()) || isBlijfItem(e.getOffHandItem()) || isKiezer(e.getMainHandItem()) || isKiezer(e.getOffHandItem())) e.setCancelled(true);
+        if (isBlijfItem(e.getMainHandItem()) || isBlijfItem(e.getOffHandItem()) || isKiezer(e.getMainHandItem()) || isKiezer(e.getOffHandItem())
+                || isReset(e.getMainHandItem()) || isReset(e.getOffHandItem())) e.setCancelled(true);
     }
 
     /** Kwam deze speler net via /parkour uit survival? (bezoekers.txt, geschreven door de plugin lobbyreis) */

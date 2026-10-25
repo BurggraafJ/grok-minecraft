@@ -171,6 +171,11 @@ public final class Pijl extends JavaPlugin implements Listener {
         return null;
     }
 
+    /** 84m, 999m, 2.4km */
+    private static String afstand(double m) {
+        return m < 1000 ? Math.round(m) + "m" : String.format(java.util.Locale.ROOT, "%.1fkm", m / 1000.0);
+    }
+
     private static String richting(Location van, double x, double z) {
         double doelYaw = Math.toDegrees(Math.atan2(-(x - van.getX()), z - van.getZ()));
         return pijlVoor(doelYaw, van.getYaw());
@@ -205,7 +210,7 @@ public final class Pijl extends JavaPlugin implements Listener {
                 Location naar = dichtst.getLocation();
                 delen.add(Component.text(richting(van, naar.getX(), naar.getZ()) + " ", NamedTextColor.GOLD)
                         .append(dichtst.displayName().colorIfAbsent(NamedTextColor.WHITE))
-                        .append(Component.text(" " + Math.round(Math.sqrt(best)) + "m", NamedTextColor.GRAY)));
+                        .append(Component.text(" " + afstand(Math.sqrt(best)), NamedTextColor.GRAY)));
             }
             // eigen plekken: de twee dichtstbijzijnde in deze wereld, de rest als +n
             List<Plek> actief = new ArrayList<>(), elders = new ArrayList<>();
@@ -219,7 +224,7 @@ public final class Pijl extends JavaPlugin implements Listener {
                 Plek pl = actief.get(i);
                 Component c = Component.text(richting(van, pl.x(), pl.z()) + " ", NamedTextColor.AQUA)
                         .append(Component.text(pl.naam(), NamedTextColor.AQUA))
-                        .append(Component.text(" " + Math.round(Math.hypot(pl.x() - van.getX(), pl.z() - van.getZ())) + "m", NamedTextColor.GRAY));
+                        .append(Component.text(" " + afstand(Math.hypot(pl.x() - van.getX(), pl.z() - van.getZ())), NamedTextColor.GRAY));
                 plekDeel = plekDeel == null ? c : plekDeel.append(Component.text("  ", NamedTextColor.GRAY)).append(c);
             }
             int rest = Math.max(0, actief.size() - 2) + elders.size();
@@ -331,7 +336,7 @@ public final class Pijl extends JavaPlugin implements Listener {
             ItemMeta m = it.getItemMeta();
             NamedTextColor kleur = pl.aan() ? NamedTextColor.GREEN : NamedTextColor.RED;
             boolean hier = pl.wereld().equals(p.getWorld().getName());
-            String afstand = hier ? Math.round(Math.hypot(pl.x() - van.getX(), pl.z() - van.getZ())) + "m" : "(andere wereld)";
+            String afstandTekst = hier ? afstand(Math.hypot(pl.x() - van.getX(), pl.z() - van.getZ())) : "(andere wereld)";
             if (bevestig) {
                 m.displayName(tekst("Verwijder " + pl.naam() + "?", NamedTextColor.RED).decoration(TextDecoration.BOLD, true));
                 m.lore(List.of(tekst("Shift- of rechtsklik nog een keer om te verwijderen", NamedTextColor.GRAY),
@@ -340,7 +345,7 @@ public final class Pijl extends JavaPlugin implements Listener {
                 m.displayName(tekst("📍 " + pl.naam(), kleur).decoration(TextDecoration.BOLD, true));
                 m.lore(List.of(tekst(pl.aan() ? "● In je pijl" : "● Niet in je pijl", kleur),
                         tekst(Math.round(pl.x()) + " " + Math.round(pl.y()) + " " + Math.round(pl.z()) + " · " + pl.wereld(), NamedTextColor.GRAY),
-                        tekst("Afstand: " + afstand, NamedTextColor.GRAY),
+                        tekst("Afstand: " + afstandTekst, NamedTextColor.GRAY),
                         tekst("Klik: aan/uit", NamedTextColor.DARK_GRAY),
                         tekst("Shift- of rechtsklik: verwijderen", NamedTextColor.DARK_GRAY)));
                 m.setEnchantmentGlintOverride(pl.aan());

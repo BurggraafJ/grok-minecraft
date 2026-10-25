@@ -1,0 +1,14 @@
+name: Kist
+version: '${version}'
+main: nl.burggraaf.mc.kist.Kist
+api-version: '${apiVersion}'
+description: "/kist: persoonlijke opslag van 54 vakken per speler (los van de enderchest). /ec staat voor iedereen uit."
+author: Minecraft Bot
+softdepend: [Essentials]
+commands:
+  kist:
+    description: "Open je persoonlijke kist (54 vakken)"
+    permission: kist.gebruik
+permissions:
+  kist.gebruik:
+    default: true

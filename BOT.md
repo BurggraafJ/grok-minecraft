@@ -178,11 +178,17 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - Geheugen: survival-heap 5,75 GB (`core.memory_plan`: max 6 GB, reserve 4 GB; survival-RSS ≈ heap + 1,1 GB).
 - `mc apply` met spelers online altijd los starten (`setsid nohup mc apply > data/state/apply-laatste.out &`): wordt een
   apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan.
-- In de lobby staat parkour in **5 levels** (Opwarmer, Sprongen, Zigzag, Hoogtevrees, Meester), elk in een eigen baan
-  langs de spawn met een huisje bij de start (groen blok) en een finishplatform (smaragd, lantaarns). Tijd in de
-  actionbar, finish in de chat; wie valt begint het level opnieuw. Voortgang per speler in
-  `lobby/plugins/LobbyMelding/voortgang.yml`: wie binnenkomt staat in het huisje van het volgende level; na een gehaald
-  level gaat hij na 3 s door naar het volgende. Alles wordt bij elke lobbystart opnieuw gebouwd.
+- **Lobby** (procedureel gebouwd door lobby-melding): ronde plaza met fontein, lantaarns, bankjes, bloemen en bomen;
+  boulevards oost en west (x=±19..21) met lantaarns; 10 parkour-levels in stadions: oost (z −40..40) Opwarmer,
+  Sprongen, Zigzag, IJsbaan, Ladders; west Honing, Slijm, Waterval, Neo, Meester. Per level een 9×9-huis in de
+  levelkleur met open voorkant, tribunes aan beide kanten, vlaggen, schijnwerpers en een scorebord (top 3 tijden,
+  `tijden.yml`). Alleen herbouwd als `BOUW_VERSIE` of de grondhoogte verandert (`gebouwd.txt`).
+  Reset alleen tijdens een run: duidelijk lager dan het laatst gehaalde blok of op de dorpsgrond; wie alleen van
+  het startblok stapt stopt de run. Na een level: «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
+  Hotbar: vak 1 kompas «Level kiezen» (menu: groen = gehaald, geel = volgende, grijs = op slot; klik = naar de
+  start), vak 5 het blijven-blokje (één klik = één wissel, 400 ms debounce), vak 9 rode kleurstof «Opnieuw» (= `/parkour
+  reset`: naar de start van je huidige level, timer opnieuw; `/parkour kies` = level-kiezer). Een run start altijd
+  opnieuw op het startblok; het hele finishplatform (3×3) telt als finish. Voortgang per speler in `voortgang.yml`.
 - Spelerslijsten gaan via `minecraft:list` (Essentials' `/list` toont groepen en nicknames).
 - Nicknames: iedereen mag `/nick <naam>` (EssentialsX, kleuren met `&c` enz.; `/nick off` haalt hem weg; geen `~`
   ervoor). `opmaak` toont de nick in chat, `[+]`/`[-]`, advancements en de tablijst, en boven het hoofd met een
@@ -216,12 +222,17 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   `light`-blok op ooghoogte (anders voethoogte) dat elke 3 ticks meebeweegt; alleen in lucht/cave_air/stilstaand water,
   nooit over bestaande blokken. Geplaatste blokken staan in `plugins/Handlicht/lichten.txt` en worden bij start/stop
   (ook na een crash) opgeruimd.
+- **`/kist`** (eigen plugin Kist): persoonlijke opslag van 54 vakken per speler (`plugins/Kist/kisten/<uuid>.yml`,
+  opgeslagen bij sluiten, uitloggen, elke minuut en bij stoppen; één inventory per speler = geen dupes). Gewone
+  stapelgroottes (max 64): meer per vak kan alleen door items zelf te veranderen, en dat geeft dupe-/desync-risico.
+  Geen automatische overloop naar de kist (bewust, te sterk). `/ec` en varianten zijn voor iedereen geblokkeerd,
+  ook OP's (`-essentials.enderchest` + commando-blokkade in Kist).
 - **Instant oven** (plugin Extras): ovens, blast furnaces en smokers smelten in 1 tick per item; brandstof blijft nodig.
 - **`/admin`** (plugin Extras, alleen OP's): menu om server-extra's live aan/uit te zetten: TreeFeller, Veinminer,
-  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht. Console: `admin` (overzicht) en
+  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht, Kist. Console: `admin` (overzicht) en
   `admin <naam> aan|uit`. Hoe het werkt: TreeFeller eist `extras.treefeller` (patch in server.json), ChestSort+
   `chestsort.use`, GravesX `graves.place`: uit = die permissie tijdelijk afnemen (Bukkit-attachment, niet in
-  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht via `aan:` in hun config.
+  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht/Kist via `aan:` in hun config.
   Slapen = gamerule 0 ↔ 100.
   **Verhouding met "repo is de waarheid":** de repo legt vast wát er geïnstalleerd en ingesteld is; de /admin-stand is
   bewuste live-bediening en staat in `servers/survival/plugins/Extras/schakelaars.yml` (in backups, niet in git).
