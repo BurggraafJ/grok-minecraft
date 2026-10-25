@@ -225,8 +225,11 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   nooit over bestaande blokken. Geplaatste blokken staan in `plugins/Handlicht/lichten.txt` en worden bij start/stop
   (ook na een crash) opgeruimd.
 - **`/kist`** (eigen plugin Kist): persoonlijke opslag van 54 vakken per speler (`plugins/Kist/kisten/<uuid>.yml`,
-  opgeslagen bij sluiten, uitloggen, elke minuut en bij stoppen; één inventory per speler = geen dupes). Gewone
-  stapelgroottes (max 64): meer per vak kan alleen door items zelf te veranderen, en dat geeft dupe-/desync-risico.
+  opgeslagen bij sluiten, uitloggen, elke minuut en bij stoppen; één inventory per speler = geen dupes). Tot 99 per
+  vak: zolang de kist open is krijgen 64-stapelaars (kist + eigen inventaris, zodat ze samenvoegen) het component
+  max_stack_size=99; bij sluiten/uitloggen/stoppen, weggooien en inloggen gaat het van je eigen items af en worden
+  stapels boven 64 gesplitst (vol = voor je voeten). 16- en 1-stapelaars blijven ongemoeid. Vak 54 is de knop
+  «Enderchest» (opent je vanilla enderchest; niet te pakken; staat altijd terug in vak 54). Console: `kist zelftest`.
   Geen automatische overloop naar de kist (bewust, te sterk). `/ec` en varianten zijn voor iedereen geblokkeerd,
   ook OP's (`-essentials.enderchest` + commando-blokkade in Kist).
 - **Huisdieren** (eigen plugin): getemde dieren met eigenaar gaan niet dood. Dodelijke schade = uitgeteld (KO):
