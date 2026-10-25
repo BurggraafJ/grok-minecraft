@@ -270,7 +270,16 @@ def _git_sync(cfg):
         return [f"MELD GitHub ophalen mislukt: {e}"]
     head = gitops.git("rev-parse", "--short", "HEAD", check=False)
     dep = applymod.deployed()
-    if new or (dep.get("spec_commit") and dep.get("spec_commit") != head and failed.get("commit") != head):
+    # Alleen vastgelegde (gecommitte) stand toepassen: staat er half werk in server/ of plugins/, dan niets doen.
+    dirty = (gitops.git("status", "--porcelain", "--", "server", "plugins", check=False) or "").strip()
+    if dirty:
+        core.event("INFO", "ensure: niet-vastgelegde wijzigingen in server/ of plugins/; niets toegepast")
+        drift = False
+    elif dep.get("spec_hash"):
+        drift = dep["spec_hash"] != applymod.spec_fingerprint()  # echte verschillen, niet alleen een nieuwe commit
+    else:
+        drift = bool(dep.get("spec_commit") and dep.get("spec_commit") != head)
+    if (new and not dirty) or (drift and failed.get("commit") != head):
         try:
             report = applymod.apply(cfg)
             if new:

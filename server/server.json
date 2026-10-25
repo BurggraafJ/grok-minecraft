@@ -342,7 +342,8 @@
     },
     "lobby": {
       "plugins/LobbyMelding/config.yml": {
-        "bericht": ""
+        "bericht": "Server herstart even, je gaat zo vanzelf terug naar survival. Je spullen zijn veilig.",
+        "actionbar": "Server herstart even, je gaat zo vanzelf terug…"
       },
       "plugins/Opmaak/config.yml": {
         "toon-join-quit": false

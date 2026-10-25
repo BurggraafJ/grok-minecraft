@@ -76,6 +76,14 @@ public final class Opmaak extends JavaPlugin implements Listener {
         labels.clear();
     }
 
+    /** ChestSort+ staat per speler standaard uit; zet het één keer aan (daarna kan de speler het zelf uitzetten). */
+    private void chestSortStandaardAan(Player p) {
+        if (!getConfig().getBoolean("chestsort-standaard-aan", true)) return;
+        org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey("chestsort-plus", "enabled");
+        org.bukkit.persistence.PersistentDataContainer pdc = p.getPersistentDataContainer();
+        if (!pdc.has(key)) pdc.set(key, org.bukkit.persistence.PersistentDataType.BOOLEAN, true);
+    }
+
     private static String plat(Component c) {
         return PlainTextComponentSerializer.plainText().serialize(c);
     }
@@ -233,6 +241,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
         if (nick != null) nickBijJoin.put(p.getUniqueId(), nick);
         else nickBijJoin.remove(p.getUniqueId());
         laatsteTab.remove(p.getUniqueId());
+        chestSortStandaardAan(p);
         zetTab(p);
         boolean terug = System.currentTimeMillis() < terugkeerTot && terugkeer.remove(p.getName().toLowerCase(Locale.ROOT));
         if (!getConfig().getBoolean("toon-join-quit", true) || stil() || terug) {

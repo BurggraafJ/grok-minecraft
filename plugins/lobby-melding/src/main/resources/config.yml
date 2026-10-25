@@ -1,3 +1,4 @@
 titel: "Even geduld"
 ondertitel: "De server herstart, je gaat zo vanzelf terug"
-bericht: ""   # leeg = geen chatregel (de titel en de [Server]-meldingen van mc zeggen genoeg)
+bericht: "Server herstart even, je gaat zo vanzelf terug naar survival. Je spullen zijn veilig."   # leeg = geen chatregel
+actionbar: "Server herstart even, je gaat zo vanzelf terug…"   # leeg = geen actionbar

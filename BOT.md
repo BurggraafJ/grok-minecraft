@@ -59,7 +59,10 @@ Antwoord Jelle kort, uitkomst eerst, in het Nederlands. Geen tussenstappen melde
    doen 2 en 3 zelf, en zetten `server.json` terug als het misgaat.)
 
 Wat via GitHub binnenkomt (een PR van Cursor die Jelle mergede, een fix van Claude) haalt `mc ensure` elk uur binnen
-en past het toe. Een branch testen en mergen: `mc git merge <branch>` (pas toe; mislukt het, dan terug naar de vorige stand).
+en past het toe. `mc ensure` past **alleen vastgelegde** stand toe: staan er niet-gecommitte wijzigingen in `server/` of
+`plugins/` (half werk), dan doet hij niets. Hij vergelijkt een vingerafdruk van `server/` en `plugins/` met wat `apply`
+het laatst toepaste (`deployed.json` → `spec_hash`), dus een commit van iets dat al live staat geeft geen herstart.
+Werk je aan iets groters: maak het af en `mc apply` + `mc vastleggen` in één keer, of werk op een branch. Een branch testen en mergen: `mc git merge <branch>` (pas toe; mislukt het, dan terug naar de vorige stand).
 
 **Pushen** (en backups naar GitHub) gaat via HTTPS met één fine-grained token van Jelle: alleen voor
 `grok-minecraft` en `grok-minecraft-backups`, recht *Contents: Read and write*. Jelle zet het als `GITHUB_TOKEN` in
@@ -154,7 +157,13 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - Plugin `opmaak` (eigen code): join/leave als `[+] naam` / `[-] naam`, chat als `[Groep] naam » bericht`, advancements als `[★] naam heeft [X] behaald`.
 - Groepen staan in `server.json` → `groepen` (LuckPerms, prefix); `leden: "admins"` volgt de admins in `data/spelers.json`. Iedereen anders is Member.
 - `mc apply` en `mc restart` melden in de game `[Server] Herladen gestart…` en `[Server] Klaar!`.
-- Herstart survival liever niet terwijl er gespeeld wordt (wacht tot niemand online is), tenzij Jelle het vraagt.
+- Herladen terwijl er gespeeld wordt mag (Jelle 25-10: liever snel live); spelers zien `[Server] Herladen gestart…` /
+  `Klaar!` en wachten zolang veilig in de lobby.
+- **Lobby = veilige wachtkamer** (plugin `lobby-melding`): onkwetsbaar, geen schade of honger, adventure, een vloer op de
+  spawn en terug naar boven als je valt; titel, chatregel en actionbar «Server herstart even, je gaat zo vanzelf terug».
+  `mc restart`/`apply` sturen iedereen terug; de watchdog stuurt ook wie anders in de lobby staat (na een crash, of
+  binnengekomen tijdens de herstart) binnen ~10 s terug zodra survival draait. Op staging (motd STAGING) doet de plugin niets.
+- Spelerslijsten gaan via `minecraft:list` (Essentials' `/list` toont groepen en nicknames).
 - Nicknames: iedereen mag `/nick <naam>` (EssentialsX, kleuren met `&c` enz.; `/nick off` haalt hem weg; geen `~`
   ervoor). `opmaak` toont de nick in chat, `[+]`/`[-]`, advancements en de tablijst, en boven het hoofd met een
   zwevend tekstlabel (TextDisplay, niet opgeslagen in de wereld); de echte naamtag wordt dan verborgen via het
@@ -167,7 +176,8 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   patches op `.json` werken ook, met punten voor nesting).
 - **TreeFeller**: sneaken + een stam hakken met een bijl = de hele boom; jonge boompjes worden teruggeplant.
 - **ChestSort+**: shift-klik op een leeg vakje in een kist of je inventaris sorteert hem; `/chestsort` voor instellingen
-  (permissie `chestsort.use` in `rechten.default`).
+  (permissie `chestsort.use` in `rechten.default`). Staat per speler standaard uit; `opmaak` zet het bij de eerste join
+  één keer aan (`chestsort-standaard-aan`), daarna kan iedereen het zelf uitzetten.
 - **GravesX**: bij doodgaan komen spullen en alle XP in een graf; alleen de eigenaar kan het openen (rechtsklik of kapot
   slaan = alles terug), het verdwijnt nooit, coördinaten in de chat; `/graves` toont je graven.
 - **honger** (eigen code): honger zakt 25% langzamer (`factor` 0.75 in `plugins/Honger/config.yml` via patches).

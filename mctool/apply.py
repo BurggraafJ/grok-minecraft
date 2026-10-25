@@ -146,7 +146,10 @@ def plan(cfg, spec, arts):
             changes[svc].append("instellingen: " + ", ".join(diff))
         for f, keys in ((spec.get("patches") or {}).get(svc) or {}).items():
             full = os.path.join(core.server_dir(svc), f)
-            if os.path.exists(full):
+            if os.path.exists(full) and f.endswith(".json"):
+                for k in cf.json_diff(full, keys):
+                    changes[svc].append(f"patch {f}: {k}")
+            elif os.path.exists(full):
                 for k, val in keys.items():
                     if cf.yaml_get(full, k.split(".")) != _yaml_plain(val):
                         changes[svc].append(f"patch {f}: {k}")
@@ -467,6 +470,7 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
             if not dry_run:
                 dep = deployed()
                 dep["spec_commit"] = _git_head()
+                dep["spec_hash"] = spec_fingerprint()
                 write_json(DEPLOYED, dep)
             actions = runtime_plan(cfg, spec)
             if not actions or dry_run:
@@ -548,6 +552,7 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
                     dep["plugins"]["velocity"] = {n: {"sha256": a["sha256"], "bestand": os.path.basename(a["pad"])}
                                                   for n, a in arts.items() if "velocity" in a["op"]}
         dep["spec_commit"] = _git_head()
+        dep["spec_hash"] = spec_fingerprint()
         dep["tijd"] = now_iso()
         dep["rechten"] = deployed().get("rechten") or {}
         dep["groepen"] = deployed().get("groepen") or {}
@@ -573,6 +578,22 @@ def _describe(c):
         if c[k]:
             parts.append(f"{label}: {', '.join(c[k])}")
     return "; ".join(parts)
+
+
+def spec_fingerprint():
+    """Hash van alles wat de serverstand bepaalt (server/ en plugins/, zonder build-mappen): wat `apply` toepaste.
+    Zo ziet `mc ensure` echte verschillen, en niet een commit die alleen vastlegde wat al live stond."""
+    import hashlib
+    from . import gitops
+    out = gitops.git("ls-files", "-co", "--exclude-standard", "--", "server", "plugins", check=False) or ""
+    h = hashlib.sha256()
+    for rel in sorted(p for p in out.splitlines() if p.strip()):
+        full = os.path.join(REPO, rel)
+        if os.path.isfile(full):
+            h.update(rel.encode() + b"\0")
+            with open(full, "rb") as fh:
+                h.update(hashlib.sha256(fh.read()).digest())
+    return h.hexdigest()[:20]
 
 
 def _git_head():

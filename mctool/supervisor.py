@@ -140,10 +140,16 @@ class Supervisor:
             except Fout as e:
                 core.event("MELD", f"{svc} start niet: {e}")
                 self.failed.add(svc)
-        if self.need_send_back and core.ready(cfg, "survival") and core.running("velocity"):
-            if core.players(cfg, "lobby"):
-                ops.velocity_cmd("send all survival")
-                self.log("spelers uit de lobby terug naar survival")
+        # Wie in de lobby staat terwijl survival gewoon draait (na een crash, of binnengekomen tijdens een herstart):
+        # terug naar survival. Niet tijdens een geplande herstart (hold), die stuurt zelf terug.
+        if (core.running("velocity") and not core.held("survival") and core.ready(cfg, "survival")
+                and (self.need_send_back or time.time() - getattr(self, "last_lobby_check", 0) > 10)):
+            self.last_lobby_check = time.time()
+            wachtend = core.players(cfg, "lobby") or []
+            for naam in wachtend:
+                ops.velocity_cmd(f"send {naam} survival")
+            if wachtend:
+                self.log(f"terug naar survival uit de lobby: {', '.join(wachtend)}")
             self.need_send_back = False
         if core.running("tunnel"):
             self.tunnel(cfg)

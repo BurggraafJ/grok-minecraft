@@ -338,7 +338,7 @@ def wait_ready(cfg, svc, timeout=300):
 def players(cfg, svc):
     """Namen van de spelers op een Paper-server (leeg als hij niet draait)."""
     try:
-        out = rcon(cfg, svc, "list", timeout=3)
+        out = rcon(cfg, svc, "minecraft:list", timeout=3)  # niet Essentials' /list (groepen, nicknames)
     except (Fout, OSError):
         return None
     if ":" not in out:

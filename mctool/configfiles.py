@@ -128,6 +128,23 @@ def json_set(path, updates):
     return changed
 
 
+def json_diff(path, updates):
+    """Welke sleutels uit updates hebben in de JSON-config een andere waarde (of ontbreken)?"""
+    import json
+    try:
+        data = json.loads(read_text(path, "") or "{}")
+    except ValueError:
+        return list(updates)
+    out = []
+    for k, val in updates.items():
+        node = data
+        for p in k.split("."):
+            node = node.get(p) if isinstance(node, dict) else None
+        if node != val:
+            out.append(k)
+    return out
+
+
 # ── TOML (velocity.toml) ───────────────────────────────────────────────────────────────────────
 
 _SECTION = re.compile(r"^\s*\[([A-Za-z0-9_.\-]+)\]\s*$")
