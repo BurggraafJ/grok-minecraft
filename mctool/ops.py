@@ -385,12 +385,8 @@ def selftest(cfg, login=None, extern=True):
     if cfg["tunnel"]["modus"] != "geen":
         check(bool(adres), f"tunneladres: {adres}", "geen tunneladres (tunnel draait niet of start nog)")
         if adres and extern:
-            host, port = adres.rsplit(":", 1)
-            try:
-                st = net.status(host, int(port), timeout=10)
-                check(True, f"bereikbaar via internet ({adres}): {st.get('ms')} ms", "")
-            except (OSError, ValueError, Fout) as e:
-                check(False, "", f"niet bereikbaar via {adres} ({e})")
+            good, how = extern_check(adres)
+            check(good, f"bereikbaar via internet ({adres}): {how}", f"niet bereikbaar via {adres} ({how})")
     if login:
         if not cfg.get("offline_test"):
             lines.append("· testlogin overgeslagen (alleen in offline-test; echte accounts loggen in via Microsoft)")
@@ -404,3 +400,23 @@ def selftest(cfg, login=None, extern=True):
     errs = [l for l in tail(core.latest_log("velocity"), 200) if "nable to connect" in l or "orwarding" in l and "ERROR" in l]
     check(not errs, "Velocity-log zonder verbindingsfouten", "Velocity-log: " + (errs[-1][-200:] if errs else ""))
     return ok, lines
+
+
+def extern_check(adres):
+    """Is de server van buitenaf te zien? Eerst zelf pingen; lukt dat niet (de box laat vaak alleen HTTPS naar
+    buiten), dan vragen we het mcsrvstat.us, dat via HTTPS van buitenaf kijkt (antwoorden tot 5 min oud)."""
+    host, port = adres.rsplit(":", 1)
+    try:
+        st = net.status(host, int(port), timeout=8)
+        return True, f"zelf gepingd, {st.get('ms')} ms"
+    except (OSError, ValueError, Fout):
+        pass
+    from .base import http_json
+    try:
+        d = http_json(f"https://api.mcsrvstat.us/3/{adres}", timeout=30, tries=2)
+    except Fout as e:
+        return False, f"zelf pingen kan niet en mcsrvstat.us faalt: {e}"
+    dbg = d.get("debug") or {}
+    if d.get("online"):
+        return True, f"gezien door mcsrvstat.us ({(d.get('players') or {}).get('online', '?')} spelers)"
+    return False, "mcsrvstat.us ziet hem niet" + (" (antwoord uit cache, probeer over 5 min)" if dbg.get("cachehit") else "")

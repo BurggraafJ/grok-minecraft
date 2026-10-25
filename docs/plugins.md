@@ -1,6 +1,9 @@
 # Plugins
 
-Getest op Paper 26.3 (build 223) op 25 oktober 2026: alles in de standaardset start zonder fouten.
+Getest op Paper 26.3 (build 223) op 25 oktober 2026: alles in de standaardset start zonder fouten. De keuze volgt de
+gangbare lijsten voor een kleine vriendenserver (LuckPerms, EssentialsX, Vault, WorldGuard, CoreProtect, Chunky,
+spark), zoals [low.ms](https://low.ms/blog/top-minecraft-server-plugins-2026) en
+[supercraft](https://supercraft.host/wiki/minecraft/minecraft_best_server_plugins_2026/).
 
 ## Standaard (staat in `server/server.json`)
 
@@ -9,10 +12,12 @@ Getest op Paper 26.3 (build 223) op 25 oktober 2026: alles in de standaardset st
 | **ViaVersion** + **ViaBackwards** | survival, lobby | Joinen met een andere Minecraft-versie: oudere clients (tot 1.10) en nieuwere dan de server. Velocity laat alles van 1.7 tot 26.3 binnen. |
 | **EssentialsX** | survival | De snelle commando's: `/home`, `/sethome`, `/tpa`, `/back`, `/warp`, `/msg`, `/kit`, `/afk`, `/nick`, `/heal` (admin) en meer. Niet officieel voor 26.3, maar start en werkt; de staging-test bewaakt het. |
 | **EssentialsX Spawn** | survival | `/spawn` en `/setspawn`, nieuwe spelers op de spawn. |
-| **LuckPerms** | survival | Rechten per groep (wie mag `/fly`, `/gamemode`, warps zetten). Standaard mogen alle spelers de normale Essentials-commando's. |
+| **LuckPerms** | survival | Rechten per groep (wie mag `/fly`, `/gamemode`, warps zetten). De rechten staan in `server.json` → `rechten`: alle spelers mogen `/home`, `/tpa`, `/back`, `/spawn`, `/warp`, `/msg`, `/kit` en meer. |
+| **VaultUnlocked** | survival | De brug tussen rechten, chat en economie-plugins (de opvolger van Vault); Essentials vraagt erom. |
 | **WorldEdit** | survival | Bouwen met selecties (`//set`, `//copy`, `//paste`) voor admins. |
 | **WorldGuard** | survival | De spawn en andere plekken beschermen tegen slopen en PvP. |
 | **Chunky** | survival | De wereld vooraf genereren, zodat er geen lag is als iemand nieuw terrein ontdekt. |
+| **startersdorp** (eigen) + datapack | survival | Eén keer per wereld een klein Minecraft-dorp (grootte 4, type volgt het biome) op een vlakke plek bij de spawn; spawn bij de dorpsbel; kaartje van boven. |
 | **lobby-melding** (eigen) | lobby | Wie in de wachtkamer belandt, ziet dat de server herstart en dat hij vanzelf teruggaat. Ook het sjabloon voor eigen plugins. |
 | spark | ingebouwd in Paper | Lag onderzoeken (`/spark profiler`, `/spark tps`). |
 
@@ -31,7 +36,6 @@ Getest op Paper 26.3 (build 223) op 25 oktober 2026: alles in de standaardset st
 | **Geyser + Floodgate** | Vrienden op Bedrock (console, telefoon) | Moet UDP (playit); Floodgate laat Xbox-accounts binnen |
 | **TAB** | Mooie tablijst en naamlabels | Cosmetisch |
 | **DecentHolograms** | Zwevende teksten (regels bij de spawn) | Cosmetisch |
-| **Vault** | Brug voor prefixes en economie tussen plugins | Pas nodig met een chat- of economieplugin |
 | **ViaRewind** | Ook 1.7–1.9-clients | Alleen als iemand op een heel oude versie speelt |
 
 Een plugin van buiten komt er alleen in via `mc plugin add` (Modrinth, vaste versie, hashcontrole, eerst getest op een

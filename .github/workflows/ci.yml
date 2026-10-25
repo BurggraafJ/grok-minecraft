@@ -34,6 +34,19 @@ jobs:
           echo '{"geheugen_mb": {"velocity": 384, "lobby": 768, "survival": 2048, "staging": 1536}}' > "$MC_HOME/data/config.json"
       - name: Install (offline-test, geen tunnel)
         run: ./mc install --eula-akkoord --offline-test --tunnel geen --spelers CiSpeler --admins CiAdmin
+      - name: Startersdorp gebouwd (wereld is willekeurig)
+        run: |
+          ./mc cmd survival chunky pause || true
+          cat "$MC_HOME/data/servers/survival/plugins/Startersdorp/klaar.yml"
+          grep -q "structuur: startersdorp:dorp_" "$MC_HOME/data/servers/survival/plugins/Startersdorp/klaar.yml"
+          ./mc cmd survival datapack list | tee /dev/stderr | grep -q "file/startersdorp"
+      - name: Kaartje van het dorp
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: startersdorp-kaartje
+          path: /tmp/mc/data/servers/survival/plugins/Startersdorp/kaartje.png
+          if-no-files-found: ignore
       - name: Zelftest met testlogin door Velocity
         run: ./mc selftest --login CiSpeler
       - name: Alle plugins aan

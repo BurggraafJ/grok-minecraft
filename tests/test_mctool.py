@@ -42,6 +42,8 @@ class ConfigFiles(unittest.TestCase):
     def test_paper_yaml(self):
         p = copy_fixture("paper-global.yml")
         self.assertEqual(cf.yaml_get(p, ["proxies", "velocity", "enabled"]), "false")
+        self.assertTrue(cf.yaml_set(p, ["nieuw-bovenaan"], "true"))  # ontbrekende sleutel bovenaan: toegevoegd
+        self.assertEqual(cf.yaml_get(p, ["nieuw-bovenaan"]), "true")
         self.assertTrue(cf.yaml_set(p, ["proxies", "velocity", "enabled"], "true"))
         self.assertTrue(cf.yaml_set(p, ["proxies", "velocity", "secret"], cf.yaml_quote("ab'c")))
         self.assertEqual(cf.yaml_get(p, ["proxies", "velocity", "secret"]), "ab'c")
@@ -125,7 +127,7 @@ class Spec(unittest.TestCase):
         s = spec.load()
         self.assertTrue(any(p["bron"] == "eigen" for p in s["plugins"]))
         names = [p["naam"] for p in s["plugins"]]
-        for must in ("ViaVersion", "ViaBackwards", "LuckPerms", "EssentialsX"):
+        for must in ("ViaVersion", "ViaBackwards", "LuckPerms", "EssentialsX", "VaultUnlocked", "startersdorp"):
             self.assertIn(must, names)
 
     def test_validation_errors(self):
@@ -136,6 +138,13 @@ class Spec(unittest.TestCase):
         self.assertIn("Kapot", str(e.exception))
         s = spec.load()
         s["plugins"].append({"naam": "x", "bron": "eigen", "pad": "../etc", "op": ["survival"]})
+        with self.assertRaises(Fout):
+            spec.validate(s)
+
+    def test_datapack_paths(self):
+        s = spec.load()
+        self.assertEqual(s["datapacks"]["survival"], ["server/datapacks/startersdorp"])
+        s["datapacks"] = {"survival": ["../../etc"]}
         with self.assertRaises(Fout):
             spec.validate(s)
 

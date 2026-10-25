@@ -1,0 +1,14 @@
+name: Startersdorp
+version: '${version}'
+main: nl.burggraaf.mc.startersdorp.Startersdorp
+api-version: '${apiVersion}'
+description: Bouwt één keer per wereld een klein dorp (Minecrafts eigen dorpsstukken) op een vlakke plek bij de spawn en zet de spawn daar.
+author: Minecraft Bot
+commands:
+  startersdorp:
+    description: Startersdorp opnieuw bouwen (opnieuw) of een proefdorp met kaartje (test <x> <z>)
+    usage: /startersdorp opnieuw | test <x> <z>
+    permission: startersdorp.beheer
+permissions:
+  startersdorp.beheer:
+    default: op

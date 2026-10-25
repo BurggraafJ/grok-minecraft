@@ -87,7 +87,8 @@ def _yaml_walk(lines):
 
 
 def yaml_set(path, keypath, literal):
-    """Zet een bestaande scalar (literal is al YAML, bv. true of 'tekst'). Fout als de sleutel ontbreekt."""
+    """Zet een scalar (literal is al YAML, bv. true of 'tekst'). Een ontbrekende sleutel op het hoogste niveau
+    (bv. een uitgecommentarieerde) wordt onderaan toegevoegd; een ontbrekende geneste sleutel is een fout."""
     lines = (read_text(path, "") or "").splitlines()
     for i, indent, keys, value in _yaml_walk(lines):
         if keys == list(keypath):
@@ -96,6 +97,10 @@ def yaml_set(path, keypath, literal):
             lines[i] = " " * indent + f"{keypath[-1]}: {literal}"
             write_text(path, "\n".join(lines) + "\n")
             return True
+    if len(keypath) == 1:
+        lines.append(f"{keypath[0]}: {literal}")
+        write_text(path, "\n".join(lines) + "\n")
+        return True
     raise Fout(f"{'.'.join(keypath)} niet gevonden in {path}")
 
 

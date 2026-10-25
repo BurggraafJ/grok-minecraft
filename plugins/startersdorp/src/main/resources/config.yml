@@ -1,0 +1,5 @@
+# Eén keer per wereld; daarna staat klaar.yml in deze map. `/startersdorp opnieuw` zoekt en bouwt opnieuw.
+zoekstraal: 384                    # blokken rond de spawn waarbinnen een plek gezocht wordt
+max-hoogteverschil: 3              # vlak genoeg als het terrein binnen 17×17 blokken hooguit zoveel verschilt
+open-plek: 30                      # straal waarin bomen weggaan voordat het dorp er komt
+structuur: "startersdorp:dorp_%s"  # uit de datapack startersdorp (grootte 3); %s = plains, desert, savanna, snowy of taiga

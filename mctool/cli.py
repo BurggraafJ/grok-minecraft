@@ -16,7 +16,7 @@ from . import ops
 from . import setup as setupmod
 from . import spec as specmod
 from . import supervisor
-from .base import REPO, Fout, say, tail
+from .base import REPO, Fout, read_json, say, tail, write_json
 
 SPEC_REL = "server/server.json"
 
@@ -29,7 +29,8 @@ def build_parser():
     s.add_argument("--eula-akkoord", action="store_true", help="de eigenaar accepteert de Minecraft EULA")
     s.add_argument("--spelers", default="", help="Minecraft-namen voor de whitelist, komma-gescheiden")
     s.add_argument("--admins", default="", help="namen die admin (OP) worden, komma-gescheiden")
-    s.add_argument("--tunnel", default="bore", choices=["bore", "playit", "direct", "geen"])
+    s.add_argument("--tunnel", default="auto", choices=["auto", "bore", "ngrok", "playit", "direct", "geen"],
+                   help="auto: bore als de box niet-HTTPS naar buiten mag, anders ngrok (poort 443)")
     s.add_argument("--offline-test", action="store_true", help="alleen voor CI: geen Microsoft-login, geen tunnel")
     s.add_argument("--herbereken-geheugen", action="store_true")
 
@@ -60,11 +61,14 @@ def build_parser():
     s.add_argument("naam", nargs="?")
     s.add_argument("--admin", action="store_true")
 
-    s = sub.add_parser("backup", help="backup van de survivalwereld")
+    s = sub.add_parser("backup", help="backup van de survivalwereld (--github: de nieuwste ook naar GitHub)")
     s.add_argument("--label")
-    sub.add_parser("backups", help="lijst van backups")
+    s.add_argument("--github", action="store_true", help="zet de nieuwste backup als release in de privé backup-repo")
+    s.add_argument("--stil", action="store_true")
+    s = sub.add_parser("backups", help="lijst van backups (--github: die op GitHub)")
+    s.add_argument("--github", action="store_true")
     s = sub.add_parser("restore", help="backup terugzetten (maakt eerst een backup van nu)")
-    s.add_argument("naam", help="bestandsnaam(begin) of 'nieuwste'")
+    s.add_argument("naam", help="bestandsnaam(begin), 'nieuwste', of 'github' / 'github:JJJJMMDD'")
 
     s = sub.add_parser("apply", help="zet de box gelijk aan server/server.json (staging-test, dan live)")
     s.add_argument("--zonder-staging", action="store_true")
@@ -90,12 +94,12 @@ def build_parser():
     s.add_argument("--mc", help="naar een nieuwe Minecraft-versie (alleen op Jelles woord)")
     s.add_argument("--jelle-akkoord", action="store_true")
 
-    s = sub.add_parser("tunnel", help="het publieke adres")
-    s.add_argument("actie", nargs="?", default="status", choices=["status", "herstart", "modus"])
-    s.add_argument("modus", nargs="?", choices=["bore", "playit", "direct", "geen"])
+    s = sub.add_parser("tunnel", help="het publieke adres: status, herstart, modus <m>, token (ngrok)")
+    s.add_argument("actie", nargs="?", default="status", choices=["status", "herstart", "modus", "token"])
+    s.add_argument("modus", nargs="?", choices=["bore", "ngrok", "playit", "direct", "geen"])
 
-    s = sub.add_parser("git", help="GitHub: status, pull, push, sleutel, merge <branch>")
-    s.add_argument("actie", nargs="?", default="status", choices=["status", "pull", "push", "sleutel", "merge"])
+    s = sub.add_parser("git", help="GitHub: status, pull, push, token, merge <branch>")
+    s.add_argument("actie", nargs="?", default="status", choices=["status", "pull", "push", "token", "merge"])
     s.add_argument("branch", nargs="?", help="bij merge: de branch (bv. van een Cursor-agent)")
 
     s = sub.add_parser("selftest", help="controleer de hele keten")
@@ -217,17 +221,48 @@ def h_spelers(a):
 
 
 def h_backup(a):
-    say(f"backup: {ops.backup(core.load(), a.label)}")
+    from . import offsite
+    cfg = core.load()
+    if not a.github:
+        say(f"backup: {ops.backup(cfg, a.label)}")
+        return
+    try:
+        if not offsite._newest_local():
+            ops.backup(cfg)
+        tag, removed = offsite.push(cfg)
+        if not a.stil:
+            say(f"op GitHub: {tag} in {offsite.repo(cfg)}" + (f" (weg: {', '.join(removed)})" if removed else ""))
+    except Fout as e:
+        if a.stil:
+            core.event("MELD", f"backup naar GitHub mislukt: {e}")
+            st_path = os.path.join(core.STATE, "offsite.json")
+            st = read_json(st_path, {})
+            st["fout"] = str(e)[:300]
+            write_json(st_path, st)
+            return 1
+        raise
 
 
 def h_backups(a):
+    from . import offsite
     from .base import human
+    if a.github:
+        offsite.lijst(core.load())
+        return
     for b in ops.list_backups():
         say(f"  {b['naam']}  {human(b['grootte'])}")
 
 
 def h_restore(a):
-    say(f"teruggezet: {ops.restore(core.load(), a.naam)}")
+    from . import offsite
+    cfg = core.load()
+    name = a.naam
+    if name.startswith("github"):
+        which = name.split(":", 1)[1] if ":" in name else "nieuwste"
+        path = offsite.fetch(cfg, which)
+        say(f"van GitHub gehaald: {os.path.basename(path)}")
+        name = os.path.basename(path)
+    say(f"teruggezet: {ops.restore(cfg, name)}")
 
 
 def h_apply(a):
@@ -397,8 +432,15 @@ def h_tunnel(a):
         time.sleep(3)
         say(f"adres: {core.parse_tunnel_output(cfg) or core.tunnel_address(cfg) or '— (nog niet klaar)'}")
         return
+    if a.actie == "token":
+        tok = os.environ.get("NGROK_AUTHTOKEN", "").strip()
+        if not tok:
+            raise Fout("zet NGROK_AUTHTOKEN in de Secrets van de Bot (dashboard.ngrok.com → Your Authtoken) en draai opnieuw")
+        core.save_secret_file("ngrok_token", tok)
+        say("ngrok-token bewaard. Nu: mc tunnel modus ngrok")
+        return
     if not a.modus:
-        raise Fout("geef een modus: bore, playit, direct of geen")
+        raise Fout("geef een modus: bore, ngrok, playit, direct of geen")
     core.stop(cfg, "tunnel")
     cfg["tunnel"]["modus"] = a.modus
     cfg["tunnel"]["adres"] = None
@@ -439,12 +481,12 @@ def h_git(a):
             raise
         ok, why = gitops.push()
         say(f"{a.branch} samengevoegd en live · {'op GitHub' if ok else 'nog niet op GitHub: ' + why}")
-    elif a.actie == "sleutel":
-        pub = gitops.ensure_key()
-        say(pub)
-        s = gitops.slug()
-        if s:
-            say(f"Toevoegen (één keer, met 'Allow write access'): https://github.com/{s}/settings/keys/new")
+    elif a.actie == "token":
+        from . import offsite
+        for line in gitops.save_token(os.environ.get("GITHUB_TOKEN", ""), [gitops.slug(), offsite.repo(core.load())]):
+            say("  " + line)
+        ok, why = gitops.push()
+        say(f"token bewaard; pushen: {why}")
 
 
 def h_selftest(a):

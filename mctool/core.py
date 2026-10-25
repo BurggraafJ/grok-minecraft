@@ -147,8 +147,20 @@ def latest_log(svc):
     return os.path.join(server_dir(svc), "logs", "latest.log")
 
 
-def _marker(svc):
-    return "bore" if svc == "tunnel" else f"-Dmc.service={svc}"
+def _marker_ok(svc, cmdline):
+    if svc == "tunnel":
+        return any(f"tools/{t}" in cmdline for t in ("bore", "ngrok", "playit"))
+    return f"-Dmc.service={svc}" in cmdline
+
+
+def secret_file(name):
+    """Een geheim uit data/secrets (één regel), of None."""
+    v = (read_text(os.path.join(SECRETS, name), "") or "").strip()
+    return v or None
+
+
+def save_secret_file(name, value):
+    write_text(os.path.join(SECRETS, name), value.strip() + "\n", mode=0o600)
 
 
 def pid_of(svc):
@@ -156,7 +168,7 @@ def pid_of(svc):
     if not info:
         return None
     pid = info.get("pid")
-    if pid and proc_alive(pid) and _marker(svc) in proc_cmdline(pid):
+    if pid and proc_alive(pid) and _marker_ok(svc, proc_cmdline(pid)):
         return pid
     return None
 
@@ -196,6 +208,9 @@ def command(cfg, svc):
             if t.get("bore_poort"):
                 cmd += ["--port", str(t["bore_poort"])]
             return cmd, server_dir(svc)
+        if t["modus"] == "ngrok":
+            return [dl.ensure_ngrok(), "tcp", f"127.0.0.1:{cfg['poorten']['velocity']}", "--log", "stdout",
+                    "--log-format", "json"], server_dir(svc)
         if t["modus"] == "playit":
             return [dl.ensure_playit(), *(t.get("playit_args") or ["--stdout"])], server_dir(svc)
     raise Fout(f"onbekende dienst of tunnelmodus: {svc}")
@@ -221,6 +236,11 @@ def start(cfg, svc):
     env = dict(os.environ)
     if svc == "tunnel":
         env.setdefault("RUST_LOG", "info")
+        if cfg["tunnel"]["modus"] == "ngrok":
+            tok = secret_file("ngrok_token") or os.environ.get("NGROK_AUTHTOKEN")
+            if not tok:
+                raise Fout("geen ngrok-token: zet NGROK_AUTHTOKEN in de Secrets van de Bot en draai `mc tunnel token`")
+            env["NGROK_AUTHTOKEN"] = tok
     try:
         p = subprocess.Popen(cmd, cwd=cwd, stdin=fd, stdout=out, stderr=subprocess.STDOUT,
                              start_new_session=True, close_fds=True, env=env)
@@ -363,7 +383,7 @@ def tunnel_address(cfg):
     if t["modus"] == "direct":
         return t.get("adres")
     if t["modus"] == "geen":
-        return f"127.0.0.1:{cfg['poorten']['velocity']}"
+        return None
     if not running("tunnel"):
         return None
     st = read_json(os.path.join(STATE, "tunnel.json"), {})
@@ -380,6 +400,12 @@ def parse_tunnel_output(cfg):
         return None
     text = "\n".join(_since_last_start(outfile("tunnel")))
     m = re.findall(r"listening at ([\w.\-]+:\d+)", text)
+    if cfg["tunnel"]["modus"] == "ngrok":
+        m = re.findall(r'"url":"tcp://([^"]+)"', text)
+        for code, uitleg in (("ERR_NGROK_8013", "ngrok wil eerst een creditcard ter verificatie (niets wordt afgeschreven): dashboard.ngrok.com → Billing"),
+                             ("ERR_NGROK_105", "het ngrok-token klopt niet"), ("ERR_NGROK_108", "ngrok staat al op een andere plek aan (gratis: één tegelijk)")):
+            if code in text:
+                write_json(os.path.join(STATE, "tunnel-fout.json"), {"code": code, "uitleg": uitleg, "tijd": now_iso()})
     if cfg["tunnel"]["modus"] == "playit":
         m = re.findall(r"([\w\-]+\.(?:gl\.)?(?:joinmc\.link|ply\.gg|playit\.gg)(?::\d+)?)", text)
     if not m:
@@ -444,6 +470,9 @@ def configure_velocity(cfg):
     if not os.path.exists(path):
         write_text(path, velocity_toml_template())
     write_text(os.path.join(d, "forwarding.secret"), secrets()["forwarding"], mode=0o600)
+    icon = os.path.join(REPO, "templates", "server-icon.png")
+    if os.path.exists(icon) and not os.path.exists(os.path.join(d, "server-icon.png")):
+        shutil.copy2(icon, os.path.join(d, "server-icon.png"))
     online = "false" if cfg.get("offline_test") else "true"
     bind_host = "0.0.0.0" if cfg["tunnel"]["modus"] == "direct" else "127.0.0.1"
     p = cfg["poorten"]

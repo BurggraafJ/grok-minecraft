@@ -7,7 +7,7 @@ update, een eigen plugin in Java.
 ## Hoe het werkt
 
 ```
-vrienden ─► tunnel (bore.pub, of playit voor een vast adres)
+vrienden ─► tunnel (bore.pub, of ngrok als de box alleen HTTPS naar buiten laat)
               └─► Velocity  (premium-accounts, clients 1.10 → nieuwste via ViaVersion/ViaBackwards)
                     ├─► survival  de wereld (Paper)
                     ├─► lobby     wachtkamer: bij een herstart wachten spelers hier en gaan vanzelf terug
@@ -21,6 +21,8 @@ vrienden ─► tunnel (bore.pub, of playit voor een vast adres)
   zonder dat spelers eruit vliegen, backups, plugins, updates, zelftest. `./mc help`.
 - **De watchdog** houdt alles in de lucht, maakt backups en schrijft meldingen, zonder Bot-beurten. Eén routine per
   uur (`mc ensure --stil`) is de brug naar de Bot.
+- **Backups** elk uur dat er gespeeld is op de box, en dagelijks als release in de privé-repo `grok-minecraft-backups`.
+- **Startersdorp**: een willekeurige wereld met een klein Minecraft-dorp bij de spawn (eigen plugin + datapack).
 - **Eigen plugins** staan in [`plugins/`](plugins/). Klein schrijft de Bot zelf; groter gaat naar een Cursor Cloud
   Agent die een PR opent. CI bouwt elke plugin en start een echte server met alle plugins.
 

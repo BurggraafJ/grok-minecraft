@@ -37,21 +37,37 @@ def preflight(tunnel):
     shared = [m for m in SHARED_MARKERS if os.path.exists(m)]
     if shared:
         rows.append(f"LET OP: de box wordt gedeeld ({', '.join(shared)}): kleiner geheugenplan")
-    for tool in ("git", "tar", "ssh-keygen"):
+    for tool in ("git", "tar"):
         if not shutil.which(tool):
-            (fatal if tool != "ssh-keygen" else rows).append(f"{tool} ontbreekt" + ("" if tool != "ssh-keygen" else " (pushen naar GitHub lukt dan niet)"))
+            fatal.append(f"{tool} ontbreekt")
     for url in ("https://fill.papermc.io/v3/projects/paper", "https://api.modrinth.com/v2/tag/loader", "https://api.adoptium.net/v3/info/available_releases"):
         try:
             http(url, timeout=15, tries=2)
         except Fout as e:
             fatal.append(f"geen internet naar {url.split('/')[2]} ({e})")
-    if tunnel == "bore":
+    bore_ok = False
+    if tunnel in ("auto", "bore"):
         try:
             socket.create_connection(("bore.pub", 7835), timeout=8).close()
-            rows.append("bore.pub bereikbaar (tunnel kan)")
+            bore_ok = True
+            rows.append("bore.pub:7835 bereikbaar: de box mag ook buiten HTTPS naar buiten")
         except OSError as e:
-            rows.append(f"LET OP: bore.pub:7835 niet bereikbaar ({e}); gebruik --tunnel playit")
-    return rows, fatal, bool(shared)
+            rows.append(f"bore.pub:7835 niet bereikbaar ({e.__class__.__name__}): de box laat waarschijnlijk alleen HTTPS door")
+    return rows, fatal, bool(shared), bore_ok
+
+
+def choose_tunnel(wanted, bore_ok):
+    """auto: bore als het kan, anders ngrok (443) als er een token is, anders voorlopig geen tunnel."""
+    if wanted != "auto":
+        return wanted
+    if bore_ok:
+        return "bore"
+    tok = core.secret_file("ngrok_token") or os.environ.get("NGROK_AUTHTOKEN")
+    if tok:
+        if not core.secret_file("ngrok_token"):
+            core.save_secret_file("ngrok_token", tok)
+        return "ngrok"
+    return "geen"
 
 
 EULA = ("Minecraft-servers draaien alleen als de eigenaar de Minecraft EULA accepteert "
@@ -60,8 +76,8 @@ EULA = ("Minecraft-servers draaien alleen als de eigenaar de Minecraft EULA acce
 
 def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
     ensure_dirs()
-    say("1/7 De box meten")
-    rows, fatal, shared = preflight(tunnel)
+    say("1/8 De box meten")
+    rows, fatal, shared, bore_ok = preflight(tunnel)
     for r in rows:
         say("  " + r)
     if fatal:
@@ -74,14 +90,16 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
     if offline_test and tunnel != "geen":
         raise Fout("--offline-test mag alleen met --tunnel geen (dan kan niemand van buiten erbij)")
     cfg["offline_test"] = bool(offline_test)
+    tunnel = choose_tunnel(tunnel, bore_ok)
     cfg["tunnel"]["modus"] = tunnel
+    say(f"  tunnel: {tunnel}" + ("  (nog geen: zie het eind)" if tunnel == "geen" and not offline_test else ""))
     cfg["gedeeld"] = shared
     if herbereken or not cfg.get("geheugen_mb"):
         cfg["geheugen_mb"] = core.memory_plan(meminfo()[0], shared)
     say(f"  geheugenplan (MB): {cfg['geheugen_mb']}")
     core.save(cfg)
 
-    say("2/7 Java, Paper en Velocity downloaden (met hashcontrole)")
+    say("2/8 Java, Paper en Velocity downloaden (met hashcontrole)")
     spec = specmod.load()
     dl.ensure_java(spec["java"])
     cfg["java"] = spec["java"]
@@ -96,7 +114,7 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
         cfg["velocity"] = {k: velocity[k] for k in ("version", "build", "name", "sha256", "java")}
     core.save(cfg)
 
-    say("3/7 Servers inrichten (lobby, survival, Velocity)")
+    say("3/8 Servers inrichten (lobby, survival, Velocity)")
     for svc in ("lobby", "survival"):
         if core.running(svc):
             continue
@@ -106,17 +124,17 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
             core.first_start(cfg, svc)
     core.configure_velocity(cfg)
 
-    say("4/7 Plugins uit server.json (downloaden, eigen plugins bouwen)")
+    say("4/8 Plugins uit server.json (downloaden, eigen plugins bouwen)")
     for line in applymod.apply(cfg, spec, first=True):
         say("  " + line)
 
-    say("5/7 Alles starten (watchdog)")
+    say("5/8 Alles starten (watchdog)")
     for s in spelers:
         ops.spelers_add(s)
     for a in admins:
         ops.spelers_add(a, admin=True)
     supervisor.spawn()
-    for svc in ("lobby", "survival", "velocity") + (("tunnel",) if tunnel in ("bore", "playit") else ()):
+    for svc in ("lobby", "survival", "velocity") + (("tunnel",) if tunnel in ("bore", "ngrok", "playit") else ()):
         ok = core.wait_ready(cfg, svc, 900 if svc != "tunnel" else 90)
         say(f"  {'✓' if ok else '✗'} {svc}")
         if not ok and svc != "tunnel":
@@ -128,15 +146,25 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
         done = applymod.runtime_apply(cfg, spec, actions)
         say(f"  gamerules en rechten live: {len(done)} van {len(actions)}")
 
-    say("6/7 GitHub koppelen")
-    pub = None
+    say("6/8 Startersdorp, plugin-instellingen en de wereld vooraf genereren")
+    dorp = _wait_village(cfg, spec)
+    say("  " + dorp)
+    for line in applymod.apply(cfg, spec, zonder_staging=True):  # patches op configs die de plugins net maakten
+        say("  " + line)
+    say("  " + _start_pregen(cfg))
+
+    say("7/8 GitHub koppelen")
     if gitops.is_repo():
         gitops.setup()
-        try:
-            pub = gitops.ensure_key()
-        except Fout as e:
-            say(f"  {e}")
-    say("7/7 Zelftest")
+        if os.environ.get("GITHUB_TOKEN") and not os.path.exists(gitops.TOKEN):
+            from . import offsite
+            try:
+                for line in gitops.save_token(os.environ["GITHUB_TOKEN"], [gitops.slug(), offsite.repo(cfg)]):
+                    say("  " + line)
+            except Fout as e:
+                say(f"  token: {e}")
+        say(f"  pushen en backups naar GitHub: {'klaar' if gitops.token() else 'wacht op een token (zie het eind)'}")
+    say("8/8 Zelftest")
     cfg = core.load()
     ok, lines = ops.selftest(cfg, login="Testspeler" if offline_test else None)
     for line in lines:
@@ -146,12 +174,46 @@ def install(eula, spelers, admins, tunnel, offline_test, herbereken=False):
     say(f"KLAAR: {'alles groen' if ok else 'met fouten (zie ✗ hierboven)'}")
     say(f"Serveradres voor je vrienden: {adres or '— (tunnel niet klaar; mc tunnel status)'}")
     say(f"Whitelist: {', '.join(s['naam'] for s in core.spelers()['spelers']) or 'nog leeg (mc spelers add <naam>)'}")
-    if pub:
-        s = gitops.slug()
-        say("Deploy key (publiek, voor pushen naar GitHub; één keer toevoegen met 'Allow write access'):")
-        say(f"  {pub}")
-        say(f"  https://github.com/{s}/settings/keys/new" if s else "")
+    todo = []
+    if cfg["tunnel"]["modus"] == "geen" and not offline_test:
+        todo.append("TUNNEL: de box laat alleen HTTPS naar buiten, dus bore kan niet. Jelle maakt een gratis "
+                    "ngrok-account (ngrok.com, creditcard alleen ter verificatie), zet het authtoken als NGROK_AUTHTOKEN "
+                    "in de Secrets van deze Bot; daarna: mc tunnel token && mc tunnel modus ngrok")
+    if gitops.is_repo() and not gitops.token():
+        todo.append("GITHUB: Jelle maakt één token (" + gitops.TOKEN_URL + "), kiest bij Repository access 'Only select "
+                    "repositories': grok-minecraft en grok-minecraft-backups, bij Expiration de langste termijn, en zet het "
+                    "als GITHUB_TOKEN in de Secrets van deze Bot; daarna: mc git token")
+    for t in todo:
+        say("TE DOEN DOOR JELLE: " + t)
     return ok
+
+
+def _wait_village(cfg, spec):
+    """Wacht tot de plugin startersdorp zijn dorp bouwde (één keer per wereld)."""
+    if not any(p["naam"] == "startersdorp" and "survival" in p["op"] for p in spec["plugins"]):
+        return "geen startersdorp in server.json"
+    path = os.path.join(core.server_dir("survival"), "plugins", "Startersdorp", "klaar.yml")
+    for _ in range(120):
+        if os.path.exists(path):
+            info = dict(l.split(": ", 1) for l in open(path).read().splitlines() if ": " in l)
+            return (f"startersdorp ({info.get('type')}) op {info.get('x')} {info.get('y')} {info.get('z')}, "
+                    f"spawn staat er; kaartje: plugins/Startersdorp/kaartje.png")
+        time.sleep(2)
+    return "startersdorp nog niet klaar (zie mc logs survival); het probeert het bij elke start tot het lukt"
+
+
+def _start_pregen(cfg):
+    path = os.path.join(STATE, "pregen.json")
+    if read_json(path):
+        return "pregeneratie liep al"
+    try:
+        core.rcon(cfg, "survival", "chunky spawn")
+        core.rcon(cfg, "survival", "chunky radius 1500")
+        core.rcon(cfg, "survival", "chunky start")
+    except (Fout, OSError) as e:
+        return f"pregeneratie niet gestart ({e})"
+    write_json(path, {"status": "bezig", "start": time.time(), "radius": 1500})
+    return "Chunky genereert 1500 blokken rond de spawn vooraf (pauzeert vanzelf als er gespeeld wordt)"
 
 
 def ensure(stil=False):
@@ -176,6 +238,11 @@ def ensure(stil=False):
     if gitops.is_repo():
         lines += _git_sync(cfg)
     lines += _weekly_update_check()
+    if cfg["tunnel"]["modus"] == "geen" and not cfg.get("offline_test"):
+        flag = os.path.join(STATE, "gemeld-geen-tunnel")
+        if not os.path.exists(flag) or time.time() - os.path.getmtime(flag) > 86400:
+            open(flag, "w").close()
+            lines.append("MELD nog geen tunnel: vrienden kunnen er niet bij. Vraag Jelle een ngrok-token (BOT.md, Tunnel)")
     for line in core.new_events():
         if " MELD " in line:
             lines.append("MELD " + line.split(" MELD ", 1)[1] + f"  ({line[:16].replace('T', ' ')} UTC)")

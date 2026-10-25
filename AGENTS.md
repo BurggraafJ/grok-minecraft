@@ -7,7 +7,8 @@ zet de box daarmee gelijk (`mc apply`). Jij werkt meestal aan een **eigen plugin
 
 - Werk op een branch en open een PR. Klaar = CI groen (`.github/workflows/ci.yml`: unit-tests, de plugins bouwen, en
   een echte Paper + Velocity-server met álle plugins uit `server.json` starten en controleren).
-- Raak alleen aan wat de opdracht vraagt: `plugins/<naam>/` en de regel voor die plugin in `server/server.json`.
+- Raak alleen aan wat de opdracht vraagt: `plugins/<naam>/` en de regel voor die plugin in `server/server.json`
+  (datapacks: `server/datapacks/<naam>/` en `datapacks.survival` in `server.json`).
   `mctool/` en de andere plugins alleen als de opdracht daarover gaat.
 - Geen plugins van buiten toevoegen. Externe plugins komen via `mc plugin add` op de box (Modrinth, met hash).
 - Geen geheimen, IP-adressen, tokens of spelersnamen in de repo.

@@ -69,6 +69,7 @@ class Supervisor:
         self.last_minute = 0
         self.last_players = 0   # laatste moment met spelers online
         self.need_send_back = False
+        self.offsite_proc = None
         self.stop = False
 
     def log(self, msg):
@@ -150,6 +151,9 @@ class Supervisor:
     def tunnel(self, cfg):
         adres = core.tunnel_address(cfg) or core.parse_tunnel_output(cfg)
         if not adres:
+            fout = read_json(os.path.join(STATE, "tunnel-fout.json"))
+            if fout:
+                self.once_per_day("tunnel-" + fout["code"], f"tunnel ({cfg['tunnel']['modus']}) werkt niet: {fout['uitleg']}")
             return
         t = cfg["tunnel"]
         if adres != t.get("adres"):
@@ -171,6 +175,8 @@ class Supervisor:
             self.last_players = time.time()
             write_json(os.path.join(STATE, "spelers-gezien.json"), {"tijd": now_iso(), "aantal": n})
         self.backups(cfg)
+        self.pregen(cfg, n)
+        self.offsite(cfg)
         wacht = os.path.join(STATE, "velocity-wacht.json")
         if n == 0 and os.path.exists(wacht) and not core.held("velocity"):
             from . import apply as applymod
@@ -198,6 +204,43 @@ class Supervisor:
                     self.log("backup gemaakt")
                 except Fout as e:
                     core.event("MELD", f"backup mislukt: {e}")
+
+    def pregen(self, cfg, n):
+        """Chunky genereert de wereld vooraf; pauzeer als er gespeeld wordt, ga door als het leeg is."""
+        path = os.path.join(STATE, "pregen.json")
+        st = read_json(path, {})
+        if st.get("status") not in ("bezig", "pauze") or not core.ready(cfg, "survival"):
+            return
+        try:
+            if n and st["status"] == "bezig":
+                core.rcon(cfg, "survival", "chunky pause")
+                st["status"] = "pauze"
+            elif not n and st["status"] == "pauze":
+                out = core.rcon(cfg, "survival", "chunky continue")
+                st["status"] = "klaar" if "no tasks" in out.lower() else "bezig"
+            elif st["status"] == "bezig":
+                out = core.rcon(cfg, "survival", "chunky progress")
+                if "no tasks" in out.lower() or "not running" in out.lower():
+                    st["status"] = "klaar"
+                    core.event("INFO", "de wereld rond de spawn is vooraf gegenereerd (Chunky klaar)")
+        except (Fout, OSError):
+            return
+        write_json(path, st)
+
+    def offsite(self, cfg):
+        """Eén keer per dag de nieuwste backup naar GitHub, in een los proces (uploaden mag even duren)."""
+        from . import offsite
+        if self.offsite_proc and self.offsite_proc.poll() is None:
+            return
+        if not offsite.due(cfg):
+            return
+        offsite.mark_attempt()
+        log = open(os.path.join(STATE, "offsite.log"), "ab")
+        self.offsite_proc = subprocess.Popen([sys.executable, "-m", "mctool", "backup", "--github", "--stil"],
+                                             cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                                             env=dict(os.environ, MC_HOME=HOME, PYTHONPATH=REPO))
+        log.close()
+        self.log("backup naar GitHub gestart")
 
     def beat(self, first=False):
         """Hartslag elke minuut. Een gat van meer dan 3 minuten betekent dat de box sliep (of dat wij niet draaiden)."""

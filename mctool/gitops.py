@@ -1,25 +1,40 @@
 """Git als bron: binnenhalen wat op GitHub veranderde, en de eigen wijzigingen van de Bot vastleggen en pushen.
 
-Ophalen gaat via https (de repo is publiek, geen sleutel nodig). Pushen gaat via een deploy key die alleen
-voor deze repo geldt: `mc git sleutel` maakt hem en toont de publieke helft die Jelle één keer toevoegt.
+Alles via HTTPS (poort 443): veel Grok-boxen laten sinds oktober 2026 alleen HTTPS naar buiten, dus geen SSH.
+Ophalen kan zonder sleutel (de repo is publiek). Pushen gaat met een fine-grained token van Jelle dat alleen
+deze repo en de backup-repo mag schrijven (`mc git token`); het staat in data/secrets, nooit in Git of een URL.
 """
+import base64
 import os
 import subprocess
 
-from .base import REPO, SECRETS, Fout, read_text
+from .base import REPO, Fout, http_json, read_text, write_text, SECRETS
 
-KEY = os.path.join(SECRETS, "deploy_key")
+TOKEN = os.path.join(SECRETS, "github_token")
 BRANCH = "main"
+TOKEN_URL = ("https://github.com/settings/personal-access-tokens/new?name=minecraft-bot"
+             "&description=Minecraft%20Bot%3A%20server.json%2C%20plugins%20en%20backups&contents=write")
 
 
-def git(*args, check=True, env=None):
-    e = dict(os.environ)
-    if os.path.exists(KEY):
-        e["GIT_SSH_COMMAND"] = f"ssh -i {KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
-    e.update(env or {})
-    r = subprocess.run(["git", "-C", REPO, *args], capture_output=True, text=True, env=e, timeout=300)
+def token():
+    t = (read_text(TOKEN, "") or "").strip()
+    return t or os.environ.get("GITHUB_TOKEN") or None
+
+
+def _auth():
+    t = token()
+    if not t:
+        return []
+    b = base64.b64encode(f"x-access-token:{t}".encode()).decode()
+    return ["-c", f"http.https://github.com/.extraheader=AUTHORIZATION: basic {b}"]
+
+
+def git(*args, check=True, auth=False):
+    cmd = ["git", "-C", REPO, *(_auth() if auth else []), *args]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=600,
+                       env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
     if check and r.returncode != 0:
-        raise Fout(f"git {' '.join(args)} mislukt: {(r.stderr or r.stdout).strip()[-400:]}")
+        raise Fout(f"git {args[0]} mislukt: {(r.stderr or r.stdout).strip()[-400:]}")
     return r.stdout.strip()
 
 
@@ -36,7 +51,7 @@ def slug():
 
 
 def setup():
-    """Naam voor commits en een push-url via SSH (ophalen blijft https)."""
+    """Naam voor commits; ophalen en pushen allebei via https."""
     if not is_repo():
         return
     if not git("config", "user.name", check=False):
@@ -44,18 +59,25 @@ def setup():
         git("config", "user.email", "minecraft-bot@users.noreply.github.com")
     s = slug()
     if s:
-        git("remote", "set-url", "--push", "origin", f"git@github.com:{s}.git")
+        git("remote", "set-url", "origin", f"https://github.com/{s}.git")
+        git("remote", "set-url", "--push", "origin", f"https://github.com/{s}.git")
 
 
-def ensure_key():
-    if not os.path.exists(KEY):
-        os.makedirs(SECRETS, exist_ok=True)
-        r = subprocess.run(["ssh-keygen", "-t", "ed25519", "-N", "", "-C", "minecraft-bot deploy key", "-f", KEY],
-                           capture_output=True, text=True)
-        if r.returncode != 0:
-            raise Fout(f"ssh-keygen mislukt: {r.stderr.strip()}")
-        os.chmod(KEY, 0o600)
-    return read_text(KEY + ".pub").strip()
+def save_token(value, repos):
+    """Controleer het token op elke repo en bewaar het (modus 600). Geeft per repo een regel."""
+    value = (value or "").strip()
+    if not value:
+        raise Fout("geen token: zet GITHUB_TOKEN in de Secrets van de Bot (of geef hem mee) en probeer opnieuw")
+    lines = []
+    for repo in repos:
+        try:
+            d = http_json(f"https://api.github.com/repos/{repo}",
+                          headers={"Authorization": f"Bearer {value}", "Accept": "application/vnd.github+json"}, tries=1)
+            lines.append(f"{repo}: zichtbaar ({'privé' if d.get('private') else 'publiek'})")
+        except Fout as e:
+            raise Fout(f"het token kan {repo} niet zien ({e}); kies bij 'Repository access' beide repo's")
+    write_text(TOKEN, value + "\n", mode=0o600)
+    return lines
 
 
 def dirty(paths=None):
@@ -63,7 +85,7 @@ def dirty(paths=None):
 
 
 def fetch():
-    git("fetch", "--quiet", "origin", BRANCH)
+    git("fetch", "--quiet", "origin", BRANCH, auth=True)
     ahead, behind = (int(x) for x in git("rev-list", "--left-right", "--count", f"HEAD...origin/{BRANCH}").split())
     return ahead, behind
 
@@ -74,15 +96,13 @@ def pull():
     if not behind:
         return []
     log = git("log", "--format=%h %s", f"HEAD..origin/{BRANCH}").splitlines()
+    stashed = False
     if dirty():
         git("stash", "push", "--include-untracked", "-m", "mc-pull")
         stashed = True
-    else:
-        stashed = False
     try:
         if ahead:
-            r = subprocess.run(["git", "-C", REPO, "rebase", f"origin/{BRANCH}"], capture_output=True, text=True)
-            if r.returncode != 0:
+            if subprocess.run(["git", "-C", REPO, "rebase", f"origin/{BRANCH}"], capture_output=True).returncode != 0:
                 git("rebase", "--abort", check=False)
                 raise Fout("eigen commits botsen met GitHub; los het op met git (rebase op origin/main)")
         else:
@@ -103,25 +123,23 @@ def commit(message, paths):
 
 def push(retry=True):
     """Push naar GitHub. Geeft (ok, uitleg)."""
-    if not os.path.exists(KEY):
-        return False, "nog geen deploy key (mc git sleutel)"
-    r = subprocess.run(["git", "-C", REPO, "push", "origin", f"HEAD:{BRANCH}"], capture_output=True, text=True,
-                       env=dict(os.environ, GIT_SSH_COMMAND=f"ssh -i {KEY} -o IdentitiesOnly=yes "
-                                                             f"-o StrictHostKeyChecking=accept-new -o BatchMode=yes"),
-                       timeout=120)
+    if not token():
+        return False, "nog geen GitHub-token (mc git token)"
+    r = subprocess.run(["git", "-C", REPO, *_auth(), "push", "origin", f"HEAD:{BRANCH}"], capture_output=True,
+                       text=True, timeout=300, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
     if r.returncode == 0:
         return True, "gepusht"
     err = (r.stderr or r.stdout).strip()
     if retry and ("rejected" in err or "fetch first" in err or "non-fast-forward" in err):
         pull()
         return push(retry=False)
-    if "Permission denied" in err or "denied" in err or "ERROR: The key" in err:
-        return False, "GitHub kent de deploy key nog niet (of zonder schrijfrecht)"
+    if "403" in err or "denied" in err.lower() or "401" in err or "Authentication failed" in err:
+        return False, "het token mag niet schrijven (Contents: Read and write op deze repo) of is verlopen"
     return False, err[-300:]
 
 
 def status():
-    out = {"repo": slug(), "head": git("rev-parse", "--short", "HEAD", check=False), "sleutel": os.path.exists(KEY)}
+    out = {"repo": slug(), "head": git("rev-parse", "--short", "HEAD", check=False), "token": bool(token())}
     try:
         out["voor"], out["achter"] = fetch()
     except Fout as e:

@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Startersdorp: kleine dorpen (grootte 3) die alleen via /place structure verschijnen",
+    "min_format": [88, 0],
+    "max_format": [999, 0]
+  }
+}

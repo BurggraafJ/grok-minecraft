@@ -77,6 +77,14 @@ def validate(s):
         for k in rules:
             if not re.fullmatch(r"[A-Za-z0-9_:]+", k):
                 errs.append(f"gamerules.{svc}: vreemde naam '{k}'")
+    for svc, packs in (s.get("datapacks") or {}).items():
+        if svc != "survival":
+            errs.append(f"datapacks: alleen survival wordt ondersteund, niet {svc}")
+        for pad in packs:
+            if not re.fullmatch(r"server/datapacks/[a-z0-9_-]+", pad):
+                errs.append(f"datapacks: pad moet server/datapacks/<naam> zijn: {pad}")
+            elif not os.path.exists(os.path.join(REPO, pad, "pack.mcmeta")):
+                errs.append(f"datapacks: {pad}/pack.mcmeta ontbreekt")
     for i, w in enumerate(s.get("wachtlijst") or []):
         if not (w.get("project") and w.get("op") and w.get("reden")):
             errs.append(f"wachtlijst[{i}]: project, op en reden zijn verplicht")

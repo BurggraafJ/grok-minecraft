@@ -33,6 +33,9 @@
       "advance_time": false,
       "advance_weather": false,
       "spawn_mobs": false
+    },
+    "survival": {
+      "respawn_radius": 3
     }
   },
   "rechten": {
@@ -84,6 +87,19 @@
       "bestand": "LuckPerms-Bukkit-5.5.71.jar",
       "url": "https://cdn.modrinth.com/data/Vebnzrzj/versions/b0mk8uS6/LuckPerms-Bukkit-5.5.71.jar",
       "sha512": "188a91f0a543d23bfda32385fca6db63d61e49c8a422bd452a260bd9cbc6a7d7fe45071199e9fca8f3ce43c2b41ee84fd315bd15464577028ff3951a7d4fab27",
+      "officieel": true
+    },
+    {
+      "naam": "VaultUnlocked",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "vaultunlocked",
+      "versie": "2.20.3",
+      "bestand": "VaultUnlocked-2.20.3.jar",
+      "url": "https://cdn.modrinth.com/data/ayRaM8J7/versions/qZgRzoYs/VaultUnlocked-2.20.3.jar",
+      "sha512": "0eedea1591459e7e327315b43afa834a173c8c2ae31b3b235586d31963df29a4a6c0ef4b8f3fdc746e15afd47ee50c1ff93584543b5c2ef7c2a80135dba1136a",
       "officieel": true
     },
     {
@@ -186,8 +202,21 @@
       "op": [
         "lobby"
       ]
+    },
+    {
+      "naam": "startersdorp",
+      "bron": "eigen",
+      "pad": "plugins/startersdorp",
+      "op": [
+        "survival"
+      ]
     }
   ],
+  "datapacks": {
+    "survival": [
+      "server/datapacks/startersdorp"
+    ]
+  },
   "wachtlijst": [
     {
       "project": "coreprotect",
@@ -198,5 +227,14 @@
       "reden": "blokken loggen en griefing terugdraaien; versie 24.1 weigert Minecraft 26.3 ('not supported'), toevoegen zodra er een 26.3-versie is"
     }
   ],
-  "patches": {}
+  "patches": {
+    "survival": {
+      "plugins/Essentials/config.yml": {
+        "per-player-locale": true
+      },
+      "plugins/Chunky/config.yml": {
+        "continue-on-restart": true
+      }
+    }
+  }
 }

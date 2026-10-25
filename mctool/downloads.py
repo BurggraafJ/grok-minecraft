@@ -234,3 +234,20 @@ def ensure_playit():
     download(f"https://github.com/playit-cloud/playit-agent/releases/latest/download/{name}", path)
     os.chmod(path, 0o755)
     return path
+
+
+def ensure_ngrok():
+    """ngrok-agent (officiële build). Verbindt via TLS op poort 443: werkt ook als de box alleen HTTPS naar buiten laat."""
+    path = os.path.join(TOOLS, "ngrok")
+    if os.path.exists(path):
+        return path
+    osn, arch = system()
+    if osn != "linux":
+        raise Fout("ngrok draait in deze tool alleen op Linux")
+    name = {"x64": "amd64", "aarch64": "arm64"}[arch]
+    archive = os.path.join(TOOLS, "downloads", f"ngrok-{name}.tgz")
+    download(f"https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-{name}.tgz", archive)
+    extract_tar(archive, TOOLS)
+    os.chmod(path, 0o755)
+    os.remove(archive)
+    return path

@@ -132,6 +132,11 @@ def plan(cfg, spec, arts):
                 changes[key].append(f"- {n}")
             elif want[n] != have[n]:
                 changes[key].append(f"~ {n}")
+    for name, h in datapack_hashes(spec).items():
+        if (dep.get("datapacks") or {}).get(name) != h:
+            changes["survival"].append(f"datapack {name}")
+    for name in set(dep.get("datapacks") or {}) - set(datapack_hashes(spec)):
+        changes["survival"].append(f"datapack {name} weg")
     for svc in ("survival", "lobby"):
         props = cf.props_read(os.path.join(core.server_dir(svc), "server.properties"))
         diff = [k for k, val in settings_for(spec, svc).items() if props.get(k) != val]
@@ -183,6 +188,24 @@ def sync_plugins(svc, arts, target):
             shutil.copy2(a["pad"], dst)
 
 
+def datapack_hashes(spec):
+    return {os.path.basename(p): _source_hash(os.path.join(REPO, p)) for p in (spec.get("datapacks") or {}).get("survival", [])}
+
+
+def sync_datapacks(svc, spec):
+    """Zet de datapacks uit de spec in <wereld>/datapacks; ze laden bij de volgende start vanzelf."""
+    props = cf.props_read(os.path.join(core.server_dir(svc), "server.properties"))
+    ddir = os.path.join(core.server_dir(svc), props.get("level-name") or "world", "datapacks")
+    os.makedirs(ddir, exist_ok=True)
+    want = {os.path.basename(p): os.path.join(REPO, p) for p in (spec.get("datapacks") or {}).get("survival", [])}
+    for old in (deployed().get("datapacks") or {}):
+        if old not in want:
+            shutil.rmtree(os.path.join(ddir, old), ignore_errors=True)
+    for name, src in want.items():
+        shutil.rmtree(os.path.join(ddir, name), ignore_errors=True)
+        shutil.copytree(src, os.path.join(ddir, name))
+
+
 def apply_settings(cfg, spec, svc):
     props = settings_for(spec, svc)
     if props:
@@ -194,7 +217,10 @@ def apply_settings(cfg, spec, svc):
             pending.append(f)
             continue
         for k, val in keys.items():
-            cf.yaml_set(full, k.split("."), _yaml_literal(val))
+            try:
+                cf.yaml_set(full, k.split("."), _yaml_literal(val))
+            except Fout as e:
+                core.event("MELD", f"patch {f}: {e}")
     return pending
 
 
@@ -308,6 +334,7 @@ def prepare_staging(cfg, spec, arts, paper_jar):
     staging_arts = {n: dict(a, op=list(set(a["op"]) | ({"staging"} if set(a["op"]) & {"survival", "lobby"} else set())))
                     for n, a in arts.items()}
     sync_plugins("staging", staging_arts, "staging")
+    sync_datapacks("staging", spec)
     apply_settings(cfg, spec, "staging")
     cf.props_set(os.path.join(sdir, "server.properties"), {"server-port": cfg["poorten"]["staging"],
                                                           "rcon.port": cfg["rcon"]["staging"], "motd": "STAGING"})
@@ -400,6 +427,8 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
                 cfg["mc"] = spec["minecraft"]
                 core.save(cfg)
                 sync_plugins(svc, arts, svc)
+                if svc == "survival":
+                    sync_datapacks(svc, spec)
                 pending[svc] = apply_settings(cfg, spec, svc)
             if core.running(svc) or not first:
                 ops.restart(cfg, svc, between=between)
@@ -407,6 +436,8 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
                 between()
             dep["plugins"][svc] = {n: {"sha256": a["sha256"], "bestand": os.path.basename(a["pad"])}
                                    for n, a in arts.items() if svc in a["op"]}
+            if svc == "survival":
+                dep["datapacks"] = datapack_hashes(spec)
             if core.running(svc):
                 problems, warnings = evaluate(cfg, svc, arts, svc)
                 if problems:
