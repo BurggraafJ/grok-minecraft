@@ -149,6 +149,13 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - `server.json` → `wachtlijst`: plugins die nog geen versie voor onze Minecraft hebben (bv. CoreProtect). `mc update
   check` zegt wanneer ze er zijn; voeg ze dan toe met `mc plugin add`.
 
+## Chat, groepen en meldingen
+
+- Plugin `opmaak` (eigen code): join/leave als `[+] naam` / `[-] naam`, chat als `[Groep] naam » bericht`, advancements als `[★] naam heeft [X] behaald`.
+- Groepen staan in `server.json` → `groepen` (LuckPerms, prefix); `leden: "admins"` volgt de admins in `data/spelers.json`. Iedereen anders is Member.
+- `mc apply` en `mc restart` melden in de game `[Server] Herladen gestart…` en `[Server] Klaar!`.
+- Herstart survival liever niet terwijl er gespeeld wordt (wacht tot niemand online is), tenzij Jelle het vraagt.
+
 ## De wereld en het startersdorp
 
 - De wereld is een gewone willekeurige Minecraft-wereld. De plugin `startersdorp` (eigen code, `plugins/startersdorp`)
@@ -158,7 +165,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - Na de bouw staat er een kaartje van boven in `data/servers/survival/plugins/Startersdorp/kaartje.png`; stuur dat
   Jelle als hij vraagt hoe het eruitziet.
 - Chunky genereert 1500 blokken rond de spawn vooraf (pauzeert als er gespeeld wordt; `mc cmd survival chunky progress`).
-- Nieuwe spelers krijgen de Essentials-kit `tools` (stenen gereedschap) en starten bij het dorp; Essentials praat de
+- Nieuwe spelers krijgen geen startspullen (Jelles wens) en starten bij het dorp; Essentials praat de
   taal van hun client (`per-player-locale`).
 
 ## Voorbeelden van begin tot eind

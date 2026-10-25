@@ -216,8 +216,16 @@ def h_spelers(a):
         ops.spelers_add(a.naam, a.admin)
     elif a.actie == "remove":
         ops.spelers_remove(a.naam)
-    for line in ops.spelers_sync(core.load()):
+    cfg = core.load()
+    for line in ops.spelers_sync(cfg):
         say("  " + line)
+    from . import apply as applymod  # groepen met leden "admins" volgen spelers.json
+    from . import spec as specmod
+    spec = specmod.load()
+    if spec.get("groepen") and core.ready(cfg, "survival"):
+        acties = applymod._groepen_plan(spec)
+        if acties:
+            say("  " + ", ".join(applymod.runtime_apply(cfg, spec, acties, alleen_groepen=True)))
 
 
 def h_backup(a):

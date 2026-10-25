@@ -19,18 +19,71 @@ def velocity_cmd(line):
     net.console_send(core.fifo("velocity"), line)
 
 
+# ── aankondigingen in de game: [Server] Herladen gestart… / [Server] Klaar! ────────────────────
+
+_AANKONDIGING = {"diepte": 0}
+
+
+def meld_spelers(cfg, tekst, kleur="yellow", servers=("survival", "lobby")):
+    """Chatregel `[Server] <tekst>` voor iedereen op de draaiende Paper-servers (stil als er niemand is)."""
+    regel = json.dumps([{"text": "[", "color": "gray"}, {"text": "Server", "color": "gold"},
+                        {"text": "] ", "color": "gray"}, {"text": tekst, "color": kleur}], ensure_ascii=False)
+    for svc in servers:
+        try:
+            if core.running(svc) and core.players(cfg, svc):
+                core.rcon(cfg, svc, f"tellraw @a {regel}")
+        except (Fout, OSError):
+            pass
+
+
+class aankondiging:
+    """Om elke herstart of herlaadbeurt: spelers zien het begin en het einde in de chat.
+
+    Genest (apply herstart lobby en survival na elkaar) telt alleen de buitenste: één keer 'gestart', één keer 'klaar'.
+    """
+
+    def __init__(self, cfg, aan=True):
+        self.cfg = cfg
+        self.aan = aan
+
+    def __enter__(self):
+        if not self.aan:
+            return self
+        _AANKONDIGING["diepte"] += 1
+        if _AANKONDIGING["diepte"] == 1:
+            meld_spelers(self.cfg, "Herladen gestart… even geduld.")
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if not self.aan:
+            return False
+        _AANKONDIGING["diepte"] -= 1
+        if _AANKONDIGING["diepte"] == 0:
+            for _ in range(30):  # wie in de lobby wachtte, eerst terug laten komen
+                if not core.players(self.cfg, "lobby"):
+                    break
+                time.sleep(0.5)
+            time.sleep(1)
+            if exc_type is None:
+                meld_spelers(self.cfg, "Klaar!", kleur="green")
+            else:
+                meld_spelers(self.cfg, "Herladen mislukt; de beheerder kijkt ernaar.", kleur="red")
+        return False
+
+
 def restart(cfg, svc, als_leeg=False, between=None):
     """Herstart een dienst. Survival: spelers wachten in de lobby en gaan daarna vanzelf terug.
 
     between: optionele functie die draait terwijl de dienst uit staat (jar of plugins wisselen).
     """
     if svc == "all":
-        for s in ("lobby", "survival"):
-            restart(cfg, s, between=between if s == "survival" else None)
-        if core.running("velocity"):
-            restart(cfg, "velocity", als_leeg=als_leeg)
+        with aankondiging(cfg):
+            for s in ("lobby", "survival"):
+                restart(cfg, s, between=between if s == "survival" else None)
+            if core.running("velocity"):
+                restart(cfg, "velocity", als_leeg=als_leeg)
         return
-    with lock(f"svc-{svc}"):
+    with lock(f"svc-{svc}"), aankondiging(cfg):
         core.hold(svc, 1800)
         try:
             if svc == "velocity":
@@ -59,11 +112,11 @@ def _restart_survival(cfg, between):
     spelers = core.players(cfg, "survival") or []
     moved = False
     if spelers and core.running("velocity") and core.ready(cfg, "lobby"):
-        try:
-            core.rcon(cfg, "survival", "say De server herstart even. Je wacht in de lobby en gaat vanzelf terug.")
+        try:  # plugin Opmaak: geen [-]-regels nu iedereen even naar de lobby gaat
+            core.rcon(cfg, "survival", "opmaak stil 60")
         except (Fout, OSError):
             pass
-        time.sleep(2)
+        time.sleep(1)
         velocity_cmd("send all lobby")
         moved = True
         for _ in range(20):
@@ -73,6 +126,11 @@ def _restart_survival(cfg, between):
     core.stop(cfg, "survival")
     if between:
         between()
+    if moved:  # plugin Opmaak: wie zo terugkomt krijgt geen [+]-regel
+        odir = os.path.join(core.server_dir("survival"), "plugins", "Opmaak")
+        os.makedirs(odir, exist_ok=True)
+        with open(os.path.join(odir, "terugkeer.txt"), "w") as fh:
+            fh.write("\n".join(spelers) + "\n")
     core.start(cfg, "survival")
     if not core.wait_ready(cfg, "survival", 600):
         raise Fout("survival komt niet terug; spelers staan in de lobby. Laatste log:\n" + "\n".join(core._tail_log("survival")))

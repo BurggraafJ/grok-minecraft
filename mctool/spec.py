@@ -73,6 +73,15 @@ def validate(s):
         for perm in perms if isinstance(perms, list) else []:
             if not re.fullmatch(r"[A-Za-z0-9_.*\-]+", perm):
                 errs.append(f"rechten.{group}: vreemde permissie '{perm}'")
+    for group, g in (s.get("groepen") or {}).items():
+        if not re.fullmatch(r"[a-z0-9_-]+", group) or not isinstance(g, dict):
+            errs.append(f"groepen: '{group}' moet kleine letters zijn met {{leden, gewicht}}")
+            continue
+        leden = g.get("leden", [])
+        if leden != "admins" and not (isinstance(leden, list) and all(re.fullmatch(r"[A-Za-z0-9_]{3,16}", str(n)) for n in leden)):
+            errs.append(f"groepen.{group}.leden: \"admins\" of een lijst Minecraft-namen")
+        if g.get("gewicht") is not None and not isinstance(g.get("gewicht"), int):
+            errs.append(f"groepen.{group}.gewicht moet een getal zijn")
     for svc, rules in (s.get("gamerules") or {}).items():
         if svc not in ("survival", "lobby"):
             errs.append(f"gamerules: onbekende server {svc}")

@@ -68,13 +68,17 @@
       "essentials.rules",
       "essentials.help",
       "essentials.helpop",
-      "essentials.kit",
-      "essentials.kits.tools",
       "essentials.getpos",
       "essentials.depth",
       "essentials.compass",
       "essentials.suicide"
     ]
+  },
+  "groepen": {
+    "admin": {
+      "leden": "admins",
+      "gewicht": 100
+    }
   },
   "plugins": [
     {
@@ -211,6 +215,15 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "opmaak",
+      "bron": "eigen",
+      "pad": "plugins/opmaak",
+      "op": [
+        "survival",
+        "lobby"
+      ]
     }
   ],
   "datapacks": {
@@ -231,10 +244,23 @@
   "patches": {
     "survival": {
       "plugins/Essentials/config.yml": {
-        "per-player-locale": true
+        "per-player-locale": true,
+        "newbies.announce-format": "",
+        "newbies.kit": "",
+        "delay-motd": -1,
+        "notify-no-new-mail": false,
+        "send-fly-enable-on-join": false
       },
       "plugins/Chunky/config.yml": {
         "continue-on-restart": true
+      }
+    },
+    "lobby": {
+      "plugins/LobbyMelding/config.yml": {
+        "bericht": ""
+      },
+      "plugins/Opmaak/config.yml": {
+        "toon-join-quit": false
       }
     }
   }

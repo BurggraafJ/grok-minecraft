@@ -1,0 +1,15 @@
+# Teksten in MiniMessage (https://docs.advntr.dev/minimessage/format.html). Aanpassen via server.json → patches.
+# Placeholders: <naam>, <prefix>, <bericht>, <advancement>.
+toon-join-quit: true            # lobby: false (wachtkamer, geen meldingen)
+join: "<gray>[<green>+</green>]</gray> <white><naam>"
+quit: "<gray>[<red>-</red>]</gray> <white><naam>"
+chat: "<prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>"
+advancement: "<gray>[<gold>★</gold>]</gray> <white><naam></white> <gray>heeft</gray> <advancement> <gray>behaald</gray>"
+tablijst: "<prefix> <white><naam>"
+# Groepen van boven naar onder: de eerste waar de speler in zit (LuckPerms-permissie group.<naam>) telt.
+# default is de groep van iedereen.
+groepen:
+  admin:
+    prefix: "<red>[Admin]</red>"
+  default:
+    prefix: "<gray>[Member]</gray>"

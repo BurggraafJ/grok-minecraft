@@ -1,0 +1,14 @@
+name: Opmaak
+version: '${version}'
+main: nl.burggraaf.mc.opmaak.Opmaak
+api-version: '${apiVersion}'
+description: "Eén join- en leave-regel ([+] naam / [-] naam), chat met groepsprefix, mooie advancement-meldingen en prefix in de tablijst."
+author: Minecraft Bot
+softdepend: [LuckPerms, Essentials]
+commands:
+  opmaak:
+    description: "Beheer: /opmaak stil <seconden> (join/leave even stil, bv. bij een herstart) of /opmaak herlaad"
+    permission: opmaak.beheer
+permissions:
+  opmaak.beheer:
+    default: op

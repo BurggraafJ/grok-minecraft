@@ -29,6 +29,9 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         Component onder = Component.text(getConfig().getString("ondertitel", ""), NamedTextColor.GRAY);
         speler.showTitle(Title.title(titel, onder,
                 Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(8), Duration.ofMillis(800))));
-        speler.sendMessage(Component.text(getConfig().getString("bericht", ""), NamedTextColor.YELLOW));
+        String bericht = getConfig().getString("bericht", "");
+        if (!bericht.isBlank()) {
+            speler.sendMessage(Component.text(bericht, NamedTextColor.YELLOW));
+        }
     }
 }

@@ -297,10 +297,72 @@ def runtime_plan(cfg, spec):
                 actions.append(("survival", f"lp group {group} permission set {perm} true", f"{group}: +{perm}"))
             for perm in sorted(have_p - want_p):
                 actions.append(("survival", f"lp group {group} permission unset {perm}", f"{group}: -{perm}"))
+    if (spec.get("groepen") or deployed().get("groepen")) and core.ready(cfg, "survival"):
+        actions += _groepen_plan(spec)
     return actions
 
 
-def runtime_apply(cfg, spec, actions):
+# ── LuckPerms-groepen met leden (server.json → groepen) ────────────────────────────────────────
+
+_UUIDS = {}
+
+
+def _uuid(naam):
+    """Online-UUID van een Minecraft-naam: eerst usercache.json van survival, anders Mojang (via 443)."""
+    key = naam.lower()
+    if key in _UUIDS:
+        return _UUIDS[key]
+    for e in read_json(os.path.join(core.server_dir("survival"), "usercache.json"), []) or []:
+        if e.get("name", "").lower() == key:
+            _UUIDS[key] = e["uuid"]
+            return e["uuid"]
+    try:
+        import urllib.request
+        with urllib.request.urlopen(f"https://api.minecraftservices.com/minecraft/profile/lookup/name/{naam}", timeout=10) as r:
+            raw = json.loads(r.read())["id"]
+        u = f"{raw[:8]}-{raw[8:12]}-{raw[12:16]}-{raw[16:20]}-{raw[20:]}"
+        _UUIDS[key] = u
+        return u
+    except Exception:  # noqa: BLE001 — onbekend of geen netwerk: volgende apply opnieuw
+        return None
+
+
+def groepen_gewenst(spec):
+    """{groep: {naam: uuid}}. leden "admins" = de admins uit data/spelers.json (zoals OP)."""
+    out = {}
+    for group, g in (spec.get("groepen") or {}).items():
+        leden = g.get("leden") or []
+        if leden == "admins":
+            leden = [s["naam"] for s in core.spelers()["spelers"] if s.get("admin")]
+        out[group] = {}
+        for naam in leden:
+            u = _uuid(naam)
+            if u:
+                out[group][naam] = u
+            else:
+                core.event("MELD", f"groep {group}: UUID van {naam} niet gevonden (typfout?); volgende apply opnieuw")
+    return out
+
+
+def _groepen_plan(spec):
+    actions = []
+    have = deployed().get("groepen") or {}
+    want = groepen_gewenst(spec)
+    for group in sorted(set(want) | set(have)):
+        g = (spec.get("groepen") or {}).get(group) or {}
+        h, w = have.get(group) or {}, want.get(group) or {}
+        if group in want and group not in have and group != "default":
+            actions.append(("survival", f"lp creategroup {group}", f"groep {group} aangemaakt"))
+            if g.get("gewicht") is not None:
+                actions.append(("survival", f"lp group {group} setweight {int(g['gewicht'])}", f"{group}: gewicht {g['gewicht']}"))
+        for naam in sorted(set(w) - set(h)):
+            actions.append(("survival", f"lp user {w[naam]} parent add {group}", f"{naam} in groep {group}"))
+        for naam in sorted(set(h) - set(w)):
+            actions.append(("survival", f"lp user {h[naam]} parent remove {group}", f"{naam} uit groep {group}"))
+    return actions
+
+
+def runtime_apply(cfg, spec, actions, alleen_groepen=False):
     done = []
     for svc, command, label in actions:
         out = core.rcon(cfg, svc, command, timeout=20)
@@ -308,9 +370,13 @@ def runtime_apply(cfg, spec, actions):
             core.event("MELD", f"{svc}: `{command}` gaf: {out.strip()[:200]}")
         else:
             done.append(label)
-    if spec.get("rechten") is not None:
+    if spec.get("rechten") is not None and not alleen_groepen:
         dep = deployed()
         dep["rechten"] = spec.get("rechten") or {}
+        write_json(DEPLOYED, dep)
+    if spec.get("groepen") is not None or deployed().get("groepen"):
+        dep = deployed()
+        dep["groepen"] = groepen_gewenst(spec)
         write_json(DEPLOYED, dep)
     return done
 
@@ -416,67 +482,69 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
         if paper_touch and not first and core.ready(cfg, "survival"):
             ops.backup(cfg, "pre-apply")
             report.append("backup pre-apply gemaakt")
-        new_paper = {k: paper[k] for k in ("version", "build", "name", "sha256", "java", "flags")}
-        new_vel = {k: velocity[k] for k in ("version", "build", "name", "sha256", "java")}
-        dep = deployed()
-        pending = {}
-        for svc in ("lobby", "survival"):
-            if not (changes["paper"] or changes[svc]):
-                continue
+        with ops.aankondiging(cfg, aan=bool(paper_touch)):  # spelers zien [Server] Herladen gestart… en Klaar!
+            new_paper = {k: paper[k] for k in ("version", "build", "name", "sha256", "java", "flags")}
+            new_vel = {k: velocity[k] for k in ("version", "build", "name", "sha256", "java")}
+            dep = deployed()
+            pending = {}
+            for svc in ("lobby", "survival"):
+                if not (changes["paper"] or changes[svc]):
+                    continue
 
-            def between(svc=svc):
-                cfg["paper"] = new_paper
-                cfg["mc"] = spec["minecraft"]
-                core.save(cfg)
-                sync_plugins(svc, arts, svc)
-                if svc == "survival":
-                    sync_datapacks(svc, spec)
-                pending[svc] = apply_settings(cfg, spec, svc)
-            if core.running(svc) or not first:
-                ops.restart(cfg, svc, between=between)
-            else:
-                between()
-            dep["plugins"][svc] = {n: {"sha256": a["sha256"], "bestand": os.path.basename(a["pad"])}
-                                   for n, a in arts.items() if svc in a["op"]}
-            if svc == "survival":
-                dep["datapacks"] = datapack_hashes(spec)
-            if core.running(svc):
-                problems, warnings = evaluate(cfg, svc, arts, svc)
-                if problems:
-                    core.event("MELD", f"{svc} draait, maar met problemen na apply: {problems[0][:200]}")
-                    report.append(f"{svc}: problemen: " + "; ".join(problems[:3]))
-            report.append(f"{svc} bijgewerkt")
-        for svc, files in pending.items():
-            if files and core.running(svc):  # nieuwe plugin: config bestond nog niet; nu wel, dus nog één keer
-                ops.restart(cfg, svc, between=lambda svc=svc: apply_settings(cfg, spec, svc))
-                report.append(f"{svc}: patches toegepast op {', '.join(files)}")
-        if changes["velocity"] or changes["velocity_plugins"]:
-            cfg["motd"] = spec.get("motd") or cfg["motd"]
-
-            def vbetween():
-                cfg["velocity"] = new_vel
-                core.save(cfg)
-                core.configure_velocity(cfg)
-                sync_plugins("velocity", arts, "velocity")
-            if core.running("velocity") and not first:
-                online = sum(len(core.players(cfg, s) or []) for s in ("survival", "lobby"))
-                if online and not nu:
-                    vbetween_deferred(cfg, new_vel, arts)
-                    report.append(f"velocity: wordt bijgewerkt zodra niemand online is ({online} nu)")
-                    vel_done = False
+                def between(svc=svc):
+                    cfg["paper"] = new_paper
+                    cfg["mc"] = spec["minecraft"]
+                    core.save(cfg)
+                    sync_plugins(svc, arts, svc)
+                    if svc == "survival":
+                        sync_datapacks(svc, spec)
+                    pending[svc] = apply_settings(cfg, spec, svc)
+                if core.running(svc) or not first:
+                    ops.restart(cfg, svc, between=between)
                 else:
-                    ops.restart(cfg, "velocity", between=vbetween)
-                    report.append("velocity bijgewerkt")
+                    between()
+                dep["plugins"][svc] = {n: {"sha256": a["sha256"], "bestand": os.path.basename(a["pad"])}
+                                       for n, a in arts.items() if svc in a["op"]}
+                if svc == "survival":
+                    dep["datapacks"] = datapack_hashes(spec)
+                if core.running(svc):
+                    problems, warnings = evaluate(cfg, svc, arts, svc)
+                    if problems:
+                        core.event("MELD", f"{svc} draait, maar met problemen na apply: {problems[0][:200]}")
+                        report.append(f"{svc}: problemen: " + "; ".join(problems[:3]))
+                report.append(f"{svc} bijgewerkt")
+            for svc, files in pending.items():
+                if files and core.running(svc):  # nieuwe plugin: config bestond nog niet; nu wel, dus nog één keer
+                    ops.restart(cfg, svc, between=lambda svc=svc: apply_settings(cfg, spec, svc))
+                    report.append(f"{svc}: patches toegepast op {', '.join(files)}")
+            if changes["velocity"] or changes["velocity_plugins"]:
+                cfg["motd"] = spec.get("motd") or cfg["motd"]
+
+                def vbetween():
+                    cfg["velocity"] = new_vel
+                    core.save(cfg)
+                    core.configure_velocity(cfg)
+                    sync_plugins("velocity", arts, "velocity")
+                if core.running("velocity") and not first:
+                    online = sum(len(core.players(cfg, s) or []) for s in ("survival", "lobby"))
+                    if online and not nu:
+                        vbetween_deferred(cfg, new_vel, arts)
+                        report.append(f"velocity: wordt bijgewerkt zodra niemand online is ({online} nu)")
+                        vel_done = False
+                    else:
+                        ops.restart(cfg, "velocity", between=vbetween)
+                        report.append("velocity bijgewerkt")
+                        vel_done = True
+                else:
+                    vbetween()
                     vel_done = True
-            else:
-                vbetween()
-                vel_done = True
-            if vel_done:
-                dep["plugins"]["velocity"] = {n: {"sha256": a["sha256"], "bestand": os.path.basename(a["pad"])}
-                                              for n, a in arts.items() if "velocity" in a["op"]}
+                if vel_done:
+                    dep["plugins"]["velocity"] = {n: {"sha256": a["sha256"], "bestand": os.path.basename(a["pad"])}
+                                                  for n, a in arts.items() if "velocity" in a["op"]}
         dep["spec_commit"] = _git_head()
         dep["tijd"] = now_iso()
         dep["rechten"] = deployed().get("rechten") or {}
+        dep["groepen"] = deployed().get("groepen") or {}
         write_json(DEPLOYED, dep)
         core.save(cfg)
         actions = runtime_plan(cfg, spec)
