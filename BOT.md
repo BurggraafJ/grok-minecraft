@@ -165,8 +165,11 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   binnengekomen tijdens de herstart) binnen ~10 s terug zodra survival draait. Op staging (motd STAGING) doet de plugin niets.
   Terugsturen gaat met groot aftellen 5-4-3-2-1 (titels + geluid; `mc cmd lobby lobbymelding terug`, `ops.terug_naar_survival`),
   daarna stuurt de plugin via Velocity (BungeeCord-kanaal); wie dan nog in de lobby staat stuurt `mc` met `send`.
-- In de lobby staat een korte parkour naast de spawn (start groen, checkpoint goud, finish smaragd, tijd in de
-  actionbar, finish in de chat); wie valt gaat terug naar zijn laatste checkpoint. Wordt bij elke lobbystart opnieuw gezet.
+- In de lobby staat parkour in **5 levels** (Opwarmer, Sprongen, Zigzag, Hoogtevrees, Meester), elk in een eigen baan
+  langs de spawn met een huisje bij de start (groen blok) en een finishplatform (smaragd, lantaarns). Tijd in de
+  actionbar, finish in de chat; wie valt begint het level opnieuw. Voortgang per speler in
+  `lobby/plugins/LobbyMelding/voortgang.yml`: wie binnenkomt staat in het huisje van het volgende level; na een gehaald
+  level gaat hij na 3 s door naar het volgende. Alles wordt bij elke lobbystart opnieuw gebouwd.
 - Spelerslijsten gaan via `minecraft:list` (Essentials' `/list` toont groepen en nicknames).
 - Nicknames: iedereen mag `/nick <naam>` (EssentialsX, kleuren met `&c` enz.; `/nick off` haalt hem weg; geen `~`
   ervoor). `opmaak` toont de nick in chat, `[+]`/`[-]`, advancements en de tablijst, en boven het hoofd met een
@@ -184,7 +187,10 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   één keer aan (`chestsort-standaard-aan`), daarna kan iedereen het zelf uitzetten.
 - **GravesX**: bij doodgaan komen spullen en alle XP in een graf; alleen de eigenaar kan het openen (rechtsklik of kapot
   slaan = alles terug), het verdwijnt nooit, coördinaten in de chat; `/graves` toont je graven.
-- **honger** (eigen code): honger zakt 25% langzamer (`factor` 0.75 in `plugins/Honger/config.yml` via patches).
+- **honger** (eigen code, survival-regels): honger zakt 25% langzamer (`factor` 0.75), en **niemand vliegt in
+  survival/adventure**, ook OP's niet (alleen permissie `survival.vliegen`, standaard niemand). Oorzaak van het vliegen
+  na een herstart: Essentials' `essentials.fly.safelogin` (OP's hebben die) zet vliegen aan als je "in de lucht" inlogt;
+  die staat nu expliciet uit via `rechten.default` → `-essentials.fly.safelogin` (een `-` ervoor = permissie false).
 - **pijl** (eigen code): actionbar met een pijl naar de dichtstbijzijnde andere speler in dezelfde wereld («⬆ Lotte 132m»,
   relatief aan je kijkrichting, binnen 1000 blokken, 2× per seconde, even stil na bed/instappen/dood); `/pijl` aan/uit.
 - **spark** zit ingebouwd in Paper: `mc cmd survival spark tps` / `spark profiler` (alleen OP/console).

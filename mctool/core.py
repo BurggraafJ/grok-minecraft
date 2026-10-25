@@ -310,7 +310,7 @@ def ready(cfg, svc):
         return False
     try:
         if svc in PAPER:
-            rcon(cfg, svc, "list", timeout=3)
+            rcon(cfg, svc, "minecraft:list", timeout=3)
             return True
         if svc == "velocity":
             net.status("127.0.0.1", cfg["poorten"]["velocity"], timeout=3)

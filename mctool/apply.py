@@ -302,10 +302,14 @@ def runtime_plan(cfg, spec):
             have_p, want_p = set(applied.get(group) or []), set(want.get(group) or [])
             if group != "default" and want_p and not have_p:
                 actions.append(("survival", f"lp creategroup {group}", f"groep {group} aangemaakt"))
-            for perm in sorted(want_p - have_p):
-                actions.append(("survival", f"lp group {group} permission set {perm} true", f"{group}: +{perm}"))
+            # "-perm" = expliciet false (gaat ook boven OP uit, bv. -essentials.fly.safelogin)
             for perm in sorted(have_p - want_p):
-                actions.append(("survival", f"lp group {group} permission unset {perm}", f"{group}: -{perm}"))
+                node = perm.lstrip("-")
+                actions.append(("survival", f"lp group {group} permission unset {node}", f"{group}: weg {perm}"))
+            for perm in sorted(want_p - have_p):
+                node, val = (perm[1:], "false") if perm.startswith("-") else (perm, "true")
+                actions.append(("survival", f"lp group {group} permission set {node} {val}",
+                                f"{group}: {'✗' if val == 'false' else '+'}{node}"))
     if (spec.get("groepen") or deployed().get("groepen")) and core.ready(cfg, "survival"):
         actions += _groepen_plan(spec)
     return actions

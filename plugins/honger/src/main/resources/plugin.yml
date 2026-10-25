@@ -2,5 +2,10 @@ name: Honger
 version: '${version}'
 main: nl.burggraaf.mc.honger.Honger
 api-version: '${apiVersion}'
-description: Honger zakt langzamer (exhaustion keer een factor, standaard 0.75 = 25% minder).
+description: "Survival-regels: honger zakt langzamer (factor 0.75) en niemand vliegt in survival (ook OP's niet)."
 author: Minecraft Bot
+softdepend: [Essentials]
+permissions:
+  survival.vliegen:
+    description: "Mag vliegen in survival (standaard niemand, ook OP's niet)"
+    default: false

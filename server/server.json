@@ -76,7 +76,8 @@
       "essentials.enderchest",
       "essentials.nick",
       "essentials.nick.color",
-      "chestsort.use"
+      "chestsort.use",
+      "-essentials.fly.safelogin"
     ]
   },
   "groepen": {
