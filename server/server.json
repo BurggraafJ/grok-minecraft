@@ -1,0 +1,202 @@
+{
+  "$uitleg": "Gewenste stand van de server. Wijzig via mc-opdrachten (plugin add/remove, update apply) of met de hand gevolgd door `mc apply` en `mc vastleggen`. Elke commit is een serverversie.",
+  "minecraft": "26.3",
+  "paper_build": 223,
+  "velocity": {
+    "versie": "4.3.0",
+    "build": 44
+  },
+  "java": 25,
+  "motd": "<gold>Burggraaf Craft</gold> <gray>— alleen op uitnodiging</gray>",
+  "instellingen": {
+    "survival": {
+      "difficulty": "normal",
+      "view-distance": 10,
+      "simulation-distance": 8,
+      "spawn-protection": 0,
+      "max-players": 20,
+      "allow-flight": true
+    },
+    "lobby": {
+      "level-type": "minecraft:flat",
+      "gamemode": "adventure",
+      "force-gamemode": true,
+      "difficulty": "peaceful",
+      "view-distance": 4,
+      "simulation-distance": 4,
+      "generate-structures": false,
+      "spawn-protection": 0
+    }
+  },
+  "gamerules": {
+    "lobby": {
+      "advance_time": false,
+      "advance_weather": false,
+      "spawn_mobs": false
+    }
+  },
+  "rechten": {
+    "default": [
+      "essentials.home",
+      "essentials.sethome",
+      "essentials.sethome.multiple",
+      "essentials.delhome",
+      "essentials.tpa",
+      "essentials.tpahere",
+      "essentials.tpaccept",
+      "essentials.tpdeny",
+      "essentials.tpacancel",
+      "essentials.back",
+      "essentials.back.ondeath",
+      "essentials.spawn",
+      "essentials.warp",
+      "essentials.warp.list",
+      "essentials.msg",
+      "essentials.r",
+      "essentials.mail",
+      "essentials.mail.send",
+      "essentials.ignore",
+      "essentials.afk",
+      "essentials.list",
+      "essentials.seen",
+      "essentials.realname",
+      "essentials.motd",
+      "essentials.rules",
+      "essentials.help",
+      "essentials.helpop",
+      "essentials.kit",
+      "essentials.kits.tools",
+      "essentials.getpos",
+      "essentials.depth",
+      "essentials.compass",
+      "essentials.suicide"
+    ]
+  },
+  "plugins": [
+    {
+      "naam": "LuckPerms",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "luckperms",
+      "versie": "v5.5.71-bukkit",
+      "bestand": "LuckPerms-Bukkit-5.5.71.jar",
+      "url": "https://cdn.modrinth.com/data/Vebnzrzj/versions/b0mk8uS6/LuckPerms-Bukkit-5.5.71.jar",
+      "sha512": "188a91f0a543d23bfda32385fca6db63d61e49c8a422bd452a260bd9cbc6a7d7fe45071199e9fca8f3ce43c2b41ee84fd315bd15464577028ff3951a7d4fab27",
+      "officieel": true
+    },
+    {
+      "naam": "EssentialsX",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "essentialsx",
+      "versie": "2.22.0",
+      "bestand": "EssentialsX-2.22.0.jar",
+      "url": "https://cdn.modrinth.com/data/hXiIvTyT/versions/nY6VN1XH/EssentialsX-2.22.0.jar",
+      "sha512": "472ecf71924801723643ca6e1f9931297de5aa0874a544f8a719e2e2f7c81af81ef7bcbd38b6e43f0260a9dae6abe42c97907e70e2430e326ff8cff12ebd61cf",
+      "officieel": false
+    },
+    {
+      "naam": "EssentialsX-Spawn",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "essentialsx-spawn",
+      "versie": "2.22.0",
+      "bestand": "EssentialsXSpawn-2.22.0.jar",
+      "url": "https://cdn.modrinth.com/data/sYpvDxGJ/versions/lc5JHiNJ/EssentialsXSpawn-2.22.0.jar",
+      "sha512": "7097478ec02bc46e1dce326520e7dd0cf38bcce0f7810c1c89cfcc2fef8a88a7dc27c5a946d1256abad589185c5015c615e2cb4eab181ea7362428fac581b964",
+      "officieel": false
+    },
+    {
+      "naam": "ViaVersion",
+      "op": [
+        "survival",
+        "lobby"
+      ],
+      "bron": "modrinth",
+      "project": "viaversion",
+      "versie": "5.12.1",
+      "bestand": "ViaVersion-5.12.1.jar",
+      "url": "https://cdn.modrinth.com/data/P1OZGk5p/versions/5WgnasGG/ViaVersion-5.12.1.jar",
+      "sha512": "b2e5c03689e2265410613a928640076cfcd576e7a3dc7ca1276a76dbe624f2f5467348c3b3eaf8b5987ed7662afb93cc5cb9373035f4c5512884116e4bb6add9",
+      "officieel": true
+    },
+    {
+      "naam": "ViaBackwards",
+      "op": [
+        "survival",
+        "lobby"
+      ],
+      "bron": "modrinth",
+      "project": "viabackwards",
+      "versie": "5.12.1",
+      "bestand": "ViaBackwards-5.12.1.jar",
+      "url": "https://cdn.modrinth.com/data/NpvuJQoq/versions/dWw67APC/ViaBackwards-5.12.1.jar",
+      "sha512": "65752dd113bf1266ef2c3b25a748e79e9808bb67682a3f5fbcf3e2b097d76182786d0871562175af8d491bde7ec6addfeaf97fdb23987cb11b829b0c22f6e5ff",
+      "officieel": true
+    },
+    {
+      "naam": "WorldEdit",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "worldedit",
+      "versie": "7.4.6",
+      "bestand": "worldedit-bukkit-7.4.6.jar",
+      "url": "https://cdn.modrinth.com/data/1u6JkXh5/versions/YFnqiUlL/worldedit-bukkit-7.4.6.jar",
+      "sha512": "1fe3975132857093f971fed9efc601299bfa76fa7885f52a542fee41e7a0165ca9cb3cbcf5ae244474887d774d650b0db6f8f79aa80f98b245dea44f1c1b4152",
+      "officieel": true
+    },
+    {
+      "naam": "WorldGuard",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "worldguard",
+      "versie": "7.0.20",
+      "bestand": "worldguard-bukkit-7.0.20.jar",
+      "url": "https://cdn.modrinth.com/data/DKY9btbd/versions/9YdeGXiK/worldguard-bukkit-7.0.20.jar",
+      "sha512": "d7ad3f8b14c57deceb409dc8997fe3d7f0a98dd4158c52648111bfbe6934ca9be53fa42ece4d60d9c2d9da33f7d6ecf597117991bd3b8e7afbf308cd925e409c",
+      "officieel": true
+    },
+    {
+      "naam": "Chunky",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "chunky",
+      "versie": "1.5.3",
+      "bestand": "Chunky-Bukkit-1.5.3.jar",
+      "url": "https://cdn.modrinth.com/data/fALzjamp/versions/MdY6JATr/Chunky-Bukkit-1.5.3.jar",
+      "sha512": "43ffecc6e6a734b752da41575bbb316526c124c3f878942437d5133c377bfbd9b78bda975520dc074d7158c15dade58a444ccd0fd8d8a25d165b6fc450140422",
+      "officieel": true
+    },
+    {
+      "naam": "lobby-melding",
+      "bron": "eigen",
+      "pad": "plugins/lobby-melding",
+      "op": [
+        "lobby"
+      ]
+    }
+  ],
+  "wachtlijst": [
+    {
+      "project": "coreprotect",
+      "naam": "CoreProtect",
+      "op": [
+        "survival"
+      ],
+      "reden": "blokken loggen en griefing terugdraaien; versie 24.1 weigert Minecraft 26.3 ('not supported'), toevoegen zodra er een 26.3-versie is"
+    }
+  ],
+  "patches": {}
+}

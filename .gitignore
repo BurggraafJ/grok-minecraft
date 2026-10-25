@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+build/
+.gradle/
+*.part
+/data/
+/tools/
+.DS_Store

@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit-tests en server.json
+        run: |
+          python3 -m unittest discover -s tests -v
+          PYTHONPATH=. python3 -c "from mctool import spec; s = spec.load(); print('server.json ok:', len(s['plugins']), 'plugins')"
+
+  server:
+    # Een echte server met precies de plugins uit server.json: wat hier niet start, komt ook niet op de box.
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      MC_HOME: ${{ runner.temp }}/mc
+    steps:
+      - uses: actions/checkout@v4
+      - name: Klein geheugenplan voor de runner
+        run: |
+          mkdir -p "$MC_HOME/data"
+          echo '{"geheugen_mb": {"velocity": 384, "lobby": 768, "survival": 2048, "staging": 1536}}' > "$MC_HOME/data/config.json"
+      - name: Install (offline-test, geen tunnel)
+        run: ./mc install --eula-akkoord --offline-test --tunnel geen --spelers CiSpeler --admins CiAdmin
+      - name: Zelftest met testlogin door Velocity
+        run: ./mc selftest --login CiSpeler
+      - name: Alle plugins aan
+        run: |
+          ./mc plugin lijst
+          PYTHONPATH=. python3 - <<'PY'
+          from mctool import core, spec, apply
+          cfg, s = core.load(), spec.load()
+          arts = apply.fetch_artifacts(s, s["java"], build=False)
+          for svc in ("survival", "lobby"):
+              problems, warnings = apply.evaluate(cfg, svc, arts, svc)
+              print(svc, "problemen:", problems, "waarschuwingen:", warnings)
+              assert not problems, problems
+          PY
+      - name: Herstart via de lobby, backup en restore
+        run: |
+          ./mc restart survival
+          ./mc cmd survival forceload add 0 0
+          ./mc cmd survival setblock 0 100 0 minecraft:gold_block
+          B=$(./mc backup --label ci | sed 's#.*/##')
+          ./mc cmd survival setblock 0 100 0 minecraft:air
+          ./mc restore "$B"
+          sleep 3
+          ./mc cmd survival forceload add 0 0
+          ./mc cmd survival execute if block 0 100 0 minecraft:gold_block | tee /dev/stderr | grep -q "Test passed"
+      - name: Staging-test
+        run: ./mc staging test
+      - name: Crash → watchdog herstart
+        run: |
+          kill -9 "$(python3 -c "import json,os; print(json.load(open(os.environ['MC_HOME'] + '/data/state/survival.pid'))['pid'])")"
+          for i in $(seq 1 60); do sleep 3; ./mc status | grep -q "✓ survival" && break; done
+          ./mc status
+          ./mc ensure | tee /dev/stderr | grep -q "survival was gestopt en is herstart"
+          ./mc selftest --login CiSpeler
+      - name: Idempotent
+        run: |
+          ./mc apply | tee /dev/stderr | grep -q "niets te doen"
+          ./mc install --eula-akkoord --offline-test --tunnel geen --spelers CiSpeler --admins CiAdmin
+      - name: Stoppen
+        if: always()
+        run: ./mc down || true
+      - name: Logs bij een fout
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            ${{ runner.temp }}/mc/data/state/*.log
+            ${{ runner.temp }}/mc/data/state/*.out
+            ${{ runner.temp }}/mc/data/servers/*/logs/latest.log
+          if-no-files-found: ignore

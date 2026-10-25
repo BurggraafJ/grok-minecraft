@@ -1,0 +1,6 @@
+name: LobbyMelding
+version: '${version}'
+main: nl.burggraaf.mc.lobbymelding.LobbyMelding
+api-version: '${apiVersion}'
+description: Laat spelers in de lobby weten dat de server herstart en dat ze vanzelf teruggaan.
+author: Minecraft Bot
