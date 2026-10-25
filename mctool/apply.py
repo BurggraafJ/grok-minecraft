@@ -338,6 +338,10 @@ def staging_test(cfg, spec, arts, paper_jar, keep=False):
         if not keep:
             core.stop(cfg, "staging")
             core.set_desired("staging", "down")
+            log = core.latest_log("staging")
+            if os.path.exists(log):
+                shutil.copy2(log, os.path.join(STATE, "staging-laatste.log"))
+            shutil.rmtree(core.server_dir("staging"), ignore_errors=True)
         core.unhold("staging")
         cfg.pop("staging_override", None)
 
@@ -359,6 +363,10 @@ def apply(cfg, spec=None, zonder_staging=False, nu=False, dry_run=False, first=F
         changes = plan(cfg, spec, arts)
         touched = [k for k in ("survival", "lobby", "velocity_plugins") if changes[k]]
         if not (changes["paper"] or changes["velocity"] or touched):
+            if not dry_run:
+                dep = deployed()
+                dep["spec_commit"] = _git_head()
+                write_json(DEPLOYED, dep)
             actions = runtime_plan(cfg, spec)
             if not actions or dry_run:
                 return [f"live te zetten: {', '.join(a[2] for a in actions)}"] if actions else \

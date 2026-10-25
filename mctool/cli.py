@@ -71,7 +71,7 @@ def build_parser():
     s.add_argument("--nu", action="store_true", help="velocity ook herstarten als er spelers online zijn")
     s.add_argument("--dry-run", action="store_true")
 
-    s = sub.add_parser("vastleggen", help="wijzigingen in server/ en plugins/ committen en pushen")
+    s = sub.add_parser("vastleggen", help="alle wijzigingen in de repo committen en pushen")
     s.add_argument("bericht")
 
     s = sub.add_parser("plugin", help="plugins: zoek, add, remove, lijst, nieuw, build")
@@ -246,7 +246,7 @@ def _commit_push(message, paths):
 
 
 def h_vastleggen(a):
-    _commit_push(a.bericht, ["server", "plugins"])
+    _commit_push(a.bericht, ["."])
 
 
 def _spec_change(mutator, message, zonder_staging=False):
@@ -343,7 +343,8 @@ def h_staging(a):
     if a.actie == "stop":
         core.set_desired("staging", "down")
         core.stop(cfg, "staging")
-        say("staging gestopt")
+        shutil.rmtree(core.server_dir("staging"), ignore_errors=True)
+        say("staging gestopt en opgeruimd")
         return
     s = specmod.load()
     arts = applymod.fetch_artifacts(s, s["java"])

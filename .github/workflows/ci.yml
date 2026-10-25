@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      MC_HOME: ${{ runner.temp }}/mc
+      MC_HOME: /tmp/mc
     steps:
       - uses: actions/checkout@v4
       - name: Klein geheugenplan voor de runner
@@ -81,7 +81,7 @@ jobs:
         with:
           name: logs
           path: |
-            ${{ runner.temp }}/mc/data/state/*.log
-            ${{ runner.temp }}/mc/data/state/*.out
-            ${{ runner.temp }}/mc/data/servers/*/logs/latest.log
+            /tmp/mc/data/state/*.log
+            /tmp/mc/data/state/*.out
+            /tmp/mc/data/servers/*/logs/latest.log
           if-no-files-found: ignore

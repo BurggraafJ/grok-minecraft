@@ -117,15 +117,20 @@ class Supervisor:
             if svc in self.failed:
                 continue
             crashed = svc in self.seen_up
+            self.seen_up.discard(svc)
             times = [t for t in self.crashes.get(svc, []) if t > time.time() - 900]
-            if len(times) >= 4:
+            if len(times) >= 5:
                 self.failed.add(svc)
-                core.event("MELD", f"{svc} crasht steeds (4× in 15 min); ik stop met herstarten. Kijk naar `mc errors {svc}`")
+                core.event("MELD", f"{svc} start niet of crasht steeds (5× in 15 min); ik stop met herstarten. "
+                                   f"Kijk naar `mc errors {svc}`, los het op en draai `mc ensure`")
                 continue
+            if svc == "tunnel" and times and time.time() - times[-1] < 60 and cfg["tunnel"].get("bore_poort"):
+                cfg["tunnel"]["bore_poort"] = None  # de oude poort is bezet: neem een nieuwe
+                core.save(cfg)
+            times.append(time.time())
+            self.crashes[svc] = times
             self.log(f"{svc}: {'gecrasht, herstarten' if crashed else 'starten'}")
             if crashed:
-                times.append(time.time())
-                self.crashes[svc] = times
                 core.event("MELD" if svc != "tunnel" else "INFO", f"{svc} was gestopt en is herstart")
                 if svc == "survival":
                     self.need_send_back = True

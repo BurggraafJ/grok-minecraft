@@ -13,7 +13,7 @@ from . import gitops
 from . import ops
 from . import spec as specmod
 from . import supervisor
-from .base import (GB, HOME, STATE, Fout, cpus, disk, ensure_dirs, http, human, meminfo, read_json, say, system,
+from .base import (GB, HOME, JARS, STATE, Fout, cpus, disk, ensure_dirs, http, human, meminfo, read_json, say, system,
                    write_json)
 
 SHARED_MARKERS = ("/workspace/fleet", "/workspace/maestro-fleet")
@@ -161,9 +161,8 @@ def ensure(stil=False):
     try:
         dl.ensure_java(cfg["java"])
         for key in ("paper", "velocity"):
-            if cfg.get(key):
-                info = dl.fill_build(key, cfg[key]["version"], cfg[key]["build"])
-                dl.ensure_jar(info)
+            if cfg.get(key) and not os.path.exists(os.path.join(JARS, cfg[key]["name"])):
+                dl.ensure_jar(dl.fill_build(key, cfg[key]["version"], cfg[key]["build"]))
     except Fout as e:
         lines.append(f"MELD tools of jars ontbreken en downloaden lukt niet: {e}")
     if not supervisor.pid():
