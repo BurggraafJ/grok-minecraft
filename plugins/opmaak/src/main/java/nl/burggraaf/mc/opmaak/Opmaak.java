@@ -5,14 +5,29 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.TextDisplay;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -38,13 +53,136 @@ public final class Opmaak extends JavaPlugin implements Listener {
     private long stilTot = 0;
     private final Set<String> terugkeer = new HashSet<>();
     private long terugkeerTot = 0;
+    /** Nickname uit Essentials-userdata, gelezen bij join (Essentials zet displayName pas iets later). */
+    private final Map<UUID, Component> nickBijJoin = new HashMap<>();
+    private final Map<UUID, Long> joinTijd = new HashMap<>();
+    /** Naamlabel boven het hoofd voor spelers met een nickname (vanilla-naamtag verborgen via team). */
+    private final Map<UUID, TextDisplay> labels = new HashMap<>();
+    private final Map<UUID, String> laatsteTab = new HashMap<>();
+    private static final String NICK_TEAM = "opmaak_nick";
+    private long tik = 0;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         leesTerugkeer();
         getServer().getPluginManager().registerEvents(this, this);
-        getServer().getScheduler().runTaskTimer(this, () -> Bukkit.getOnlinePlayers().forEach(this::zetTab), 100L, 600L);
+        getServer().getScheduler().runTaskTimer(this, this::elkeTik, 20L, 1L);
+    }
+
+    @Override
+    public void onDisable() {
+        labels.values().forEach(TextDisplay::remove);
+        labels.clear();
+    }
+
+    private static String plat(Component c) {
+        return PlainTextComponentSerializer.plainText().serialize(c);
+    }
+
+    /** De naam zoals iedereen hem ziet: de nickname (Essentials /nick) of anders de accountnaam. */
+    Component naamVan(Player p) {
+        Component d = p.displayName();
+        if (!plat(d).equals(p.getName())) return d;
+        Long t = joinTijd.get(p.getUniqueId());
+        Component n = nickBijJoin.get(p.getUniqueId());
+        if (n != null && t != null && System.currentTimeMillis() - t < 15_000L) return n;
+        return d;
+    }
+
+    private Component leesEssentialsNick(Player p) {
+        if (!getConfig().getBoolean("nicknames", true)) return null;
+        Plugin ess = Bukkit.getPluginManager().getPlugin("Essentials");
+        if (ess == null) return null;
+        File f = new File(ess.getDataFolder(), "userdata/" + p.getUniqueId() + ".yml");
+        if (!f.exists()) return null;
+        try {
+            String nick = YamlConfiguration.loadConfiguration(f).getString("nickname");
+            if (nick == null || nick.isBlank()) return null;
+            nick = nick.replace('&', '\u00a7');
+            return LegacyComponentSerializer.legacySection().deserialize(nick);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private boolean heeftNick(Player p) {
+        return getConfig().getBoolean("nicknames", true) && !plat(naamVan(p)).equals(p.getName());
+    }
+
+    private boolean labelZichtbaar(Player p) {
+        return heeftNick(p) && !p.isDead() && p.getGameMode() != GameMode.SPECTATOR && !p.isInvisible()
+                && !p.hasPotionEffect(PotionEffectType.INVISIBILITY)
+                && p.getMetadata("vanished").stream().noneMatch(m -> m.asBoolean());
+    }
+
+    private Team nickTeam() {
+        Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team t = sb.getTeam(NICK_TEAM);
+        if (t == null) {
+            t = sb.registerNewTeam(NICK_TEAM);
+            t.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
+        }
+        return t;
+    }
+
+    private Location labelPlek(Player p) {
+        Location l = p.getLocation();
+        return new Location(l.getWorld(), l.getX(), l.getY() + p.getHeight() + 0.25, l.getZ(), 0f, 0f);
+    }
+
+    private void elkeTik() {
+        tik++;
+        Team team = nickTeam();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            UUID id = p.getUniqueId();
+            boolean nick = heeftNick(p);
+            if (nick && !team.hasEntry(p.getName())) team.addEntry(p.getName());
+            if (!nick && team.hasEntry(p.getName())) team.removeEntry(p.getName());
+            TextDisplay label = labels.get(id);
+            if (labelZichtbaar(p)) {
+                Location plek = labelPlek(p);
+                if (label != null && (!label.isValid() || label.getWorld() != plek.getWorld())) {
+                    label.remove();
+                    label = null;
+                }
+                Component tekst = naamVan(p);
+                if (label == null) {
+                    label = plek.getWorld().spawn(plek, TextDisplay.class, d -> {
+                        d.setPersistent(false);
+                        d.setBillboard(Display.Billboard.CENTER);
+                        d.setSeeThrough(false);
+                        d.setShadowed(false);
+                        d.setTeleportDuration(2);
+                        d.text(tekst);
+                    });
+                    p.hideEntity(this, label);
+                    labels.put(id, label);
+                } else {
+                    label.teleport(plek);
+                    if (!tekst.equals(label.text())) label.text(tekst);
+                }
+                label.setTextOpacity(p.isSneaking() ? (byte) 100 : (byte) -1);
+            } else if (label != null) {
+                label.remove();
+                labels.remove(id);
+            }
+            if (tik % 20 == 0) {
+                String sleutel = mm.serialize(naamVan(p)) + "|" + prefixVan(p);
+                if (!sleutel.equals(laatsteTab.get(id))) {
+                    laatsteTab.put(id, sleutel);
+                    zetTab(p);
+                }
+            }
+        }
+        for (Iterator<Map.Entry<UUID, TextDisplay>> it = labels.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, TextDisplay> e = it.next();
+            Player p = Bukkit.getPlayer(e.getKey());
+            if (p == null || !p.isOnline()) {
+                e.getValue().remove();
+                it.remove();
+            }
+        }
     }
 
     private void leesTerugkeer() {
@@ -78,7 +216,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
     private Component tekst(String sleutel, Player p, TagResolver... extra) {
         TagResolver alles = TagResolver.resolver(
                 TagResolver.resolver(extra),
-                Placeholder.unparsed("naam", p.getName()),
+                Placeholder.component("naam", naamVan(p)),
                 Placeholder.component("prefix", mm.deserialize(prefixVan(p))));
         return mm.deserialize(getConfig().getString(sleutel, ""), alles);
     }
@@ -90,6 +228,11 @@ public final class Opmaak extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
+        joinTijd.put(p.getUniqueId(), System.currentTimeMillis());
+        Component nick = leesEssentialsNick(p);
+        if (nick != null) nickBijJoin.put(p.getUniqueId(), nick);
+        else nickBijJoin.remove(p.getUniqueId());
+        laatsteTab.remove(p.getUniqueId());
         zetTab(p);
         boolean terug = System.currentTimeMillis() < terugkeerTot && terugkeer.remove(p.getName().toLowerCase(Locale.ROOT));
         if (!getConfig().getBoolean("toon-join-quit", true) || stil() || terug) {
@@ -101,6 +244,10 @@ public final class Opmaak extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onQuit(PlayerQuitEvent e) {
+        UUID id = e.getPlayer().getUniqueId();
+        TextDisplay label = labels.remove(id);
+        if (label != null) label.remove();
+        laatsteTab.remove(id);
         if (!getConfig().getBoolean("toon-join-quit", true) || stil()) {
             e.quitMessage(null);
         } else {
@@ -112,10 +259,11 @@ public final class Opmaak extends JavaPlugin implements Listener {
     public void onChat(AsyncChatEvent e) {
         Player p = e.getPlayer();
         Component prefix = mm.deserialize(prefixVan(p));
+        Component naamComp = naamVan(p);
         String formaat = getConfig().getString("chat", "");
         e.renderer((bron, naam, bericht, kijker) -> mm.deserialize(formaat,
                 Placeholder.component("prefix", prefix),
-                Placeholder.unparsed("naam", bron.getName()),
+                Placeholder.component("naam", naamComp),
                 Placeholder.component("bericht", bericht)));
     }
 

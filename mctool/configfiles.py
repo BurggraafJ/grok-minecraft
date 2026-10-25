@@ -104,6 +104,30 @@ def yaml_set(path, keypath, literal):
     raise Fout(f"{'.'.join(keypath)} niet gevonden in {path}")
 
 
+def json_set(path, updates):
+    """Zet sleutels (met punten voor nesting, bv. client.allow) in een JSON-config. Ontbrekende sleutel = fout."""
+    import json
+    try:
+        data = json.loads(read_text(path, "") or "{}")
+    except ValueError as e:
+        raise Fout(f"{path} is geen geldige JSON: {e}")
+    changed = False
+    for k, val in updates.items():
+        node, parts = data, k.split(".")
+        for p in parts[:-1]:
+            if not isinstance(node, dict) or p not in node:
+                raise Fout(f"{k} niet gevonden in {path}")
+            node = node[p]
+        if not isinstance(node, dict) or parts[-1] not in node:
+            raise Fout(f"{k} niet gevonden in {path}")
+        if node[parts[-1]] != val:
+            node[parts[-1]] = val
+            changed = True
+    if changed:
+        write_text(path, json.dumps(data, indent=4) + "\n")
+    return changed
+
+
 # ── TOML (velocity.toml) ───────────────────────────────────────────────────────────────────────
 
 _SECTION = re.compile(r"^\s*\[([A-Za-z0-9_.\-]+)\]\s*$")

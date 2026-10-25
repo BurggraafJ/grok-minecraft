@@ -1,0 +1,6 @@
+name: Honger
+version: '${version}'
+main: nl.burggraaf.mc.honger.Honger
+api-version: '${apiVersion}'
+description: Honger zakt langzamer (exhaustion keer een factor, standaard 0.75 = 25% minder).
+author: Minecraft Bot

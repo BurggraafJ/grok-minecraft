@@ -218,6 +218,12 @@ def apply_settings(cfg, spec, svc):
         if not os.path.exists(full):
             pending.append(f)
             continue
+        if f.endswith(".json"):
+            try:
+                cf.json_set(full, keys)
+            except Fout as e:
+                core.event("MELD", f"patch {f}: {e}")
+            continue
         for k, val in keys.items():
             try:
                 cf.yaml_set(full, k.split("."), _yaml_literal(val))

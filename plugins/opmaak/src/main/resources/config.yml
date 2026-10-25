@@ -1,6 +1,7 @@
 # Teksten in MiniMessage (https://docs.advntr.dev/minimessage/format.html). Aanpassen via server.json → patches.
 # Placeholders: <naam>, <prefix>, <bericht>, <advancement>.
 toon-join-quit: true            # lobby: false (wachtkamer, geen meldingen)
+nicknames: true               # Essentials /nick overal tonen (chat, [+]/[-], advancements, tablijst, label boven het hoofd)
 join: "<gray>[<green>+</green>]</gray> <white><naam>"
 quit: "<gray>[<red>-</red>]</gray> <white><naam>"
 chat: "<prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>"

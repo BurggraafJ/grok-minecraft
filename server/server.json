@@ -36,7 +36,8 @@
       "spawn_mobs": false
     },
     "survival": {
-      "respawn_radius": 3
+      "respawn_radius": 3,
+      "players_sleeping_percentage": 0
     }
   },
   "rechten": {
@@ -72,7 +73,10 @@
       "essentials.depth",
       "essentials.compass",
       "essentials.suicide",
-      "essentials.enderchest"
+      "essentials.enderchest",
+      "essentials.nick",
+      "essentials.nick.color",
+      "chestsort.use"
     ]
   },
   "groepen": {
@@ -225,6 +229,66 @@
         "survival",
         "lobby"
       ]
+    },
+    {
+      "naam": "ChestSort+",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "chestsort-plus",
+      "versie": "0.5.1",
+      "bestand": "chestsort-plus-0.5.1.jar",
+      "url": "https://cdn.modrinth.com/data/nIk7yzza/versions/DSp76PMQ/chestsort-plus-0.5.1.jar",
+      "sha512": "b2726e6bcb2eb8a4722170d557e4c668f9aef3857d07b720fb2eb90e1441046ee74bd27eb0f1eb1bb14eb985fdf98c3c5d797760668dad1fc30096e54d1bf490",
+      "officieel": true
+    },
+    {
+      "naam": "TreeFeller",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "thizzyz-tree-feller",
+      "versie": "1.33.0",
+      "bestand": "TreeFeller-1.33.0.jar",
+      "url": "https://cdn.modrinth.com/data/YrkmSvXh/versions/bPFqoFvZ/TreeFeller-1.33.0.jar",
+      "sha512": "fc2f3536565294353e885377586f4266a023826ba91f43e43bad04a273e71f6f2c4a74a2d8017cd72b1ef1e922e24324865c902797a8e1fcd96419f42b0057a1",
+      "officieel": true
+    },
+    {
+      "naam": "Veinminer",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "veinminer",
+      "versie": "2.13.0",
+      "bestand": "veinminer-paper-2.13.0.jar",
+      "url": "https://cdn.modrinth.com/data/OhduvhIc/versions/k2CdezQi/veinminer-paper-2.13.0.jar",
+      "sha512": "e030125b1870ce05c3ed8c1841109f3d465f729e3d539f5a281caffe15b4dd0ec8df4237a68108eb08075a1d224127d1d53d3788f4a21a7842ecf995aaa28908",
+      "officieel": true
+    },
+    {
+      "naam": "GravesX",
+      "op": [
+        "survival"
+      ],
+      "bron": "modrinth",
+      "project": "gravesx",
+      "versie": "2026.4.9.2",
+      "bestand": "GravesX-2026.4.9.2.jar",
+      "url": "https://cdn.modrinth.com/data/vCFaodCy/versions/OpYRNo98/GravesX-2026.4.9.2.jar",
+      "sha512": "649ce06ec6ec256ac7da0b76e29d765af0ad3efc0ee6ea9f1c3050148052344ec848ff4bbe75eb3c5cebc4ad29476768f9c327ff676db3622f6c803f04ffedd0",
+      "officieel": true
+    },
+    {
+      "naam": "honger",
+      "bron": "eigen",
+      "pad": "plugins/honger",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {
@@ -250,10 +314,30 @@
         "newbies.kit": "",
         "delay-motd": -1,
         "notify-no-new-mail": false,
-        "send-fly-enable-on-join": false
+        "send-fly-enable-on-join": false,
+        "nickname-prefix": ""
       },
       "plugins/Chunky/config.yml": {
         "continue-on-restart": true
+      },
+      "plugins/Veinminer/settings.json": {
+        "mustSneak": true
+      },
+      "plugins/TreeFeller/config.yml": {
+        "with-sneak": true,
+        "without-sneak": false,
+        "replant-saplings": true,
+        "startup-logs": false
+      },
+      "plugins/GravesX/config/grave.yml": {
+        "settings.default.default.grave.time": -1,
+        "settings.default.default.protection.enabled": true,
+        "settings.default.default.protection.time": -1,
+        "settings.default.default.protection.open.killer": false,
+        "settings.default.default.experience.store": 1.0
+      },
+      "plugins/Honger/config.yml": {
+        "factor": 0.75
       }
     },
     "lobby": {

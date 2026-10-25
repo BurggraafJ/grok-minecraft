@@ -155,6 +155,23 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 - Groepen staan in `server.json` → `groepen` (LuckPerms, prefix); `leden: "admins"` volgt de admins in `data/spelers.json`. Iedereen anders is Member.
 - `mc apply` en `mc restart` melden in de game `[Server] Herladen gestart…` en `[Server] Klaar!`.
 - Herstart survival liever niet terwijl er gespeeld wordt (wacht tot niemand online is), tenzij Jelle het vraagt.
+- Nicknames: iedereen mag `/nick <naam>` (EssentialsX, kleuren met `&c` enz.; `/nick off` haalt hem weg; geen `~`
+  ervoor). `opmaak` toont de nick in chat, `[+]`/`[-]`, advancements en de tablijst, en boven het hoofd met een
+  zwevend tekstlabel (TextDisplay, niet opgeslagen in de wereld); de echte naamtag wordt dan verborgen via het
+  scoreboard-team `opmaak_nick`. Commando's (`/tpa`, `/msg`, bans) gebruiken nog de accountnaam.
+
+## Gemak in survival
+
+- Eén slapende speler is genoeg: gamerule `players_sleeping_percentage` 0.
+- **Veinminer**: sneaken + een ertsblok mijnen met een pickaxe = de hele ader (`plugins/Veinminer/settings.json`,
+  patches op `.json` werken ook, met punten voor nesting).
+- **TreeFeller**: sneaken + een stam hakken met een bijl = de hele boom; jonge boompjes worden teruggeplant.
+- **ChestSort+**: shift-klik op een leeg vakje in een kist of je inventaris sorteert hem; `/chestsort` voor instellingen
+  (permissie `chestsort.use` in `rechten.default`).
+- **GravesX**: bij doodgaan komen spullen en alle XP in een graf; alleen de eigenaar kan het openen (rechtsklik of kapot
+  slaan = alles terug), het verdwijnt nooit, coördinaten in de chat; `/graves` toont je graven.
+- **honger** (eigen code): honger zakt 25% langzamer (`factor` 0.75 in `plugins/Honger/config.yml` via patches).
+- **spark** zit ingebouwd in Paper: `mc cmd survival spark tps` / `spark profiler` (alleen OP/console).
 
 ## De wereld en het startersdorp
 
