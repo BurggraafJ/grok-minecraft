@@ -288,7 +288,7 @@ def status(cfg):
         pid = core.pid_of(svc)
         if not pid and (svc == "staging" or (svc == "tunnel" and cfg["tunnel"]["modus"] in ("geen", "direct"))):
             continue
-        info = {"draait": bool(pid)}
+        info = {"draait": bool(pid), "klaar": bool(pid) and core.ready(cfg, svc)}
         if pid:
             info["pid"] = pid
             info["ram"] = human(proc_rss(pid))
@@ -329,8 +329,10 @@ def print_status(st):
     say(f"Versies: Minecraft {st['versies']['minecraft']} · Paper build {st['versies']['paper']} · "
         f"Velocity {st['versies']['velocity']} · Java {st['versies']['java']}")
     for svc, i in st["diensten"].items():
-        if i["draait"]:
+        if i["draait"] and i.get("klaar"):
             say(f"  ✓ {svc:<9} draait  · {i.get('ram', '?')} RAM · {i.get('uptime_min', '?')} min op")
+        elif i["draait"]:
+            say(f"  … {svc:<9} start op · {i.get('ram', '?')} RAM")
         else:
             say(f"  ✗ {svc:<9} UIT")
     online = [n for v in st["spelers"].values() for n in v]
@@ -393,8 +395,11 @@ def selftest(cfg, login=None, extern=True):
         if not cfg.get("offline_test"):
             lines.append("· testlogin overgeslagen (alleen in offline-test; echte accounts loggen in via Microsoft)")
         else:
-            proto = net.status("127.0.0.1", cfg["poorten"]["survival"]).get("version", {}).get("protocol", -1)
-            good, why, trace = net.login_test("127.0.0.1", cfg["poorten"]["velocity"], login, proto)
+            try:
+                proto = net.status("127.0.0.1", cfg["poorten"]["survival"]).get("version", {}).get("protocol", -1)
+                good, why, trace = net.login_test("127.0.0.1", cfg["poorten"]["velocity"], login, proto)
+            except (OSError, ValueError, Fout) as e:
+                good, why, trace = False, f"geen verbinding ({e})", []
             check(good, f"testlogin {login} via Velocity → backend: {why}", f"testlogin mislukt: {why} [{' '.join(trace[-8:])}]")
     errs = [l for l in tail(core.latest_log("velocity"), 200) if "nable to connect" in l or "orwarding" in l and "ERROR" in l]
     check(not errs, "Velocity-log zonder verbindingsfouten", "Velocity-log: " + (errs[-1][-200:] if errs else ""))

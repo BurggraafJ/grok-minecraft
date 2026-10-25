@@ -87,6 +87,7 @@ Elk uur draait je routine `mc ensure --stil`. Lege uitvoer = alles goed: zeg nie
 | `box heeft N min stilgestaan` | De box sliep: de server was onbereikbaar. Zie **De box slaapt**. |
 | `wijziging uit GitHub niet toegepast` | Lees de fout (meestal staging), herstel in de repo of revert, en meld het. |
 | `commits nog niet op GitHub` | Herinner Jelle één keer aan de deploy key (`mc git sleutel`). |
+| `updates beschikbaar: …` | Zelfde Minecraft-versie (Paper-build, Velocity, plugins): `mc update apply` als er niemand online is. Een nieuwe Minecraft-versie of een wachtlijst-plugin: zeg het Jelle in één zin met je advies. |
 | `schijf bijna vol` | `mc backups`, oude labels weg, `data/state/losse-plugins` leeg; meld alleen als het niet lukt. |
 | `backup mislukt` / `save-on mislukt` | `mc cmd survival save-on`, dan `mc backup`; meld het als het blijft falen. |
 

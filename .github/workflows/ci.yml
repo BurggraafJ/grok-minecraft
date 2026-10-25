@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Unit-tests en server.json
         run: |
           python3 -m unittest discover -s tests -v
@@ -27,7 +27,7 @@ jobs:
     env:
       MC_HOME: /tmp/mc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Klein geheugenplan voor de runner
         run: |
           mkdir -p "$MC_HOME/data"
@@ -64,7 +64,7 @@ jobs:
       - name: Crash → watchdog herstart
         run: |
           kill -9 "$(python3 -c "import json,os; print(json.load(open(os.environ['MC_HOME'] + '/data/state/survival.pid'))['pid'])")"
-          for i in $(seq 1 60); do sleep 3; ./mc status | grep -q "✓ survival" && break; done
+          for i in $(seq 1 100); do sleep 3; ./mc status | grep -q "✓ survival" && break; done
           ./mc status
           ./mc ensure | tee /dev/stderr | grep -q "survival was gestopt en is herstart"
           ./mc selftest --login CiSpeler

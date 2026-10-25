@@ -171,6 +171,7 @@ def ensure(stil=False):
         time.sleep(3)
     if gitops.is_repo():
         lines += _git_sync(cfg)
+    lines += _weekly_update_check()
     for line in core.new_events():
         if " MELD " in line:
             lines.append("MELD " + line.split(" MELD ", 1)[1] + f"  ({line[:16].replace('T', ' ')} UTC)")
@@ -215,3 +216,19 @@ def _git_sync(cfg):
     except Fout as e:
         out.append(f"MELD git: {e}")
     return out
+
+
+def _weekly_update_check():
+    """Eens per week: zijn er nieuwere versies? Eén MELD met de lijst; de Bot beslist volgens BOT.md, Updates."""
+    path = os.path.join(STATE, "update-check.json")
+    last = read_json(path, {})
+    if time.time() - last.get("t", 0) < 7 * 86400:
+        return []
+    try:
+        rows = applymod.update_check(specmod.load())
+    except Fout as e:
+        return [f"MELD update-check mislukt: {e}"]
+    write_json(path, {"t": time.time(), "rijen": rows})
+    if not rows:
+        return []
+    return ["MELD updates beschikbaar: " + "; ".join(f"{w} {n} → {m}{(' (' + o + ')') if o else ''}" for w, n, m, o in rows)]
