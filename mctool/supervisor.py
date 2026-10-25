@@ -145,9 +145,7 @@ class Supervisor:
         if (core.running("velocity") and not core.held("survival") and core.ready(cfg, "survival")
                 and (self.need_send_back or time.time() - getattr(self, "last_lobby_check", 0) > 10)):
             self.last_lobby_check = time.time()
-            wachtend = core.players(cfg, "lobby") or []
-            for naam in wachtend:
-                ops.velocity_cmd(f"send {naam} survival")
+            wachtend = ops.terug_naar_survival(cfg)
             if wachtend:
                 self.log(f"terug naar survival uit de lobby: {', '.join(wachtend)}")
             self.need_send_back = False

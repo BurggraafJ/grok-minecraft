@@ -71,6 +71,28 @@ class aankondiging:
         return False
 
 
+def terug_naar_survival(cfg, aftellen=True):
+    """Iedereen in de lobby terug naar survival: eerst groot aftellen (plugin lobby-melding: titels 5-4-3-2-1 met
+    geluid, daarna stuurt die zelf via Velocity), wie na een paar seconden nog in de lobby staat stuurt Velocity."""
+    wachtend = core.players(cfg, "lobby") or []
+    if not wachtend:
+        return []
+    if aftellen:
+        try:
+            out = core.rcon(cfg, "lobby", "lobbymelding terug")
+            if "aftellen" in out:
+                for _ in range(20):  # 5 s aftellen + marge
+                    time.sleep(0.5)
+                    if not core.players(cfg, "lobby"):
+                        return wachtend
+                time.sleep(1)
+        except (Fout, OSError):
+            pass
+    for naam in core.players(cfg, "lobby") or []:
+        velocity_cmd(f"send {naam} survival")
+    return wachtend
+
+
 def restart(cfg, svc, als_leeg=False, between=None):
     """Herstart een dienst. Survival: spelers wachten in de lobby en gaan daarna vanzelf terug.
 
@@ -135,7 +157,7 @@ def _restart_survival(cfg, between):
     if not core.wait_ready(cfg, "survival", 600):
         raise Fout("survival komt niet terug; spelers staan in de lobby. Laatste log:\n" + "\n".join(core._tail_log("survival")))
     if moved or core.players(cfg, "lobby"):
-        velocity_cmd("send all survival")
+        terug_naar_survival(cfg)
     say(f"  survival herstart{f' ({len(spelers)} spelers via de lobby teruggezet)' if spelers else ''}")
 
 

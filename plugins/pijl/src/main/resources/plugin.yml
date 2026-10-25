@@ -1,0 +1,13 @@
+name: Pijl
+version: '${version}'
+main: nl.burggraaf.mc.pijl.Pijl
+api-version: '${apiVersion}'
+description: "Richtingspijl in de actionbar naar de dichtstbijzijnde andere speler (⬆ Lotte 132m). /pijl zet hem aan of uit."
+author: Minecraft Bot
+commands:
+  pijl:
+    description: "Zet de richtingspijl naar de dichtstbijzijnde speler aan of uit"
+    permission: pijl.gebruik
+permissions:
+  pijl.gebruik:
+    default: true

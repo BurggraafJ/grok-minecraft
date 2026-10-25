@@ -2,3 +2,6 @@ titel: "Even geduld"
 ondertitel: "De server herstart, je gaat zo vanzelf terug"
 bericht: "Server herstart even, je gaat zo vanzelf terug naar survival. Je spullen zijn veilig."   # leeg = geen chatregel
 actionbar: "Server herstart even, je gaat zo vanzelf terug…"   # leeg = geen actionbar
+parkour: true          # korte parkour naast de spawn (start groen, checkpoint goud, finish smaragd)
+aftellen: 5            # seconden aftellen (titels + geluid) voordat iedereen terug naar survival gaat
+terug-naar: survival   # Velocity-servernaam

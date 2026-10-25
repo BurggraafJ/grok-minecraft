@@ -289,6 +289,14 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "pijl",
+      "bron": "eigen",
+      "pad": "plugins/pijl",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {
