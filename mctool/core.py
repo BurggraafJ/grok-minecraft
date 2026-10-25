@@ -82,14 +82,15 @@ def save_spelers(d):
 def memory_plan(total_bytes, gedeeld=False):
     """Geheugen in MB per dienst. Reserve voor het OS, de Bot en zijn browser; meer als de box gedeeld is."""
     total = total_bytes // MB
-    reserve = 3072 + (6144 if gedeeld else 0)
+    reserve = 4096 + (6144 if gedeeld else 0)  # OS, de Bot, zijn browser en de page cache
     if total < 8192:
         plan = {"velocity": 384, "lobby": 512, "staging": 1024}
     else:
         plan = {"velocity": 512, "lobby": 768, "staging": 2048}
     overhead = 450  # per JVM buiten de heap (metaspace, netty, threads)
-    rest = total - reserve - sum(v + overhead for v in plan.values()) - overhead
-    survival = max(1536, min(10240, rest))
+    survival_overhead = 1200  # gemeten: survival-RSS ≈ heap + 1,1 GB (G1, netty, chunk-caches)
+    rest = total - reserve - sum(v + overhead for v in plan.values()) - survival_overhead
+    survival = max(1536, min(6144, rest))  # 6 GB is ruim voor een vriendenserver met simulation-distance 6
     plan["survival"] = survival // 256 * 256
     return plan
 

@@ -165,6 +165,19 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   binnengekomen tijdens de herstart) binnen ~10 s terug zodra survival draait. Op staging (motd STAGING) doet de plugin niets.
   Terugsturen gaat met groot aftellen 5-4-3-2-1 (titels + geluid; `mc cmd lobby lobbymelding terug`, `ops.terug_naar_survival`),
   daarna stuurt de plugin via Velocity (BungeeCord-kanaal); wie dan nog in de lobby staat stuurt `mc` met `send`.
+- Vóór een herlading van survival met spelers online telt survival groot af (5-4-3-2-1, plugin `lobbyreis`), dan
+  gaat iedereen naar de lobby.
+- `/parkour` (`/parcours`) werkt altijd vanuit survival: plek onthouden, naar de lobby-parkour; `/terug` in de lobby
+  brengt je terug op die plek. `/blijf` in de lobby (tijdens een herstart): niet automatisch terug (ook niet door de
+  watchdog) tot je `/terug` typt. Vrijwillige bezoekers komen via `lobby/plugins/LobbyMelding/bezoekers.txt` binnen;
+  `mc` vraagt `lobbymelding wie-terug` wie wél terug moet.
+- In de lobby heeft iedereen in vak 5 een wol-blokje: groen «Blijven: uit» / rood «Blijven: aan»; rechtsklik wisselt
+  (= `/blijf` / `/terug`; uit terwijl survival er is = meteen aftellen en terug). Blijvers worden bewaard in
+  `blijvers.txt` (overleeft een lobbyherstart, vergeten na 3 min als ze niet terugkomen). Na een herstart krijgen
+  blijvers het aftellen ook, met «✔ Survival is weer open» en zonder teleport.
+- Geheugen: survival-heap 5,75 GB (`core.memory_plan`: max 6 GB, reserve 4 GB; survival-RSS ≈ heap + 1,1 GB).
+- `mc apply` met spelers online altijd los starten (`setsid nohup mc apply > data/state/apply-laatste.out &`): wordt een
+  apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan.
 - In de lobby staat parkour in **5 levels** (Opwarmer, Sprongen, Zigzag, Hoogtevrees, Meester), elk in een eigen baan
   langs de spawn met een huisje bij de start (groen blok) en een finishplatform (smaragd, lantaarns). Tijd in de
   actionbar, finish in de chat; wie valt begint het level opnieuw. Voortgang per speler in
@@ -192,7 +205,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   na een herstart: Essentials' `essentials.fly.safelogin` (OP's hebben die) zet vliegen aan als je "in de lucht" inlogt;
   die staat nu expliciet uit via `rechten.default` → `-essentials.fly.safelogin` (een `-` ervoor = permissie false).
 - **pijl** (eigen code): actionbar met een pijl naar de dichtstbijzijnde andere speler in dezelfde wereld («⬆ Lotte 132m»,
-  relatief aan je kijkrichting, binnen 1000 blokken, 2× per seconde, even stil na bed/instappen/dood); `/pijl` aan/uit.
+  relatief aan je kijkrichting, binnen 1000 blokken, 2× per seconde, even stil na bed/instappen/dood). `/pijl` opent een
+  menu: per speler volgen aan/uit (hoofden, groen = zichtbaar), Kompas (extra N-pijl), Onvindbaar (jij staat in niemands
+  pijl), pijl aan/uit. Per speler bewaard in `plugins/Pijl/instellingen.yml`.
 - **spark** zit ingebouwd in Paper: `mc cmd survival spark tps` / `spark profiler` (alleen OP/console).
 
 ## De wereld en het startersdorp
@@ -203,7 +218,11 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   biome) en zet de spawn naast de dorpsbel. Daarna nooit meer, behalve met `/startersdorp opnieuw`.
 - Na de bouw staat er een kaartje van boven in `data/servers/survival/plugins/Startersdorp/kaartje.png`; stuur dat
   Jelle als hij vraagt hoe het eruitziet.
-- Chunky genereert 1500 blokken rond de spawn vooraf (pauzeert als er gespeeld wordt; `mc cmd survival chunky progress`).
+- Chunky genereert 3000 blokken rond de spawn vooraf op de achtergrond; de watchdog pauzeert bij TPS < 19 of tick > 35 ms
+  en gaat door bij TPS ≥ 19,8 (`mc cmd survival chunky progress`).
+- Antilag (25-10): view 8 / simulation 6, `optimize-explosions`, redstone ALTERNATE_CURRENT, hopper move-event uit,
+  entity-save-limieten voor pijlen/orbs/projectielen, monster-despawn 32/96, merge-radius item 1,5 / exp 2, spawn-limits
+  licht omlaag (60/9/15/10), Aikar-flags (Paper-advies) met 7,5 GB. Meten: `mc cmd survival mspt` en `tps`.
 - Nieuwe spelers krijgen geen startspullen (Jelles wens) en starten bij het dorp; Essentials praat de
   taal van hun client (`per-player-locale`).
 

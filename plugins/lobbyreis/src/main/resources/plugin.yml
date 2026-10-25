@@ -1,0 +1,19 @@
+name: Lobbyreis
+version: '${version}'
+main: nl.burggraaf.mc.lobbyreis.Lobbyreis
+api-version: '${apiVersion}'
+description: "/parkour (/parcours): je plek in survival onthouden en naar de lobby-parkour; met /terug kom je hier terug."
+author: Minecraft Bot
+commands:
+  parkour:
+    description: "Naar de parkour in de lobby (je plek hier wordt onthouden; /terug brengt je terug)"
+    aliases: [parcours]
+    permission: lobbyreis.gebruik
+  lobbyreis:
+    description: "/lobbyreis aftellen [s] (console, door mc vóór een herlading)"
+    permission: lobbyreis.beheer
+permissions:
+  lobbyreis.beheer:
+    default: op
+  lobbyreis.gebruik:
+    default: true

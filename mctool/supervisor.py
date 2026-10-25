@@ -225,26 +225,45 @@ class Supervisor:
             write_json(path, sorted(seen | {p.lower() for p in new}))
 
     def pregen(self, cfg, n):
-        """Chunky genereert de wereld vooraf; pauzeer als er gespeeld wordt, ga door als het leeg is."""
+        """Chunky genereert de wereld vooraf op de achtergrond. Ook met spelers online, maar alleen zolang de server
+        het makkelijk bijhoudt: pauze als de TPS onder 19 zakt of de tick boven 35 ms komt, verder bij TPS ≥ 19.8."""
         path = os.path.join(STATE, "pregen.json")
         st = read_json(path, {})
         if st.get("status") not in ("bezig", "pauze") or not core.ready(cfg, "survival"):
             return
         try:
-            if n and st["status"] == "bezig":
+            tps, mspt = self._tps(cfg)
+            zwaar = n and (tps < 19.0 or mspt > 35)
+            licht = not n or (tps >= 19.8 and mspt < 25)
+            if zwaar and st["status"] == "bezig":
                 core.rcon(cfg, "survival", "chunky pause")
                 st["status"] = "pauze"
-            elif not n and st["status"] == "pauze":
+            elif licht and st["status"] == "pauze":
                 out = core.rcon(cfg, "survival", "chunky continue")
                 st["status"] = "klaar" if "no tasks" in out.lower() else "bezig"
             elif st["status"] == "bezig":
                 out = core.rcon(cfg, "survival", "chunky progress")
                 if "no tasks" in out.lower() or "not running" in out.lower():
                     st["status"] = "klaar"
-                    core.event("INFO", "de wereld rond de spawn is vooraf gegenereerd (Chunky klaar)")
+                    core.event("INFO", f"de wereld rond de spawn is vooraf gegenereerd (Chunky klaar, straal {st.get('radius')})")
         except (Fout, OSError):
             return
         write_json(path, st)
+
+    @staticmethod
+    def _tps(cfg):
+        """(TPS laatste minuut, gemiddelde tick in ms laatste minuut) via Paper's /tps en /mspt."""
+        import re
+        tps, mspt = 20.0, 0.0
+        m = re.search(r"([\d.]+)\*?,", re.sub(r"§.", "", core.rcon(cfg, "survival", "tps")).split(":", 1)[-1])
+        if m:
+            tps = float(m.group(1))
+        parts = re.sub(r"§.", "", core.rcon(cfg, "survival", "mspt")).strip().splitlines()[-1].split(",")
+        if len(parts) >= 3:
+            m = re.search(r"([\d.]+)/", parts[2])
+            if m:
+                mspt = float(m.group(1))
+        return tps, mspt
 
     def offsite(self, cfg):
         """Eén keer per dag de nieuwste backup naar GitHub, in een los proces (uploaden mag even duren)."""

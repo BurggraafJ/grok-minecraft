@@ -1,0 +1,3 @@
+lobby: lobby                     # Velocity-servernaam van de lobby
+# Bestand waarin de lobby leest wie vrijwillig komt (blijft tot /terug). Relatief aan de servermap.
+bezoekers-bestand: ../lobby/plugins/LobbyMelding/bezoekers.txt

@@ -211,12 +211,12 @@ def _start_pregen(cfg):
         return "pregeneratie liep al"
     try:
         core.rcon(cfg, "survival", "chunky spawn")
-        core.rcon(cfg, "survival", "chunky radius 1500")
+        core.rcon(cfg, "survival", "chunky radius 3000")
         core.rcon(cfg, "survival", "chunky start")
     except (Fout, OSError) as e:
         return f"pregeneratie niet gestart ({e})"
-    write_json(path, {"status": "bezig", "start": time.time(), "radius": 1500})
-    return "Chunky genereert 1500 blokken rond de spawn vooraf (pauzeert vanzelf als er gespeeld wordt)"
+    write_json(path, {"status": "bezig", "start": time.time(), "radius": 3000})
+    return "Chunky genereert 3000 blokken rond de spawn vooraf (pauzeert vanzelf bij lage TPS)"
 
 
 def ensure(stil=False):

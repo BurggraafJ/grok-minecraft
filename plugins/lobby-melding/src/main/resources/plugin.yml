@@ -2,12 +2,20 @@ name: LobbyMelding
 version: '${version}'
 main: nl.burggraaf.mc.lobbymelding.LobbyMelding
 api-version: '${apiVersion}'
-description: "Veilige wachtkamer bij een herstart: geen schade of honger, vaste vloer, parkour, titel/chat/actionbar, aftellen en terug naar survival."
+description: "Veilige wachtkamer bij een herstart: geen schade of honger, vaste vloer, parkour-levels, titel/chat/actionbar, aftellen en terug naar survival."
 author: Minecraft Bot
 commands:
   lobbymelding:
-    description: "/lobbymelding terug: aftellen 5-4-3-2-1 en iedereen terug naar survival (console, door mc)"
+    description: "/lobbymelding terug | wie-terug (console, door mc)"
     permission: lobbymelding.beheer
+  blijf:
+    description: "In de lobby blijven (niet automatisch terug naar survival) tot je /terug typt"
+    permission: lobbymelding.speler
+  terug:
+    description: "Terug naar survival"
+    permission: lobbymelding.speler
 permissions:
   lobbymelding.beheer:
     default: op
+  lobbymelding.speler:
+    default: true

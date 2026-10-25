@@ -12,8 +12,8 @@
   "instellingen": {
     "survival": {
       "difficulty": "normal",
-      "view-distance": 10,
-      "simulation-distance": 8,
+      "view-distance": 8,
+      "simulation-distance": 6,
       "spawn-protection": 0,
       "max-players": 20,
       "allow-flight": true
@@ -298,6 +298,14 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "lobbyreis",
+      "bron": "eigen",
+      "pad": "plugins/lobbyreis",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {
@@ -347,11 +355,36 @@
       },
       "plugins/Honger/config.yml": {
         "factor": 0.75
+      },
+      "config/paper-world-defaults.yml": {
+        "environment.optimize-explosions": true,
+        "misc.redstone-implementation": "ALTERNATE_CURRENT",
+        "hopper.disable-move-event": true,
+        "chunks.entity-per-chunk-save-limit.arrow": 16,
+        "chunks.entity-per-chunk-save-limit.experience_orb": 16,
+        "chunks.entity-per-chunk-save-limit.snowball": 8,
+        "chunks.entity-per-chunk-save-limit.ender_pearl": 8,
+        "chunks.entity-per-chunk-save-limit.fireball": 8,
+        "chunks.entity-per-chunk-save-limit.small_fireball": 8,
+        "entities.spawning.despawn-ranges.monster.hard": 96,
+        "entities.spawning.despawn-ranges.monster.soft": 32,
+        "entities.spawning.non-player-arrow-despawn-rate": 60,
+        "entities.spawning.creative-arrow-despawn-rate": 60
+      },
+      "spigot.yml": {
+        "world-settings.default.merge-radius.item": 1.5,
+        "world-settings.default.merge-radius.exp": 2.0
+      },
+      "bukkit.yml": {
+        "spawn-limits.monsters": 60,
+        "spawn-limits.animals": 9,
+        "spawn-limits.water-ambient": 15,
+        "spawn-limits.ambient": 10
       }
     },
     "lobby": {
       "plugins/LobbyMelding/config.yml": {
-        "bericht": "Server herstart even, je gaat zo vanzelf terug naar survival. Je spullen zijn veilig.",
+        "bericht": "Server herstart even, je gaat zo vanzelf terug naar survival. Typ /blijf om te blijven parkouren, /terug om terug te gaan.",
         "actionbar": "Server herstart even, je gaat zo vanzelf terug…"
       },
       "plugins/Opmaak/config.yml": {

@@ -6,7 +6,7 @@ description: "Richtingspijl in de actionbar naar de dichtstbijzijnde andere spel
 author: Minecraft Bot
 commands:
   pijl:
-    description: "Zet de richtingspijl naar de dichtstbijzijnde speler aan of uit"
+    description: "Menu: wie je pijl volgt, kompas, onvindbaar, pijl aan/uit"
     permission: pijl.gebruik
 permissions:
   pijl.gebruik:

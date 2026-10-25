@@ -60,7 +60,7 @@ class aankondiging:
         _AANKONDIGING["diepte"] -= 1
         if _AANKONDIGING["diepte"] == 0:
             for _ in range(30):  # wie in de lobby wachtte, eerst terug laten komen
-                if not core.players(self.cfg, "lobby"):
+                if not _lobby_terug(self.cfg):
                     break
                 time.sleep(0.5)
             time.sleep(1)
@@ -71,24 +71,39 @@ class aankondiging:
         return False
 
 
-def terug_naar_survival(cfg, aftellen=True):
-    """Iedereen in de lobby terug naar survival: eerst groot aftellen (plugin lobby-melding: titels 5-4-3-2-1 met
-    geluid, daarna stuurt die zelf via Velocity), wie na een paar seconden nog in de lobby staat stuurt Velocity."""
+def _lobby_terug(cfg):
+    """Wie in de lobby moet terug naar survival? Niet wie /blijf typte of via /parkour kwam (plugin lobby-melding)."""
     wachtend = core.players(cfg, "lobby") or []
-    if not wachtend:
+    try:
+        out = core.rcon(cfg, "lobby", "lobbymelding wie-terug")
+        if "terug:" in out:
+            namen = {n.strip().lower() for n in out.split("terug:", 1)[1].split(",") if n.strip()}
+            return [n for n in wachtend if n.lower() in namen]
+    except (Fout, OSError):
+        pass
+    return wachtend
+
+
+def terug_naar_survival(cfg, aftellen=True, ook_blijvers=False):
+    """Iedereen in de lobby (behalve wie daar wil blijven) terug naar survival: eerst groot aftellen (plugin
+    lobby-melding: titels 5-4-3-2-1 met geluid, daarna stuurt die zelf via Velocity); wie na een paar seconden nog in
+    de lobby staat stuurt Velocity. ook_blijvers (na een herstart): wie blijft krijgt het aftellen ook mee, met aan het
+    eind «Survival is weer open», maar blijft staan."""
+    wachtend = _lobby_terug(cfg)
+    if not wachtend and not (ook_blijvers and core.players(cfg, "lobby")):
         return []
     if aftellen:
         try:
-            out = core.rcon(cfg, "lobby", "lobbymelding terug")
+            out = core.rcon(cfg, "lobby", "lobbymelding terug alle" if ook_blijvers else "lobbymelding terug")
             if "aftellen" in out:
                 for _ in range(20):  # 5 s aftellen + marge
                     time.sleep(0.5)
-                    if not core.players(cfg, "lobby"):
+                    if not _lobby_terug(cfg):
                         return wachtend
                 time.sleep(1)
         except (Fout, OSError):
             pass
-    for naam in core.players(cfg, "lobby") or []:
+    for naam in _lobby_terug(cfg):
         velocity_cmd(f"send {naam} survival")
     return wachtend
 
@@ -134,6 +149,11 @@ def _restart_survival(cfg, between):
     spelers = core.players(cfg, "survival") or []
     moved = False
     if spelers and core.running("velocity") and core.ready(cfg, "lobby"):
+        try:  # plugin Lobbyreis: groot aftellen 5-4-3-2-1 op survival, dan pas naar de lobby
+            if "aftellen" in core.rcon(cfg, "survival", "lobbyreis aftellen 5"):
+                time.sleep(5.3)
+        except (Fout, OSError):
+            pass
         try:  # plugin Opmaak: geen [-]-regels nu iedereen even naar de lobby gaat
             core.rcon(cfg, "survival", "opmaak stil 60")
         except (Fout, OSError):
@@ -157,7 +177,7 @@ def _restart_survival(cfg, between):
     if not core.wait_ready(cfg, "survival", 600):
         raise Fout("survival komt niet terug; spelers staan in de lobby. Laatste log:\n" + "\n".join(core._tail_log("survival")))
     if moved or core.players(cfg, "lobby"):
-        terug_naar_survival(cfg)
+        terug_naar_survival(cfg, ook_blijvers=True)
     say(f"  survival herstart{f' ({len(spelers)} spelers via de lobby teruggezet)' if spelers else ''}")
 
 
