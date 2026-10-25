@@ -62,9 +62,10 @@ public final class Extras extends JavaPlugin implements Listener {
             new Schakelaar("honger", "Honger trager", Material.COOKED_BEEF, "Honger zakt 25% langzamer"),
             new Schakelaar("slapen", "Slapen met één", Material.RED_BED, "Eén speler in bed = dag"),
             new Schakelaar("oven", "Instant oven", Material.FURNACE, "Ovens, blast furnaces en smokers smelten direct"),
-            new Schakelaar("handlicht", "Handlicht", Material.TORCH, "Fakkel of lantaarn in je hand geeft licht"));
-    /** Indeling: 5 bovenaan, 4 eronder, symmetrisch; status-ruitje steeds eronder. */
-    private static final int[] SLOTS = {9, 11, 13, 15, 17, 28, 30, 32, 34};
+            new Schakelaar("handlicht", "Handlicht", Material.TORCH, "Fakkel of lantaarn in je hand geeft licht"),
+            new Schakelaar("kist", "Kist", Material.ENDER_CHEST, "Persoonlijke opslag van 54 vakken (/kist)"));
+    /** Indeling: 5 bovenaan, 5 eronder, symmetrisch; status-ruitje steeds eronder. */
+    private static final int[] SLOTS = {9, 11, 13, 15, 17, 27, 29, 31, 33, 35};
 
     private File bestand;
     private YamlConfiguration stand;
@@ -130,6 +131,7 @@ public final class Extras extends JavaPlugin implements Listener {
             case "pijl" -> eigenVlag("Pijl", v);
             case "honger" -> eigenVlag("Honger", v);
             case "handlicht" -> eigenVlag("Handlicht", v);
+            case "kist" -> eigenVlag("Kist", v);
             case "slapen" -> {
                 // aan: alleen terugzetten als wij hem eerder op 100 hadden gezet (de waarde uit server.json is 0)
                 for (World w : Bukkit.getWorlds()) {
@@ -219,6 +221,7 @@ public final class Extras extends JavaPlugin implements Listener {
         m.inv = Bukkit.createInventory(m, 45, Component.text("Server-extra's", NamedTextColor.DARK_RED));
         vul(m);
         p.openInventory(m.inv);
+        openMenus.put(p.getUniqueId(), m);
         return true;
     }
 
@@ -255,9 +258,10 @@ public final class Extras extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onKlik(InventoryClickEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Menu m)) return;
+        Menu m = menuVan(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId());
+        if (m == null) return;
         e.setCancelled(true);
-        if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != m.inv) return;
+        if (!(e.getWhoClicked() instanceof Player p) || e.getRawSlot() < 0 || e.getRawSlot() >= e.getView().getTopInventory().getSize()) return;
         if (!p.hasPermission("extras.admin")) {
             p.closeInventory();
             return;
@@ -281,6 +285,22 @@ public final class Extras extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onSleep(InventoryDragEvent e) {
-        if (e.getView().getTopInventory().getHolder() instanceof Menu) e.setCancelled(true);
+        if (menuVan(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId()) != null) e.setCancelled(true);
     }
+
+    /** Open menu's per speler (naast de holder-check; sommige servers geven een kopie-inventory terug). */
+    private final Map<UUID, Menu> openMenus = new HashMap<>();
+
+    private Menu menuVan(Inventory top, UUID speler) {
+        if (top.getHolder(false) instanceof Menu m) return m;
+        Menu m = openMenus.get(speler);
+        return m != null && top.getSize() == m.inv.getSize() ? m : null;
+    }
+
+    @EventHandler
+    public void onMenuDicht(org.bukkit.event.inventory.InventoryCloseEvent e) {
+        Menu m = openMenus.get(e.getPlayer().getUniqueId());
+        if (m != null && menuVan(e.getView().getTopInventory(), e.getPlayer().getUniqueId()) == m) openMenus.remove(e.getPlayer().getUniqueId());
+    }
+
 }

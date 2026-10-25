@@ -85,6 +85,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             return;
         }
         itemKey = new NamespacedKey(this, "blijf-item");
+        kiezerKey = new NamespacedKey(this, "level-kiezer");
         leesBlijvers();
         // Onthouden blijvers (van vóór een lobbyherstart) die niet binnen 3 minuten terug zijn: vergeten.
         Set<UUID> uitBestand = new HashSet<>(blijft);
@@ -105,6 +106,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 maakVeilig(p);
                 geefItem(p);
+                geefKiezer(p);
                 if (aftellend.contains(p.getUniqueId())) continue;
                 Long t = startTijd.get(p.getUniqueId());
                 if (t != null) {
@@ -220,9 +222,11 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
     };
     /** Levels 1-5 oost (+x), 6-10 west (−x); z van de laan. */
     private static final int[] LAAN_Z = {-40, -20, 0, 20, 40};
-    private static final int HUT_X = 24;       // binnenkant laan: hut van x=24..30 (oost) / −30..−24 (west)
+    private static final int HUT_X = 24;       // binnenkant laan: huis van x=24..32 (oost) / −32..−24 (west)
+    private static final int HUIS = 9;         // huis is 9×9
+    private static final String[] KLEUR = {"LIGHT_BLUE", "LIME", "ORANGE", "WHITE", "YELLOW", "BROWN", "GREEN", "CYAN", "PURPLE", "RED"};
     private static final int AVENUE_X = 19;    // laan-boulevard x=19..21
-    private static final int BOUW_VERSIE = 3;  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
+    private static final int BOUW_VERSIE = 4;  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
 
     private int vloerY;                                   // y van de vloer in de huisjes = y van de startblokken
     private Location[][] banen;                           // per level de sta-plek op elk blok
@@ -257,6 +261,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
 
     private void bouwParkour() {
         World w = veilig.getWorld();
+        tijdenBestand = new File(getDataFolder(), "tijden.yml");
+        tijden = YamlConfiguration.loadConfiguration(tijdenBestand);
         File marker = new File(getDataFolder(), "gebouwd.txt");
         String versie = BOUW_VERSIE + ":" + grondY;
         try {
@@ -267,8 +273,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         long t0 = System.currentTimeMillis();
         vloerY = grondY + 1;
         if (plaats) {
-            vul(w, -90, grondY + 1, -60, 95, grondY + 30, 60, Material.AIR);   // oude bouwsels weg
-            vul(w, -90, grondY, -60, 95, grondY, 60, Material.GRASS_BLOCK);
+            vul(w, -120, grondY + 1, -60, 120, grondY + 30, 60, Material.AIR);   // oude bouwsels weg
+            vul(w, -120, grondY, -60, 120, grondY, 60, Material.GRASS_BLOCK);
         }
         bouwPlaza(w);
         banen = new Location[LEVELS.length][];
@@ -378,11 +384,11 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
                 if (Math.abs(z) < 6) continue;
                 boom(w, sx * (AVENUE_X - 4), z + 6, z % 32 == 0 ? org.bukkit.TreeType.CHERRY : org.bukkit.TreeType.TREE);
             }
-            for (int lz : LAAN_Z) vul(w, sx * (AVENUE_X + 3), g, lz - 1, sx * (HUT_X - 1), g, lz + 1, Material.DIRT_PATH);
+            for (int lz : LAAN_Z) vul(w, sx * (AVENUE_X + 3), g, lz - 1, sx * (HUT_X - 2), g, lz + 1, Material.DIRT_PATH);
         }
     }
 
-    /** Huis (7×7, schilddak) met deur naar de boulevard en deur naar de baan, ramen, lantaarns en inrichting. */
+    /** Huis (9×9, hoge wanden, getrapt dak) met deur naar de boulevard en een open voorkant naar de baan. */
     private void bouwHuis(World w, int sx, int zc, int l) {
         Material[] planken = {Material.OAK_PLANKS, Material.SPRUCE_PLANKS, Material.BIRCH_PLANKS, Material.CHERRY_PLANKS,
                 Material.DARK_OAK_PLANKS, Material.JUNGLE_PLANKS, Material.MANGROVE_PLANKS, Material.ACACIA_PLANKS,
@@ -390,40 +396,77 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         Material[] stammen = {Material.STRIPPED_OAK_LOG, Material.SPRUCE_LOG, Material.BIRCH_LOG, Material.CHERRY_LOG,
                 Material.DARK_OAK_LOG, Material.JUNGLE_LOG, Material.MANGROVE_LOG, Material.ACACIA_LOG,
                 Material.STRIPPED_BAMBOO_BLOCK, Material.CRIMSON_STEM};
-        Material[] daken = {Material.RED_TERRACOTTA, Material.BLUE_TERRACOTTA, Material.GREEN_TERRACOTTA, Material.PINK_TERRACOTTA,
-                Material.BLACK_TERRACOTTA, Material.ORANGE_TERRACOTTA, Material.CYAN_TERRACOTTA, Material.YELLOW_TERRACOTTA,
-                Material.LIME_TERRACOTTA, Material.PURPLE_TERRACOTTA};
-        Material plank = planken[l], stam = stammen[l], dak = daken[l];
-        int xa = sx * HUT_X, xb = sx * (HUT_X + 6);
-        int x1 = Math.min(xa, xb), x2 = Math.max(xa, xb), z1 = zc - 3, z2 = zc + 3, y = vloerY;
+        Material plank = planken[l], stam = stammen[l];
+        Material dak = Material.valueOf(KLEUR[l] + "_TERRACOTTA");
+        Material kleur = Material.valueOf(KLEUR[l] + "_CONCRETE");
+        int xa = sx * HUT_X, xb = sx * (HUT_X + HUIS - 1);
+        int x1 = Math.min(xa, xb), x2 = Math.max(xa, xb), z1 = zc - 4, z2 = zc + 4, y = vloerY;
+        int baanX = sx > 0 ? x2 : x1, boulX = sx > 0 ? x1 : x2;
         vul(w, x1, y - 1, z1, x2, y - 1, z2, Material.COBBLESTONE);
         vul(w, x1, y, z1, x2, y, z2, plank);                                 // vloer
-        vul(w, x1, y + 1, z1, x2, y + 4, z2, plank);                         // wanden
-        vul(w, x1 + 1, y + 1, z1 + 1, x2 - 1, y + 4, z2 - 1, Material.AIR);
-        for (int[] c : new int[][]{{x1, z1}, {x1, z2}, {x2, z1}, {x2, z2}}) vul(w, c[0], y + 1, c[1], c[0], y + 4, c[1], stam);
-        vul(w, x1, y + 1, zc, x1, y + 2, zc, Material.AIR);                  // deuren
-        vul(w, x2, y + 1, zc, x2, y + 2, zc, Material.AIR);
-        for (int x : new int[]{x1 + 2, x2 - 2}) {                            // ramen
+        vul(w, x1, y + 1, z1, x2, y + 5, z2, plank);                         // wanden (5 hoog)
+        vul(w, x1 + 1, y + 1, z1 + 1, x2 - 1, y + 5, z2 - 1, Material.AIR);
+        for (int[] c : new int[][]{{x1, z1}, {x1, z2}, {x2, z1}, {x2, z2}}) vul(w, c[0], y + 1, c[1], c[0], y + 5, c[1], stam);
+        vul(w, x1, y + 5, z1, x2, y + 5, z1, kleur);                         // gekleurde band
+        vul(w, x1, y + 5, z2, x2, y + 5, z2, kleur);
+        vul(w, boulX, y + 1, zc, boulX, y + 3, zc, Material.AIR);            // deur naar de boulevard (3 hoog)
+        vul(w, baanX, y + 1, z1 + 1, baanX, y + 4, z2 - 1, Material.AIR);    // open voorkant naar de baan
+        for (int x : new int[]{x1 + 2, x1 + 4, x2 - 2}) {                    // ramen
             vul(w, x, y + 2, z1, x, y + 3, z1, Material.GLASS_PANE);
             vul(w, x, y + 2, z2, x, y + 3, z2, Material.GLASS_PANE);
         }
-        for (int i = 0; i < 4; i++) vul(w, x1 - 1 + i, y + 5 + i, z1 - 1 + i, x2 + 1 - i, y + 5 + i, z2 + 1 - i, dak); // dak
-        zet(w, (x1 + x2) / 2, y + 9, zc, Material.LANTERN);
+        for (int i = 0; i < 5; i++) vul(w, x1 - 1 + i, y + 6 + i, z1 - 1 + i, x2 + 1 - i, y + 6 + i, z2 + 1 - i, dak); // dak
+        vul(w, x1 + 1, y + 6, z1 + 1, x2 - 1, y + 6, z2 - 1, Material.AIR);  // hoog plafond binnen
+        zet(w, (x1 + x2) / 2, y + 11, zc, Material.LANTERN);
         // inrichting
         zet(w, x1 + 1, y + 1, z1 + 1, Material.BOOKSHELF);
-        zet(w, x1 + 1, y + 2, z1 + 1, Material.LANTERN);
+        zet(w, x1 + 1, y + 2, z1 + 1, Material.BOOKSHELF);
         zet(w, x2 - 1, y + 1, z1 + 1, Material.CRAFTING_TABLE);
         zet(w, x1 + 1, y + 1, z2 - 1, Material.POTTED_RED_TULIP);
         zet(w, x2 - 1, y + 1, z2 - 1, Material.BARREL);
-        zet(w, x2 - 1, y + 2, z2 - 1, Material.LANTERN);
-        vul(w, x1 + 2, y + 1, zc - 1, x2 - 2, y + 1, zc + 1, Material.AIR);
-        for (int x = x1 + 1; x <= x2 - 1; x++) zet(w, x, y + 1, zc, Material.RED_CARPET);
-        zet(w, x1 + 3, y + 4, zc, Material.GLOWSTONE);
-        // opstapjes en lantaarns bij de deuren
-        zet(w, x1 - 1, y, zc, Material.STONE_BRICK_SLAB);
-        zet(w, x2 + 1, y, zc, Material.STONE_BRICK_SLAB);
-        lantaarnpaal(w, x1 - 1, zc - 2);
-        lantaarnpaal(w, x1 - 1, zc + 2);
+        for (int x = x1 + 1; x <= x2 - 1; x++) zet(w, x, y, zc, kleur);      // loper
+        zet(w, (x1 + x2) / 2, y + 5, zc, Material.GLOWSTONE);
+        zet(w, x1 + 2, y + 5, zc, Material.GLOWSTONE);
+        zet(w, x2 - 2, y + 5, zc, Material.GLOWSTONE);
+        // opstapje en lantaarns bij de deur
+        zet(w, boulX - sx, y, zc, Material.STONE_BRICK_SLAB);
+        lantaarnpaal(w, boulX - sx, zc - 2);
+        lantaarnpaal(w, boulX - sx, zc + 2);
+    }
+
+    /** Stadion langs de baan: tribunes aan beide kanten, vlaggen in de levelkleur en schijnwerpers op de hoeken. */
+    private void bouwStadion(World w, int l, int sx, int zc, int xVan, int xTot) {
+        Material kleur = Material.valueOf(KLEUR[l] + "_CONCRETE");
+        Material vlag = Material.valueOf(KLEUR[l] + "_BANNER");
+        int y = vloerY, xa = Math.min(xVan, xTot), xb = Math.max(xVan, xTot);
+        for (int kant : new int[]{-1, 1}) {
+            org.bukkit.block.BlockFace rug = kant < 0 ? org.bukkit.block.BlockFace.NORTH : org.bukkit.block.BlockFace.SOUTH;
+            org.bukkit.block.data.type.Stairs trap = (org.bukkit.block.data.type.Stairs) Material.SMOOTH_QUARTZ_STAIRS.createBlockData();
+            trap.setFacing(rug);
+            for (int x = xa; x <= xb; x++) {
+                for (int r = 0; r < 3; r++) {
+                    int z = zc + kant * (6 + r);
+                    vul(w, x, y - 1, z, x, y - 1 + r, z, kleur);              // onderbouw
+                    if ((x - xa) % 6 == 5) zet(w, x, y + r, z, Material.SEA_LANTERN);
+                    else zet(w, x, y + r, z, trap);
+                }
+                int zr = zc + kant * 9;
+                vul(w, x, y - 1, zr, x, y + 3, zr, kleur);                    // achterwand
+                if ((x - xa) % 4 == 0) {
+                    zet(w, x, y + 4, zr, Material.OAK_FENCE);
+                    zet(w, x, y + 5, zr, vlag);
+                }
+            }
+            for (int x : new int[]{xa - 1, xb + 1}) schijnwerper(w, x, zc + kant * 9);
+        }
+    }
+
+    private void schijnwerper(World w, int x, int z) {
+        int y = vloerY;
+        vul(w, x, y - 1, z, x, y + 9, z, Material.POLISHED_DEEPSLATE_WALL);
+        vul(w, x - 1, y + 10, z - 1, x + 1, y + 10, z + 1, Material.POLISHED_DEEPSLATE);
+        vul(w, x - 1, y + 11, z - 1, x + 1, y + 11, z + 1, Material.SEA_LANTERN);
+        zet(w, x, y + 12, z, Material.LIGHTNING_ROD);
     }
 
     private void bouwLevel(World w, int l) {
@@ -431,9 +474,10 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         int sx = l < 5 ? 1 : -1;
         int zc = LAAN_Z[l % 5];
         bouwHuis(w, sx, zc, l);
-        huisje[l] = new Location(w, sx * (HUT_X + 3) + 0.5, vloerY + 1, zc + 0.5, sx > 0 ? -90f : 90f, 0f);
+        huisje[l] = new Location(w, sx * (HUT_X + 4) + 0.5, vloerY + 1, zc + 0.5, sx > 0 ? -90f : 90f, 0f);
         java.util.List<Location> punten = new java.util.ArrayList<>();
-        int x = sx * (HUT_X + 7), y = vloerY, z = zc;     // startblok vlak buiten de deur
+        int x = sx * (HUT_X + HUIS), y = vloerY, z = zc;  // startblok vlak voor de open voorkant
+        int verst = x;
         org.bukkit.block.BlockFace ladderKant = sx > 0 ? org.bukkit.block.BlockFace.WEST : org.bukkit.block.BlockFace.EAST;
         punt(w, x, y, z, Material.LIME_CONCRETE, l, punten);
         Stap[] st = lv.stappen();
@@ -468,6 +512,13 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
                             zet(w, x + dx, y, z + dz, rand ? Material.GLASS : Material.WATER);
                             vul(w, x + dx, y + 1, z + dz, x + dx, y + 3, z + dz, Material.AIR);
                         }
+                    int idx = punten.size();                  // het hele bad telt als één punt (bodem en rand)
+                    for (int dx = -2; dx <= 2; dx++)
+                        for (int dz = -2; dz <= 2; dz++) {
+                            blokNaarPunt.put(sleutel(x + dx, y - 1, z + dz), new int[]{l, idx});
+                            if (Math.abs(dx) == 2 || Math.abs(dz) == 2) blokNaarPunt.put(sleutel(x + dx, y, z + dz), new int[]{l, idx});
+                        }
+                    punten.add(new Location(w, x + 0.5, y + 1, z + 0.5, 0f, 0f));
                 }
                 default -> {
                     x += sx * k.dx();
@@ -485,12 +536,69 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             }
         }
         banen[l] = punten.toArray(new Location[0]);
-        label(new Location(w, sx * (HUT_X + 3) + 0.5, vloerY + 11, zc + 0.5),
+        for (Location pt : banen[l]) verst = sx > 0 ? Math.max(verst, pt.getBlockX()) : Math.min(verst, pt.getBlockX());
+        bouwStadion(w, l, sx, zc, sx * (HUT_X + HUIS + 1), verst + sx * 2);
+        float kijk = sx > 0 ? -90f : 90f;
+        banen[l][0].setYaw(kijk);
+        label(new Location(w, sx * (HUT_X + 4) + 0.5, vloerY + 13, zc + 0.5),
                 Component.text("Level " + (l + 1), NamedTextColor.GOLD, TextDecoration.BOLD)
                         .append(Component.newline()).append(Component.text(lv.naam(), NamedTextColor.WHITE))
                         .append(Component.newline()).append(Component.text(lv.moeite(), NamedTextColor.YELLOW)));
         label(banen[l][0].clone().add(0, 1.3, 0), Component.text("Start", NamedTextColor.GREEN, TextDecoration.BOLD));
         label(banen[l][banen[l].length - 1].clone().add(0, 1.8, 0), Component.text("Finish level " + (l + 1), NamedTextColor.GREEN, TextDecoration.BOLD));
+        Location bord = new Location(w, sx * (HUT_X + HUIS + 2) + 0.5, vloerY + 4.5, zc + 0.5);
+        borden[l] = bord.getWorld().spawn(bord, TextDisplay.class, d -> {
+            d.setPersistent(false);
+            d.setBillboard(Display.Billboard.CENTER);
+            d.setBackgroundColor(org.bukkit.Color.fromARGB(160, 0, 0, 0));
+            d.addScoreboardTag("lobbymelding");
+        });
+        werkBordBij(l);
+    }
+
+    // ── scoreborden en beste tijden ─────────────────────────────────────────────────────────
+
+    private TextDisplay[] borden = new TextDisplay[10];
+    private YamlConfiguration tijden;
+    private File tijdenBestand;
+
+    private long besteTijd(UUID id, int l) {
+        return tijden == null ? 0 : tijden.getLong("level" + (l + 1) + "." + id + ".ms", 0);
+    }
+
+    private void slaTijdOp(Player p, int l, long ms) {
+        if (tijden == null) return;
+        long oud = besteTijd(p.getUniqueId(), l);
+        if (oud != 0 && oud <= ms) return;
+        String pad = "level" + (l + 1) + "." + p.getUniqueId();
+        tijden.set(pad + ".ms", ms);
+        tijden.set(pad + ".naam", net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(p.displayName()));
+        try {
+            tijden.save(tijdenBestand);
+        } catch (IOException e) {
+            getLogger().warning("tijden.yml: " + e.getMessage());
+        }
+        werkBordBij(l);
+    }
+
+    private void werkBordBij(int l) {
+        TextDisplay d = borden[l];
+        if (d == null || !d.isValid()) return;
+        TextColor kleur = TextColor.color(Material.valueOf(KLEUR[l] + "_WOOL") == Material.WHITE_WOOL ? 0xCFEFFF
+                : org.bukkit.DyeColor.valueOf(KLEUR[l]).getColor().asRGB());
+        Component t = Component.text("Level " + (l + 1) + " · " + LEVELS[l].naam(), kleur, TextDecoration.BOLD)
+                .append(Component.newline()).append(Component.text(LEVELS[l].moeite(), NamedTextColor.YELLOW));
+        List<Map.Entry<String, Long>> lijst = new java.util.ArrayList<>();
+        var sec = tijden == null ? null : tijden.getConfigurationSection("level" + (l + 1));
+        if (sec != null) for (String k : sec.getKeys(false)) lijst.add(Map.entry(sec.getString(k + ".naam", "?"), sec.getLong(k + ".ms")));
+        lijst.sort(Map.Entry.comparingByValue());
+        if (lijst.isEmpty()) t = t.append(Component.newline()).append(Component.text("Nog niemand gehaald", NamedTextColor.GRAY));
+        String[] medaille = {"🥇", "🥈", "🥉"};
+        for (int i = 0; i < Math.min(3, lijst.size()); i++) {
+            t = t.append(Component.newline()).append(Component.text(medaille[i] + " " + lijst.get(i).getKey() + "  ", NamedTextColor.WHITE))
+                    .append(Component.text(tijd(lijst.get(i).getValue()), NamedTextColor.GRAY));
+        }
+        d.text(t);
     }
 
     private void punt(World w, int x, int y, int z, Material m, int l, java.util.List<Location> punten) {
@@ -568,16 +676,28 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         if (banen == null || e.getFrom().getBlock().equals(to.getBlock()) && e.getFrom().getY() == to.getY()) return;
         UUID id = p.getUniqueId();
         Integer bezig = bezigLevel.get(id);
-        if (bezig != null && p.isOnGround() && to.getY() < vloerY + 0.5) { // gevallen: terug naar de start van het level
-            Location terug = banen[bezig][0].clone();
-            terug.setYaw(to.getYaw());
-            p.teleport(terug);
-            startTijd.put(id, System.currentTimeMillis());
-            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
-            return;
-        }
         if (!p.isOnGround()) return;
         int[] punt = puntOnder(to);
+        if (bezig != null && (punt == null || punt[0] != bezig)) {
+            // gevallen tijdens een run: duidelijk lager dan het laatst gehaalde blok, of op de grond van het dorp
+            int lp = laatstePunt.getOrDefault(id, 0);
+            double hoogte = banen[bezig][lp].getY();
+            boolean gevallen = to.getY() < hoogte - 1.5 || to.getY() < vloerY + 0.1;
+            if (gevallen && lp == 0) {                       // alleen van het startblok gestapt: run stilletjes stoppen
+                bezigLevel.remove(id);
+                startTijd.remove(id);
+                laatstePunt.remove(id);
+                return;
+            }
+            if (gevallen) {
+                Location terug = banen[bezig][0].clone();
+                p.teleport(terug);
+                startTijd.put(id, System.currentTimeMillis());
+                laatstePunt.put(id, 0);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
+                return;
+            }
+        }
         if (punt == null) return;
         int l = punt[0], i = punt[1];
         if (i == 0) {
@@ -602,15 +722,130 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
                     .append(Component.text("] ", NamedTextColor.GRAY)).append(p.displayName().colorIfAbsent(NamedTextColor.WHITE))
                     .append(Component.text(" haalde level " + (l + 1) + " (" + LEVELS[l].naam() + ") in ", NamedTextColor.GRAY))
                     .append(Component.text(tijd(ms), NamedTextColor.WHITE)));
-            p.showTitle(Title.title(Component.text("Level " + (l + 1) + " gehaald!", NamedTextColor.GREEN, TextDecoration.BOLD),
-                    Component.text(tijd(ms) + (nieuw && l + 1 < LEVELS.length ? " · volgende keer level " + (l + 2) : ""), NamedTextColor.WHITE),
-                    Title.Times.times(Duration.ofMillis(150), Duration.ofSeconds(2), Duration.ofMillis(500))));
+            slaTijdOp(p, l, ms);
+            p.showTitle(Title.title(Component.text("✔ Level " + (l + 1) + " gehaald!", NamedTextColor.GREEN, TextDecoration.BOLD),
+                    Component.text(tijd(ms), NamedTextColor.WHITE),
+                    Title.Times.times(Duration.ofMillis(150), Duration.ofMillis(1700), Duration.ofMillis(150))));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1f);
             if (l + 1 < LEVELS.length) {
+                aftellendLevel.add(id);
+                for (int n = 3; n >= 1; n--) {
+                    final int getal = n;
+                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                        if (!p.isOnline() || aftellend.contains(id) || bezigLevel.containsKey(id)) return;
+                        p.showTitle(Title.title(Component.text(String.valueOf(getal), NamedTextColor.GOLD, TextDecoration.BOLD),
+                                Component.text("Level " + (l + 2) + ": " + LEVELS[l + 1].naam(), NamedTextColor.WHITE),
+                                Title.Times.times(Duration.ZERO, Duration.ofMillis(900), Duration.ofMillis(100))));
+                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1f, 1f + (3 - getal) * 0.25f);
+                    }, 40L + (3 - n) * 20L);
+                }
                 Bukkit.getScheduler().runTaskLater(this, () -> {
-                    if (p.isOnline() && !aftellend.contains(id) && !bezigLevel.containsKey(id)) naarVolgendLevel(p);
-                }, 60L);
+                    aftellendLevel.remove(id);
+                    if (!p.isOnline() || aftellend.contains(id) || bezigLevel.containsKey(id)) return;
+                    p.teleport(banen[l + 1][0]);
+                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.4f);
+                }, 100L);
             }
+        }
+    }
+
+    private final Set<UUID> aftellendLevel = new HashSet<>();
+
+    // ── level-kiezer (kompas in de hotbar) ──────────────────────────────────────────────────
+
+    private static final int KIEZER_SLOT = 0;
+    private NamespacedKey kiezerKey;
+
+    private static final class Kiezer implements org.bukkit.inventory.InventoryHolder {
+        org.bukkit.inventory.Inventory inv;
+        public org.bukkit.inventory.Inventory getInventory() { return inv; }
+    }
+
+    private final Map<UUID, Kiezer> openKiezers = new HashMap<>();
+
+    private ItemStack kiezerItem() {
+        ItemStack it = new ItemStack(Material.COMPASS);
+        ItemMeta m = it.getItemMeta();
+        m.displayName(Component.text("Level kiezen", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
+        m.lore(List.of(Component.text("Klik: kies een parkour-level", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+        m.getPersistentDataContainer().set(kiezerKey, PersistentDataType.BYTE, (byte) 1);
+        it.setItemMeta(m);
+        return it;
+    }
+
+    private boolean isKiezer(ItemStack it) {
+        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(kiezerKey);
+    }
+
+    /** Level-slot in het menu: 1-5 bovenaan, 6-10 onderaan, steeds op 0,2,4,6,8. */
+    private static int kiezerSlot(int l) {
+        return (l < 5 ? 0 : 18) + (l % 5) * 2;
+    }
+
+    private void openKiezer(Player p) {
+        if (banen == null) return;
+        Kiezer k = new Kiezer();
+        k.inv = Bukkit.createInventory(k, 27, Component.text("Parkour-levels", NamedTextColor.DARK_GREEN));
+        int gehaald = gehaald(p.getUniqueId());
+        ItemStack glas = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta gm = glas.getItemMeta();
+        gm.setHideTooltip(true);
+        glas.setItemMeta(gm);
+        for (int i = 0; i < 27; i++) k.inv.setItem(i, glas);
+        for (int l = 0; l < LEVELS.length; l++) {
+            boolean klaar = l < gehaald, volgende = l == gehaald, open = l <= gehaald;
+            ItemStack it = new ItemStack(klaar ? Material.LIME_CONCRETE : volgende ? Material.YELLOW_CONCRETE : Material.GRAY_CONCRETE);
+            ItemMeta m = it.getItemMeta();
+            NamedTextColor c = klaar ? NamedTextColor.GREEN : volgende ? NamedTextColor.YELLOW : NamedTextColor.DARK_GRAY;
+            m.displayName(Component.text((klaar ? "✔ " : volgende ? "▶ " : "🔒 ") + "Level " + (l + 1) + " · " + LEVELS[l].naam(), c)
+                    .decoration(TextDecoration.ITALIC, false).decoration(TextDecoration.BOLD, true));
+            long best = besteTijd(p.getUniqueId(), l);
+            List<Component> lore = new java.util.ArrayList<>();
+            lore.add(Component.text("Moeilijkheid: " + LEVELS[l].moeite(), NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Beste tijd: " + (best > 0 ? tijd(best) : "—"), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text(open ? "Klik: naar de start" : "Haal eerst level " + gehaald + (gehaald == 0 ? "" : "") + " ", open ? NamedTextColor.DARK_GRAY : NamedTextColor.RED)
+                    .decoration(TextDecoration.ITALIC, false));
+            m.lore(lore);
+            m.setEnchantmentGlintOverride(klaar);
+            it.setItemMeta(m);
+            it.setAmount(l + 1);
+            k.inv.setItem(kiezerSlot(l), it);
+        }
+        p.openInventory(k.inv);
+        openKiezers.put(p.getUniqueId(), k);
+    }
+
+    private boolean isKiezerMenu(org.bukkit.inventory.Inventory top, UUID id) {
+        if (top.getHolder(false) instanceof Kiezer) return true;
+        Kiezer k = openKiezers.get(id);
+        return k != null && top.getSize() == k.inv.getSize() && top.getType() == k.inv.getType()
+                && java.util.Objects.equals(top.getItem(kiezerSlot(0)), k.inv.getItem(kiezerSlot(0)));
+    }
+
+    @EventHandler
+    public void onKiezerDicht(org.bukkit.event.inventory.InventoryCloseEvent e) {
+        if (isKiezerMenu(e.getView().getTopInventory(), e.getPlayer().getUniqueId())) openKiezers.remove(e.getPlayer().getUniqueId());
+    }
+
+    private void kiezerKlik(InventoryClickEvent e) {
+        e.setCancelled(true);
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+        int slot = e.getRawSlot();
+        if (slot < 0 || slot >= 27) return;
+        for (int l = 0; l < LEVELS.length; l++) {
+            if (kiezerSlot(l) != slot) continue;
+            if (l > gehaald(p.getUniqueId())) {
+                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.7f, 0.6f);
+                return;
+            }
+            p.closeInventory();
+            bezigLevel.remove(p.getUniqueId());
+            startTijd.remove(p.getUniqueId());
+            laatstePunt.remove(p.getUniqueId());
+            p.teleport(banen[l][0]);
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.6f, 1.3f);
+            p.sendMessage(Component.text("Level " + (l + 1) + ": " + LEVELS[l].naam() + ". Spring van het groene blok!", NamedTextColor.AQUA));
+            return;
         }
     }
 
@@ -735,6 +970,14 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         p.getInventory().setItem(ITEM_SLOT, blijfItem(aan));
     }
 
+    private void geefKiezer(Player p) {
+        if (kiezerKey == null || isKiezer(p.getInventory().getItem(KIEZER_SLOT))) return;
+        for (int i = 0; i < p.getInventory().getSize(); i++) {
+            if (i != KIEZER_SLOT && isKiezer(p.getInventory().getItem(i))) p.getInventory().setItem(i, null);
+        }
+        p.getInventory().setItem(KIEZER_SLOT, kiezerItem());
+    }
+
     private File blijfBestand() {
         return new File(getDataFolder(), "blijvers.txt");
     }
@@ -799,35 +1042,63 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
         });
     }
 
-    @EventHandler
+    private final Map<UUID, Long> laatsteKlik = new HashMap<>();
+
+    /** Eén klik = één wissel: links of rechts, lucht of blok; dubbele events (zelfde klik) binnen 400 ms tellen niet. */
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onKlikItem(PlayerInteractEvent e) {
-        if (e.getHand() != EquipmentSlot.HAND || !isBlijfItem(e.getItem())) return;
-        if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (e.getAction() == Action.PHYSICAL) return;
+        ItemStack it = e.getHand() == EquipmentSlot.OFF_HAND ? null : e.getItem();
+        boolean blijf = isBlijfItem(it), kiezer = isKiezer(it);
+        if (!blijf && !kiezer) {
+            if (e.getHand() == EquipmentSlot.OFF_HAND && (isBlijfItem(e.getPlayer().getInventory().getItemInMainHand())
+                    || isKiezer(e.getPlayer().getInventory().getItemInMainHand()))) e.setCancelled(true);
+            return;
+        }
         e.setCancelled(true);
-        zetBlijven(e.getPlayer(), !blijft.contains(e.getPlayer().getUniqueId()));
+        e.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+        e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+        Player p = e.getPlayer();
+        long nu = System.currentTimeMillis();
+        if (nu - laatsteKlik.getOrDefault(p.getUniqueId(), 0L) < 400) return;
+        laatsteKlik.put(p.getUniqueId(), nu);
+        if (kiezer) {
+            openKiezer(p);
+            return;
+        }
+        zetBlijven(p, !blijft.contains(p.getUniqueId()));
+        p.updateInventory();
+        p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, blijft.contains(p.getUniqueId()) ? 0.8f : 1.4f);
     }
 
     @EventHandler
     public void onInventoryKlik(InventoryClickEvent e) {
-        if (isBlijfItem(e.getCurrentItem()) || isBlijfItem(e.getCursor())
-                || (e.getHotbarButton() == ITEM_SLOT) || (e.getClickedInventory() == e.getWhoClicked().getInventory() && e.getSlot() == ITEM_SLOT)) {
+        if (isKiezerMenu(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId())) {
+            kiezerKlik(e);
+            return;
+        }
+        boolean eigenInv = e.getClickedInventory() != null && e.getClickedInventory().getType() == org.bukkit.event.inventory.InventoryType.PLAYER;
+        if (isBlijfItem(e.getCurrentItem()) || isBlijfItem(e.getCursor()) || isKiezer(e.getCurrentItem()) || isKiezer(e.getCursor())
+                || e.getHotbarButton() == ITEM_SLOT || e.getHotbarButton() == KIEZER_SLOT
+                || (eigenInv && (e.getSlot() == ITEM_SLOT || e.getSlot() == KIEZER_SLOT))) {
             e.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onSleep(InventoryDragEvent e) {
-        if (isBlijfItem(e.getOldCursor())) e.setCancelled(true);
+        if (isBlijfItem(e.getOldCursor()) || isKiezer(e.getOldCursor())
+                || isKiezerMenu(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (isBlijfItem(e.getItemDrop().getItemStack())) e.setCancelled(true);
+        if (isBlijfItem(e.getItemDrop().getItemStack()) || isKiezer(e.getItemDrop().getItemStack())) e.setCancelled(true);
     }
 
     @EventHandler
     public void onWissel(PlayerSwapHandItemsEvent e) {
-        if (isBlijfItem(e.getMainHandItem()) || isBlijfItem(e.getOffHandItem())) e.setCancelled(true);
+        if (isBlijfItem(e.getMainHandItem()) || isBlijfItem(e.getOffHandItem()) || isKiezer(e.getMainHandItem()) || isKiezer(e.getOffHandItem())) e.setCancelled(true);
     }
 
     /** Kwam deze speler net via /parkour uit survival? (bezoekers.txt, geschreven door de plugin lobbyreis) */
@@ -871,6 +1142,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener {
             bewaarBlijvers();
         }
         geefItem(speler);
+        geefKiezer(speler);
         if (bezoeker) {
             speler.sendMessage(Component.text("Welkom bij de parkour! Typ /terug om terug te gaan naar je plek in survival.", NamedTextColor.AQUA));
             if (banen != null) naarVolgendLevel(speler);

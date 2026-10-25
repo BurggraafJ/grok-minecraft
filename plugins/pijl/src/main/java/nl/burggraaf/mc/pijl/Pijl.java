@@ -294,6 +294,7 @@ public final class Pijl extends JavaPlugin implements Listener {
         menu.inv = Bukkit.createInventory(menu, (hoofdRijen + plekRijen + 2) * 9, Component.text("Pijl-instellingen", NamedTextColor.DARK_AQUA));
         vulMenu(p, menu);
         p.openInventory(menu.inv);
+        openMenus.put(p.getUniqueId(), menu);
     }
 
     /** Kolommen voor k items, symmetrisch rond het midden (bij een even aantal blijft het midden vrij). */
@@ -390,9 +391,10 @@ public final class Pijl extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onKlik(InventoryClickEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Menu menu)) return;
+        Menu menu = menuVan(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId());
+        if (menu == null) return;
         e.setCancelled(true);
-        if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != menu.inv) return;
+        if (!(e.getWhoClicked() instanceof Player p) || e.getRawSlot() < 0 || e.getRawSlot() >= e.getView().getTopInventory().getSize()) return;
         UUID id = p.getUniqueId();
         int slot = e.getRawSlot();
         if (menu.plekken.containsKey(slot)) {
@@ -440,7 +442,7 @@ public final class Pijl extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onSleep(InventoryDragEvent e) {
-        if (e.getView().getTopInventory().getHolder() instanceof Menu) e.setCancelled(true);
+        if (menuVan(e.getView().getTopInventory(), e.getWhoClicked().getUniqueId()) != null) e.setCancelled(true);
     }
 
     @Override
@@ -508,4 +510,20 @@ public final class Pijl extends JavaPlugin implements Listener {
         }
         return List.of();
     }
+
+    /** Open menu's per speler (naast de holder-check; sommige servers geven een kopie-inventory terug). */
+    private final Map<UUID, Menu> openMenus = new HashMap<>();
+
+    private Menu menuVan(Inventory top, UUID speler) {
+        if (top.getHolder(false) instanceof Menu m) return m;
+        Menu m = openMenus.get(speler);
+        return m != null && top.getSize() == m.inv.getSize() ? m : null;
+    }
+
+    @EventHandler
+    public void onMenuDicht(org.bukkit.event.inventory.InventoryCloseEvent e) {
+        Menu m = openMenus.get(e.getPlayer().getUniqueId());
+        if (m != null && menuVan(e.getView().getTopInventory(), e.getPlayer().getUniqueId()) == m) openMenus.remove(e.getPlayer().getUniqueId());
+    }
+
 }
