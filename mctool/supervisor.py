@@ -1,3 +1,4 @@
+import re
 """De watchdog: één Python-proces dat de diensten in de lucht houdt, zonder Bot-beurten.
 
 Elke 5 s: draait wat moet draaien? Elke minuut: hartslag (slaapdetectie), spelers tellen, tunneladres.
@@ -218,6 +219,8 @@ class Supervisor:
         known = {s["naam"].lower() for s in core.spelers()["spelers"]}
         path = os.path.join(STATE, "gemelde-spelers.json")
         seen = set(read_json(path, []))
+        # alleen echte namen: een RCON-foutmelding (bv. "Cannot perform command async") is geen speler
+        online = [p for p in online if re.fullmatch(r"[A-Za-z0-9_.]{1,16}", p)]
         new = [p for p in online if p.lower() not in known and p.lower() not in seen]
         if new:
             core.event("MELD", f"onbekende speler(s) online: {', '.join(new)} (niet in spelers.json). "
