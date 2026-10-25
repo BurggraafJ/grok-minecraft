@@ -1,0 +1,3 @@
+# Veilige AFK via /afk (te wisselen in /admin). Uit = gewone Essentials-/afk.
+aan: true
+aftellen-seconden: 10

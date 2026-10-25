@@ -1,0 +1,4 @@
+# Getemde dieren onsterfelijk (te wisselen in /admin).
+aan: true
+# Hoe lang een dier uitgeteld blijft (seconden); voeren met zijn eigen voedsel herstelt meteen.
+herstel-seconden: 180

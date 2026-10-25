@@ -180,11 +180,13 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan.
 - **Lobby** (procedureel gebouwd door lobby-melding): ronde plaza met fontein, lantaarns, bankjes, bloemen en bomen;
   boulevards oost en west (x=±19..21) met lantaarns; 10 parkour-levels in stadions: oost (z −40..40) Opwarmer,
-  Sprongen, Zigzag, IJsbaan, Ladders; west Honing, Slijm, Waterval, Neo, Meester. Per level een 9×9-huis in de
-  levelkleur met open voorkant, tribunes aan beide kanten, vlaggen, schijnwerpers en een scorebord (top 3 tijden,
-  `tijden.yml`). Alleen herbouwd als `BOUW_VERSIE` of de grondhoogte verandert (`gebouwd.txt`).
-  Reset alleen tijdens een run: duidelijk lager dan het laatst gehaalde blok of op de dorpsgrond; wie alleen van
-  het startblok stapt stopt de run. Na een level: «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
+  Sprongen, Zigzag, IJsbaan, Ladders; west Honing, Slijm, Waterval, Neo, Meester. Per level een 11×11-huis in de
+  levelkleur met open voorkant en een binnenmuur «Ranglijst» (top 5), tribunes aan beide kanten, vlaggen,
+  schijnwerpers en een scorebord (top 5). Beste tijd per speler per level in `tijden.yml`; «Nieuw record!» bij een
+  PB, broadcast bij een levelrecord. Alleen herbouwd als `BOUW_VERSIE` of de grondhoogte verandert (`gebouwd.txt`).
+  Val-check alleen tijdens een run (PlayerMoveEvent + elke 2 ticks): 2 blokken onder het laatste/volgende blok, op
+  iets staan dat geen baan is (grond, tribune, huis; randjes van baanblokken tellen mee), of in ander water = terug
+  naar de start (600 ms debounce). Wie alleen achteruit/opzij van het startblok stapt stopt de run. Na een level: «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
   Hotbar: vak 1 kompas «Level kiezen» (menu: groen = gehaald, geel = volgende, grijs = op slot; klik = naar de
   start), vak 5 het blijven-blokje (één klik = één wissel, 400 ms debounce), vak 9 rode kleurstof «Opnieuw» (= `/parkour
   reset`: naar de start van je huidige level, timer opnieuw; `/parkour kies` = level-kiezer). Een run start altijd
@@ -227,12 +229,21 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   stapelgroottes (max 64): meer per vak kan alleen door items zelf te veranderen, en dat geeft dupe-/desync-risico.
   Geen automatische overloop naar de kist (bewust, te sterk). `/ec` en varianten zijn voor iedereen geblokkeerd,
   ook OP's (`-essentials.enderchest` + commando-blokkade in Kist).
+- **Huisdieren** (eigen plugin): getemde dieren met eigenaar gaan niet dood. Dodelijke schade = uitgeteld (KO):
+  1 HP, onkwetsbaar, zitten (wolf/kat/papegaai) of AI uit, wolkjes en label «💤 Rust uit… m:ss»; na 3 min
+  (`herstel-seconden`) of door voeren met zijn eigen eten weer vol leven + actionbar voor de eigenaar. Void, lava en
+  stikken: eerst naar Essentials-home `home` of het bed van de eigenaar. `/kill` werkt gewoon. Gewonde dieren tonen
+  een HP-label (eigen naam blijft bewaard in de PDC en komt terug). KO-stand in de PDC (overleeft herstart).
+- **Veilige AFK** (eigen plugin VeiligAfk): `/afk` (ook /away) neemt Essentials over: 10 s aftellen (bewegen, schade of
+  aanvallen breekt af), daarna geen schade (behalve /kill), geen honger, mobs negeren je, broadcast. Bewegen,
+  aanvallen of blokken breken/plaatsen/gebruiken heft het op («Je bent weer kwetsbaar»). [AFK] in TAB en naamlabel
+  via opmaak; Essentials' auto-AFK geeft alleen die tag, geen bescherming. In /admin uit = gewone Essentials-/afk.
 - **Instant oven** (plugin Extras): ovens, blast furnaces en smokers smelten in 1 tick per item; brandstof blijft nodig.
 - **`/admin`** (plugin Extras, alleen OP's): menu om server-extra's live aan/uit te zetten: TreeFeller, Veinminer,
-  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht, Kist. Console: `admin` (overzicht) en
+  Graven, ChestSort+, Pijl, Honger trager, Slapen met één, Instant oven, Handlicht, Kist, Huisdieren, Veilige AFK. Console: `admin` (overzicht) en
   `admin <naam> aan|uit`. Hoe het werkt: TreeFeller eist `extras.treefeller` (patch in server.json), ChestSort+
   `chestsort.use`, GravesX `graves.place`: uit = die permissie tijdelijk afnemen (Bukkit-attachment, niet in
-  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht/Kist via `aan:` in hun config.
+  LuckPerms bewaard). Veinminer via zijn eigen hoofdschakelaar. Pijl/Honger/Handlicht/Kist/Huisdieren/VeiligAfk via `aan:` in hun config.
   Slapen = gamerule 0 ↔ 100.
   **Verhouding met "repo is de waarheid":** de repo legt vast wát er geïnstalleerd en ingesteld is; de /admin-stand is
   bewuste live-bediening en staat in `servers/survival/plugins/Extras/schakelaars.yml` (in backups, niet in git).

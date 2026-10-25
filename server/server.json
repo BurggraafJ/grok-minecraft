@@ -330,6 +330,22 @@
       "op": [
         "survival"
       ]
+    },
+    {
+      "naam": "huisdieren",
+      "bron": "eigen",
+      "pad": "plugins/huisdieren",
+      "op": [
+        "survival"
+      ]
+    },
+    {
+      "naam": "veiligafk",
+      "bron": "eigen",
+      "pad": "plugins/veiligafk",
+      "op": [
+        "survival"
+      ]
     }
   ],
   "datapacks": {

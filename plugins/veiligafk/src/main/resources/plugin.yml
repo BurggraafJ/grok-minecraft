@@ -1,0 +1,7 @@
+name: VeiligAfk
+version: '${version}'
+main: nl.burggraaf.mc.veiligafk.VeiligAfk
+api-version: '${apiVersion}'
+description: "/afk: na 10 s stilstaan ben je beschermd (geen schade, geen honger, mobs negeren je) tot je beweegt of iets doet."
+author: Minecraft Bot
+softdepend: [Essentials]

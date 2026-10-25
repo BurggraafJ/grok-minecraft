@@ -1,0 +1,7 @@
+name: Huisdieren
+version: '${version}'
+main: nl.burggraaf.mc.huisdieren.Huisdieren
+api-version: '${apiVersion}'
+description: "Getemde dieren gaan niet dood maar raken uitgeteld (KO) en herstellen; HP-label boven gewonde dieren."
+author: Minecraft Bot
+softdepend: [Essentials]

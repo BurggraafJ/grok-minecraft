@@ -63,9 +63,11 @@ public final class Extras extends JavaPlugin implements Listener {
             new Schakelaar("slapen", "Slapen met één", Material.RED_BED, "Eén speler in bed = dag"),
             new Schakelaar("oven", "Instant oven", Material.FURNACE, "Ovens, blast furnaces en smokers smelten direct"),
             new Schakelaar("handlicht", "Handlicht", Material.TORCH, "Fakkel of lantaarn in je hand geeft licht"),
-            new Schakelaar("kist", "Kist", Material.ENDER_CHEST, "Persoonlijke opslag van 54 vakken (/kist)"));
-    /** Indeling: 5 bovenaan, 5 eronder, symmetrisch; status-ruitje steeds eronder. */
-    private static final int[] SLOTS = {9, 11, 13, 15, 17, 27, 29, 31, 33, 35};
+            new Schakelaar("kist", "Kist", Material.ENDER_CHEST, "Persoonlijke opslag van 54 vakken (/kist)"),
+            new Schakelaar("huisdieren", "Huisdieren", Material.BONE, "Getemde dieren gaan niet dood maar raken even uitgeteld"),
+            new Schakelaar("afk", "Veilige AFK", Material.CLOCK, "/afk: na 10 s stilstaan beschermd tot je beweegt"));
+    /** Indeling: drie rijen van 4 (kolommen 1,3,5,7), status-ruitje steeds eronder. */
+    private static final int[] SLOTS = {1, 3, 5, 7, 19, 21, 23, 25, 37, 39, 41, 43};
 
     private File bestand;
     private YamlConfiguration stand;
@@ -132,6 +134,8 @@ public final class Extras extends JavaPlugin implements Listener {
             case "honger" -> eigenVlag("Honger", v);
             case "handlicht" -> eigenVlag("Handlicht", v);
             case "kist" -> eigenVlag("Kist", v);
+            case "huisdieren" -> eigenVlag("Huisdieren", v);
+            case "afk" -> eigenVlag("VeiligAfk", v);
             case "slapen" -> {
                 // aan: alleen terugzetten als wij hem eerder op 100 hadden gezet (de waarde uit server.json is 0)
                 for (World w : Bukkit.getWorlds()) {
@@ -218,7 +222,7 @@ public final class Extras extends JavaPlugin implements Listener {
             return true;
         }
         Menu m = new Menu();
-        m.inv = Bukkit.createInventory(m, 45, Component.text("Server-extra's", NamedTextColor.DARK_RED));
+        m.inv = Bukkit.createInventory(m, 54, Component.text("Server-extra's", NamedTextColor.DARK_RED));
         vul(m);
         p.openInventory(m.inv);
         openMenus.put(p.getUniqueId(), m);

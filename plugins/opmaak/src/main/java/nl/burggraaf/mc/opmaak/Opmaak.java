@@ -134,6 +134,31 @@ public final class Opmaak extends JavaPlugin implements Listener {
         return t;
     }
 
+    /** AFK: veilige /afk (plugin VeiligAfk, metadata) of Essentials' (auto-)AFK; die laatste geeft alleen de tag. */
+    private boolean isAfk(Player p) {
+        if (p.hasMetadata("afk-veilig")) return true;
+        var ess = Bukkit.getPluginManager().getPlugin("Essentials");
+        if (ess == null || !ess.isEnabled()) return false;
+        try {
+            Object user = ess.getClass().getMethod("getUser", Player.class).invoke(ess, p);
+            return user != null && (Boolean) user.getClass().getMethod("isAfk").invoke(user);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static final Component AFK_TAG = Component.text("[AFK] ", net.kyori.adventure.text.format.NamedTextColor.GRAY);
+
+    private Team afkTeam() {
+        Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team t = sb.getTeam("opmaak_afk");
+        if (t == null) {
+            t = sb.registerNewTeam("opmaak_afk");
+            t.prefix(AFK_TAG);
+        }
+        return t;
+    }
+
     private Location labelPlek(Player p) {
         Location l = p.getLocation();
         return new Location(l.getWorld(), l.getX(), l.getY() + p.getHeight() + 0.25, l.getZ(), 0f, 0f);
@@ -145,8 +170,13 @@ public final class Opmaak extends JavaPlugin implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             UUID id = p.getUniqueId();
             boolean nick = heeftNick(p);
-            if (nick && !team.hasEntry(p.getName())) team.addEntry(p.getName());
-            if (!nick && team.hasEntry(p.getName())) team.removeEntry(p.getName());
+            boolean afk = tik % 10 == 0 ? isAfk(p) : afkStand.contains(id);
+            if (afk) afkStand.add(id); else afkStand.remove(id);
+            Team afkT = afkTeam();
+            if (nick && !team.hasEntry(p.getName())) team.addEntry(p.getName());          // (zet hem ook uit het afk-team)
+            if (!nick && afk && !afkT.hasEntry(p.getName())) afkT.addEntry(p.getName());
+            if (!nick && !afk && afkT.hasEntry(p.getName())) afkT.removeEntry(p.getName());
+            if (!nick && !afk && team.hasEntry(p.getName())) team.removeEntry(p.getName());
             TextDisplay label = labels.get(id);
             if (labelZichtbaar(p)) {
                 Location plek = labelPlek(p);
@@ -154,7 +184,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
                     label.remove();
                     label = null;
                 }
-                Component tekst = naamVan(p);
+                Component tekst = afk ? AFK_TAG.append(naamVan(p)) : naamVan(p);
                 if (label == null) {
                     label = plek.getWorld().spawn(plek, TextDisplay.class, d -> {
                         d.setPersistent(false);
@@ -176,7 +206,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
                 labels.remove(id);
             }
             if (tik % 20 == 0) {
-                String sleutel = mm.serialize(naamVan(p)) + "|" + prefixVan(p);
+                String sleutel = mm.serialize(naamVan(p)) + "|" + prefixVan(p) + "|" + afk;
                 if (!sleutel.equals(laatsteTab.get(id))) {
                     laatsteTab.put(id, sleutel);
                     zetTab(p);
@@ -230,8 +260,12 @@ public final class Opmaak extends JavaPlugin implements Listener {
     }
 
     private void zetTab(Player p) {
-        if (!getConfig().getString("tablijst", "").isBlank()) p.playerListName(tekst("tablijst", p));
+        if (getConfig().getString("tablijst", "").isBlank()) return;
+        Component naam = tekst("tablijst", p);
+        p.playerListName(afkStand.contains(p.getUniqueId()) ? AFK_TAG.append(naam) : naam);
     }
+
+    private final java.util.Set<UUID> afkStand = new java.util.HashSet<>();
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onJoin(PlayerJoinEvent e) {
