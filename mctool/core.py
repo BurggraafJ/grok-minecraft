@@ -209,8 +209,13 @@ def command(cfg, svc):
                 cmd += ["--port", str(t["bore_poort"])]
             return cmd, server_dir(svc)
         if t["modus"] == "ngrok":
-            return [dl.ensure_ngrok(), "tcp", f"127.0.0.1:{cfg['poorten']['velocity']}", "--log", "stdout",
-                    "--log-format", "json"], server_dir(svc)
+            # crl_noverify: de box blokkeert het ophalen van de CRL (alleen HTTPS naar buiten), anders verbindt ngrok nooit
+            ngrok_cfg = os.path.join(STATE, "ngrok.yml")
+            os.makedirs(STATE, exist_ok=True)
+            with open(ngrok_cfg, "w") as fh:
+                fh.write('version: "3"\nagent:\n  crl_noverify: true\n')
+            return [dl.ensure_ngrok(), "tcp", f"127.0.0.1:{cfg['poorten']['velocity']}", "--config", ngrok_cfg,
+                    "--log", "stdout", "--log-format", "json"], server_dir(svc)
         if t["modus"] == "playit":
             return [dl.ensure_playit(), *(t.get("playit_args") or ["--stdout"])], server_dir(svc)
     raise Fout(f"onbekende dienst of tunnelmodus: {svc}")
