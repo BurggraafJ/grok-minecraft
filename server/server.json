@@ -71,7 +71,8 @@
       "essentials.getpos",
       "essentials.depth",
       "essentials.compass",
-      "essentials.suicide"
+      "essentials.suicide",
+      "essentials.enderchest"
     ]
   },
   "groepen": {
