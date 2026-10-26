@@ -582,6 +582,11 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say, aankondigen=Fals
     st["spec_commit"] = applymod._git_head()
     st["tijd"] = now_iso()
     save_state(st)
+    if not herstart and "velocity" in gewijzigd:      # --geen-herstart: wel onthouden dat de proxy nog moet (bij 0 spelers)
+        st = state()
+        st["velocity_wacht"] = now_iso()
+        save_state(st)
+        log("  velocity: klaargezet; mc ensure herstart hem zodra de proxy leeg is")
     if herstart:
         if "velocity" in gewijzigd and not velocity_akkoord(cfg, aankondigen, forceer, log=log):
             gewijzigd.remove("velocity")      # klaargezet; herstart pas bij een lege proxy (mc ensure)
