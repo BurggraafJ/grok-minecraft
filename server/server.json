@@ -420,7 +420,9 @@
         "send-fly-enable-on-join": false,
         "nickname-prefix": "",
         "custom-join-message": "none",
-        "custom-quit-message": "none"
+        "custom-quit-message": "none",
+        "ops-name-color": "none",
+        "update-check": false
       },
       "plugins/Chunky/config.yml": {
         "continue-on-restart": true
@@ -479,8 +481,23 @@
         "netwerk": true,
         "server-tag": "<green>[Survival]</green> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
-        "tablijst": "<tag><prefix> <white><naam>",
+        "tablijst": "<prefix> <white><naam>",
         "toon-join-quit": false
+      },
+      "plugins/LuckPerms/config.yml": {
+        "log-notify": false
+      },
+      "plugins/Vault/config.yml": {
+        "update-check": false
+      },
+      "plugins/ViaVersion/config.yml": {
+        "check-for-updates": false
+      },
+      "config/paper-global.yml": {
+        "update-checker.enabled": false
+      },
+      "plugins/GravesX/config/config.yml": {
+        "settings.update.check": false
       }
     },
     "lobby": {
@@ -489,7 +506,13 @@
         "netwerk": true,
         "server-tag": "<aqua>[Lobby]</aqua> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
-        "tablijst": "<tag><prefix> <white><naam>"
+        "tablijst": "<prefix> <white><naam>"
+      },
+      "plugins/ViaVersion/config.yml": {
+        "check-for-updates": false
+      },
+      "config/paper-global.yml": {
+        "update-checker.enabled": false
       }
     },
     "kitpvp": {
@@ -497,8 +520,14 @@
         "netwerk": true,
         "server-tag": "<red>[KitPvP]</red> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
-        "tablijst": "<tag><prefix> <white><naam>",
+        "tablijst": "<prefix> <white><naam>",
         "toon-join-quit": false
+      },
+      "plugins/ViaVersion/config.yml": {
+        "check-for-updates": false
+      },
+      "config/paper-global.yml": {
+        "update-checker.enabled": false
       }
     }
   }

@@ -140,6 +140,38 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                 }
             }
         }, 10L, 10L);
+        getServer().getScheduler().runTaskTimer(this, this::poortDeeltjes, 40L, 20L);
+    }
+
+    /**
+     * Poorten beter zichtbaar (Jelle 26-10), zonder herbouw van de tuin: lichtblokken in de kroon van de poort en
+     * langs het pad ernaartoe (elke 3 blokken, vlak in de grond). Idempotent: elke start opnieuw gezet.
+     */
+    private void poortenOplichten(World w) {
+        if (tuin == null) return;
+        int g = grondY;
+        for (Tuin.Poort pt : tuin.poorten) {
+            boolean surv = pt.server().equals("survival");
+            int cx = (pt.x1() + pt.x2()) / 2, z = pt.z();
+            Material licht = surv ? Material.VERDANT_FROGLIGHT : Material.PEARLESCENT_FROGLIGHT;
+            for (int s : new int[]{-2, 2}) w.getBlockAt(cx + s, g + 6, z).setType(licht, false);
+            w.getBlockAt(cx, g + 5, z).setType(licht, false);
+            for (int t = z + 3; t <= -9; t += 3)
+                for (int s : new int[]{-1, 1}) w.getBlockAt(cx + s, g, t).setType(licht, false);
+        }
+    }
+
+    /** Zachte deeltjes in de doorgang van de poorten (elke seconde een paar), groen voor Survival, rood voor KitPvP. */
+    private void poortDeeltjes() {
+        if (tuin == null || veilig == null) return;
+        World w = veilig.getWorld();
+        if (w.getPlayers().isEmpty()) return;
+        for (Tuin.Poort pt : tuin.poorten) {
+            boolean surv = pt.server().equals("survival");
+            Location l = new Location(w, (pt.x1() + pt.x2()) / 2.0 + 0.5, grondY + 2.5, pt.z() + 0.5);
+            w.spawnParticle(org.bukkit.Particle.DUST, l, 6, 0.9, 1.2, 0.15, 0,
+                    new org.bukkit.Particle.DustOptions(surv ? org.bukkit.Color.fromRGB(0x7fd67f) : org.bukkit.Color.fromRGB(0xe06666), 1.0f));
+        }
     }
 
     @Override
@@ -323,6 +355,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         Location spawn = new Location(w, 0.5, grondY + 1, 9.5, 180f, 0f);
         w.setSpawnLocation(spawn);
         veilig = spawn;
+        poortenOplichten(w);
         if (plaats) {
             try {
                 java.nio.file.Files.writeString(marker.toPath(), versie);
@@ -727,6 +760,33 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         }
     }
 
+    /** Hoogste level dat iemand ooit speelde (gestart of gehaald), 1-based; 0 = nog nooit parkour. */
+    private int hoogsteGespeeld(UUID id) {
+        if (voortgang == null) return 0;
+        return Math.max(gehaald(id), voortgang.getInt("gespeeld." + id, 0));
+    }
+
+    private void slaGespeeldOp(UUID id, int level) {
+        if (voortgang == null || level <= voortgang.getInt("gespeeld." + id, 0)) return;
+        voortgang.set("gespeeld." + id, level);
+        try {
+            voortgang.save(voortgangBestand);
+        } catch (IOException e) {
+            getLogger().warning("voortgang niet op te slaan: " + e.getMessage());
+        }
+    }
+
+    /** Via /hub, poort of wissel naar de lobby: bij de start van je hoogste parkourlevel (nooit parkour = spawn). */
+    private void naarHoogsteLevel(Player p) {
+        if (!p.isOnline() || banen == null) return;
+        int hoogste = Math.min(hoogsteGespeeld(p.getUniqueId()), LEVELS.length);
+        if (hoogste <= 0) return;
+        int l = hoogste - 1;
+        p.teleport(banen[l][0]);
+        huidigLevel.put(p.getUniqueId(), l);
+        p.sendActionBar(Component.text("Lobby · parkour level " + (l + 1) + ": " + LEVELS[l].naam(), NamedTextColor.GRAY));
+    }
+
     /** Naar het huisje van het level waar de speler aan toe is (gehaald + 1); alles gehaald = laatste level. */
     private void naarVolgendLevel(Player p) {
         if (huisje == null) return;
@@ -734,8 +794,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         p.teleport(huisje[l]);
         huidigLevel.put(p.getUniqueId(), l);
         boolean alles = gehaald(p.getUniqueId()) >= LEVELS.length;
-        p.sendMessage(Component.text(alles ? "Alle levels gehaald! Probeer ze nog eens sneller (huisjes langs de spawn)."
-                : "Parkour level " + (l + 1) + ": " + LEVELS[l].naam() + ". Loop het huisje uit en spring op het groene blok.", NamedTextColor.AQUA));
+        p.sendActionBar(Component.text(alles ? "Alle levels gehaald · probeer ze sneller · /terug = survival"
+                : "Parkour level " + (l + 1) + ": " + LEVELS[l].naam() + " · /terug = survival", NamedTextColor.GRAY));
     }
 
     private static String tijd(long ms) {
@@ -827,6 +887,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                 huidigLevel.put(id, l);
                 startTijd.put(id, System.currentTimeMillis());
                 laatstePunt.put(id, 0);
+                slaGespeeldOp(id, l + 1);
                 p.sendMessage(Component.text("Level " + (l + 1) + " gestart! Val je, dan begin je opnieuw.", NamedTextColor.AQUA));
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.7f, 1.2f);
             }
@@ -1244,6 +1305,10 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                     String server = in.readUTF(), naam = in.readUTF();
                     modus.put(id, "wacht:" + server + ":" + naam);
                 }
+                case "hub" -> {         // bewust naar de lobby (niet de eerste join): naar je hoogste parkourlevel
+                    if (!isBezoeker(id)) Bukkit.getScheduler().runTaskLater(this, () -> naarHoogsteLevel(p), 2L);
+                    return;
+                }
                 case "wacht-stop" -> {
                     String m = modus.get(id);
                     if (m != null && m.startsWith("wacht:")) modus.remove(id);
@@ -1485,7 +1550,6 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         geefItem(speler);
         geefKiezer(speler);
         if (bezoeker) {                                     // kwam via /parkour uit survival: meteen naar je level
-            speler.sendMessage(Component.text("Welkom bij de parkour! /terug brengt je terug naar je plek in survival.", NamedTextColor.AQUA));
             if (banen != null) naarVolgendLevel(speler);
         }
     }

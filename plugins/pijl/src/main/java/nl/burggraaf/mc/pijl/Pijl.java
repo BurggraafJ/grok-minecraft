@@ -203,14 +203,15 @@ public final class Pijl extends JavaPlugin implements Listener {
             boolean kompas = vlag(p.getUniqueId(), "kompas", false);
             List<Component> delen = new ArrayList<>();
             if (kompas) {
-                delen.add(Component.text("N", NamedTextColor.RED, TextDecoration.BOLD)
-                        .append(Component.text(pijlVoor(180, van.getYaw()), NamedTextColor.RED)));
+                delen.add(Component.text("N", NamedTextColor.WHITE)        // rustig (Jelle 26-10): niet vet, alleen N iets lichter
+                        .append(Component.text(pijlVoor(180, van.getYaw()), NamedTextColor.GRAY)));
             }
             if (dichtst != null) {
                 Location naar = dichtst.getLocation();
-                delen.add(Component.text(richting(van, naar.getX(), naar.getZ()) + " ", NamedTextColor.GOLD)
-                        .append(dichtst.displayName().colorIfAbsent(NamedTextColor.WHITE))
-                        .append(Component.text(" " + afstand(Math.sqrt(best)), NamedTextColor.GRAY)));
+                delen.add(Component.text(richting(van, naar.getX(), naar.getZ()) + " ", NamedTextColor.GRAY)
+                        .append(Component.text(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                                .serialize(dichtst.displayName()), NamedTextColor.GRAY))
+                        .append(Component.text(" " + afstand(Math.sqrt(best)), NamedTextColor.DARK_GRAY)));
             }
             // eigen plekken: de twee dichtstbijzijnde in deze wereld, de rest als +n
             List<Plek> actief = new ArrayList<>(), elders = new ArrayList<>();
@@ -222,14 +223,14 @@ public final class Pijl extends JavaPlugin implements Listener {
             Component plekDeel = null;
             for (int i = 0; i < Math.min(2, actief.size()); i++) {
                 Plek pl = actief.get(i);
-                Component c = Component.text(richting(van, pl.x(), pl.z()) + " ", NamedTextColor.AQUA)
-                        .append(Component.text(pl.naam(), NamedTextColor.AQUA))
-                        .append(Component.text(" " + afstand(Math.hypot(pl.x() - van.getX(), pl.z() - van.getZ())), NamedTextColor.GRAY));
-                plekDeel = plekDeel == null ? c : plekDeel.append(Component.text("  ", NamedTextColor.GRAY)).append(c);
+                Component c = Component.text(richting(van, pl.x(), pl.z()) + " ", NamedTextColor.GRAY)
+                        .append(Component.text(pl.naam(), NamedTextColor.GRAY))
+                        .append(Component.text(" " + afstand(Math.hypot(pl.x() - van.getX(), pl.z() - van.getZ())), NamedTextColor.DARK_GRAY));
+                plekDeel = plekDeel == null ? c : plekDeel.append(Component.text(" · ", NamedTextColor.DARK_GRAY)).append(c);
             }
             int rest = Math.max(0, actief.size() - 2) + elders.size();
             if (plekDeel == null && !elders.isEmpty()) {
-                plekDeel = Component.text(elders.get(0).naam() + " (andere wereld)", NamedTextColor.DARK_AQUA);
+                plekDeel = Component.text(elders.get(0).naam() + " (andere wereld)", NamedTextColor.DARK_GRAY);
                 rest--;
             }
             if (plekDeel != null && rest > 0) plekDeel = plekDeel.append(Component.text(" +" + rest, NamedTextColor.DARK_GRAY));
@@ -237,7 +238,7 @@ public final class Pijl extends JavaPlugin implements Listener {
             if (delen.isEmpty()) continue;
             Component balk = Component.empty();
             for (int i = 0; i < delen.size(); i++) {
-                if (i > 0) balk = balk.append(Component.text("  │  ", NamedTextColor.DARK_GRAY));
+                if (i > 0) balk = balk.append(Component.text(" · ", NamedTextColor.DARK_GRAY));
                 balk = balk.append(delen.get(i));
             }
             p.sendActionBar(balk);

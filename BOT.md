@@ -84,6 +84,45 @@ elke push kijken of de run groen wordt; rood = eerst repareren, dan pas verder. 
 afgeronde run op main mee (geannuleerde tellen niet; loopt er een, dan stil) en meldt rood als één MELD (hooguit 1x
 per 6 uur). Zelf kijken: GitHub-API `repos/BurggraafJ/grok-minecraft/actions/runs?branch=main` met het token.
 
+**Centrale rechten en beroepen (Jelle 26-10):** één bron voor wie admin is: `data/spelers.json` op de box
+(`admin: true`; nu IqmTrash, Maestro, Morrigon; niet in Git, zoals altijd). `mc apply` (paneel) maakt daaruit:
+`ops.json` op lobby, survival en kitpvp (gelezen, vergeleken, herschreven; geldt na de herstart van die server, dus
+niet via `op <naam>` op de console: de splits hebben geen internet om de naam op te zoeken), de LuckPerms-groep
+`admin` op survival (via de console, live), en `velocity/plugins/netwerk/beheerders.json` (wie beroepen mag geven,
+de proxy leest het elke 30 s). LuckPerms draait alleen op survival; lobby en kitpvp kennen alleen OP-rechten
+(`kitpvp.beheer`, `lobbymelding`: default op), dus daar is ops.json de hele rechtenlijst. Een gedeelde
+LuckPerms-database is daarom niet nodig (en de splits kunnen geen externe database bereiken).
+- **Beroepen** wonen op de proxy (plugin netwerk, `beroepen.json`, uuid → beroep) en gelden daardoor meteen op elke
+  server: de proxy stuurt het beroep als prefix in het profiel naar elke backend. Standaard **Wildvreemde**; verder
+  Bouwer, Dokter, Boer, Mijnwerker, Smid, Handelaar, Ontdekker, Ondernemer, Dierentemmer (rustige kleuren; extra of
+  andere kleuren: `config.json` → `beroepen`). Jelle (IqmTrash) = Boer, Lotte (Morrigon) = Dierentemmer.
+- Beroep met de hand vastleggen: zet `"beroep": "<naam>"` bij de speler in `data/spelers.json` en `mc apply`. mc schrijft
+  daaruit `plugins/netwerk/beroepen-bron.json`; de proxy past nieuwe/gewijzigde regels binnen 30 s één keer toe
+  (onthouden in `beroepen-bron.toegepast.json`), daarna geldt `/beroep` weer. Zolang de bron nog niet is toegepast
+  spiegelt mc niet terug (anders zou de spiegel je handwerk wissen).
+- `/beroep <speler> <beroep>` (admins uit beheerders.json, of console `netwerk beroep <speler> <beroep>`) werkt op
+  elke server; `/beroep` toont je eigen beroep en de lijst. Iedereen hoort één grijze regel «X is nu Dokter».
+- `/help` (ook `/?`, `/hulp`, Essentials' en Bukkits help): eigen korte lijst uit plugin opmaak, op elke backend
+  hetzelfde, alleen regels voor wat op die server bestaat; OP's zien één extra regel (/admin, /beroep geven).
+- Geen systeemberichten voor spelers/OP's: update-checks uit (Paper, Essentials, Vault, ViaVersion, GravesX), LuckPerms
+  `log-notify: false`, en `broadcast-console-to-ops=false` + `broadcast-rcon-to-ops=false` op elke backend (anders
+  zien OP's elke console-opdracht van mc, zoals tellraw of save-all, als grijze regel).
+- `/spelers` (`/wie`): iedereen die het netwerk kent, ● online (met server) of ○ offline, met beroep.
+- Elke 10 min (alleen als er iemand online is) één grijze tip over beroepen (3 teksten om de beurt;
+  `beroep_tip_minuten`, 0 = uit).
+- `mc paneel rechten`: spiegelt beroepen naar `data/spelers.json` (veld `beroep`) en toont de OP-lijst per server
+  (moet overal gelijk zijn). `mc apply` spiegelt ook.
+
+**Velocity herstarten (vangnet):** `power`/`restart`/`stop`/`kill` van velocity en een deploy met een nieuwe
+velocity-stand **weigeren** als er spelers online zijn (`glist`). Met `--aankondigen` eerst precies één grijze chatregel
+«Proxy herstart over 10 seconden.» (geen titel, geen actiebalk, geen aftelling), 10 s wachten, `save-all flush` op alle
+backends, dan direct herstarten (en de backends die ook nieuw zijn tegelijk: één herstart). Zonder vlag zet deploy de
+velocity-bestanden klaar zonder herstart (`paneel.json` → `velocity_wacht`) en herstart `mc ensure` hem zodra de
+proxy leeg is. `--forceer` alleen in nood. Backends herstarten mag wel: eerst één grijze regel «Even herstarten, 20 sec».
+*Transfer-packet:* Velocity (`Player#transferToHost`) en Paper (`Player#transfer`, `accepts-transfers`) kunnen het,
+maar een proxy-herstart verbreekt elke verbinding, en er is geen tweede ingang om spelers heen te sturen of terug te
+halen. Zonder tweede proxy (extra server) brengt het niets; daarom niet ingebouwd.
+
 **Routine:** `mc ensure --stil` werkt ook in paneel-modus: staat een server uit, dan start hij hem (en meldt het);
 nieuwe commits op GitHub zet hij live; via `netwerk ping` op Velocity controleert hij dat de proxy elke backend ziet; 's nachts
 maakt hij de dagelijkse GitHub-backup; en hij leest de CI-stand van main mee. Dezelfde melding komt hooguit 1x per 6 uur. Box-dingen (tunnel, watchdog, slaap,
@@ -250,15 +289,19 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 ## Chat, groepen en meldingen
 
 - Plugin `opmaak` (eigen code): join/leave als `[+] naam` / `[-] naam`, chat als `[Groep] naam » bericht`, advancements als `[★] naam heeft [X] behaald`.
-- Groepen staan in `server.json` → `groepen` (LuckPerms, prefix); `leden: "admins"` volgt de admins in `data/spelers.json`. Iedereen anders is Member.
+- Groepen staan in `server.json` → `groepen` (LuckPerms, alleen voor rechten); `leden: "admins"` volgt de admins in
+  `data/spelers.json`. De zichtbare rang is géén groep meer maar een **beroep** (zie Centrale rechten en beroepen).
 - `mc apply` en `mc restart` melden in de game `[Server] Herladen gestart…` en `[Server] Klaar!`.
 - Herladen terwijl er gespeeld wordt mag (Jelle 25-10: liever snel live); spelers zien `[Server] Herladen gestart…` /
   `Klaar!` en wachten zolang veilig in de lobby.
 - **Netwerk** (Velocity-plugin `netwerk`, eigen code, `plugins/netwerk`): het hart van lobby, survival en kitpvp.
-  - **Lobby eerst:** iedereen komt binnen in de lobby. Na ~1 s telt de proxy 5-4-3-2-1 af (titels; de lobby geeft
-    geluid en zet een barrière «Annuleren» in vak 5) naar de server waar je de vorige keer was (nieuw: survival).
-    Annuleren: klik `[Annuleren]` in de chat, de barrière, of `/annuleer` (`/blijf`). Laatste server per speler in
-    `velocity/plugins/netwerk/laatste.json`.
+  - **Lobby eerst, rustig (Jelle 26-10):** iedereen komt binnen in de lobby. De allereerste keer (nog geen vorige
+    server) blijf je daar, met één korte welkomstregel. Daarna: ~2 s niets, dan een stil 3-2-1 in de actiebalk
+    («Naar Survival in 3 · /blijf om te blijven»; geen titels, geen chatregels, zacht tikje) naar de server waar je de
+    vorige keer was. Annuleren: `/blijf` (`/annuleer`) of de barrière in vak 5. Instelbaar in
+    `velocity/plugins/netwerk/config.json`: `aftellen_join` (3), `join_stil_ms` (2000); `aftellen` (5) is het terug na
+    een herstart. Laatste server per speler in `laatste.json`. De lobby-actiebalk is verder stil (alleen even
+    «Je blijft in de lobby · ster = server kiezen» na annuleren).
   - **Wisselen:** `/lobby` (`/hub`), `/survival`, `/kitpvp`, `/server <naam>`, `/terug` (= je laatste spelserver), de
     ster in vak 5 in de lobby (menu Survival · KitPvP · Parkour · Tuin-spawn), de twee poorten bij de fontein, en de
     deur in vak 9 op kitpvp.
@@ -269,10 +312,17 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
     dan gaat wie daar stond naar zijn laatste server.
   - **Chat:** elke server maakt de regel zelf (opmaak: `[Survival] [Member] Jelle » hoi`) en geeft hem aan de proxy,
     die hem alleen aan spelers op de **andere** servers geeft (nooit dubbel). Advancements gaan ook mee.
+  - **Naar de hub** (`/lobby`, `/hub`, de deur op kitpvp, een wissel; níet de eerste join): de proxy stuurt `hub` naar
+    de lobby, die je bij de start van je **hoogste parkourlevel** zet (gehaald of ooit gestart: `voortgang.yml`,
+    `gespeeld.<uuid>`); nooit parkour gedaan = gewoon de spawn. Inloggen blijft: lobby, 2 s rust, 3-2-1.
+  - **Melding bij een wissel staat op één plek:** jij ziet alleen een korte actiebalk («→ Survival», in de lobby
+    «Lobby · parkour level 8: …»), geen chat, titel of subtitel; de anderen zien één chatregel `» naam → Survival`.
   - **Join/leave/wissel** meldt alleen de proxy, één keer voor het hele netwerk (`[+] [Survival] … `, `[-] …`,
     `» naam → KitPvP`); opmaak/Essentials/vanilla zwijgen (`netwerk: true` in opmaak). `netwerk stil 30` (console) =
     30 s geen join/leave-regels.
-  - **TAB:** de proxy zet spelers van de andere servers erbij (met servertag), kop/voet met aantallen per server.
+  - **TAB (rustig):** kop alleen «Burggraaf Craft», geen voet. Regel: `<beroep> <naam>`; spelers op een andere server
+    krijgen er grijs de servernaam achter. Chat: `[Lobby] Ondernemer Jelle » …` (enkele spaties; opmaak knipt de
+    spatie achter `server-tag`). OP's hebben geen rode naam meer (Essentials `ops-name-color: none`).
   - **Rang en nick** komen van survival (LuckPerms/Essentials): opmaak daar stuurt elk profiel naar de proxy
     (`profielen.json`), die het aan lobby en kitpvp doorgeeft.
   - Console: `mc cmd velocity netwerk status` (wie waar, laatste, wachtend), `netwerk wacht <server>`, `netwerk stil <s>`.
@@ -294,12 +344,23 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   Hotbar in de lobby: vak 1 kompas «Level kiezen», vak 5 ster «Server kiezen» (tijdens aftellen barrière, tijdens
   wachten rode wol), vak 9 «Opnieuw» (= `/parkour reset`). `/parkour` vanuit survival: plek onthouden (plugin
   `lobbyreis`), naar je volgende level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp`, eigen code): vlakke wereld, adventure, geen mobs/weer/dag-nacht,
-  `immediate_respawn`. Colosseum (straal 30) met wachtplatform: 7 kits als pantserstandaards (krijger, boog, tank,
-  ninja, speer, heler, hamer) of het kitmenu (ster in vak 5, `/kit`). `/arena` = de arena in (3 s bescherming),
-  `/stats` (`/kd`) = kills/deaths/reeks; top-10 bord bij de spawn; `stats.yml`. Geen drops of oprapen, honger vast,
-  pijlen verdwijnen; een kill = volle gezondheid + gouden appel; reeksen worden omgeroepen. Console: `arena aftellen N`,
-  `arena bouw`, `arena zelftest`. Backups: `mc backup --dienst kitpvp` (dagelijks door de watchdog, net als lobby).
+- **KitPvP** (server `kitpvp`, plugin `kitpvp`, eigen code, `BOUW_VERSIE` 2): vlakke wereld, adventure, geen
+  mobs/weer/dag-nacht, `immediate_respawn`. Colosseum (straal 30) met wachtplatform: 7 kits als pantserstandaards
+  (krijger, boog, tank, ninja, speer, heler, hamer) of het kitmenu (ster in vak 5, `/kit`). In het menu kies je de
+  **arena**: PvP-arena (spelers) of **Oefenarena** (ten zuiden, midden 0/110, straal 18: bots). Bots = zombies,
+  husks en skeletten in harnas (tag `kitpvp-bot`, niet opgeslagen, branden niet, geen drops): 1 + 2 per speler in
+  de oefenarena (max `bots-max` 6), weg na 30 s leeg; ze vallen alleen spelers in de oefenarena aan; geen PvP daar;
+  een bot verslaan = +4 hartjes en `bots` in stats.yml; doodgaan daar telt niet mee. Rustig binnenkomen: geen
+  titel of chatblok, één actiebalkregel. Sidebar: Kit, Kills · Doden, Reeks, Arena.
+  **Gevecht-tag:** 10 s na een treffer (gegeven of gekregen, ook van/aan bots) kun je niet weg: `/arena`, de deur,
+  en op de proxy `/lobby /hub /survival /kitpvp /server /terug /spawn` geweigerd (kitpvp meldt `gevecht:<ms>` aan
+  de proxy); actiebalk «⚔ In gevecht · 7 s». Uitloggen met tag (PvP-arena) = verslagen (dood + kill voor de laatste
+  aanvaller, «liep weg uit het gevecht»). `/arena` = terug naar het platform, `/stats` (`/kd`); top-10 bord;
+  `stats.yml`. Geen drops of oprapen, honger vast, pijlen verdwijnen; kill = volle gezondheid + gouden appel.
+  Console: `arena aftellen N`, `arena bouw`, `arena zelftest`.
+- **Lobby-poorten** (Survival links, KitPvP rechts van de fontein): label boven de poort, lichtblokken (froglights) in
+  de kroon en vlak in de grond langs het pad, en zachte gekleurde deeltjes in de doorgang (elke seconde). Gezet bij
+  elke start (`poortenOplichten`), zonder herbouw van de tuin.
 - `mc apply` met spelers online altijd los starten (`setsid nohup mc apply > data/state/apply-laatste.out &`): wordt een
   apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan. Velocity herstart pas
   als er niemand online is, tenzij `--nu`.
@@ -329,10 +390,10 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   die staat nu expliciet uit via `rechten.default` → `-essentials.fly.safelogin` (een `-` ervoor = permissie false).
 - **pijl** (eigen code): actionbar met een pijl naar de dichtstbijzijnde andere speler in dezelfde wereld («⬆ Lotte 132m»,
   relatief aan je kijkrichting, binnen 1000 blokken, 2× per seconde, even stil na bed/instappen/dood). `/pijl` opent een
-  menu: per speler volgen aan/uit (hoofden, groen = zichtbaar), Kompas (extra N-pijl), Onvindbaar (jij staat in niemands
+  menu: per speler volgen aan/uit (hoofden, groen = zichtbaar), Kompas (extra N-pijl; rustig: één dunne grijze regel, N wit, niet vet, scheiding « · »), Onvindbaar (jij staat in niemands
   pijl), pijl aan/uit, en eigen plekken. Indeling: hoofden gecentreerd bovenaan, daaronder de plekken, onderste rij
   Pijl · Kompas · Onvindbaar (met status-ruitje erboven), geen sluitknop. `/pijl opslaan <naam>` / `/pijl verwijder <naam>`
-  (max 27 per speler): actieve plekken staan in het aqua in de actionbar (2 dichtstbijzijnde, rest als +n, andere
+  (max 27 per speler): actieve plekken staan grijs in de actionbar (2 dichtstbijzijnde, rest als +n, andere
   wereld = "(andere wereld)"); in het menu klik = aan/uit, shift/rechtsklik 2× = verwijderen. Per speler bewaard in
   `plugins/Pijl/instellingen.yml`.
 - **Handlicht** (eigen plugin, survival): fakkel/lantaarn/glowstone/lava-emmer enz. in main- of off-hand = onzichtbaar

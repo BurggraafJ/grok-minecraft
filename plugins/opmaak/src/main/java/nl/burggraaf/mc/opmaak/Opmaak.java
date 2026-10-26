@@ -80,7 +80,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
 
     private Component tagComp() {
         String t = getConfig().getString("server-tag", "");
-        return t == null || t.isBlank() || !netwerk() ? Component.empty() : mm.deserialize(t).append(Component.space());
+        return t == null || t.isBlank() || !netwerk() ? Component.empty() : mm.deserialize(t.strip()).append(Component.space());
     }
 
     @Override
@@ -277,9 +277,10 @@ public final class Opmaak extends JavaPlugin implements Listener {
     }
 
     private String prefixVan(Player p) {
-        if (netwerk() && !profielBron()) {
+        if (netwerk()) {   // de zichtbare rang is het beroep van het netwerk (Velocity); rechten blijven in LuckPerms
             String[] np = netProfiel.get(p.getUniqueId());
-            if (np != null && np[1] != null) return np[1];
+            if (np != null && np[1] != null && !np[1].isBlank()) return np[1];
+            return getConfig().getString("beroep-standaard", "<#9a9a9a>Wildvreemde</#9a9a9a>");
         }
         ConfigurationSection g = getConfig().getConfigurationSection("groepen");
         if (g == null) return "";
@@ -393,10 +394,11 @@ public final class Opmaak extends JavaPlugin implements Listener {
 
     private void stuurProfiel(Player p, boolean afk) {
         String naam = mm.serialize(naamVan(p)), prefix = prefixVan(p);
-        String sleutel = naam + "|" + prefix + "|" + afk;
+        boolean beheer = p.isOp() || p.hasPermission("group.admin");
+        String sleutel = naam + "|" + prefix + "|" + afk + "|" + beheer;
         if (sleutel.equals(laatsteProfiel.get(p.getUniqueId()))) return;
         laatsteProfiel.put(p.getUniqueId(), sleutel);
-        stuur(p, "profiel", p.getUniqueId().toString(), naam, prefix, String.valueOf(afk));
+        stuur(p, "profiel", p.getUniqueId().toString(), naam, prefix, String.valueOf(afk), String.valueOf(beheer));
     }
 
     /** Van Velocity: profiel (rang, nickname, afk) van een speler die net op deze server kwam. */
@@ -414,6 +416,45 @@ public final class Opmaak extends JavaPlugin implements Listener {
         } catch (IOException | RuntimeException ex) {
             getLogger().fine("onleesbaar netwerkbericht: " + ex.getMessage());
         }
+    }
+
+    // ── /help: eigen, kort en rustig, overal hetzelfde (Jelle 26-10); Essentials' /help wordt niet getoond ───────
+
+    private static final java.util.Set<String> HELP = java.util.Set.of("help", "?", "hulp", "ehelp", "essentials:help",
+            "essentials:ehelp", "bukkit:help", "bukkit:?", "minecraft:help", "opmaak:hulp");
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onHelp(org.bukkit.event.player.PlayerCommandPreprocessEvent e) {
+        String root = e.getMessage().substring(1).split(" ", 2)[0].toLowerCase(Locale.ROOT);
+        if (!HELP.contains(root)) return;
+        e.setCancelled(true);
+        toonHulp(e.getPlayer());
+    }
+
+    private void regel(Player p, String cmd, String uitleg) {
+        p.sendMessage(Component.text(" " + cmd, net.kyori.adventure.text.format.NamedTextColor.WHITE)
+                .append(Component.text("  " + uitleg, net.kyori.adventure.text.format.NamedTextColor.GRAY)));
+    }
+
+    void toonHulp(Player p) {
+        var pm = Bukkit.getPluginManager();
+        p.sendMessage(Component.text("Burggraaf Craft", net.kyori.adventure.text.format.TextColor.color(0xe8c872))
+                .append(Component.text(" · hulp", net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)));
+        regel(p, "/hub · /survival · /kitpvp", "naar een server");
+        regel(p, "/terug", "terug naar je vorige plek");
+        regel(p, "/spelers", "wie er is, met beroep");
+        regel(p, "/beroep", "jouw beroep en de lijst");
+        if (pm.getPlugin("LobbyMelding") != null) {
+            regel(p, "/spawn · /parkour", "naar de fontein of je parkourlevel");
+            regel(p, "/blijf", "in de lobby blijven");
+        }
+        if (pm.getPlugin("Essentials") != null) {
+            regel(p, "/sethome · /home · /tpa", "thuis en naar elkaar");
+            regel(p, "/pijl · /kist · /unload", "richting, opslag, kisten vullen");
+            regel(p, "/afk", "veilig even weg");
+        }
+        if (pm.getPlugin("KitPvP") != null) regel(p, "/kit · /arena · /stats", "kit en arena kiezen, terug, scores");
+        if (p.isOp()) regel(p, "/admin · /beroep <speler> <beroep>", "extra's aan/uit, beroep geven");
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

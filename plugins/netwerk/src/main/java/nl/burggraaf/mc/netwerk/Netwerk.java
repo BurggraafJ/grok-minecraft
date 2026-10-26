@@ -12,6 +12,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.player.KickedFromServerEvent;
@@ -95,8 +96,19 @@ public final class Netwerk {
     private String joinFormaat = "<gray>[<green>+</green>]</gray> <white><naam>";
     private String quitFormaat = "<gray>[<red>-</red>]</gray> <white><naam>";
     private String wisselFormaat = "<dark_gray>»</dark_gray> <gray><naam></gray> <dark_gray>→</dark_gray> <tag>";
-    private String tabFormaat = "<tag> <prefix> <white><naam>";
-    private String kop = "<gold><bold>Burggraaf Craft</bold></gold>";
+    private String tabFormaat = "<prefix> <white><naam></white> <dark_gray><servernaam>";
+    private String kop = "<gold>Burggraaf Craft</gold>";
+    private int beroepTipMinuten = 10;
+
+    /** Beroepen: alleen de zichtbare rang. Rechten (admin) blijven onder water in LuckPerms. */
+    private final Map<String, String> beroepSoorten = new LinkedHashMap<>();
+    private final Map<String, String> beroepen = new ConcurrentHashMap<>();       // uuid → beroep-id
+    static final String STANDAARD_BEROEP = "wildvreemde";
+    /** In gevecht op kitpvp (kitpvp meldt het): tot dit tijdstip niet wisselen. */
+    private final Map<UUID, Long> gevechtTot = new ConcurrentHashMap<>();
+    private int tipBeurt = 0;
+    /** uuid → naam van de admins (beheerders.json, door mc uit data/spelers.json; zelfde lijst als OP). */
+    private volatile Map<String, String> beheerders = Map.of();
 
     // staat
     private final Map<String, String> laatste = new ConcurrentHashMap<>();          // uuid → server
@@ -116,6 +128,7 @@ public final class Netwerk {
         String prefix;   // MiniMessage
         boolean afk;
         String account;
+        boolean beheer;  // admin/OP op survival: mag /beroep geven
     }
 
     private final class Aftelling {
@@ -144,6 +157,9 @@ public final class Netwerk {
         laatste.putAll(leesMap("laatste.json", new TypeToken<Map<String, String>>() {}.getType()));
         Map<String, Profiel> p = leesMap("profielen.json", new TypeToken<Map<String, Profiel>>() {}.getType());
         profielen.putAll(p);
+        beroepen.putAll(leesMap("beroepen.json", new TypeToken<Map<String, String>>() {}.getType()));
+        leesBeheerders();
+        proxy.getScheduler().buildTask(this, this::leesBeheerders).repeat(30, TimeUnit.SECONDS).schedule();
         proxy.getChannelRegistrar().register(KANAAL);
         var cm = proxy.getCommandManager();
         cm.register(cm.metaBuilder("lobby").aliases("hub").plugin(this).build(), (SimpleCommand) inv -> naarCommando(inv.source(), lobby));
@@ -156,6 +172,8 @@ public final class Netwerk {
             if (inv.source() instanceof Player pl) terug(pl);
         });
         cm.register(cm.metaBuilder("netwerk").plugin(this).build(), new Beheer());
+        cm.register(cm.metaBuilder("beroep").aliases("beroepen").plugin(this).build(), new BeroepCommando());
+        cm.register(cm.metaBuilder("spelers").aliases("wie").plugin(this).build(), (SimpleCommand) inv -> spelersLijst(inv.source()));
         proxy.getScheduler().buildTask(this, this::elkeSeconde).repeat(1, TimeUnit.SECONDS).schedule();
         proxy.getScheduler().buildTask(this, this::controleerWachtenden).repeat(2, TimeUnit.SECONDS).schedule();
         proxy.getScheduler().buildTask(this, this::bewaar).repeat(15, TimeUnit.SECONDS).schedule();
@@ -176,6 +194,16 @@ public final class Netwerk {
         namen.put("lobby", "Lobby");
         namen.put("survival", "Survival");
         namen.put("kitpvp", "KitPvP");
+        beroepSoorten.put("wildvreemde", "<#9a9a9a>Wildvreemde</#9a9a9a>");
+        beroepSoorten.put("bouwer", "<#c9a66b>Bouwer</#c9a66b>");
+        beroepSoorten.put("dokter", "<#8fd3c7>Dokter</#8fd3c7>");
+        beroepSoorten.put("boer", "<#a8c97f>Boer</#a8c97f>");
+        beroepSoorten.put("mijnwerker", "<#9ba7b4>Mijnwerker</#9ba7b4>");
+        beroepSoorten.put("smid", "<#c7a27a>Smid</#c7a27a>");
+        beroepSoorten.put("handelaar", "<#d9a066>Handelaar</#d9a066>");
+        beroepSoorten.put("ontdekker", "<#8fb8de>Ontdekker</#8fb8de>");
+        beroepSoorten.put("ondernemer", "<#e8c872>Ondernemer</#e8c872>");
+        beroepSoorten.put("dierentemmer", "<#d4a5c9>Dierentemmer</#d4a5c9>");
         try {
             Files.createDirectories(dir);
             Path f = dir.resolve("config.json");
@@ -193,9 +221,20 @@ public final class Netwerk {
                 o.addProperty("wissel", wisselFormaat);
                 o.addProperty("tablijst", tabFormaat);
                 o.addProperty("kop", kop);
+                o.addProperty("versie", 2);
                 Files.writeString(f, GSON.toJson(o), StandardCharsets.UTF_8);
             }
             JsonObject o = GSON.fromJson(Files.readString(f, StandardCharsets.UTF_8), JsonObject.class);
+            if (!o.has("versie") || o.get("versie").getAsInt() < 2) {     // 2: rustige TAB (Jelle 26-10)
+                o.addProperty("versie", 2);
+                o.addProperty("tablijst", tabFormaat);
+                o.addProperty("kop", kop);
+                o.addProperty("aftellen_join", aftellenJoin);
+                o.addProperty("beroep_tip_minuten", beroepTipMinuten);
+                Files.writeString(f, GSON.toJson(o), StandardCharsets.UTF_8);
+            }
+            if (o.has("beroepen")) beroepSoorten.putAll(GSON.fromJson(o.get("beroepen"), new TypeToken<Map<String, String>>() {}.getType()));
+            if (o.has("beroep_tip_minuten")) beroepTipMinuten = Math.max(0, o.get("beroep_tip_minuten").getAsInt());
             if (o.has("lobby")) lobby = o.get("lobby").getAsString();
             if (o.has("standaard")) standaard = o.get("standaard").getAsString();
             if (o.has("spelservers")) spel = GSON.fromJson(o.get("spelservers"), new TypeToken<List<String>>() {}.getType());
@@ -277,7 +316,7 @@ public final class Netwerk {
         if (pr == null) {
             pr = new Profiel();
             pr.naam = p.getUsername();
-            pr.prefix = "<gray>[Member]</gray>";
+            pr.prefix = beroepPrefix(p.getUniqueId().toString());
             pr.account = p.getUsername();
         }
         return pr;
@@ -300,7 +339,8 @@ public final class Netwerk {
         var r = net.kyori.adventure.text.minimessage.tag.resolver.TagResolver.resolver(
                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("naam", naam(p)),
                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("tag", server == null ? Component.empty() : tag(server)),
-                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("prefix", safe(pr.prefix)));
+                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("servernaam", Component.text(server == null ? "" : serverNaam(server))),
+                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("prefix", safe(beroepPrefix(p.getUniqueId().toString()))));
         return MM.deserialize(f, r);
     }
 
@@ -351,7 +391,11 @@ public final class Netwerk {
                 proxy.getScheduler().buildTask(this, () -> naJoin(p)).delay(joinStilMs, TimeUnit.MILLISECONDS).schedule();
             }
         } else if (!stilleWissel.remove(p.getUniqueId())) {
-            iedereen(formaat(wisselFormaat, p, naar));
+            // bewuste wissel: de anderen zien één regel in de chat, de speler zelf alleen een korte actiebalk
+            Component c = formaat(wisselFormaat, p, naar);
+            for (Player q : proxy.getAllPlayers()) if (!q.equals(p)) q.sendMessage(c);
+            p.sendActionBar(Component.text("→ " + serverNaam(naar), NamedTextColor.GRAY));
+            if (naar.equals(lobby)) stuurNaarBackend(p, "hub");   // lobby: naar je hoogste parkourlevel
         }
         if (naar.equals(lobby) && wachtend.containsKey(p.getUniqueId())) {
             stuurNaarBackend(p, "wacht", wachtend.get(p.getUniqueId()), serverNaam(wachtend.get(p.getUniqueId())));
@@ -443,6 +487,7 @@ public final class Netwerk {
     public void onWeg(DisconnectEvent e) {
         Player p = e.getPlayer();
         aftellingen.remove(p.getUniqueId());
+        gevechtTot.remove(p.getUniqueId());
         stilleWissel.remove(p.getUniqueId());
         doorOnsInTab.remove(p.getUniqueId());
         if (wachtend.remove(p.getUniqueId()) != null) schrijfWachtend();
@@ -534,7 +579,31 @@ public final class Netwerk {
         naar(p, server);
     }
 
+    /** Nog in gevecht op kitpvp? Dan niet weg (actionbar met de resterende tijd). */
+    private boolean inGevecht(Player p) {
+        Long t = gevechtTot.get(p.getUniqueId());
+        if (t == null) return false;
+        long over = t - System.currentTimeMillis();
+        if (over <= 0 || !serverVan(p).map("kitpvp"::equals).orElse(false)) {
+            gevechtTot.remove(p.getUniqueId());
+            return false;
+        }
+        p.sendActionBar(Component.text("⚔ In gevecht · nog " + ((over + 999) / 1000) + " s", NamedTextColor.RED));
+        return true;
+    }
+
+    private static final Set<String> WISSEL_COMMANDOS = Set.of("server", "lobby", "hub", "survival", "kitpvp", "terug", "spawn", "annuleer", "blijf");
+
+    @Subscribe(order = PostOrder.FIRST)
+    public void onCommando(CommandExecuteEvent e) {
+        if (!(e.getCommandSource() instanceof Player p)) return;
+        String root = e.getCommand().trim().split(" ", 2)[0].toLowerCase(Locale.ROOT);
+        if (root.contains(":")) root = root.substring(root.indexOf(':') + 1);
+        if (WISSEL_COMMANDOS.contains(root) && inGevecht(p)) e.setResult(CommandExecuteEvent.CommandResult.denied());
+    }
+
     private void naar(Player p, String server) {
+        if (inGevecht(p)) return;
         Optional<RegisteredServer> rs = proxy.getServer(server);
         if (rs.isEmpty()) {   // bv. kitpvp nog niet in velocity.toml (paneel zonder plek): netjes melden
             String wat = namen.containsKey(server) ? serverNaam(server) + " is er nu niet" : "Die server bestaat niet";
@@ -568,6 +637,7 @@ public final class Netwerk {
         } catch (RuntimeException ex) {
             if (seconde % 60 == 1) log.warn("tab bijwerken: {}", ex.toString());
         }
+        if (beroepTipMinuten > 0 && seconde % (beroepTipMinuten * 60L) == (beroepTipMinuten * 30L) && !proxy.getAllPlayers().isEmpty()) beroepTip();
         if (seconde % 2 == 0) {
             if (laatsteVuil || profielenVuil) proxy.getScheduler().buildTask(this, this::bewaar).schedule();
         }
@@ -592,8 +662,8 @@ public final class Netwerk {
             eerste = false;
             voet = voet.append(tag(en.getKey())).append(Component.text(" " + en.getValue(), NamedTextColor.WHITE));
         }
-        Component kopC = safe(kop).append(Component.newline()).append(Component.text(alle.size() + " online", NamedTextColor.GRAY));
-        Component voetC = voet.append(Component.newline()).append(Component.text(commandoLijst(), NamedTextColor.DARK_GRAY));
+        Component kopC = safe(kop);              // rustig: alleen de naam, geen tellers of commando's
+        Component voetC = Component.empty();
         for (Player kijker : alle) {
             String mijn = waar.get(kijker.getUniqueId());
             if (mijn == null) continue;
@@ -686,7 +756,7 @@ public final class Netwerk {
     private void stuurProfiel(Player p) {
         Profiel pr = profiel(p);
         String s = serverVan(p).orElse("");
-        stuurNaarBackend(p, "profiel", pr.naam == null ? p.getUsername() : pr.naam, pr.prefix == null ? "" : pr.prefix,
+        stuurNaarBackend(p, "profiel", pr.naam == null ? p.getUsername() : pr.naam, beroepPrefix(p.getUniqueId().toString()),
                 String.valueOf(pr.afk), tags.getOrDefault(s, ""));
     }
 
@@ -713,8 +783,14 @@ public final class Netwerk {
                     pr.prefix = in.readUTF();
                     pr.afk = Boolean.parseBoolean(in.readUTF());
                     Profiel oud = profielen.get(id);
+                    try {
+                        pr.beheer = Boolean.parseBoolean(in.readUTF());
+                    } catch (RuntimeException geenVeld) {
+                        pr.beheer = oud != null && oud.beheer;
+                    }
+                    pr.prefix = beroepPrefix(id);      // de zichtbare rang is het beroep (niet de LuckPerms-groep)
                     pr.account = proxy.getPlayer(UUID.fromString(id)).map(Player::getUsername).orElse(oud == null ? null : oud.account);
-                    if (oud == null || !java.util.Objects.equals(oud.naam, pr.naam) || !java.util.Objects.equals(oud.prefix, pr.prefix) || oud.afk != pr.afk) {
+                    if (oud == null || !java.util.Objects.equals(oud.naam, pr.naam) || !java.util.Objects.equals(oud.prefix, pr.prefix) || oud.afk != pr.afk || oud.beheer != pr.beheer) {
                         profielen.put(id, pr);
                         profielenVuil = true;
                     }
@@ -725,6 +801,11 @@ public final class Netwerk {
                     Optional<Player> p = proxy.getPlayer(id);
                     if (p.isEmpty()) return;
                     if (!bron.getPlayer().getUniqueId().equals(id)) return;    // een server mag alleen voor zijn eigen speler iets vragen
+                    if (wat.startsWith("gevecht:")) {          // kitpvp: zoveel ms in gevecht (0 = klaar)
+                        long ms = Math.max(0, Math.min(60_000, Long.parseLong(wat.substring(8))));
+                        if (ms == 0) gevechtTot.remove(id); else gevechtTot.put(id, System.currentTimeMillis() + ms);
+                        return;
+                    }
                     if (wat.equals("annuleer")) annuleer(p.get(), true);
                     else if (wat.equals("terug")) terug(p.get());
                     else if (wat.startsWith("naar:")) naar(p.get(), wat.substring(5));
@@ -733,6 +814,200 @@ public final class Netwerk {
             }
         } catch (RuntimeException ex) {
             log.warn("onleesbaar bericht van {}: {}", van, ex.toString());
+        }
+    }
+
+    // ── beroepen en /spelers ────────────────────────────────────────────────────────────────
+
+    String beroepPrefix(String uuid) {
+        String b = beroepen.getOrDefault(uuid, STANDAARD_BEROEP);
+        return beroepSoorten.getOrDefault(b, beroepSoorten.getOrDefault(STANDAARD_BEROEP, "<gray>Wildvreemde</gray>"));
+    }
+
+    private String beroepNaam(String id) {
+        return PlainTextComponentSerializer.plainText().serialize(safe(beroepSoorten.getOrDefault(id, id)));
+    }
+
+    private static final String[] TIPS = {
+            "Iedereen begint als <#9a9a9a>Wildvreemde</#9a9a9a>. Een beroep, zoals Bouwer, Dokter of Boer, verdien je in het spel.",
+            "Beroepen: Bouwer, Dokter, Boer, Mijnwerker, Smid, Handelaar, Ontdekker. <white>/spelers</white> laat zien wie wat is.",
+            "Nog Wildvreemde? Laat zien wat je kunt, dan krijg je een beroep.",
+    };
+
+    private void beroepTip() {
+        Component c = Component.text("✦ ", TextColor.color(0xe8c872)).append(MM.deserialize("<gray>" + TIPS[tipBeurt++ % TIPS.length]));
+        iedereen(c);
+    }
+
+    /** uuid van een bekende speler op account- of nicknaam (online eerst). */
+    private String zoekSpeler(String naam) {
+        Optional<Player> online = proxy.getPlayer(naam);
+        if (online.isPresent()) return online.get().getUniqueId().toString();
+        for (var en : profielen.entrySet()) {
+            Profiel pr = en.getValue();
+            if (pr.account != null && pr.account.equalsIgnoreCase(naam)) return en.getKey();
+        }
+        for (var en : profielen.entrySet()) {
+            Profiel pr = en.getValue();
+            if (pr.naam != null && PlainTextComponentSerializer.plainText().serialize(safe(pr.naam)).equalsIgnoreCase(naam)) return en.getKey();
+        }
+        return null;
+    }
+
+    private Component naamVanId(String uuid) {
+        Profiel pr = profielen.get(uuid);
+        Optional<Player> p = proxy.getPlayer(UUID.fromString(uuid));
+        if (pr != null && pr.naam != null) return safe(pr.naam);
+        return Component.text(p.map(Player::getUsername).orElse(pr != null && pr.account != null ? pr.account : "?"));
+    }
+
+    /**
+     * beroepen-bron.json (door mc uit data/spelers.json): wat daar staat en nog niet toegepast is, zet de proxy
+     * één keer live (daarna geldt /beroep weer). beroepen-bron.toegepast.json onthoudt wat al gedaan is.
+     */
+    private void leesBeroepenBron() {
+        try {
+            Path f = dir.resolve("beroepen-bron.json");
+            if (!Files.exists(f)) return;
+            Type t = new TypeToken<Map<String, String>>() {}.getType();
+            JsonObject o = GSON.fromJson(Files.readString(f, StandardCharsets.UTF_8), JsonObject.class);
+            Map<String, String> bron = o.has("beroepen") ? GSON.fromJson(o.get("beroepen"), t) : Map.of();
+            Path g = dir.resolve("beroepen-bron.toegepast.json");
+            Map<String, String> gedaan = new HashMap<>();
+            if (Files.exists(g)) {
+                JsonObject og = GSON.fromJson(Files.readString(g, StandardCharsets.UTF_8), JsonObject.class);
+                if (og.has("beroepen")) gedaan = GSON.fromJson(og.get("beroepen"), t);
+            }
+            if (bron.equals(gedaan)) return;
+            boolean iets = false;
+            for (var en : bron.entrySet()) {
+                if (en.getValue().equals(gedaan.get(en.getKey()))) continue;
+                if (!beroepSoorten.containsKey(en.getValue())) {
+                    log.warn("beroepen-bron: onbekend beroep {} voor {}", en.getValue(), en.getKey());
+                    continue;
+                }
+                if (en.getValue().equals(STANDAARD_BEROEP)) beroepen.remove(en.getKey()); else beroepen.put(en.getKey(), en.getValue());
+                iets = true;
+            }
+            for (String u : gedaan.keySet()) if (!bron.containsKey(u)) { beroepen.remove(u); iets = true; }
+            if (iets) {
+                schrijf("beroepen.json", new HashMap<>(beroepen));
+                for (var en : profielen.entrySet()) en.getValue().prefix = beroepPrefix(en.getKey());
+                profielenVuil = true;
+                for (Player p : proxy.getAllPlayers()) stuurProfiel(p);
+            }
+            JsonObject uit = new JsonObject();
+            uit.add("beroepen", GSON.toJsonTree(bron));
+            schrijf("beroepen-bron.toegepast.json", uit);
+            log.info("beroepen-bron toegepast: {}", bron);
+        } catch (IOException | RuntimeException ex) {
+            log.warn("beroepen-bron.json: {}", ex.toString());
+        }
+    }
+
+    private void leesBeheerders() {
+        leesBeroepenBron();
+        try {
+            Path f = dir.resolve("beheerders.json");
+            if (!Files.exists(f)) return;
+            JsonObject o = GSON.fromJson(Files.readString(f, StandardCharsets.UTF_8), JsonObject.class);
+            Map<String, String> m = GSON.fromJson(o.get("beheerders"), new TypeToken<Map<String, String>>() {}.getType());
+            if (m != null) beheerders = Map.copyOf(m);
+        } catch (IOException | RuntimeException ex) {
+            log.warn("beheerders.json: {}", ex.toString());
+        }
+    }
+
+    /** Beroepen geven: console, of een admin uit de centrale lijst (beheerders.json = dezelfde admins als OP). */
+    private boolean magBeroepGeven(CommandSource src) {
+        if (src instanceof ConsoleCommandSource || src.hasPermission("netwerk.beheer")) return true;
+        return src instanceof Player p && beheerders.containsKey(p.getUniqueId().toString());
+    }
+
+    /** Geef een beroep; null = fout (tekst voor de gebruiker). */
+    String zetBeroep(String naam, String beroep) {
+        String id = zoekSpeler(naam);
+        if (id == null) return "Speler " + naam + " ken ik niet (moet één keer op survival zijn geweest).";
+        String b = beroep.toLowerCase(Locale.ROOT);
+        if (!beroepSoorten.containsKey(b)) return "Onbekend beroep. Kies uit: " + String.join(", ", beroepSoorten.keySet());
+        if (b.equals(STANDAARD_BEROEP)) beroepen.remove(id); else beroepen.put(id, b);
+        schrijf("beroepen.json", new HashMap<>(beroepen));
+        Profiel pr = profielen.get(id);
+        if (pr != null) {
+            pr.prefix = beroepPrefix(id);
+            profielenVuil = true;
+        }
+        proxy.getPlayer(UUID.fromString(id)).ifPresent(this::stuurProfiel);
+        iedereen(Component.text("✦ ", TextColor.color(0xe8c872)).append(naamVanId(id).colorIfAbsent(NamedTextColor.WHITE))
+                .append(Component.text(" is nu ", NamedTextColor.GRAY)).append(safe(beroepSoorten.get(b))));
+        return null;
+    }
+
+    private final class BeroepCommando implements SimpleCommand {
+        @Override
+        public void execute(Invocation inv) {
+            CommandSource src = inv.source();
+            String[] a = inv.arguments();
+            if (a.length >= 2) {
+                if (!magBeroepGeven(src)) {
+                    src.sendMessage(Component.text("Alleen een beheerder geeft beroepen.", NamedTextColor.GRAY));
+                    return;
+                }
+                String fout = zetBeroep(a[0], a[1]);
+                if (fout != null) src.sendMessage(Component.text(fout, NamedTextColor.GRAY));
+                return;
+            }
+            String id = a.length == 1 ? zoekSpeler(a[0]) : src instanceof Player p ? p.getUniqueId().toString() : null;
+            Component lijst = Component.empty();
+            boolean eerste = true;
+            for (String b : beroepSoorten.keySet()) {
+                if (!eerste) lijst = lijst.append(Component.text(", ", NamedTextColor.DARK_GRAY));
+                eerste = false;
+                lijst = lijst.append(safe(beroepSoorten.get(b)));
+            }
+            if (id != null) {
+                src.sendMessage(naamVanId(id).colorIfAbsent(NamedTextColor.WHITE).append(Component.text(" is ", NamedTextColor.GRAY)).append(safe(beroepPrefix(id))));
+            }
+            src.sendMessage(Component.text("Beroepen: ", NamedTextColor.GRAY).append(lijst));
+            if (magBeroepGeven(src)) src.sendMessage(Component.text("Geven: /beroep <speler> <beroep>", NamedTextColor.DARK_GRAY));
+        }
+
+        @Override
+        public List<String> suggest(Invocation inv) {
+            String[] a = inv.arguments();
+            List<String> uit = new ArrayList<>();
+            if (a.length <= 1) {
+                String begin = a.length == 0 ? "" : a[0].toLowerCase(Locale.ROOT);
+                for (Player p : proxy.getAllPlayers()) if (p.getUsername().toLowerCase(Locale.ROOT).startsWith(begin)) uit.add(p.getUsername());
+                for (Profiel pr : profielen.values()) if (pr.account != null && pr.account.toLowerCase(Locale.ROOT).startsWith(begin) && !uit.contains(pr.account)) uit.add(pr.account);
+            } else if (a.length == 2) {
+                for (String b : beroepSoorten.keySet()) if (b.startsWith(a[1].toLowerCase(Locale.ROOT))) uit.add(b);
+            }
+            return uit;
+        }
+    }
+
+    /** /spelers: iedereen die het netwerk kent, met beroep en online/offline. */
+    private void spelersLijst(CommandSource src) {
+        Map<String, String> waar = new HashMap<>();
+        for (Player p : proxy.getAllPlayers()) waar.put(p.getUniqueId().toString(), serverVan(p).orElse(""));
+        Set<String> ids = new java.util.LinkedHashSet<>(waar.keySet());
+        ids.addAll(profielen.keySet());
+        List<String> lijst = new ArrayList<>(ids);
+        lijst.sort(java.util.Comparator.comparing((String id) -> !waar.containsKey(id))
+                .thenComparing(id -> PlainTextComponentSerializer.plainText().serialize(naamVanId(id)).toLowerCase(Locale.ROOT)));
+        src.sendMessage(Component.text("Spelers", NamedTextColor.GOLD).append(Component.text("  " + waar.size() + " online · " + lijst.size() + " bekend", NamedTextColor.DARK_GRAY)));
+        for (String id : lijst) {
+            boolean on = waar.containsKey(id);
+            Profiel pr = profielen.get(id);
+            Component regel = Component.text(on ? " ● " : " ○ ", on ? NamedTextColor.GREEN : NamedTextColor.DARK_GRAY)
+                    .append(safe(beroepPrefix(id))).append(Component.space())
+                    .append(naamVanId(id).colorIfAbsent(on ? NamedTextColor.WHITE : NamedTextColor.GRAY));
+            String acc = pr != null && pr.account != null ? pr.account : proxy.getPlayer(UUID.fromString(id)).map(Player::getUsername).orElse(null);
+            if (acc != null && !acc.equalsIgnoreCase(PlainTextComponentSerializer.plainText().serialize(naamVanId(id))))
+                regel = regel.append(Component.text(" (" + acc + ")", NamedTextColor.DARK_GRAY));
+            regel = regel.append(Component.text(on ? "  " + serverNaam(waar.get(id)) : "  offline", NamedTextColor.DARK_GRAY));
+            src.sendMessage(regel);
         }
     }
 
@@ -771,6 +1046,9 @@ public final class Netwerk {
                                     + (fout != null ? "ONBEREIKBAAR " + fout.getClass().getSimpleName()
                                     : "ok, " + ping.getVersion().getName() + ", " + ping.getPlayers().map(pl -> pl.getOnline()).orElse(0) + " spelers"))));
                 }
+            } else if (a.length >= 3 && a[0].equalsIgnoreCase("beroep")) {
+                String fout = zetBeroep(a[1], a[2]);
+                src.sendMessage(Component.text(fout == null ? "netwerk: " + a[1] + " is nu " + a[2] : fout));
             } else if (a.length >= 1 && a[0].equalsIgnoreCase("stil")) {
                 int s = 30;
                 try {

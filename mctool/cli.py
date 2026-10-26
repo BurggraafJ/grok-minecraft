@@ -45,6 +45,8 @@ def build_parser():
     s = sub.add_parser("restart", help="herstarten; survival via de lobby, spelers blijven verbonden")
     s.add_argument("dienst", choices=["survival", "lobby", "kitpvp", "velocity", "tunnel", "all"])
     s.add_argument("--als-leeg", action="store_true", help="wacht tot niemand online is (velocity)")
+    s.add_argument("--aankondigen", action="store_true", help="velocity met spelers online: eerst 10 s countdown")
+    s.add_argument("--forceer", action="store_true", help="velocity herstarten zonder countdown (alleen in nood)")
 
     s = sub.add_parser("cmd", help="servercommando (survival/lobby/kitpvp via RCON, velocity via console)")
     s.add_argument("dienst", choices=["survival", "lobby", "kitpvp", "staging", "velocity"])
@@ -74,6 +76,8 @@ def build_parser():
     s = sub.add_parser("apply", help="zet de box gelijk aan server/server.json (staging-test, dan live)")
     s.add_argument("--zonder-staging", action="store_true")
     s.add_argument("--nu", action="store_true", help="velocity ook herstarten als er spelers online zijn")
+    s.add_argument("--aankondigen", action="store_true", help="paneel: velocity met spelers online pas na 10 s countdown herstarten")
+    s.add_argument("--forceer", action="store_true", help="paneel: velocity herstarten zonder countdown (alleen in nood)")
     s.add_argument("--dry-run", action="store_true")
 
     s = sub.add_parser("vastleggen", help="alle wijzigingen in de repo committen en pushen")
@@ -110,10 +114,12 @@ def build_parser():
     s = sub.add_parser("paneel", help="paneel-modus (Sparked/Pterodactyl): status, deploy, cmd, logs, start, stop, "
                                       "restart, backup, backups, push, vars")
     s.add_argument("actie", choices=["status", "deploy", "cmd", "logs", "start", "stop", "restart", "kill", "backup",
-                                     "backups", "push", "vars", "ensure", "schema", "spiegel", "github-backup"])
+                                     "backups", "push", "vars", "ensure", "schema", "spiegel", "github-backup", "rechten"])
     s.add_argument("dienst", nargs="?", help="survival, lobby, kitpvp, velocity (of all)")
     s.add_argument("rest", nargs=argparse.REMAINDER, help="bij cmd: het commando; bij vars: SLEUTEL=waarde")
     s.add_argument("--geen-herstart", action="store_true")
+    s.add_argument("--aankondigen", action="store_true", help="velocity met spelers online: eerst 10 s countdown")
+    s.add_argument("--forceer", action="store_true", help="velocity zonder countdown (alleen in nood)")
     s.add_argument("-n", type=int, default=60)
 
     sub.add_parser("help", help="deze hulp")
@@ -535,6 +541,13 @@ def h_paneel(a):
         a.geen_herstart = True
         if a.dienst == "--geen-herstart":
             a.dienst = rest.pop(0) if rest else None
+    for vlag in ("--aankondigen", "--forceer"):          # REMAINDER slokt ook deze op
+        if vlag in rest or a.dienst == vlag:
+            rest = [r for r in rest if r != vlag]
+            setattr(a, vlag[2:], True)
+            if a.dienst == vlag:
+                a.dienst = rest.pop(0) if rest else None
+    aank, forc = getattr(a, "aankondigen", False), getattr(a, "forceer", False)
     if a.actie == "logs" and "-n" in rest:   # idem voor -n
         i = rest.index("-n")
         a.n = int(rest[i + 1])
@@ -548,7 +561,8 @@ def h_paneel(a):
     elif actie == "ensure":
         return paneel.ensure(cfg, stil=True)
     elif actie == "deploy":
-        nieuw = paneel.deploy(cfg, herstart=not a.geen_herstart, alleen=None if dienst in (None, "all") else [dienst])
+        nieuw = paneel.deploy(cfg, herstart=not a.geen_herstart, alleen=None if dienst in (None, "all") else [dienst],
+                              aankondigen=aank, forceer=forc)
         say("uitgerold: " + (", ".join(nieuw) if nieuw else "niets nieuw (paneel = server.json)"))
     elif actie == "cmd":
         if not dienst or not a.rest:
@@ -559,6 +573,8 @@ def h_paneel(a):
         for line in paneel.logs(cfg, dienst or "survival", a.n):
             say(line)
     elif actie in ("start", "stop", "restart", "kill"):
+        if "velocity" in doel and actie in ("stop", "restart", "kill") and not paneel.velocity_akkoord(cfg, aank, forc):
+            raise Fout("velocity: spelers online, geweigerd. Gebruik --aankondigen (10 s countdown) of wacht tot de proxy leeg is.")
         for svc in (doel if actie != "stop" else list(reversed(doel))):
             if actie == "restart":
                 paneel.herstart_dienst(cfg, svc)
@@ -583,6 +599,12 @@ def h_paneel(a):
     elif actie == "spiegel":
         for svc in [d for d in doel if d != "velocity"] if dienst else ["survival"]:
             paneel.spiegel(cfg, svc)
+    elif actie == "rechten":   # centrale rechten: ops.json per server + beroepen (spiegel in spelers.json)
+        paneel.beroepen_spiegel(cfg)
+        for svc, namen in paneel.ops_controle(cfg).items():
+            say(f"{svc}: OP = {', '.join(namen) or '-'}")
+        for s_ in core.spelers()["spelers"]:
+            say(f"  {s_['naam']}: {'admin · ' if s_.get('admin') else ''}{s_.get('beroep', 'wildvreemde')}")
     elif actie == "github-backup":
         paneel.github_backup(cfg, dienst if dienst and dienst != "all" else "survival")
     elif actie == "schema":
@@ -622,7 +644,7 @@ def _p_apply(a):
     from . import paneel
     if a.dry_run:
         raise Fout("--dry-run bestaat niet in paneel-modus")
-    nieuw = paneel.deploy(core.load())
+    nieuw = paneel.deploy(core.load(), aankondigen=getattr(a, "aankondigen", False), forceer=getattr(a, "forceer", False))
     say("uitgerold op het paneel: " + (", ".join(nieuw) if nieuw else "niets nieuw"))
 
 
@@ -633,7 +655,8 @@ def _p_backup(a):
 
 
 def _p_restart(a):
-    return h_paneel(argparse.Namespace(actie="restart", dienst=a.dienst, rest=[], geen_herstart=False, n=60))
+    return h_paneel(argparse.Namespace(actie="restart", dienst=a.dienst, rest=[], geen_herstart=False, n=60,
+                                       aankondigen=getattr(a, "aankondigen", False), forceer=getattr(a, "forceer", False)))
 
 
 def _p_restore(a):

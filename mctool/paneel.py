@@ -147,8 +147,71 @@ def allocatie(cfg, svc):
     raise Fout(f"{svc}: geen standaard-allocatie")
 
 
+_VELOCITY_VRIJ = False   # alleen velocity_akkoord zet dit even aan (na een lege proxy of een countdown)
+
+
 def power(cfg, svc, signaal):
+    """Vangnet (Jelle 26-10): de proxy gaat nooit zomaar uit als er spelers online zijn; eerst velocity_akkoord."""
+    if svc == "velocity" and signaal in ("restart", "stop", "kill") and not _VELOCITY_VRIJ \
+            and toestand(cfg, "velocity") in ("running", "starting"):
+        n = spelers_online(cfg)
+        if n != 0:
+            raise Fout(f"velocity: {n if n > 0 else 'onbekend aantal'} spelers online, {signaal} geweigerd. "
+                       "Gebruik --aankondigen (één chatregel, opslaan, 10 s, dan herstart) "
+                       "of wacht tot de proxy leeg is (mc ensure doet het dan zelf).")
     api_json(cfg, "POST", f"/servers/{sid(cfg, svc)}/power", {"signal": signaal})
+
+
+def spelers_online(cfg):
+    """Aantal spelers op Velocity (glist); -1 als het niet te lezen is (telt als 'niet leeg')."""
+    try:
+        out = cmd_met_uitvoer(cfg, "velocity", "glist", wacht=2.0)
+    except Fout:
+        return -1
+    m = None
+    for m in re.finditer(r"(\d+)\s+(?:player|speler)", out, re.I):
+        pass
+    return int(m.group(1)) if m else -1
+
+
+AFTEL_TEKST = "Proxy herstart over 10 seconden."
+
+
+def aftellen_proxy(cfg, seconden=10, log=say):
+    """Vóór een proxy-herstart (Jelle 26-10): precies één grijze chatregel, geen titel, geen actiebalk, geen
+    aftelling. Dan alle werelden opslaan en 10 s wachten. (broadcast-console-to-ops staat uit, dus OP's zien geen
+    console-echo van deze commando's.)"""
+    start = time.time()
+    run = [svc for svc in backends(cfg) if toestand(cfg, svc) == "running"]
+    for svc in run:
+        try:
+            command(cfg, svc, 'tellraw @a {"text":"' + AFTEL_TEKST + '","color":"gray"}')
+        except Fout:
+            pass
+    log(f"  gemeld: «{AFTEL_TEKST}»")
+    for svc in run:
+        try:
+            command(cfg, svc, "save-all flush")
+        except Fout:
+            pass
+    time.sleep(max(0.0, start + seconden - time.time()))
+
+
+def velocity_akkoord(cfg, aankondigen=False, forceer=False, log=say):
+    """Mag velocity nu herstarten? True = ja (leeg, --forceer, of na de countdown). False = wachten."""
+    global _VELOCITY_VRIJ
+    if toestand(cfg, "velocity") not in ("running", "starting") or forceer:
+        _VELOCITY_VRIJ = True
+        return True
+    n = spelers_online(cfg)
+    if n == 0:
+        _VELOCITY_VRIJ = True
+        return True
+    if not aankondigen:
+        return False
+    aftellen_proxy(cfg, 10, log=log)
+    _VELOCITY_VRIJ = True
+    return True
 
 
 def command(cfg, svc, line):
@@ -352,6 +415,7 @@ def backend_props(cfg, spec, svc, port):
     props.update({  # vast in paneel-modus: alleen via Velocity (modern forwarding), geen RCON/query
         "server-ip": "0.0.0.0", "server-port": port, "online-mode": "false",
         "enable-rcon": "false", "rcon.password": "", "broadcast-rcon-to-ops": "false",
+        "broadcast-console-to-ops": "false",   # console-commando's (tellraw, gamerule, lp) niet naar OP's echoën
         "enable-query": "false", "prevent-proxy-connections": "false", "management-server-enabled": "false",
         # splits hebben geen internet (geen DNS): Mojang-sleutels ophalen lukt niet; Velocity controleert ze al
         "enforce-secure-profile": "false",
@@ -415,7 +479,7 @@ def intern_port(cfg, svc):
     return cache[svc]
 
 
-def deploy(cfg, spec=None, herstart=True, alleen=None, log=say):
+def deploy(cfg, spec=None, herstart=True, alleen=None, log=say, aankondigen=False, forceer=False):
     """Zet het paneel gelijk aan server/server.json. Geeft de diensten die iets nieuws kregen."""
     from . import apply as applymod
     from . import downloads as dl
@@ -428,6 +492,7 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say):
     jars = {"paper": dl.ensure_jar(paper), "velocity": dl.ensure_jar(velocity)}
     arts = applymod.fetch_artifacts(spec, spec["java"])
     geheim = core.secrets()["forwarding"]
+    ops_want = admins_uuid()
     gewijzigd = []
     for svc in diensten(cfg):
         if alleen and svc not in alleen:
@@ -464,6 +529,14 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say):
                 changed.append("velocity.toml")
             if _put_if_changed(cfg, svc, st, "/forwarding.secret", geheim.encode()):
                 changed.append("forwarding-geheim")
+            # wie /beroep mag geven: dezelfde admins als OP (netwerk leest dit bestand elke 30 s, geen herstart)
+            bron = beroepen_bron()
+            if _put_if_changed(cfg, svc, st, "/plugins/netwerk/beroepen-bron.json",
+                               json.dumps({"beroepen": bron}, indent=2, sort_keys=True).encode()):
+                log(f"  {svc}: beroepen-bron.json ({len(bron)} beroepen uit spelers.json)")
+            if _put_if_changed(cfg, svc, st, "/plugins/netwerk/beheerders.json",
+                               json.dumps({"beheerders": ops_want}, indent=2, sort_keys=True).encode()):
+                log(f"  {svc}: beheerders.json ({len(ops_want)} admins)")
         else:
             port = intern_port(cfg, svc)
             props = backend_props(cfg, spec, svc, port)
@@ -474,6 +547,8 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say):
             if r:
                 changed.append("server.properties")
             write(cfg, svc, "/eula.txt", "# geaccepteerd door de eigenaar (Jelle) via mc install --eula-akkoord\neula=true\n")
+            if ops_gelijk_zetten(cfg, svc, ops_want):
+                changed.append("ops.json")
 
             def pg(p):
                 _ys(p, ["proxies", "velocity", "enabled"], "true", "true")
@@ -512,6 +587,18 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say):
     st["tijd"] = now_iso()
     save_state(st)
     if herstart:
+        if "velocity" in gewijzigd and not velocity_akkoord(cfg, aankondigen, forceer, log=log):
+            gewijzigd.remove("velocity")      # klaargezet; herstart pas bij een lege proxy (ensure) of met --aankondigen
+            st = state()
+            st["velocity_wacht"] = now_iso()
+            save_state(st)
+            log("  velocity: wijzigingen staan klaar; herstart wacht op een lege proxy (of mc apply --aankondigen)")
+        elif "velocity" in gewijzigd:
+            st = state()
+            st.pop("velocity_wacht", None)
+            save_state(st)
+        if gewijzigd and not _VELOCITY_VRIJ:
+            meld_herstart(cfg, log=log)           # alleen backends: korte regel vooraf
         for svc in gewijzigd:
             herstart_dienst(cfg, svc, log=log)
         time.sleep(15)
@@ -522,7 +609,27 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say):
     return gewijzigd
 
 
-def herstart_dienst(cfg, svc, log=say):
+HERSTART_TEKST = "Even herstarten, 20 sec"
+
+
+def meld_herstart(cfg, log=say, wacht=5):
+    """Vóór een (gebundelde) herstart: één korte regel aan iedereen (via elke draaiende backend), dan even wachten."""
+    gemeld = False
+    for svc in backends(cfg):
+        try:
+            if toestand(cfg, svc) == "running":
+                command(cfg, svc, 'tellraw @a {"text":"' + HERSTART_TEKST + '","color":"gray"}')
+                gemeld = True
+        except Fout:
+            pass
+    if gemeld:
+        log(f"  gemeld: «{HERSTART_TEKST}»")
+        time.sleep(wacht)
+
+
+def herstart_dienst(cfg, svc, log=say, aankondigen=False, forceer=False):
+    if svc == "velocity" and not _VELOCITY_VRIJ and not velocity_akkoord(cfg, aankondigen, forceer, log=log):
+        raise Fout("velocity: spelers online, herstart geweigerd (gebruik --aankondigen, of wacht tot de proxy leeg is)")
     t = toestand(cfg, svc)
     if t in ("running", "starting"):
         if svc in ("survival", "kitpvp") and toestand(cfg, "velocity") == "running":
@@ -542,12 +649,114 @@ def wacht_op(cfg, svc, timeout=300):
     """Wacht tot de server 'running' is en de (nieuwe) log 'Done (' zegt."""
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if toestand(cfg, svc) == "running":
+        if toestand(cfg, svc) in ("running", "starting"):   # het paneel ziet Velocity's "Done" soms niet: log telt
             log = (read(cfg, svc, "/logs/latest.log") or b"").decode("utf-8", "replace")
             if re.search(r"Done \(\d", log) and "Stopping server" not in log:
                 return True
         time.sleep(5)
     return False
+
+
+# ── centrale rechten: OP/admin uit data/spelers.json, beroepen live op Velocity ──────────────────
+
+def admins_uuid():
+    """{uuid: naam} van de admins in data/spelers.json (de enige bron voor OP en de admin-groep)."""
+    from . import apply as applymod
+    uit = {}
+    for s in core.spelers()["spelers"]:
+        if s.get("admin"):
+            u = applymod._uuid(s["naam"])
+            if u:
+                uit[u] = s["naam"]
+            else:
+                core.event("MELD", f"admin {s['naam']}: UUID niet gevonden (typfout?)")
+    return uit
+
+
+def beroepen_bron():
+    """{uuid: beroep} uit data/spelers.json (veld "beroep"): wat daar met de hand staat, zet de proxy één keer live."""
+    from . import apply as applymod
+    uit = {}
+    for s in core.spelers()["spelers"]:
+        if s.get("beroep"):
+            u = applymod._uuid(s["naam"])
+            if u:
+                uit[u] = s["beroep"].lower()
+    return uit
+
+
+def ops_json(want):
+    return (json.dumps([{"uuid": u, "name": n, "level": 4, "bypassesPlayerLimit": False}
+                        for u, n in sorted(want.items(), key=lambda x: x[1].lower())], indent=2) + "\n").encode()
+
+
+def ops_gelijk_zetten(cfg, svc, want):
+    """ops.json op het paneel = de admins (lezen, vergelijken, schrijven). Geldt na de herstart van die server.
+    Niet via de console `op <naam>`: de splits hebben geen internet en zouden de naam niet kunnen opzoeken."""
+    raw = read(cfg, svc, "/ops.json")
+    try:
+        have = {e["uuid"]: e.get("name") for e in json.loads(raw or b"[]")}
+    except (ValueError, TypeError, KeyError):
+        have = None
+    if have is not None and set(have) == set(want):
+        return False
+    write(cfg, svc, "/ops.json", ops_json(want))
+    return True
+
+
+def ops_controle(cfg):
+    """{dienst: [namen]} uit ops.json op elke backend (mc paneel rechten)."""
+    uit = {}
+    for svc in backends(cfg):
+        try:
+            uit[svc] = sorted(e.get("name") for e in json.loads(read(cfg, svc, "/ops.json") or b"[]"))
+        except (ValueError, TypeError):
+            uit[svc] = ["(onleesbaar)"]
+    return uit
+
+
+def beroepen_spiegel(cfg, log=say):
+    """Beroepen gelden live op Velocity (plugin netwerk, beroepen.json). Spiegel ze in data/spelers.json (veld
+    "beroep"), zodat die ene lijst laat zien wie admin en wie wat is. Nieuwe namen komen erbij als gewone speler."""
+    if "velocity" not in diensten(cfg):
+        return []
+    try:   # staat er een met de hand gezette bron klaar die de proxy nog niet toepaste? Dan nu niet spiegelen.
+        bron = json.loads(read(cfg, "velocity", "/plugins/netwerk/beroepen-bron.json") or b"{}").get("beroepen", {})
+        gedaan = json.loads(read(cfg, "velocity", "/plugins/netwerk/beroepen-bron.toegepast.json") or b"{}").get("beroepen", {})
+        if bron and bron != gedaan:
+            log("  beroepen: bron staat klaar, de proxy past hem binnen 30 s toe (spiegelen de volgende keer)")
+            return []
+    except (ValueError, TypeError, AttributeError, Fout):
+        pass
+    try:
+        ber = json.loads(read(cfg, "velocity", "/plugins/netwerk/beroepen.json") or b"{}")
+        prof = json.loads(read(cfg, "velocity", "/plugins/netwerk/profielen.json") or b"{}")
+    except (ValueError, TypeError, Fout):
+        return []
+    d = core.spelers()
+    per_naam = {s["naam"].lower(): s for s in d["spelers"]}
+    gezien, veranderd = set(), []
+    for u, b in ber.items():
+        naam = (prof.get(u) or {}).get("account")
+        if not naam:
+            continue
+        gezien.add(naam.lower())
+        s = per_naam.get(naam.lower())
+        if s is None:
+            s = {"naam": naam, "admin": False}
+            d["spelers"].append(s)
+            per_naam[naam.lower()] = s
+        if s.get("beroep") != b:
+            s["beroep"] = b
+            veranderd.append(f"{naam}={b}")
+    for s in d["spelers"]:
+        if s.get("beroep") and s["naam"].lower() not in gezien:
+            s.pop("beroep")
+            veranderd.append(f"{s['naam']}=wildvreemde")
+    if veranderd:
+        core.save_spelers(d)
+        log("  beroepen gespiegeld: " + ", ".join(veranderd))
+    return veranderd
 
 
 # ── live zonder herstart: gamerules, rechten, groepen ────────────────────────────────────────────
@@ -608,6 +817,11 @@ def runtime(cfg, spec, log=say):
         if n:
             sent.append(f"rechten/groepen: {n} wijzigingen")
     save_state(st)
+    try:
+        if beroepen_spiegel(cfg, log=log):
+            sent.append("beroepen gespiegeld")
+    except Fout as e:
+        log(f"  beroepen spiegelen: {e}")
     if sent:
         log("  live gezet: " + "; ".join(sent))
     return sent
@@ -723,6 +937,15 @@ def ensure(cfg, stil=False):
                 lines.append(f"MELD {svc} staat uit en starten lukt niet: {e}")
         elif t is None:
             lines.append(f"MELD paneel-API geeft geen stand voor {svc} (sleutel ingetrokken of storing?)")
+    if state().get("velocity_wacht") and toestand(cfg, "velocity") == "running" and spelers_online(cfg) == 0:
+        try:   # klaargezette Velocity-wijzigingen: nu de proxy leeg is, kort herstarten
+            if velocity_akkoord(cfg):
+                herstart_dienst(cfg, "velocity", log=lambda *a: None)
+                st = state()
+                st.pop("velocity_wacht", None)
+                save_state(st)
+        except Fout as e:
+            lines.append(f"MELD velocity: klaargezette herstart lukt niet: {e}")
     # ziet de proxy zijn backends? (alleen als alles draait; één melding per probleem per 6 uur)
     if all(toestand(cfg, x) == "running" for x in diensten(cfg)):
         try:

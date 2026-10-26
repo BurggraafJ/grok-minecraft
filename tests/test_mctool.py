@@ -286,5 +286,29 @@ class CiStand(unittest.TestCase):
         self.assertIsNone(gitops.ci_stand(runs=[]))
 
 
+class CentraleRechten(unittest.TestCase):
+    def test_ops_json_en_beroepen_spiegel(self):
+        from mctool import paneel
+        want = {"11111111-1111-1111-1111-111111111111": "Zed", "22222222-2222-2222-2222-222222222222": "anna"}
+        lijst = json.loads(paneel.ops_json(want))
+        self.assertEqual([e["name"] for e in lijst], ["anna", "Zed"])
+        self.assertTrue(all(e["level"] == 4 for e in lijst))
+        core.save_spelers({"spelers": [{"naam": "Anna", "admin": True, "beroep": "smid"}, {"naam": "Bob", "admin": False, "beroep": "boer"}]})
+        bestanden = {"/plugins/netwerk/beroepen.json": json.dumps({"u1": "dokter", "u3": "ondernemer"}).encode(),
+                     "/plugins/netwerk/profielen.json": json.dumps({"u1": {"account": "anna"}, "u3": {"account": "Cees"}}).encode()}
+        oud_read, oud_diensten = paneel.read, paneel.diensten
+        paneel.read = lambda cfg, svc, path: bestanden.get(path)
+        paneel.diensten = lambda cfg: ["survival", "velocity"]
+        try:
+            paneel.beroepen_spiegel({}, log=lambda *a: None)
+        finally:
+            paneel.read, paneel.diensten = oud_read, oud_diensten
+        d = {s["naam"]: s for s in core.spelers()["spelers"]}
+        self.assertEqual(d["Anna"]["beroep"], "dokter")
+        self.assertTrue(d["Anna"]["admin"])
+        self.assertNotIn("beroep", d["Bob"])          # niet meer in beroepen.json = weer Wildvreemde
+        self.assertEqual(d["Cees"], {"naam": "Cees", "admin": False, "beroep": "ondernemer"})
+
+
 if __name__ == "__main__":
     unittest.main()

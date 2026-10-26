@@ -89,13 +89,21 @@ import org.bukkit.scoreboard.Team;
  */
 public final class KitPvP extends JavaPlugin implements Listener {
 
-    private static final int BOUW_VERSIE = 1;
+    private static final int BOUW_VERSIE = 2;   // 2: oefenarena met bots erbij
     private static final int R = 30;           // arena-straal (binnenkant muur)
+    private static final int BZ = 110, RB = 18; // oefenarena (bots): midden (0, BZ), straal
+    private static final long GEVECHT_MS = 10_000L;
 
     private World w;
     private int g;                             // grondhoogte (vloer van de arena)
     private Location wacht;                    // wachtplatform
     private final List<Location> spawns = new ArrayList<>();
+    private final List<Location> botSpawns = new ArrayList<>();
+    private final Map<UUID, Boolean> kiestBots = new HashMap<>();      // voorkeur in het menu: true = oefenarena
+    private final java.util.Set<UUID> inBotArena = new java.util.HashSet<>();
+    private final Map<UUID, Long> gevechtTot = new HashMap<>();
+    private final Map<UUID, Long> gevechtGemeld = new HashMap<>();
+    private long botsLeegSinds = 0;
     private final Random rnd = new Random();
     private NamespacedKey itemKey, kitKey;
     private boolean actief = true;
@@ -138,10 +146,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
         stats = YamlConfiguration.loadConfiguration(statsBestand);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "netwerk:main");
         Bukkit.getScheduler().runTask(this, () -> {
             w = Bukkit.getWorlds().get(0);
             for (int cx = -4; cx <= 3; cx++)             // arena blijft geladen: kit-standaards en ranglijst verdwijnen anders
-                for (int cz = -4; cz <= 3; cz++) w.addPluginChunkTicket(cx, cz, this);
+                for (int cz = -4; cz <= 8; cz++) w.addPluginChunkTicket(cx, cz, this);   // ook de oefenarena
             bouw(false);
             for (Player p : Bukkit.getOnlinePlayers()) naarWacht(p, false);
         });
@@ -152,7 +161,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
     public void onDisable() {
         bewaarStats();
         if (w != null) {
-            for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains("kitpvp")) e.remove();
+            for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains("kitpvp") || isBot(e)) e.remove();
         }
     }
 
@@ -343,10 +352,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
                     .append(Component.text(k.uitleg(), NamedTextColor.GRAY)).append(Component.newline())
                     .append(Component.text("▶ klik om te kiezen", NamedTextColor.YELLOW)), 0.8f);
         }
+        bouwOefenarena();                                  // na het opruimen van de labels hierboven
         label(new Location(w, 0.5, wy + 4.2, -44.5), Component.text("⚔ KITPVP ⚔", NamedTextColor.RED, TextDecoration.BOLD)
                 .append(Component.newline()).append(Component.text("Kies een kit en spring de arena in!", NamedTextColor.WHITE)), 1.6f);
         label(new Location(w, 10.5, wy + 2.2, -40.5), Component.text("Hoe werkt het?", NamedTextColor.GOLD, TextDecoration.BOLD)
-                .append(Component.newline()).append(Component.text("• Kies een kit (klik of de ster)\n• Even bescherming na de sprong\n• Kill = vol leven + gouden appel\n• Geen drops, direct terug hier\n• /lobby · /survival om te gaan", NamedTextColor.GRAY)), 0.9f);
+                .append(Component.newline()).append(Component.text("• Kies een kit (klik of de ster)\n• In het menu: PvP of oefenarena (bots)\n• Kill = vol leven + gouden appel\n• 10 s na een treffer kun je niet weg\n• /lobby · /survival om te gaan", NamedTextColor.GRAY)), 0.9f);
         Location rl = new Location(w, -10.5, wy + 2.2, -40.5);
         ranglijst = w.spawn(rl, TextDisplay.class, d -> {
             d.setPersistent(false);
@@ -364,6 +374,198 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             getLogger().info("arena gebouwd in " + (System.currentTimeMillis() - t0) + " ms");
         }
+    }
+
+    /** Oefenarena (bots): een kleinere ring ten zuiden van het colosseum, met lage muur, lantaarns en wat dekking. */
+    private void bouwOefenarena() {
+        if (plaats) {
+            vul(-RB - 6, g + 1, BZ - RB - 6, RB + 6, g + 20, BZ + RB + 6, Material.AIR);
+            vul(-RB - 6, g, BZ - RB - 6, RB + 6, g, BZ + RB + 6, Material.GRASS_BLOCK);
+        }
+        for (int x = -RB - 3; x <= RB + 3; x++)
+            for (int z = -RB - 3; z <= RB + 3; z++) {
+                double r = Math.sqrt(x * x + z * z);
+                if (r > RB + 2.5) continue;
+                if (r <= RB + 0.5) {
+                    zet(x, g, BZ + z, hash(x / 2, z / 2) % 4 == 0 ? Material.COARSE_DIRT : Material.SMOOTH_SANDSTONE);
+                    zet(x, g - 1, BZ + z, Material.STONE);
+                } else {
+                    vul(x, g - 1, BZ + z, x, g + 5, BZ + z, hash(x, z) % 6 == 0 ? Material.CUT_SANDSTONE : Material.SANDSTONE);
+                    if (r > RB + 1.5 && hash(x, z) % 7 == 0) zet(x, g + 6, BZ + z, Material.LANTERN);
+                }
+            }
+        for (int i = 0; i < 6; i++) {                     // dekking: lage muurtjes
+            double a = Math.PI * 2 / 6 * i;
+            int cx = (int) Math.round(Math.cos(a) * 9), cz = (int) Math.round(Math.sin(a) * 9);
+            for (int k = -1; k <= 1; k++) vul(cx + (i % 2 == 0 ? k : 0), g + 1, BZ + cz + (i % 2 == 0 ? 0 : k), cx + (i % 2 == 0 ? k : 0), g + 2, BZ + cz + (i % 2 == 0 ? 0 : k), Material.SANDSTONE_WALL);
+        }
+        zet(0, g + 1, BZ, Material.CAMPFIRE);
+        botSpawns.clear();
+        for (int i = 0; i < 6; i++) {
+            double a = Math.PI * 2 / 6 * i + Math.PI / 6;
+            double x = Math.cos(a) * 14 + 0.5, z = Math.sin(a) * 14 + 0.5;
+            Location l = new Location(w, x, g + 1, BZ + z);
+            l.setDirection(new org.bukkit.util.Vector(-x, 0, -z));
+            vul(l.getBlockX(), g + 1, l.getBlockZ(), l.getBlockX(), g + 3, l.getBlockZ(), Material.AIR);
+            botSpawns.add(l);
+        }
+        label(new Location(w, 0.5, g + 8, BZ - RB - 2.5), Component.text("Oefenarena", NamedTextColor.GOLD)
+                .append(Component.newline()).append(Component.text("vecht tegen bots", NamedTextColor.GRAY)), 1.2f);
+    }
+
+    // ── bots (oefenarena) ───────────────────────────────────────────────────────────────────
+
+    private static final String BOT = "kitpvp-bot";
+
+    private boolean isBot(Entity e) {
+        return e != null && e.getScoreboardTags().contains(BOT);
+    }
+
+    private List<org.bukkit.entity.LivingEntity> bots() {
+        List<org.bukkit.entity.LivingEntity> l = new ArrayList<>();
+        if (w == null) return l;
+        for (org.bukkit.entity.LivingEntity e : w.getLivingEntities()) if (isBot(e) && !e.isDead()) l.add(e);
+        return l;
+    }
+
+    private void spawnBot() {
+        if (botSpawns.isEmpty()) return;
+        Location l = botSpawns.stream().max(Comparator.comparingDouble(s -> {
+            double min = 1e9;
+            for (UUID id : inBotArena) {
+                Player q = Bukkit.getPlayer(id);
+                if (q != null) min = Math.min(min, q.getLocation().distanceSquared(s));
+            }
+            return min + rnd.nextDouble() * 30;
+        })).get();
+        int soort = rnd.nextInt(3);
+        Class<? extends org.bukkit.entity.Mob> klasse = soort == 0 ? org.bukkit.entity.Skeleton.class
+                : soort == 1 ? org.bukkit.entity.Husk.class : org.bukkit.entity.Zombie.class;
+        w.spawn(l, klasse, m -> {
+            m.setPersistent(false);
+            m.setRemoveWhenFarAway(false);
+            m.setCanPickupItems(false);
+            m.addScoreboardTag(BOT);
+            m.customName(Component.text("Bot", NamedTextColor.GRAY));
+            m.setCustomNameVisible(false);
+            if (m instanceof org.bukkit.entity.Zombie z) {
+                z.setShouldBurnInDay(false);
+                z.setAdult();
+            }
+            if (m instanceof org.bukkit.entity.AbstractSkeleton sk) sk.setShouldBurnInDay(false);
+            var eq = m.getEquipment();
+            boolean boog = m instanceof org.bukkit.entity.Skeleton;
+            eq.setHelmet(new ItemStack(boog ? Material.CHAINMAIL_HELMET : Material.IRON_HELMET));
+            eq.setChestplate(new ItemStack(boog ? Material.LEATHER_CHESTPLATE : Material.CHAINMAIL_CHESTPLATE));
+            eq.setLeggings(new ItemStack(Material.CHAINMAIL_LEGGINGS));
+            eq.setBoots(new ItemStack(Material.IRON_BOOTS));
+            eq.setItemInMainHand(new ItemStack(boog ? Material.BOW : rnd.nextBoolean() ? Material.IRON_SWORD : Material.STONE_AXE));
+            for (EquipmentSlot sl : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.HAND})
+                eq.setDropChance(sl, 0f);
+        });
+        w.spawnParticle(Particle.CLOUD, l.clone().add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0.01);
+    }
+
+    /** Elke seconde: genoeg bots als er iemand in de oefenarena is, weg als hij al 30 s leeg is; bots blijven binnen. */
+    private void botsBijhouden() {
+        inBotArena.removeIf(id -> Bukkit.getPlayer(id) == null || !kitVan.containsKey(id));
+        List<org.bukkit.entity.LivingEntity> nu = bots();
+        long t = System.currentTimeMillis();
+        if (inBotArena.isEmpty()) {
+            if (botsLeegSinds == 0) botsLeegSinds = t;
+            if (t - botsLeegSinds > 30_000L) nu.forEach(Entity::remove);
+            return;
+        }
+        botsLeegSinds = 0;
+        int max = Math.max(1, getConfig().getInt("bots-max", 6));
+        int gewenst = Math.min(max, 1 + 2 * inBotArena.size());
+        if (nu.size() < gewenst && seconden % 2 == 0) spawnBot();
+        for (org.bukkit.entity.LivingEntity b : nu) {
+            Location l = b.getLocation();
+            double dx = l.getX(), dz = l.getZ() - BZ;
+            if (dx * dx + dz * dz > (RB - 1) * (RB - 1) || l.getY() < g - 2) b.teleport(botSpawns.get(rnd.nextInt(botSpawns.size())));
+            if (b instanceof org.bukkit.entity.Mob m && (m.getTarget() == null || !(m.getTarget() instanceof Player pt) || !inBotArena.contains(pt.getUniqueId()))) {
+                Player dichtst = null;
+                double best = 1e9;
+                for (UUID id : inBotArena) {
+                    Player q = Bukkit.getPlayer(id);
+                    if (q == null || beschermdTot.getOrDefault(id, 0L) > t) continue;
+                    double d = q.getLocation().distanceSquared(l);
+                    if (d < best) { best = d; dichtst = q; }
+                }
+                m.setTarget(dichtst);
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBotDoel(org.bukkit.event.entity.EntityTargetLivingEntityEvent e) {
+        if (!actief || !isBot(e.getEntity())) return;
+        if (e.getTarget() == null) return;
+        if (!(e.getTarget() instanceof Player p) || !inBotArena.contains(p.getUniqueId())) e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBotDood(org.bukkit.event.entity.EntityDeathEvent e) {
+        if (!actief || !isBot(e.getEntity())) return;
+        e.getDrops().clear();
+        e.setDroppedExp(0);
+        Player k = e.getEntity().getKiller();
+        if (k == null || !kitVan.containsKey(k.getUniqueId())) return;
+        var max = k.getAttribute(Attribute.MAX_HEALTH);
+        if (max != null) k.setHealth(Math.min(max.getValue(), k.getHealth() + 8));
+        tel(k.getUniqueId(), k.getName(), "bots");
+        k.sendActionBar(Component.text("Bot verslagen · " + stats.getInt(k.getUniqueId() + ".bots", 0), NamedTextColor.GRAY));
+        k.playSound(k.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.2f);
+    }
+
+    // ── gevecht-tag: 10 s na een treffer niet weg (ook niet via de proxy) ────────────────────
+
+    private boolean inGevecht(UUID id) {
+        return gevechtTot.getOrDefault(id, 0L) > System.currentTimeMillis();
+    }
+
+    private void tag(Player p) {
+        long nu = System.currentTimeMillis();
+        gevechtTot.put(p.getUniqueId(), nu + GEVECHT_MS);
+        if (nu - gevechtGemeld.getOrDefault(p.getUniqueId(), 0L) > 1500L) {   // proxy hooguit ~1x per 1,5 s
+            gevechtGemeld.put(p.getUniqueId(), nu);
+            meldProxy(p, "gevecht:" + GEVECHT_MS);
+        }
+    }
+
+    private void untag(Player p) {
+        if (gevechtTot.remove(p.getUniqueId()) != null) meldProxy(p, "gevecht:0");
+        gevechtGemeld.remove(p.getUniqueId());
+    }
+
+    private void meldProxy(Player p, String wat) {
+        try {
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            java.io.DataOutputStream out = new java.io.DataOutputStream(buf);
+            out.writeUTF("actie");
+            out.writeUTF(p.getUniqueId().toString());
+            out.writeUTF(wat);
+            p.sendPluginMessage(this, "netwerk:main", buf.toByteArray());
+        } catch (IOException | RuntimeException e) {
+            getLogger().fine("netwerk: " + e.getMessage());
+        }
+    }
+
+    private boolean blokkeerAlsGevecht(Player p) {
+        if (!inGevecht(p.getUniqueId())) return false;
+        long over = gevechtTot.get(p.getUniqueId()) - System.currentTimeMillis();
+        p.sendActionBar(Component.text("⚔ In gevecht · nog " + ((over + 999) / 1000) + " s", NamedTextColor.RED));
+        return true;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTreffer(EntityDamageByEntityEvent e) {
+        if (!actief) return;
+        Entity d = e.getDamager();
+        if (d instanceof Projectile pr && pr.getShooter() instanceof Entity sh) d = sh;
+        if (e.getEntity() instanceof Player p && kitVan.containsKey(p.getUniqueId()) && (d instanceof Player || isBot(d))) tag(p);
+        if (d instanceof Player a && kitVan.containsKey(a.getUniqueId()) && (e.getEntity() instanceof Player || isBot(e.getEntity()))) tag(a);
     }
 
     private void label(Location l, Component tekst, float schaal) {
@@ -491,7 +693,10 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.closeInventory();
         geefKit(p, id);
         kitVan.put(p.getUniqueId(), id);
-        Location doel = spawns.isEmpty() ? wacht : spawns.stream().max(Comparator.comparingDouble(l -> {
+        boolean bots = kiestBots.getOrDefault(p.getUniqueId(), false) && !botSpawns.isEmpty();
+        if (bots) inBotArena.add(p.getUniqueId()); else inBotArena.remove(p.getUniqueId());
+        List<Location> plekken = bots ? botSpawns : spawns;
+        Location doel = plekken.isEmpty() ? wacht : plekken.stream().max(Comparator.comparingDouble(l -> {
             double min = 1e9;
             for (Player q : Bukkit.getOnlinePlayers()) {
                 if (q.equals(p) || !kitVan.containsKey(q.getUniqueId())) continue;
@@ -502,7 +707,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.teleport(doel);
         int s = Math.max(0, getConfig().getInt("bescherming-seconden", 3));
         beschermdTot.put(p.getUniqueId(), System.currentTimeMillis() + s * 1000L);
-        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text(" · " + s + " s bescherming", NamedTextColor.GRAY)));
+        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text((bots ? " · oefenarena" : "") + " · " + s + " s bescherming", NamedTextColor.GRAY)));
         p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.4f, 1f);
         w.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
         werkBordBij(p);
@@ -537,6 +742,8 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     private void naarWacht(Player p, boolean bericht) {
         kitVan.remove(p.getUniqueId());
+        inBotArena.remove(p.getUniqueId());
+        untag(p);
         beschermdTot.remove(p.getUniqueId());
         laatsteAanvaller.remove(p.getUniqueId());
         p.getInventory().clear();
@@ -574,13 +781,28 @@ public final class KitPvP extends JavaPlugin implements Listener {
             ItemMeta meta = it.getItemMeta();
             meta.displayName(Component.text(k.naam(), k.kleur(), TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
             meta.lore(List.of(Component.text(k.uitleg(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Klik: kies en spring de arena in", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)));
+                    Component.text("Klik: kies en spring de arena in", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
             meta.addItemFlags(org.bukkit.inventory.ItemFlag.values());
             meta.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, k.id());
             it.setItemMeta(meta);
             m.inv.setItem(10 + i, it);
         }
+        boolean bots = kiestBots.getOrDefault(p.getUniqueId(), false);
+        m.inv.setItem(21, arenaKnop(Material.IRON_SWORD, "PvP-arena", "tegen andere spelers", !bots, "pvp"));
+        m.inv.setItem(23, arenaKnop(Material.ZOMBIE_HEAD, "Oefenarena", "tegen bots", bots, "bots"));
         p.openInventory(m.inv);
+    }
+
+    private ItemStack arenaKnop(Material mat, String naam, String uitleg, boolean gekozen, String id) {
+        ItemStack it = new ItemStack(mat);
+        ItemMeta meta = it.getItemMeta();
+        meta.displayName(Component.text(naam, gekozen ? NamedTextColor.GREEN : NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        meta.lore(List.of(Component.text(uitleg + (gekozen ? " · gekozen" : " · klik om te kiezen"), NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
+        meta.addItemFlags(org.bukkit.inventory.ItemFlag.values());
+        if (gekozen) meta.setEnchantmentGlintOverride(true);
+        meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "arena:" + id);
+        it.setItemMeta(meta);
+        return it;
     }
 
     @EventHandler
@@ -593,6 +815,12 @@ public final class KitPvP extends JavaPlugin implements Listener {
             if (it == null || !it.hasItemMeta()) return;
             String id = it.getItemMeta().getPersistentDataContainer().get(kitKey, PersistentDataType.STRING);
             if (id != null) Bukkit.getScheduler().runTask(this, () -> kies(p, id));
+            String knop = it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+            if (knop != null && knop.startsWith("arena:")) {
+                kiestBots.put(p.getUniqueId(), knop.equals("arena:bots"));
+                p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
+                Bukkit.getScheduler().runTask(this, () -> openMenu(p));
+            }
             return;
         }
         if (itemSoort(e.getCurrentItem()) != null || itemSoort(e.getCursor()) != null) e.setCancelled(true);
@@ -612,7 +840,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         e.setCancelled(true);
         if (e.getHand() == EquipmentSlot.OFF_HAND) return;
         if (soort.equals("kies")) openMenu(e.getPlayer());
-        else if (soort.equals("lobby")) naarServer(e.getPlayer(), "lobby");
+        else if (soort.equals("lobby") && !blokkeerAlsGevecht(e.getPlayer())) naarServer(e.getPlayer(), "lobby");
     }
 
     @EventHandler
@@ -666,6 +894,10 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (e instanceof EntityDamageByEntityEvent be) {
             Player a = aanvallerVan(be.getDamager());
             if (a != null && !a.equals(p)) {
+                if (inBotArena.contains(p.getUniqueId()) || inBotArena.contains(a.getUniqueId())) {   // oefenarena: alleen bots
+                    e.setCancelled(true);
+                    return;
+                }
                 if (!kitVan.containsKey(a.getUniqueId())) {     // vanaf het platform aanvallen kan niet
                     e.setCancelled(true);
                     return;
@@ -685,6 +917,12 @@ public final class KitPvP extends JavaPlugin implements Listener {
         e.setDroppedExp(0);
         e.setKeepLevel(true);
         String kitDood = kitVan.remove(dood.getUniqueId());
+        untag(dood);
+        if (inBotArena.remove(dood.getUniqueId())) {          // oefenarena: telt niet mee, geen melding voor iedereen
+            e.deathMessage(null);
+            dood.sendActionBar(Component.text("Verslagen in de oefenarena", NamedTextColor.GRAY));
+            return;
+        }
         Player killer = dood.getKiller();
         if (killer == null) {
             UUID a = laatsteAanvaller.get(dood.getUniqueId());
@@ -796,7 +1034,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         // rustig binnenkomen: geen titel of chatblok, één korte actionbar-regel (de ster staat in vak 5)
         Bukkit.getScheduler().runTaskLater(this, () -> {
             if (p.isOnline() && !kitVan.containsKey(p.getUniqueId()))
-                p.sendActionBar(Component.text("KitPvP · kies een kit met de ster", NamedTextColor.GRAY));
+                p.sendActionBar(Component.text("KitPvP · kies een kit en arena met de ster", NamedTextColor.GRAY));
         }, 20L);
         reeks.put(p.getUniqueId(), 0);
     }
@@ -804,6 +1042,27 @@ public final class KitPvP extends JavaPlugin implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
+        Player p = e.getPlayer();
+        if (inGevecht(id) && kitVan.containsKey(id) && !inBotArena.contains(id)) {   // weglopen uit een gevecht = verslagen
+            tel(id, p.getName(), "doden");
+            UUID a = laatsteAanvaller.get(id);
+            Player killer = a == null ? null : Bukkit.getPlayer(a);
+            if (killer != null && kitVan.containsKey(killer.getUniqueId())) {
+                tel(killer.getUniqueId(), killer.getName(), "kills");
+                int r = reeks.merge(killer.getUniqueId(), 1, Integer::sum);
+                if (r > stats.getInt(killer.getUniqueId() + ".beste", 0)) stats.set(killer.getUniqueId() + ".beste", r);
+                var max = killer.getAttribute(Attribute.MAX_HEALTH);
+                if (max != null) killer.setHealth(max.getValue());
+                werkBordBij(killer);
+            }
+            Bukkit.broadcast(Component.text("☠ ", NamedTextColor.DARK_RED).append(p.displayName().colorIfAbsent(NamedTextColor.WHITE))
+                    .append(Component.text(" liep weg uit het gevecht", NamedTextColor.GRAY)));
+            bewaarStats();
+            werkRanglijstBij();
+        }
+        gevechtTot.remove(id);
+        gevechtGemeld.remove(id);
+        inBotArena.remove(id);
         kitVan.remove(id);
         beschermdTot.remove(id);
         reeks.remove(id);
@@ -866,6 +1125,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 {"b", "§7Kit: " + (kit == null ? "§8—" : "§f" + kit.naam())},
                 {"c", "§7Kills: §f" + k + " §8· §7Doden: §f" + d},
                 {"f", "§7Reeks: §f" + reeks.getOrDefault(p.getUniqueId(), 0)},
+                {"g", "§7Arena: §f" + (inBotArena.contains(p.getUniqueId()) ? "oefen (bots)" : kiestBots.getOrDefault(p.getUniqueId(), false) ? "§8oefen (bots)" : kitVan.containsKey(p.getUniqueId()) ? "PvP" : "§8PvP")},
         };
         int score = regels.length;
         for (String[] r : regels) {
@@ -911,8 +1171,14 @@ public final class KitPvP extends JavaPlugin implements Listener {
             if (!kitVan.containsKey(p.getUniqueId())) {
                 if (wacht != null && p.getLocation().distanceSquared(wacht) > 30 * 30 && p.getWorld().equals(w)) naarWacht(p, false);
             }
+            Long gt = gevechtTot.get(p.getUniqueId());
+            if (gt != null) {
+                if (gt <= nu) untag(p);
+                else p.sendActionBar(Component.text("⚔ In gevecht · " + ((gt - nu + 999) / 1000) + " s", NamedTextColor.RED));
+            }
             if (seconden % 2 == 0) werkBordBij(p);
         }
+        botsBijhouden();
         spiegelTeams();
     }
 
@@ -965,14 +1231,12 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (args.length >= 1 && args[0].equalsIgnoreCase("zelftest") && sender.hasPermission("kitpvp.beheer")) {
             sender.sendMessage("kitpvp zelftest: grond=" + g + " wacht=" + (wacht == null ? "-" : wacht.getBlockX() + "," + wacht.getBlockY() + "," + wacht.getBlockZ())
                     + " spawns=" + spawns.size() + " kits=" + KITS.length + " spelers-in-arena=" + kitVan.size()
-                    + " stats=" + stats.getKeys(false).size() + " ranglijst=" + (ranglijst != null && ranglijst.isValid()));
+                    + " stats=" + stats.getKeys(false).size() + " ranglijst=" + (ranglijst != null && ranglijst.isValid())
+                    + " botspawns=" + botSpawns.size() + " bots=" + bots().size() + " in-oefenarena=" + inBotArena.size());
             return true;
         }
         if (sender instanceof Player p) {
-            if (kitVan.containsKey(p.getUniqueId()) && laatsteAanvalTijd.getOrDefault(p.getUniqueId(), 0L) > System.currentTimeMillis() - 10_000L) {
-                p.sendMessage(Component.text("Je bent net aangevallen; even wachten (10 s).", NamedTextColor.RED));
-                return true;
-            }
+            if (kitVan.containsKey(p.getUniqueId()) && blokkeerAlsGevecht(p)) return true;
             naarWacht(p, true);
         }
         return true;

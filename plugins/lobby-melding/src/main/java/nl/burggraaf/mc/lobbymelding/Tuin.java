@@ -371,8 +371,8 @@ final class Tuin {
         for (int s : new int[]{-3, 3}) lantaarnpaal(cx + s, z + 2);
         for (int t = z + 1; t <= -9; t++) zet(cx, g, t, surv ? Material.DIRT_PATH : Material.POLISHED_BLACKSTONE_BRICKS);
         poorten.add(new Poort(cx - 1, cx + 1, z, server));
-        label(cx + 0.5, g + 8.6, z + 0.5, surv ? "<green><bold>🌲 SURVIVAL</bold></green>\n<gray>loop erdoorheen</gray>"
-                : "<red><bold>⚔ KITPVP</bold></red>\n<gray>loop erdoorheen</gray>", 1.4f);
+        label(cx + 0.5, g + 8.6, z + 0.5, surv ? "<green><bold>🌲 Survival</bold></green>\n<gray>loop erdoorheen</gray>"
+                : "<red><bold>⚔ KitPvP</bold></red>\n<gray>PvP of oefenen tegen bots</gray>", 1.6f);
         reserveer(cx - 4, z - 5, cx + 4, z + 3);
     }
 
