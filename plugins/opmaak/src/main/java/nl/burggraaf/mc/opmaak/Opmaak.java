@@ -484,7 +484,13 @@ public final class Opmaak extends JavaPlugin implements Listener {
             sender.sendMessage("Opmaak: config herladen.");
             return true;
         }
-        sender.sendMessage("Gebruik: /opmaak stil <seconden> | /opmaak herlaad");
+        if (args.length >= 1 && args[0].equalsIgnoreCase("wie")) {        // controle: beroep (prefix) en OP per speler hier
+            for (Player p : Bukkit.getOnlinePlayers())
+                sender.sendMessage("opmaak wie: " + p.getName() + " prefix=" + prefixVan(p).replaceAll("<[^>]*>", "").trim() + " op=" + p.isOp());
+            if (Bukkit.getOnlinePlayers().isEmpty()) sender.sendMessage("opmaak wie: niemand online");
+            return true;
+        }
+        sender.sendMessage("Gebruik: /opmaak stil <seconden> | /opmaak herlaad | /opmaak wie");
         return true;
     }
 }

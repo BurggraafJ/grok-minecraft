@@ -339,14 +339,25 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   6 Honing, 7 Slijm, 8 Waterval, 9 Neo, 10 Meester (zelfde z). Per level een huis in de levelkleur met binnenmuur
   «Ranglijst» (top 5), stadion met tribunes, vlaggen, schijnwerpers en scorebord. Beste tijd per speler per level in
   `tijden.yml`, voortgang in `voortgang.yml` (blijven bewaard bij een herbouw). Val-check alleen tijdens een run.
+  **Start = 3×3 limoen platform** (`BOUW_VERSIE` 7), je staat in het midden en kijkt naar de eerste sprong; de sprongen
+  rekenen vanaf de voorrand. Finish is ook 3×3. Tussen-checkpoints zijn er niet: vallen = terug naar de start.
+  **Reset alleen bij echt de grond raken** (Jelle 26-10): voeten op vloerhoogte (gras/vloer, alle baanblokken liggen
+  hoger), erdoorheen, of in water lager dan de baan. Even op een rand, muur, plafond of tribune landen reset niet
+  meer. Terugstappen het huis in stopt de run. Meldingen alleen op de actiebalk (grijs).
   Na een level «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
   Hotbar in de lobby: vak 1 kompas «Level kiezen», vak 5 ster «Server kiezen» (tijdens aftellen barrière, tijdens
   wachten rode wol), vak 9 «Opnieuw» (= `/parkour reset`). `/parkour` vanuit survival: plek onthouden (plugin
   `lobbyreis`), naar je volgende level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp`, eigen code, `BOUW_VERSIE` 2): vlakke wereld, adventure, geen
+- **KitPvP** (server `kitpvp`, plugin `kitpvp`, eigen code, `BOUW_VERSIE` 3): vlakke wereld, adventure, geen
   mobs/weer/dag-nacht, `immediate_respawn`. Colosseum (straal 30) met wachtplatform: 7 kits als pantserstandaards
   (krijger, boog, tank, ninja, speer, heler, hamer) of het kitmenu (ster in vak 5, `/kit`). In het menu kies je de
-  **arena**: PvP-arena (spelers) of **Oefenarena** (ten zuiden, midden 0/110, straal 18: bots). Bots = zombies,
+  **arena**: PvP-arena (spelers), **Kasteel** (spelers, voor bogen) of **Oefenarena** (ten zuiden, midden 0/110,
+  straal 18: bots). **Kasteel** (eigen code `Kasteel.java`, ten noorden, midden 0/−150): twee kasteelmuren tegenover
+  elkaar (41 lang, 6 hoog, 3 dik; noord rode band, zuid blauwe band) met kantelen om de 3 blokken en een halve
+  borstwering ertussen (eroverheen schieten), schietgaten (1×2) dwars door de muur, poort in het midden, trappen aan
+  beide uiteinden van de binnenplaats omhoog naar de weergang; open middenveld (27 diep) met alleen twee lage muurtjes
+  en wat hooi; buitenmuren 11 hoog. 8 spawns: per kant 2 op de weergang en 2 op de binnenplaats, blik op het veld; je
+  komt op de plek het verst van de anderen. Gewone PvP-regels (stats, gevecht-tag). Bots = zombies,
   husks en skeletten in harnas (tag `kitpvp-bot`, niet opgeslagen, branden niet, geen drops): 1 + 2 per speler in
   de oefenarena (max `bots-max` 6), weg na 30 s leeg; ze vallen alleen spelers in de oefenarena aan; geen PvP daar;
   een bot verslaan = +4 hartjes en `bots` in stats.yml; doodgaan daar telt niet mee. Rustig binnenkomen: geen

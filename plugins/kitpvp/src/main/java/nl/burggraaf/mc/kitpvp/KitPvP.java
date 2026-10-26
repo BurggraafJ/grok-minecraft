@@ -89,9 +89,10 @@ import org.bukkit.scoreboard.Team;
  */
 public final class KitPvP extends JavaPlugin implements Listener {
 
-    private static final int BOUW_VERSIE = 2;   // 2: oefenarena met bots erbij
+    private static final int BOUW_VERSIE = 3;   // 2: oefenarena met bots erbij, 3: kasteelarena
     private static final int R = 30;           // arena-straal (binnenkant muur)
     private static final int BZ = 110, RB = 18; // oefenarena (bots): midden (0, BZ), straal
+    private static final int KZ = -150;        // kasteelarena: midden (0, KZ)
     private static final long GEVECHT_MS = 10_000L;
 
     private World w;
@@ -99,7 +100,8 @@ public final class KitPvP extends JavaPlugin implements Listener {
     private Location wacht;                    // wachtplatform
     private final List<Location> spawns = new ArrayList<>();
     private final List<Location> botSpawns = new ArrayList<>();
-    private final Map<UUID, Boolean> kiestBots = new HashMap<>();      // voorkeur in het menu: true = oefenarena
+    private final List<Location> kasteelSpawns = new ArrayList<>();
+    private final Map<UUID, String> arenaKeuze = new HashMap<>();      // voorkeur in het menu: pvp, kasteel of bots
     private final java.util.Set<UUID> inBotArena = new java.util.HashSet<>();
     private final Map<UUID, Long> gevechtTot = new HashMap<>();
     private final Map<UUID, Long> gevechtGemeld = new HashMap<>();
@@ -150,7 +152,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () -> {
             w = Bukkit.getWorlds().get(0);
             for (int cx = -4; cx <= 3; cx++)             // arena blijft geladen: kit-standaards en ranglijst verdwijnen anders
-                for (int cz = -4; cz <= 8; cz++) w.addPluginChunkTicket(cx, cz, this);   // ook de oefenarena
+                for (int cz = -12; cz <= 8; cz++) w.addPluginChunkTicket(cx, cz, this);  // ook de oefen- en kasteelarena
             bouw(false);
             for (Player p : Bukkit.getOnlinePlayers()) naarWacht(p, false);
         });
@@ -353,10 +355,12 @@ public final class KitPvP extends JavaPlugin implements Listener {
                     .append(Component.text("▶ klik om te kiezen", NamedTextColor.YELLOW)), 0.8f);
         }
         bouwOefenarena();                                  // na het opruimen van de labels hierboven
+        kasteelSpawns.clear();
+        Kasteel.bouw(this, w, g, KZ, plaats, kasteelSpawns);
         label(new Location(w, 0.5, wy + 4.2, -44.5), Component.text("⚔ KITPVP ⚔", NamedTextColor.RED, TextDecoration.BOLD)
                 .append(Component.newline()).append(Component.text("Kies een kit en spring de arena in!", NamedTextColor.WHITE)), 1.6f);
         label(new Location(w, 10.5, wy + 2.2, -40.5), Component.text("Hoe werkt het?", NamedTextColor.GOLD, TextDecoration.BOLD)
-                .append(Component.newline()).append(Component.text("• Kies een kit (klik of de ster)\n• In het menu: PvP of oefenarena (bots)\n• Kill = vol leven + gouden appel\n• 10 s na een treffer kun je niet weg\n• /lobby · /survival om te gaan", NamedTextColor.GRAY)), 0.9f);
+                .append(Component.newline()).append(Component.text("• Kies een kit (klik of de ster)\n• In het menu: PvP, kasteel of bots\n• Kill = vol leven + gouden appel\n• 10 s na een treffer kun je niet weg\n• /lobby · /survival om te gaan", NamedTextColor.GRAY)), 0.9f);
         Location rl = new Location(w, -10.5, wy + 2.2, -40.5);
         ranglijst = w.spawn(rl, TextDisplay.class, d -> {
             d.setPersistent(false);
@@ -683,6 +687,15 @@ public final class KitPvP extends JavaPlugin implements Listener {
         return null;
     }
 
+    private String arenaNaam(Player p) {
+        if (inBotArena.contains(p.getUniqueId())) return "oefen (bots)";
+        return switch (arenaKeuze.getOrDefault(p.getUniqueId(), "pvp")) {
+            case "bots" -> "oefen (bots)";
+            case "kasteel" -> "kasteel";
+            default -> "PvP";
+        };
+    }
+
     private void kies(Player p, String id) {
         Kit k = kit(id);
         if (k == null || w == null) return;
@@ -693,9 +706,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.closeInventory();
         geefKit(p, id);
         kitVan.put(p.getUniqueId(), id);
-        boolean bots = kiestBots.getOrDefault(p.getUniqueId(), false) && !botSpawns.isEmpty();
+        String keuze = arenaKeuze.getOrDefault(p.getUniqueId(), "pvp");
+        boolean bots = keuze.equals("bots") && !botSpawns.isEmpty();
+        boolean kasteel = keuze.equals("kasteel") && !kasteelSpawns.isEmpty();
         if (bots) inBotArena.add(p.getUniqueId()); else inBotArena.remove(p.getUniqueId());
-        List<Location> plekken = bots ? botSpawns : spawns;
+        List<Location> plekken = bots ? botSpawns : kasteel ? kasteelSpawns : spawns;
         Location doel = plekken.isEmpty() ? wacht : plekken.stream().max(Comparator.comparingDouble(l -> {
             double min = 1e9;
             for (Player q : Bukkit.getOnlinePlayers()) {
@@ -707,7 +722,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.teleport(doel);
         int s = Math.max(0, getConfig().getInt("bescherming-seconden", 3));
         beschermdTot.put(p.getUniqueId(), System.currentTimeMillis() + s * 1000L);
-        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text((bots ? " · oefenarena" : "") + " · " + s + " s bescherming", NamedTextColor.GRAY)));
+        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text((bots ? " · oefenarena" : kasteel ? " · kasteel" : "") + " · " + s + " s bescherming", NamedTextColor.GRAY)));
         p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.4f, 1f);
         w.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
         werkBordBij(p);
@@ -787,9 +802,10 @@ public final class KitPvP extends JavaPlugin implements Listener {
             it.setItemMeta(meta);
             m.inv.setItem(10 + i, it);
         }
-        boolean bots = kiestBots.getOrDefault(p.getUniqueId(), false);
-        m.inv.setItem(21, arenaKnop(Material.IRON_SWORD, "PvP-arena", "tegen andere spelers", !bots, "pvp"));
-        m.inv.setItem(23, arenaKnop(Material.ZOMBIE_HEAD, "Oefenarena", "tegen bots", bots, "bots"));
+        String keuze = arenaKeuze.getOrDefault(p.getUniqueId(), "pvp");
+        m.inv.setItem(21, arenaKnop(Material.IRON_SWORD, "PvP-arena", "tegen andere spelers", keuze.equals("pvp"), "pvp"));
+        m.inv.setItem(22, arenaKnop(Material.BOW, "Kasteel", "twee muren, voor bogen", keuze.equals("kasteel"), "kasteel"));
+        m.inv.setItem(23, arenaKnop(Material.ZOMBIE_HEAD, "Oefenarena", "tegen bots", keuze.equals("bots"), "bots"));
         p.openInventory(m.inv);
     }
 
@@ -817,7 +833,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
             if (id != null) Bukkit.getScheduler().runTask(this, () -> kies(p, id));
             String knop = it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
             if (knop != null && knop.startsWith("arena:")) {
-                kiestBots.put(p.getUniqueId(), knop.equals("arena:bots"));
+                arenaKeuze.put(p.getUniqueId(), knop.substring("arena:".length()));
                 p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
                 Bukkit.getScheduler().runTask(this, () -> openMenu(p));
             }
@@ -1125,7 +1141,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 {"b", "§7Kit: " + (kit == null ? "§8—" : "§f" + kit.naam())},
                 {"c", "§7Kills: §f" + k + " §8· §7Doden: §f" + d},
                 {"f", "§7Reeks: §f" + reeks.getOrDefault(p.getUniqueId(), 0)},
-                {"g", "§7Arena: §f" + (inBotArena.contains(p.getUniqueId()) ? "oefen (bots)" : kiestBots.getOrDefault(p.getUniqueId(), false) ? "§8oefen (bots)" : kitVan.containsKey(p.getUniqueId()) ? "PvP" : "§8PvP")},
+                {"g", "§7Arena: §f" + ((kitVan.containsKey(p.getUniqueId()) ? "" : "§8") + arenaNaam(p))},
         };
         int score = regels.length;
         for (String[] r : regels) {
@@ -1232,7 +1248,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
             sender.sendMessage("kitpvp zelftest: grond=" + g + " wacht=" + (wacht == null ? "-" : wacht.getBlockX() + "," + wacht.getBlockY() + "," + wacht.getBlockZ())
                     + " spawns=" + spawns.size() + " kits=" + KITS.length + " spelers-in-arena=" + kitVan.size()
                     + " stats=" + stats.getKeys(false).size() + " ranglijst=" + (ranglijst != null && ranglijst.isValid())
-                    + " botspawns=" + botSpawns.size() + " bots=" + bots().size() + " in-oefenarena=" + inBotArena.size());
+                    + " kasteelspawns=" + kasteelSpawns.size() + " botspawns=" + botSpawns.size() + " bots=" + bots().size() + " in-oefenarena=" + inBotArena.size());
             return true;
         }
         if (sender instanceof Player p) {

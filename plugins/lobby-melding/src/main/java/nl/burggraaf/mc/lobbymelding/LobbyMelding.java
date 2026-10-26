@@ -280,7 +280,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
     private static final int HUIS = 11;        // huis is 11×11
     private static final String[] KLEUR = {"LIGHT_BLUE", "LIME", "ORANGE", "WHITE", "YELLOW", "BROWN", "GREEN", "CYAN", "PURPLE", "RED"};
     private static final int AVENUE_X = 19;    // laan-boulevard x=19..21
-    private static final int BOUW_VERSIE = 6;   // 6 = de grote tuin
+    private static final int BOUW_VERSIE = 7;   // 7 = startplatform 3×3, spawn midden, kijk naar de eerste sprong
     private final Map<UUID, Integer> huidigLevel = new HashMap<>();  // ophogen = alles opnieuw bouwen bij de volgende lobbystart
 
     private int vloerY;                                   // y van de vloer in de huisjes = y van de startblokken
@@ -546,10 +546,18 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         bouwHuis(w, sx, zc, l);
         huisje[l] = new Location(w, sx * (HUT_X + 5) + 0.5, vloerY + 1, zc + 1.5, sx > 0 ? -90f : 90f, 0f);
         java.util.List<Location> punten = new java.util.ArrayList<>();
-        int x = sx * (HUT_X + HUIS), y = vloerY, z = zc;  // startblok vlak voor de open voorkant
+        int x = sx * (HUT_X + HUIS + 1), y = vloerY, z = zc;  // midden van het 3×3-startplatform vlak voor de open voorkant
         int verst = x;
         org.bukkit.block.BlockFace ladderKant = sx > 0 ? org.bukkit.block.BlockFace.WEST : org.bukkit.block.BlockFace.EAST;
         punt(w, x, y, z, Material.LIME_CONCRETE, l, punten);
+        for (int dx = -1; dx <= 1; dx++)                        // 3×3, allemaal "start" (index 0)
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                zet(w, x + dx, y, z + dz, Material.LIME_CONCRETE);
+                vul(w, x + dx, y + 1, z + dz, x + dx, y + 3, z + dz, Material.AIR);
+                blokNaarPunt.put(sleutel(x + dx, y, z + dz), new int[]{l, 0});
+            }
+        x += sx;                                                // de sprongen tellen vanaf de voorrand
         Stap[] st = lv.stappen();
         for (int s = 0; s < st.length; s++) {
             Stap k = st[s];
@@ -613,8 +621,12 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         banen[l] = punten.toArray(new Location[0]);
         for (Location pt : banen[l]) verst = sx > 0 ? Math.max(verst, pt.getBlockX()) : Math.min(verst, pt.getBlockX());
         bouwStadion(w, l, sx, zc, sx * (HUT_X + HUIS + 1), verst + sx * 2);
-        float kijk = sx > 0 ? -90f : 90f;
+        // kijkrichting op de start: naar het eerste blok (yaw 0 = +z, -90 = +x)
+        Location a0 = banen[l][0], a1 = banen[l].length > 1 ? banen[l][1] : a0;
+        float kijk = a1 == a0 ? (sx > 0 ? -90f : 90f)
+                : (float) Math.toDegrees(Math.atan2(-(a1.getX() - a0.getX()), a1.getZ() - a0.getZ()));
         banen[l][0].setYaw(kijk);
+        banen[l][0].setPitch(10f);
         label(new Location(w, sx * (HUT_X + 5) + 0.5, vloerY + 14, zc + 0.5),
                 Component.text("Level " + (l + 1), NamedTextColor.GOLD, TextDecoration.BOLD)
                         .append(Component.newline()).append(Component.text(lv.naam(), NamedTextColor.WHITE))
@@ -828,13 +840,19 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         int lp = Math.min(laatstePunt.getOrDefault(id, 0), banen[bezig].length - 1);
         double laatst = banen[bezig][lp].getY();
         double volgend = lp + 1 < banen[bezig].length ? banen[bezig][lp + 1].getY() : laatst;
-        boolean gevallen = to.getY() < Math.min(laatst, volgend) - 2.0     // onder de baan
-                || (p.isOnGround() && !p.isClimbing())                       // staat op iets dat geen baan is
-                || (p.isInWater() && punt == null);                          // in ander water
+        // Alleen echt de grond raken telt (Jelle 26-10): op het gras/de vloer staan (voeten op vloerhoogte, alle
+        // baanblokken liggen hoger) of erdoorheen. Even op een rand, muur, plafond of tribune landen reset niet.
+        boolean opGrond = p.isOnGround() && !p.isClimbing() && to.getY() < vloerY + 0.5;
+        boolean gevallen = opGrond || to.getY() < vloerY - 1.0
+                || (p.isInWater() && punt == null && to.getY() < Math.min(laatst, volgend) - 1.0);   // ander water, lager dan de baan
+        if (lp == 0 && p.isOnGround() && !p.isClimbing() && punt == null) {
+            int sx = laanRichting[bezig] == 0 ? 1 : laanRichting[bezig];
+            if (sx * (to.getX() - banen[bezig][0].getX()) < 1.3) gevallen = true;     // terug het huis in: run stoppen (hieronder)
+        }
         if (!gevallen) return;
         if (lp == 0) {
             int sx = laanRichting[bezig] == 0 ? 1 : laanRichting[bezig];
-            boolean vooruit = sx * (to.getX() - banen[bezig][0].getX()) > 0.8;
+            boolean vooruit = sx * (to.getX() - banen[bezig][0].getX()) > 1.3;
             if (!vooruit) {                                              // terug het huis in / opzij gestapt: run stoppen
                 bezigLevel.remove(id);
                 startTijd.remove(id);
@@ -849,7 +867,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         startTijd.put(id, nu);
         laatstePunt.put(id, 0);
         p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
-        p.sendActionBar(Component.text("Gevallen! Terug naar de start van level " + (bezig + 1), NamedTextColor.RED));
+        p.sendActionBar(Component.text("Terug naar de start · level " + (bezig + 1), NamedTextColor.GRAY));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -888,8 +906,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                 startTijd.put(id, System.currentTimeMillis());
                 laatstePunt.put(id, 0);
                 slaGespeeldOp(id, l + 1);
-                p.sendMessage(Component.text("Level " + (l + 1) + " gestart! Val je, dan begin je opnieuw.", NamedTextColor.AQUA));
-                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.7f, 1.2f);
+                p.sendActionBar(Component.text("Level " + (l + 1) + " · " + LEVELS[l].naam(), NamedTextColor.GRAY));
             }
             return;
         }
@@ -1041,7 +1058,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
             p.teleport(banen[l][0]);
             huidigLevel.put(p.getUniqueId(), l);
             p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.6f, 1.3f);
-            p.sendMessage(Component.text("Level " + (l + 1) + ": " + LEVELS[l].naam() + ". Spring van het groene blok!", NamedTextColor.AQUA));
+            p.sendActionBar(Component.text("Level " + (l + 1) + " · " + LEVELS[l].naam(), NamedTextColor.GRAY));
             return;
         }
     }
