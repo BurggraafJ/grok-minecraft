@@ -502,9 +502,8 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.teleport(doel);
         int s = Math.max(0, getConfig().getInt("bescherming-seconden", 3));
         beschermdTot.put(p.getUniqueId(), System.currentTimeMillis() + s * 1000L);
-        p.showTitle(Title.title(Component.text(k.naam(), k.kleur(), TextDecoration.BOLD), Component.text("Vecht! (" + s + " s bescherming)", NamedTextColor.GRAY),
-                Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1300), Duration.ofMillis(300))));
-        p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 1f, 1f);
+        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text(" · " + s + " s bescherming", NamedTextColor.GRAY)));
+        p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.4f, 1f);
         w.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
         werkBordBij(p);
     }
@@ -553,7 +552,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.getInventory().setItem(8, lobbyItem());
         if (wacht != null) p.teleport(wacht);
         werkBordBij(p);
-        if (bericht) p.sendActionBar(Component.text("Kies een kit om te vechten", NamedTextColor.GOLD));
+        if (bericht) p.sendActionBar(Component.text("Kies een kit om te vechten", NamedTextColor.GRAY));
     }
 
     private static final class Menu implements InventoryHolder {
@@ -794,11 +793,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (!actief) return;
         Player p = e.getPlayer();
         naarWacht(p, false);
-        p.showTitle(Title.title(Component.text("⚔ KitPvP", NamedTextColor.RED, TextDecoration.BOLD), Component.text("Kies een kit en spring de arena in", NamedTextColor.GRAY),
-                Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2200), Duration.ofMillis(400))));
-        p.sendMessage(Component.text("» Welkom in de KitPvP-arena! Klik op een kit-standaard of de ster. ", NamedTextColor.GOLD)
-                .append(Component.text("/lobby", NamedTextColor.AQUA)).append(Component.text(" of ", NamedTextColor.GRAY))
-                .append(Component.text("/survival", NamedTextColor.AQUA)).append(Component.text(" om te gaan.", NamedTextColor.GRAY)));
+        // rustig binnenkomen: geen titel of chatblok, één korte actionbar-regel (de ster staat in vak 5)
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (p.isOnline() && !kitVan.containsKey(p.getUniqueId()))
+                p.sendActionBar(Component.text("KitPvP · kies een kit met de ster", NamedTextColor.GRAY));
+        }, 20L);
         reeks.put(p.getUniqueId(), 0);
     }
 
@@ -864,15 +863,9 @@ public final class KitPvP extends JavaPlugin implements Listener {
         int k = stats.getInt(id + ".kills", 0), d = stats.getInt(id + ".doden", 0);
         Kit kit = kit(kitVan.getOrDefault(p.getUniqueId(), ""));
         String[][] regels = {
-                {"a", " "},
                 {"b", "§7Kit: " + (kit == null ? "§8—" : "§f" + kit.naam())},
-                {"c", "§7Kills: §a" + k},
-                {"d", "§7Doden: §c" + d},
-                {"e", "§7K/D: §f" + kd(k, d)},
-                {"f", "§7Reeks: §6" + reeks.getOrDefault(p.getUniqueId(), 0)},
-                {"g", "§7Beste reeks: §e" + stats.getInt(id + ".beste", 0)},
-                {"h", "  "},
-                {"i", "§8/lobby · /survival"},
+                {"c", "§7Kills: §f" + k + " §8· §7Doden: §f" + d},
+                {"f", "§7Reeks: §f" + reeks.getOrDefault(p.getUniqueId(), 0)},
         };
         int score = regels.length;
         for (String[] r : regels) {
@@ -917,7 +910,6 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             if (!kitVan.containsKey(p.getUniqueId())) {
                 if (wacht != null && p.getLocation().distanceSquared(wacht) > 30 * 30 && p.getWorld().equals(w)) naarWacht(p, false);
-                else if (seconden % 3 == 0) p.sendActionBar(Component.text("Kies een kit: klik op een standaard of de ster", NamedTextColor.GOLD));
             }
             if (seconden % 2 == 0) werkBordBij(p);
         }

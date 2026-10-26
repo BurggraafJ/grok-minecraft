@@ -89,7 +89,9 @@ public final class Netwerk {
     private List<String> spel = List.of("survival", "kitpvp");
     private Map<String, String> tags = new LinkedHashMap<>();
     private Map<String, String> namen = new LinkedHashMap<>();
-    private int aftellen = 5;
+    private int aftellen = 5;                 // terug na een herstart
+    private int aftellenJoin = 3;             // na het binnenkomen, naar je vorige server
+    private int joinStilMs = 2000;            // eerst even niets na het binnenkomen
     private String joinFormaat = "<gray>[<green>+</green>]</gray> <white><naam>";
     private String quitFormaat = "<gray>[<red>-</red>]</gray> <white><naam>";
     private String wisselFormaat = "<dark_gray>»</dark_gray> <gray><naam></gray> <dark_gray>→</dark_gray> <tag>";
@@ -200,6 +202,8 @@ public final class Netwerk {
             if (o.has("tags")) tags.putAll(GSON.fromJson(o.get("tags"), new TypeToken<Map<String, String>>() {}.getType()));
             if (o.has("namen")) namen.putAll(GSON.fromJson(o.get("namen"), new TypeToken<Map<String, String>>() {}.getType()));
             if (o.has("aftellen")) aftellen = Math.max(1, Math.min(15, o.get("aftellen").getAsInt()));
+            if (o.has("aftellen_join")) aftellenJoin = Math.max(1, Math.min(15, o.get("aftellen_join").getAsInt()));
+            if (o.has("join_stil_ms")) joinStilMs = Math.max(0, Math.min(10000, o.get("join_stil_ms").getAsInt()));
             if (o.has("join")) joinFormaat = o.get("join").getAsString();
             if (o.has("quit")) quitFormaat = o.get("quit").getAsString();
             if (o.has("wissel")) wisselFormaat = o.get("wissel").getAsString();
@@ -344,7 +348,7 @@ public final class Netwerk {
         if (e.getPreviousServer() == null) {
             if (System.currentTimeMillis() > stilTot) iedereen(formaat(joinFormaat, p, naar));
             if (naar.equals(lobby)) {
-                proxy.getScheduler().buildTask(this, () -> naJoin(p)).delay(1200, TimeUnit.MILLISECONDS).schedule();
+                proxy.getScheduler().buildTask(this, () -> naJoin(p)).delay(joinStilMs, TimeUnit.MILLISECONDS).schedule();
             }
         } else if (!stilleWissel.remove(p.getUniqueId())) {
             iedereen(formaat(wisselFormaat, p, naar));
@@ -354,26 +358,27 @@ public final class Netwerk {
         }
     }
 
-    /** Net binnen in de lobby: aftellen naar de vorige server (nieuw: standaard), of wachten als die er niet is. */
+    /**
+     * Net binnen in de lobby (na ~2 s stilte). De allereerste keer (nog geen vorige server): je blijft in de lobby,
+     * met één korte welkomstregel. Daarna: rustig 3-2-1 in de actionbar naar de server waar je de vorige keer was.
+     */
     private void naJoin(Player p) {
         if (!p.isActive() || !serverVan(p).map(lobby::equals).orElse(false)) return;
-        String doel = laatste.getOrDefault(p.getUniqueId().toString(), standaard);
-        if (!spel.contains(doel) || proxy.getServer(doel).isEmpty()) doel = standaard;
-        boolean nieuw = !laatste.containsKey(p.getUniqueId().toString());
+        if (!laatste.containsKey(p.getUniqueId().toString())) {
+            p.sendMessage(Component.text("Welkom op Burggraaf Craft! ", NamedTextColor.GOLD)
+                    .append(Component.text("Kies een server met de ster of loop door een poort.", NamedTextColor.GRAY)));
+            return;
+        }
+        String doel = laatste.get(p.getUniqueId().toString());
+        if (!spel.contains(doel) || proxy.getServer(doel).isEmpty()) return;   // die server is er niet meer: gewoon in de lobby
         final String server = doel;
         proxy.getServer(server).ifPresent(rs -> rs.ping().whenComplete((ping, fout) -> {
             if (!p.isActive() || !serverVan(p).map(lobby::equals).orElse(false)) return;
             if (fout != null) {
                 wachtend.put(p.getUniqueId(), server);
                 schrijfWachtend();
-                p.sendMessage(Component.text("» " + serverNaam(server) + " start even op; je gaat vanzelf zodra hij er is. ", NamedTextColor.YELLOW)
-                        .append(knop("[Blijven]", NamedTextColor.GREEN, "/annuleer", "In de lobby blijven")));
                 stuurNaarBackend(p, "wacht", server, serverNaam(server));
                 return;
-            }
-            if (nieuw) {
-                p.sendMessage(Component.text("Welkom op Burggraaf Craft! ", NamedTextColor.GOLD, TextDecoration.BOLD)
-                        .append(Component.text("Dit is de lobby; je gaat zo naar " + serverNaam(server) + ".", NamedTextColor.YELLOW).decoration(TextDecoration.BOLD, false)));
             }
             startAftelling(p, server, true);
         }));
@@ -458,15 +463,10 @@ public final class Netwerk {
 
     private void startAftelling(Player p, String server, boolean naJoin) {
         if (aftellingen.containsKey(p.getUniqueId())) return;
-        aftellingen.put(p.getUniqueId(), new Aftelling(server, naJoin, aftellen));
-        Component regel = Component.text("» ", NamedTextColor.DARK_GRAY)
-                .append(Component.text(naJoin ? "Je gaat over " + aftellen + " s naar " : serverNaam(server) + " is er weer! Over " + aftellen + " s ga je terug naar ", NamedTextColor.YELLOW))
-                .append(Component.text(serverNaam(server), NamedTextColor.GOLD, TextDecoration.BOLD))
-                .append(Component.text(naJoin ? (laatste.containsKey(p.getUniqueId().toString()) ? " (waar je de vorige keer was). " : ". ") : ". ", NamedTextColor.YELLOW))
-                .append(knop("[Annuleren]", NamedTextColor.RED, "/annuleer", "In de lobby blijven (ook: /annuleer of de rode knop in je hotbar)"))
-                .append(serverKnoppen(server));
-        p.sendMessage(regel);
-        stuurNaarBackend(p, "aftellen", server, serverNaam(server), String.valueOf(aftellen));
+        int n = naJoin ? aftellenJoin : aftellen;
+        aftellingen.put(p.getUniqueId(), new Aftelling(server, naJoin, n));
+        // rustig: geen chatregels en geen grote titels, alleen de actionbar (zie tik)
+        stuurNaarBackend(p, "aftellen", server, serverNaam(server), String.valueOf(n));
         tik(p);
     }
 
@@ -478,8 +478,6 @@ public final class Netwerk {
             stuurNaarBackend(p, "aftellen-klaar", a.server);
             Optional<RegisteredServer> rs = proxy.getServer(a.server);
             if (rs.isEmpty()) return;
-            p.showTitle(Title.title(Component.text("Daar ga je!", NamedTextColor.GREEN, TextDecoration.BOLD), Component.text(serverNaam(a.server), NamedTextColor.GRAY),
-                    Title.Times.times(Duration.ZERO, Duration.ofMillis(1200), Duration.ofMillis(300))));
             stilleWissel.add(p.getUniqueId());
             p.createConnectionRequest(rs.get()).connect().whenComplete((r, fout) -> {
                 if (fout != null || r == null || !r.isSuccessful()) {
@@ -487,16 +485,15 @@ public final class Netwerk {
                     if (p.isActive() && serverVan(p).map(lobby::equals).orElse(false)) {
                         wachtend.put(p.getUniqueId(), a.server);
                         schrijfWachtend();
-                        p.sendMessage(Component.text("» " + serverNaam(a.server) + " is even niet bereikbaar; ik probeer het zo opnieuw (/annuleer = blijven).", NamedTextColor.YELLOW));
+                        p.sendActionBar(Component.text(serverNaam(a.server) + " is even niet bereikbaar · je gaat vanzelf · /blijf = blijven", NamedTextColor.GRAY));
                     }
                 }
             });
             return;
         }
-        TextColor kleur = KLEUR[Math.min(a.over, KLEUR.length) - 1];
-        p.showTitle(Title.title(Component.text(String.valueOf(a.over), kleur, TextDecoration.BOLD),
-                Component.text((a.naJoin ? "Naar " : "Terug naar ") + serverNaam(a.server) + " · /annuleer om te blijven", NamedTextColor.GRAY),
-                Title.Times.times(Duration.ZERO, Duration.ofMillis(1100), Duration.ofMillis(150))));
+        p.sendActionBar(Component.text((a.naJoin ? "Naar " : "Terug naar ") + serverNaam(a.server) + " in ", NamedTextColor.GRAY)
+                .append(Component.text(String.valueOf(a.over), NamedTextColor.WHITE))
+                .append(Component.text("  ·  /blijf om te blijven", NamedTextColor.DARK_GRAY)));
         stuurNaarBackend(p, "tik", String.valueOf(a.over));
         a.over--;
     }
@@ -506,10 +503,7 @@ public final class Netwerk {
         if (a == null) return;
         stuurNaarBackend(p, "aftellen-stop", a.server);
         if (melden) {
-            p.clearTitle();
-            p.sendMessage(Component.text("» Geannuleerd: je blijft in de lobby. ", NamedTextColor.GREEN)
-                    .append(Component.text("Naar een server: ", NamedTextColor.GRAY)).append(serverKnoppen(null).compact())
-                    .append(Component.text("  (of de ster in je hotbar)", NamedTextColor.DARK_GRAY)));
+            p.sendActionBar(Component.text("Je blijft in de lobby", NamedTextColor.GRAY));
         }
     }
 

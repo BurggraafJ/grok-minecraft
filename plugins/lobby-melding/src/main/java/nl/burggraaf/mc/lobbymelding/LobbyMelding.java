@@ -71,6 +71,8 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
     private final Map<UUID, String> modus = new HashMap<>();
     private boolean netwerkGezien = false;
     private final Map<UUID, Long> poortTot = new HashMap<>();
+    /** Korte hint in de actionbar (na annuleren), tot dit tijdstip; daarna is de actionbar stil. */
+    private final Map<UUID, Long> hintTot = new HashMap<>();
     private Tuin tuin;
 
     private Location veilig;
@@ -132,9 +134,9 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                 } else if (m != null && m.startsWith("wacht:")) {
                     p.sendActionBar(Component.text(m.split(":", 3)[2] + " herstart even · je gaat vanzelf terug · rode wol = blijven", NamedTextColor.YELLOW));
                 } else if (m != null && m.startsWith("aftellen:")) {
-                    p.sendActionBar(Component.text("Naar " + m.split(":", 3)[2] + " · klik de barrière (vak 5) of /annuleer om te blijven", NamedTextColor.GOLD));
-                } else {
-                    p.sendActionBar(Component.text("Ster (vak 5): naar Survival of KitPvP · kompas: parkour · of loop door een poort", NamedTextColor.AQUA));
+                    // de proxy (netwerk) toont het rustige 3-2-1 zelf in de actionbar
+                } else if (hintTot.getOrDefault(p.getUniqueId(), 0L) > System.currentTimeMillis()) {
+                    p.sendActionBar(Component.text("Je blijft in de lobby · ster = server kiezen", NamedTextColor.GRAY));
                 }
             }
         }, 10L, 10L);
@@ -1188,8 +1190,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
     /** Naar een spelserver (via Velocity). De proxy zet dat als je laatste server. */
     private void naarServer(Player p, String server) {
         String naam = server.equals("kitpvp") ? "KitPvP" : Character.toUpperCase(server.charAt(0)) + server.substring(1);
-        p.showTitle(Title.title(Component.text("Naar " + naam, server.equals("kitpvp") ? NamedTextColor.RED : NamedTextColor.GREEN, TextDecoration.BOLD),
-                Component.text("even geduld…", NamedTextColor.GRAY), Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(300))));
+        p.sendActionBar(Component.text("Naar " + naam + "…", NamedTextColor.GRAY));
         p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, 0.25f, 1.6f);
         stuurNaar(p, server);
     }
@@ -1229,15 +1230,15 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                 }
                 case "tik" -> {
                     int n = Integer.parseInt(in.readUTF());
-                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.6f + 0.15f * Math.max(0, 5 - n));
+                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 0.25f, 1f + 0.15f * Math.max(0, 3 - n));
                 }
                 case "aftellen-klaar" -> {
                     modus.remove(id);
-                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
                 }
                 case "aftellen-stop" -> {
                     modus.remove(id);
-                    p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 0.8f);
+                    hintTot.put(id, System.currentTimeMillis() + 3000);
+                    p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.4f, 0.8f);
                 }
                 case "wacht" -> {
                     String server = in.readUTF(), naam = in.readUTF();
@@ -1496,6 +1497,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         if (!Bukkit.isStopping() && blijft.remove(e.getPlayer().getUniqueId())) bewaarBlijvers(); // bij een lobbyherstart onthouden
         modus.remove(e.getPlayer().getUniqueId());
         poortTot.remove(e.getPlayer().getUniqueId());
+        hintTot.remove(e.getPlayer().getUniqueId());
         openServerMenus.remove(e.getPlayer().getUniqueId());
         laatstePunt.remove(e.getPlayer().getUniqueId());
         aftellend.remove(e.getPlayer().getUniqueId());
