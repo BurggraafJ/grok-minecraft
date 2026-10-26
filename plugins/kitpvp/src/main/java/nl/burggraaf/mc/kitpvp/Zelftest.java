@@ -124,6 +124,34 @@ final class Zelftest {
         stappen.add("hub");
     }
 
+    /**
+     * {@code kitpvp test <speler> dood} (alleen voor tests: telt een dood in stats.yml): in het kasteel doodgaan, dan
+     * moet je na de respawn in de kitruimte van het kasteel staan. Het resultaat komt een paar ticks later.
+     */
+    static void dood(KitPvP pl, Player p, org.bukkit.command.CommandSender aan) {
+        List<String> fouten = new java.util.ArrayList<>();
+        UUID id = p.getUniqueId();
+        pl.kiesModus(p, pl.modi.get("kasteel"));
+        pl.kies(p, "tank", pl.modi.arena("kasteel"));
+        moet(fouten, pl.spelers.inArena(id), "niet in het kasteel");
+        p.setHealth(0);
+        moet(fouten, pl.spelers.van(id).equals(Toestand.kitruimte("kasteel", "kasteel")), "na doodgaan: " + pl.spelers.van(id));
+        moet(fouten, pl.stand(p).equals("wacht"), "stand na doodgaan: " + pl.stand(p));
+        org.bukkit.Bukkit.getScheduler().runTaskLater(pl, () -> {
+            if (p.isDead()) p.spigot().respawn();
+            org.bukkit.Bukkit.getScheduler().runTaskLater(pl, () -> {
+                Kitruimte r = pl.modi.kitruimte("kasteel");
+                moet(fouten, !p.isDead(), "nog dood");
+                moet(fouten, r.binnen(p.getLocation()), "na respawn niet in de kitruimte: " + plek(p));
+                moet(fouten, p.getInventory().getItem(4) != null && p.getInventory().getItem(4).getType() == Material.NETHER_STAR, "geen ster na respawn");
+                String uit = "kitpvp test dood: " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ") " + String.join("; ", fouten)) + " · kasteel → dood → respawn in de kitruimte";
+                aan.sendMessage(uit);
+                pl.getLogger().info(uit);                    // het antwoord komt later; RCON is dan al weg
+                commando(pl, p, "arena");
+            }, 3L);
+        }, 2L);
+    }
+
     /** Zoals de speler het commando typt (de uitvoerder direct; performCommand loopt hier een tick later). */
     private static boolean commando(KitPvP pl, Player p, String naam, String... args) {
         return pl.onCommand(p, pl.getCommand(naam), naam, args);

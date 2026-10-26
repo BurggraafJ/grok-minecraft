@@ -971,6 +971,12 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 Zelftest.loop(this, p, fouten, stappen);
                 sender.sendMessage("kitpvp test " + p.getName() + ": " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" → ", stappen));
                 for (String f : fouten) sender.sendMessage("  ✗ " + f);
+                if (args.length >= 3 && args[2].equalsIgnoreCase("dood")) Zelftest.dood(this, p, sender);
+                if (args.length >= 3 && args[2].equalsIgnoreCase("arena")) {          // blijf in het kasteel staan (bv. huisdier testen)
+                    kiesModus(p, modi.get("kasteel"));
+                    kies(p, "krijger", modi.arena("kasteel"));
+                    sender.sendMessage("kitpvp test: " + p.getName() + " staat in het kasteel (stand " + stand(p) + ")");
+                }
             }
             default -> sender.sendMessage("kitpvp: grond=" + g + " modi=" + modi.alle().size() + " in-arena=" + spelers.aantalInArena()
                     + " spelers=" + Bukkit.getOnlinePlayers().size() + " bouwen=" + (bouwer != null && bouwer.bezig() ? bouwer.inRij() + " stappen" : "klaar")

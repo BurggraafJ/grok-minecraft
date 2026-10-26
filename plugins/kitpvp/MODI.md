@@ -89,7 +89,12 @@ alleen wat nodig is (of wat spelers al laden), want de server heeft 2 GB.
 
 - `plugins/KitPvP/gebouwd.yml`: `grond` (vloerhoogte) en per deel de gebouwde versie (`hub`, `arena`, `kasteel`).
   Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
-- Console: `kitpvp zelftest`, `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`, `kitpvp aftellen <s>`.
+- Console: `kitpvp zelftest`, `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`, `kitpvp aftellen <s>`,
+  `kitpvp kaart` (PNG's van hub, arena's en kasteel in `plugins/KitPvP/kaart/`: boven- en vooraanzichten van wat er
+  echt staat) en `kitpvp test <speler> [dood|arena]` (loopt met een online speler de hele route: hub, dichte
+  Zelda-poort, poort PvP Arena, zijdeur, kit, `/arena`, PvP Castle via het menu, gevecht-tag houdt `/arena` en `/modus`
+  tegen; `dood` = daarna sterven in het kasteel en controleren dat je in de kitruimte respawnt (telt een dood in
+  stats.yml, alleen voor tests); `arena` = daarna in het kasteel blijven staan).
   `arena bouw` / `arena zelftest` / `arena aftellen` werken nog (mc gebruikt `arena aftellen 5`).
 - De zelftest controleert register (drie modi met precies deze namen, Zelda binnenkort), hub (vloer, fontein, muur,
   binnenkomst), elke poort (omlijsting, open doorgang die naar de modus stuurt, of tralies + bordje + melding),

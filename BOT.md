@@ -386,7 +386,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda-poort;
-  eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`;
+  eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,
+  `kitpvp kaart` (plaatjes van wat er staat, `plugins/KitPvP/kaart/*.png`), `kitpvp test <speler>` (loopt de hele route
+  met een online speler: poorten, deuren, kits, `/arena`, gevecht-tag; niet bij spelers die aan het spelen zijn);
   `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor de Zelda-map: x 1024…2047,
   z −512…511.
 - **Lobby-poorten** (Survival links, KitPvP rechts van de fontein): label boven de poort, lichtblokken (froglights) in
