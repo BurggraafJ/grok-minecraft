@@ -31,7 +31,7 @@ jobs:
       - name: Klein geheugenplan voor de runner
         run: |
           mkdir -p "$MC_HOME/data"
-          echo '{"geheugen_mb": {"velocity": 384, "lobby": 768, "survival": 2048, "staging": 1536}}' > "$MC_HOME/data/config.json"
+          echo '{"geheugen_mb": {"velocity": 384, "lobby": 768, "survival": 2048, "kitpvp": 768, "staging": 1536}}' > "$MC_HOME/data/config.json"
       - name: Install (offline-test, geen tunnel)
         run: ./mc install --eula-akkoord --offline-test --tunnel geen --spelers CiSpeler --admins CiAdmin
       - name: Startersdorp gebouwd (wereld is willekeurig)
