@@ -157,8 +157,7 @@ def power(cfg, svc, signaal):
         n = spelers_online(cfg)
         if n != 0:
             raise Fout(f"velocity: {n if n > 0 else 'onbekend aantal'} spelers online, {signaal} geweigerd. "
-                       "Gebruik --aankondigen (één chatregel, opslaan, 10 s, dan herstart) "
-                       "of wacht tot de proxy leeg is (mc ensure doet het dan zelf).")
+                       "De proxy herstart alleen bij 0 spelers; mc ensure doet het zelf zodra hij leeg is.")
     api_json(cfg, "POST", f"/servers/{sid(cfg, svc)}/power", {"signal": signaal})
 
 
@@ -198,20 +197,17 @@ def aftellen_proxy(cfg, seconden=10, log=say):
 
 
 def velocity_akkoord(cfg, aankondigen=False, forceer=False, log=say):
-    """Mag velocity nu herstarten? True = ja (leeg, --forceer, of na de countdown). False = wachten."""
+    """Mag velocity nu herstarten? Alleen als de proxy leeg is (0 spelers) of niet draait (harde regel, Jelle 26-10:
+    ook niet met --aankondigen of --forceer; wijzigingen wachten in velocity_wacht tot mc ensure hem leeg ziet)."""
     global _VELOCITY_VRIJ
-    if toestand(cfg, "velocity") not in ("running", "starting") or forceer:
+    if toestand(cfg, "velocity") not in ("running", "starting"):
         _VELOCITY_VRIJ = True
         return True
-    n = spelers_online(cfg)
-    if n == 0:
+    if spelers_online(cfg) == 0:
         _VELOCITY_VRIJ = True
         return True
-    if not aankondigen:
-        return False
-    aftellen_proxy(cfg, 10, log=log)
-    _VELOCITY_VRIJ = True
-    return True
+    log("  velocity: spelers online, herstart wacht tot de proxy leeg is")
+    return False
 
 
 def command(cfg, svc, line):
@@ -588,11 +584,11 @@ def deploy(cfg, spec=None, herstart=True, alleen=None, log=say, aankondigen=Fals
     save_state(st)
     if herstart:
         if "velocity" in gewijzigd and not velocity_akkoord(cfg, aankondigen, forceer, log=log):
-            gewijzigd.remove("velocity")      # klaargezet; herstart pas bij een lege proxy (ensure) of met --aankondigen
+            gewijzigd.remove("velocity")      # klaargezet; herstart pas bij een lege proxy (mc ensure)
             st = state()
             st["velocity_wacht"] = now_iso()
             save_state(st)
-            log("  velocity: wijzigingen staan klaar; herstart wacht op een lege proxy (of mc apply --aankondigen)")
+            log("  velocity: wijzigingen staan klaar; herstart wacht op een lege proxy (mc ensure doet het dan)")
         elif "velocity" in gewijzigd:
             st = state()
             st.pop("velocity_wacht", None)
@@ -629,7 +625,7 @@ def meld_herstart(cfg, log=say, wacht=5):
 
 def herstart_dienst(cfg, svc, log=say, aankondigen=False, forceer=False):
     if svc == "velocity" and not _VELOCITY_VRIJ and not velocity_akkoord(cfg, aankondigen, forceer, log=log):
-        raise Fout("velocity: spelers online, herstart geweigerd (gebruik --aankondigen, of wacht tot de proxy leeg is)")
+        raise Fout("velocity: spelers online, herstart geweigerd (alleen bij 0 spelers; mc ensure doet het zodra hij leeg is)")
     t = toestand(cfg, svc)
     if t in ("running", "starting"):
         if svc in ("survival", "kitpvp") and toestand(cfg, "velocity") == "running":

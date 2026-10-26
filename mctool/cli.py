@@ -45,7 +45,7 @@ def build_parser():
     s = sub.add_parser("restart", help="herstarten; survival via de lobby, spelers blijven verbonden")
     s.add_argument("dienst", choices=["survival", "lobby", "kitpvp", "velocity", "tunnel", "all"])
     s.add_argument("--als-leeg", action="store_true", help="wacht tot niemand online is (velocity)")
-    s.add_argument("--aankondigen", action="store_true", help="velocity met spelers online: eerst 10 s countdown")
+    s.add_argument("--aankondigen", action="store_true", help="geen effect meer op velocity (die herstart alleen bij 0 spelers)")
     s.add_argument("--forceer", action="store_true", help="velocity herstarten zonder countdown (alleen in nood)")
 
     s = sub.add_parser("cmd", help="servercommando (survival/lobby/kitpvp via RCON, velocity via console)")
@@ -76,7 +76,7 @@ def build_parser():
     s = sub.add_parser("apply", help="zet de box gelijk aan server/server.json (staging-test, dan live)")
     s.add_argument("--zonder-staging", action="store_true")
     s.add_argument("--nu", action="store_true", help="velocity ook herstarten als er spelers online zijn")
-    s.add_argument("--aankondigen", action="store_true", help="paneel: velocity met spelers online pas na 10 s countdown herstarten")
+    s.add_argument("--aankondigen", action="store_true", help="geen effect meer op velocity (die herstart alleen bij 0 spelers)")
     s.add_argument("--forceer", action="store_true", help="paneel: velocity herstarten zonder countdown (alleen in nood)")
     s.add_argument("--dry-run", action="store_true")
 
@@ -118,7 +118,7 @@ def build_parser():
     s.add_argument("dienst", nargs="?", help="survival, lobby, kitpvp, velocity (of all)")
     s.add_argument("rest", nargs=argparse.REMAINDER, help="bij cmd: het commando; bij vars: SLEUTEL=waarde")
     s.add_argument("--geen-herstart", action="store_true")
-    s.add_argument("--aankondigen", action="store_true", help="velocity met spelers online: eerst 10 s countdown")
+    s.add_argument("--aankondigen", action="store_true", help="geen effect meer op velocity (die herstart alleen bij 0 spelers)")
     s.add_argument("--forceer", action="store_true", help="velocity zonder countdown (alleen in nood)")
     s.add_argument("-n", type=int, default=60)
 
@@ -574,7 +574,7 @@ def h_paneel(a):
             say(line)
     elif actie in ("start", "stop", "restart", "kill"):
         if "velocity" in doel and actie in ("stop", "restart", "kill") and not paneel.velocity_akkoord(cfg, aank, forc):
-            raise Fout("velocity: spelers online, geweigerd. Gebruik --aankondigen (10 s countdown) of wacht tot de proxy leeg is.")
+            raise Fout("velocity: spelers online, geweigerd. De proxy herstart alleen bij 0 spelers; mc ensure doet het zodra hij leeg is.")
         for svc in (doel if actie != "stop" else list(reversed(doel))):
             if actie == "restart":
                 paneel.herstart_dienst(cfg, svc)

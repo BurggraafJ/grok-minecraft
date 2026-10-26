@@ -17,6 +17,10 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.block.Action;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.NamespacedKey;
@@ -45,8 +49,10 @@ import java.util.UUID;
  * /kist: persoonlijke opslag van 54 vakken per speler, bewaard in plugins/Kist/kisten/<uuid>.yml.
  * Eén Inventory-object per speler zolang hij open is (nooit twee kopieën = geen dupes); opslaan bij sluiten, bij
  * uitloggen, elke minuut en bij stoppen (eerst naar een .tmp-bestand, dan atomair vervangen).
- * /ec, /enderchest en varianten zijn voor iedereen geblokkeerd, ook voor OP's; vak 54 (rechtsonder) is een knop die je
- * gewone enderchest opent.
+ * De vanilla enderchest is geen eigen opslag meer (Jelle 26-10): rechtsklik op een enderchest-blok, /ec, /enderchest
+ * en varianten openen altijd /kist. Bij inloggen (en bij het starten voor wie online is) gaat wat nog in je
+ * enderchest zat naar je kist (eerst een backup in plugins/Kist/ender-backup/); past het niet, dan blijft de rest in
+ * de enderchest staan en komt er een regel in plugins/Kist/overloop.log. Er gaat niets weg. Geen knop meer in de kist.
  * Tot 99 per vak: zolang de kist open is krijgen alle items die normaal tot 64 stapelen (in de kist én in je eigen
  * inventaris, zodat ze met elkaar samenvoegen) het component max_stack_size=99. Bij sluiten (ook uitloggen en stoppen),
  * bij weggooien en bij inloggen gaat het component van je eigen items weer af; stapels boven 64 worden dan gesplitst
@@ -73,7 +79,7 @@ public final class Kist extends JavaPlugin implements Listener {
     }
 
     private final Map<UUID, Houder> open = new HashMap<>();
-    private static final int KNOP = 53, GROOT = 99;
+    private static final int GROOT = 99;
     private NamespacedKey knopKey;
 
     @Override
@@ -83,6 +89,7 @@ public final class Kist extends JavaPlugin implements Listener {
         knopKey = new NamespacedKey(this, "enderchest-knop");
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTaskTimer(this, () -> open.values().forEach(this::bewaar), 1200L, 1200L);
+        for (Player p : Bukkit.getOnlinePlayers()) enderNaarKist(p);
     }
 
     @Override
@@ -115,40 +122,10 @@ public final class Kist extends JavaPlugin implements Listener {
                 getLogger().warning("kist " + id + " vak " + i + " onleesbaar: " + e.getMessage());
             }
         }
-        // vak 54 wordt de enderchest-knop: wat daar lag eerst naar een vrij vak (of de eigenaar / de grond)
-        ItemStack oud = h.inv.getItem(KNOP);
-        h.inv.setItem(KNOP, null);
-        if (oud != null && !oud.isEmpty() && !isKnop(oud)) {
-            int vrij = -1;
-            for (int i = 0; i < KNOP; i++) if (h.inv.getItem(i) == null || h.inv.getItem(i).isEmpty()) { vrij = i; break; }
-            if (vrij >= 0) h.inv.setItem(vrij, oud);
-            else {
-                Player p = Bukkit.getPlayer(id);
-                if (p != null) {
-                    normaliseer(oud);
-                    for (ItemStack r : splits(oud)) for (ItemStack rest : p.getInventory().addItem(r).values())
-                        p.getWorld().dropItemNaturally(p.getLocation(), rest);
-                    p.sendMessage(Component.text("Het item uit vak 54 van je kist staat nu in je inventaris (daar zit nu de enderchest-knop).", NamedTextColor.GRAY));
-                } else {
-                    h.inv.setItem(KNOP, oud);           // eigenaar niet online: laten liggen tot hij zelf opent
-                }
-            }
-        }
-        if (h.inv.getItem(KNOP) == null) h.inv.setItem(KNOP, knop());
-        for (int i = 0; i < KNOP; i++) maak99(h.inv.getItem(i));
+        for (int i = 0; i < 54; i++) if (isKnop(h.inv.getItem(i))) h.inv.setItem(i, null);   // oude enderchest-knop weg
+        for (int i = 0; i < 54; i++) maak99(h.inv.getItem(i));
         open.put(id, h);
         return h;
-    }
-
-    private ItemStack knop() {
-        ItemStack it = new ItemStack(Material.ENDER_CHEST);
-        ItemMeta m = it.getItemMeta();
-        m.displayName(Component.text("Enderchest", NamedTextColor.LIGHT_PURPLE).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
-        m.lore(List.of(Component.text("Klik: open je gewone enderchest", NamedTextColor.GRAY).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)));
-        m.getPersistentDataContainer().set(knopKey, PersistentDataType.BYTE, (byte) 1);
-        m.setMaxStackSize(1);
-        it.setItemMeta(m);
-        return it;
     }
 
     private boolean isKnop(ItemStack it) {
@@ -223,29 +200,8 @@ public final class Kist extends JavaPlugin implements Listener {
     }
 
     private void maakAlles99(Player p, Houder h) {
-        // knop altijd in vak 54 (bv. als een sorteer-plugin hem verschoof)
-        if (!isKnop(h.inv.getItem(KNOP))) {
-            for (int i = 0; i < KNOP; i++) {
-                if (isKnop(h.inv.getItem(i))) {
-                    h.inv.setItem(i, h.inv.getItem(KNOP));
-                    h.inv.setItem(KNOP, knop());
-                    break;
-                }
-            }
-            if (!isKnop(h.inv.getItem(KNOP))) {
-                ItemStack weg = h.inv.getItem(KNOP);
-                h.inv.setItem(KNOP, knop());
-                if (weg != null && !weg.isEmpty()) {
-                    for (ItemStack r : h.inv.addItem(weg).values()) {
-                        normaliseer(r);
-                        for (ItemStack d : splits(r)) for (ItemStack rest : p.getInventory().addItem(d).values())
-                            p.getWorld().dropItemNaturally(p.getLocation(), rest);
-                    }
-                }
-            }
-        }
-        for (int i = 0; i < KNOP; i++) {
-            if (isKnop(h.inv.getItem(i))) h.inv.setItem(i, null);       // geen tweede knop
+        for (int i = 0; i < 54; i++) {
+            if (isKnop(h.inv.getItem(i))) h.inv.setItem(i, null);       // oude knop: weg
             maak99(h.inv.getItem(i));
         }
         PlayerInventory pi = p.getInventory();
@@ -258,7 +214,7 @@ public final class Kist extends JavaPlugin implements Listener {
         List<String> vakken = new ArrayList<>();
         for (int i = 0; i < 54; i++) {
             ItemStack it = h.inv.getItem(i);
-            if (i == KNOP && isKnop(it)) it = null;
+            if (isKnop(it)) it = null;
             vakken.add(it == null || it.isEmpty() ? "" : Base64.getEncoder().encodeToString(it.serializeAsBytes()));
         }
         YamlConfiguration y = new YamlConfiguration();
@@ -283,11 +239,94 @@ public final class Kist extends JavaPlugin implements Listener {
             p.sendMessage(Component.text("/kist staat op deze server uit.", NamedTextColor.GRAY));
             return true;
         }
+        openKist(p);
+        return true;
+    }
+
+    private void openKist(Player p) {
+        if (!getConfig().getBoolean("aan", true)) return;
+        enderNaarKist(p);
         Houder h = laad(p.getUniqueId());
         maakAlles99(p, h);
         p.openInventory(h.inv);
         p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 0.6f, 1.1f);
-        return true;
+    }
+
+    /** Zet alles van 'van' in 'naar' (eerst bijstapelen, dan lege vakken). Wat niet past blijft in 'van'. Geeft het aantal items dat bleef. */
+    static int verplaats(Inventory van, Inventory naar) {
+        int bleef = 0;
+        for (int i = 0; i < van.getSize(); i++) {
+            ItemStack it = van.getItem(i);
+            if (it == null || it.isEmpty()) continue;
+            Map<Integer, ItemStack> rest = naar.addItem(it.clone());
+            if (rest.isEmpty()) van.setItem(i, null);
+            else {
+                ItemStack r = rest.values().iterator().next();
+                van.setItem(i, r);
+                bleef += r.getAmount();
+            }
+        }
+        return bleef;
+    }
+
+    /** Enderchest-inhoud eenmalig naar /kist, met backup; niets gaat weg. */
+    private void enderNaarKist(Player p) {
+        if (!getConfig().getBoolean("aan", true)) return;
+        Inventory ec = p.getEnderChest();
+        if (ec.isEmpty()) return;
+        UUID id = p.getUniqueId();
+        List<String> vakken = new ArrayList<>();
+        for (ItemStack it : ec.getContents())
+            vakken.add(it == null || it.isEmpty() ? "" : Base64.getEncoder().encodeToString(it.serializeAsBytes()));
+        File map = new File(getDataFolder(), "ender-backup");
+        map.mkdirs();
+        YamlConfiguration b = new YamlConfiguration();
+        b.set("speler", p.getName());
+        b.set("vakken", vakken);
+        try {
+            b.save(new File(map, id + "-" + System.currentTimeMillis() + ".yml"));
+        } catch (IOException ex) {
+            getLogger().severe("enderchest-backup " + p.getName() + " mislukt, niets verplaatst: " + ex.getMessage());
+            return;
+        }
+        Houder h = laad(id);
+        int voor = 0;
+        for (ItemStack it : ec.getContents()) if (it != null && !it.isEmpty()) voor += it.getAmount();
+        int bleef = verplaats(ec, h.inv);
+        for (int i = 0; i < 54; i++) maak99(h.inv.getItem(i));
+        bewaar(h);
+        if (h.inv.getViewers().isEmpty()) open.remove(id);
+        getLogger().info("enderchest " + p.getName() + ": " + (voor - bleef) + " items naar /kist" + (bleef > 0 ? ", " + bleef + " bleven (kist vol)" : ""));
+        if (bleef > 0) {
+            try {
+                Files.writeString(new File(getDataFolder(), "overloop.log").toPath(),
+                        java.time.LocalDateTime.now() + " " + p.getName() + " " + id + ": " + bleef + " items bleven in de enderchest (kist vol)\n",
+                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (IOException ignored) { }
+            p.sendMessage(Component.text("Je kist is vol: " + bleef + " items wachten nog veilig. Maak ruimte en open /kist opnieuw.", NamedTextColor.GRAY));
+        } else {
+            p.sendMessage(Component.text("Je enderchest-spullen staan nu in /kist.", NamedTextColor.GRAY));
+        }
+    }
+
+    /** Rechtsklik op een enderchest-blok: /kist. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onEnderBlok(PlayerInteractEvent e) {
+        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null
+                || e.getClickedBlock().getType() != Material.ENDER_CHEST || e.getPlayer().isSneaking()) return;
+        if (!getConfig().getBoolean("aan", true)) return;
+        e.setCancelled(true);
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTask(this, () -> { if (p.isOnline()) openKist(p); });
+    }
+
+    /** Vangnet: elke andere manier om je eigen enderchest te openen wordt ook /kist. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEnderOpen(InventoryOpenEvent e) {
+        if (e.getInventory().getType() != InventoryType.ENDER_CHEST || !(e.getPlayer() instanceof Player p)) return;
+        if (!getConfig().getBoolean("aan", true)) return;
+        e.setCancelled(true);
+        Bukkit.getScheduler().runTask(this, () -> { if (p.isOnline()) openKist(p); });
     }
 
     /** Test zonder speler: 99-component, samenvoegen, opslaan+laden, normaliseren en splitsen. */
@@ -323,6 +362,18 @@ public final class Kist extends JavaPlugin implements Listener {
             totaal += it.getAmount();
             if (isGroot(it) || it.getAmount() > 64) fout.add("niet genormaliseerd: " + it.getAmount());
         }
+        // enderchest → kist: niets weg, rest blijft staan
+        Inventory ec = Bukkit.createInventory(null, 27), kist = Bukkit.createInventory(null, 54);
+        for (int i = 0; i < 53; i++) kist.setItem(i, new ItemStack(Material.DIRT, 64));
+        kist.setItem(53, new ItemStack(Material.STONE, 60));
+        ec.setItem(0, new ItemStack(Material.STONE, 10));
+        ec.setItem(5, new ItemStack(Material.OAK_LOG, 7));
+        int bleef = verplaats(ec, kist);
+        if (bleef != 13 || kist.getItem(53).getAmount() != 64 || ec.getItem(0).getAmount() != 6 || ec.getItem(5).getAmount() != 7)
+            fout.add("verplaats: bleef " + bleef + " (verwacht 13)");
+        Inventory ec2 = Bukkit.createInventory(null, 27), leeg = Bukkit.createInventory(null, 54);
+        ec2.setItem(3, new ItemStack(Material.DIAMOND, 5));
+        if (verplaats(ec2, leeg) != 0 || !ec2.isEmpty() || leeg.getItem(0) == null || leeg.getItem(0).getAmount() != 5) fout.add("verplaats leeg");
         if (totaal != 109 || !rest.isEmpty()) fout.add("aantal na normaliseren " + totaal + " (verwacht 109), rest " + rest.size());
         ItemStack gewoon = new ItemStack(Material.COBBLESTONE, 64);
         if (!inv.getItem(0).isSimilar(gewoon)) fout.add("genormaliseerd item stapelt niet met gewone items");
@@ -363,17 +414,9 @@ public final class Kist extends JavaPlugin implements Listener {
     public void onKlik(InventoryClickEvent e) {
         if (!(e.getView().getTopInventory().getHolder(false) instanceof Houder h) || !(e.getWhoClicked() instanceof Player p)) return;
         int top = e.getView().getTopInventory().getSize();
-        boolean opKnop = e.getRawSlot() == KNOP || isKnop(e.getCurrentItem()) || isKnop(e.getCursor())
-                || (e.getHotbarButton() >= 0 && e.getRawSlot() == KNOP);
-        if (opKnop) {
+        if (isKnop(e.getCurrentItem()) || isKnop(e.getCursor())) {      // oude knop: niet pakken, weghalen
             e.setCancelled(true);
-            if (e.getRawSlot() == KNOP && p.getUniqueId().equals(h.eigenaar)) {
-                Bukkit.getScheduler().runTask(this, () -> {
-                    p.closeInventory();
-                    p.openInventory(p.getEnderChest());
-                    p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 0.6f, 1f);
-                });
-            }
+            if (isKnop(e.getCurrentItem())) e.setCurrentItem(null);
             return;
         }
         if (e.getRawSlot() >= top || e.getRawSlot() < top) Bukkit.getScheduler().runTask(this, () -> {
@@ -384,7 +427,7 @@ public final class Kist extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onSleep(InventoryDragEvent e) {
         if (!(e.getView().getTopInventory().getHolder(false) instanceof Houder h) || !(e.getWhoClicked() instanceof Player p)) return;
-        if (e.getRawSlots().contains(KNOP) || isKnop(e.getOldCursor())) {
+        if (isKnop(e.getOldCursor())) {
             e.setCancelled(true);
             return;
         }
@@ -409,6 +452,8 @@ public final class Kist extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
+        Player pj = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(this, () -> { if (pj.isOnline()) enderNaarKist(pj); }, 40L);
         normaliseerSpeler(e.getPlayer());       // na een crash met open kist
         // een verdwaalde knop (zou niet moeten) weghalen
         for (int i = 0; i < e.getPlayer().getInventory().getSize(); i++)
@@ -421,6 +466,6 @@ public final class Kist extends JavaPlugin implements Listener {
         String cmd = e.getMessage().substring(1).split(" ", 2)[0].toLowerCase();
         if (!EC.contains(cmd)) return;
         e.setCancelled(true);
-        e.getPlayer().sendMessage(Component.text("De enderchest-opdracht staat uit. Gebruik /kist voor je persoonlijke opslag.", NamedTextColor.GRAY));
+        openKist(e.getPlayer());
     }
 }

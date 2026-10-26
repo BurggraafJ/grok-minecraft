@@ -113,12 +113,11 @@ LuckPerms-database is daarom niet nodig (en de splits kunnen geen externe databa
 - `mc paneel rechten`: spiegelt beroepen naar `data/spelers.json` (veld `beroep`) en toont de OP-lijst per server
   (moet overal gelijk zijn). `mc apply` spiegelt ook.
 
-**Velocity herstarten (vangnet):** `power`/`restart`/`stop`/`kill` van velocity en een deploy met een nieuwe
-velocity-stand **weigeren** als er spelers online zijn (`glist`). Met `--aankondigen` eerst precies één grijze chatregel
-«Proxy herstart over 10 seconden.» (geen titel, geen actiebalk, geen aftelling), 10 s wachten, `save-all flush` op alle
-backends, dan direct herstarten (en de backends die ook nieuw zijn tegelijk: één herstart). Zonder vlag zet deploy de
-velocity-bestanden klaar zonder herstart (`paneel.json` → `velocity_wacht`) en herstart `mc ensure` hem zodra de
-proxy leeg is. `--forceer` alleen in nood. Backends herstarten mag wel: eerst één grijze regel «Even herstarten, 20 sec».
+**Velocity herstarten (harde regel, Jelle 26-10):** de proxy herstart **alleen bij 0 spelers online** (`glist`;
+onleesbaar telt als niet leeg). `power`/`restart`/`stop`/`kill` van velocity en een deploy met een nieuwe velocity-stand
+weigeren anders, ook met `--aankondigen` of `--forceer` (die vlaggen openen niets meer). Deploy zet de
+velocity-bestanden dan klaar zonder herstart (`paneel.json` → `velocity_wacht`) en `mc ensure` herstart hem zodra de
+proxy leeg is. Draait de proxy niet (crash), dan mag starten altijd. Backends herstarten mag wel: eerst één grijze regel «Even herstarten, 20 sec».
 *Transfer-packet:* Velocity (`Player#transferToHost`) en Paper (`Player#transfer`, `accepts-transfers`) kunnen het,
 maar een proxy-herstart verbreekt elke verbinding, en er is geen tweede ingang om spelers heen te sturen of terug te
 halen. Zonder tweede proxy (extra server) brengt het niets; daarom niet ingebouwd.
@@ -404,10 +403,14 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   opgeslagen bij sluiten, uitloggen, elke minuut en bij stoppen; één inventory per speler = geen dupes). Tot 99 per
   vak: zolang de kist open is krijgen 64-stapelaars (kist + eigen inventaris, zodat ze samenvoegen) het component
   max_stack_size=99; bij sluiten/uitloggen/stoppen, weggooien en inloggen gaat het van je eigen items af en worden
-  stapels boven 64 gesplitst (vol = voor je voeten). 16- en 1-stapelaars blijven ongemoeid. Vak 54 is de knop
-  «Enderchest» (opent je vanilla enderchest; niet te pakken; staat altijd terug in vak 54). Console: `kist zelftest`.
-  Geen automatische overloop naar de kist (bewust, te sterk). `/ec` en varianten zijn voor iedereen geblokkeerd,
-  ook OP's (`-essentials.enderchest` + commando-blokkade in Kist).
+  stapels boven 64 gesplitst (vol = voor je voeten). 16- en 1-stapelaars blijven ongemoeid. Alle 54 vakken
+  zijn van jou (de oude «Enderchest»-knop is weg en wordt overal opgeruimd). Console: `kist zelftest`.
+  **De vanilla enderchest is geen eigen opslag meer** (Jelle 26-10): rechtsklik op een enderchest-blok (niet bij
+  sluipen, dan kun je er gewoon tegen bouwen), `/ec`, `/enderchest` en varianten, en elke andere manier om je enderchest
+  te openen, openen `/kist`. Wat nog in een enderchest zat gaat bij inloggen (of bij het openen van /kist) naar je kist:
+  eerst een backup in `plugins/Kist/ender-backup/<uuid>-<tijd>.yml`, dan bijstapelen en lege vakken vullen. Past het
+  niet, dan blijft de rest veilig in de enderchest staan, krijgt de speler één grijze regel en komt er een regel in
+  `plugins/Kist/overloop.log` (meld dat aan Jelle). Er gaat niets weg. Stand 26-10: alle enderchests waren leeg.
 - **Huisdieren** (eigen plugin): getemde dieren met eigenaar gaan niet dood. Dodelijke schade = uitgeteld (KO):
   1 HP, onkwetsbaar, zitten (wolf/kat/papegaai) of AI uit, wolkjes en label «💤 Rust uit… m:ss»; na 3 min
   (`herstel-seconden`) of door voeren met zijn eigen eten weer vol leven + actionbar voor de eigenaar. Void, lava en
