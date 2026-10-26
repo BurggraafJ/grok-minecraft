@@ -25,7 +25,7 @@ import org.bukkit.plugin.Plugin;
 final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
 
     static final int X0 = 1100;                         // begin van het pad (rx = 0)
-    static final int VERSIE = 1;
+    static final int VERSIE = 2;
     private static final int RX1 = -8, RX2 = 492, Z1 = -64, Z2 = 64;
 
     private final Plugin plugin;
@@ -300,7 +300,10 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         if (zee < 10) hoog = Math.min(hoog, G + (int) Math.max(0, zee / 2));
         Material opp;
         if (zee < 6) opp = Material.SAND;
-        else if (rx > 276 && rx < 312) opp = kies(x, z, Material.STONE, Material.ANDESITE, Material.TUFF, Material.MOSS_BLOCK, Material.COARSE_DIRT);
+        else if (rx > 276 && rx < 312) {
+            double r = zacht(x, z, 4);
+            opp = r < 0.3 ? Material.MOSS_BLOCK : r < 0.55 ? Material.STONE : r < 0.75 ? Material.ANDESITE : Material.TUFF;
+        }
         else if (rx > 208 && rx < 280) opp = kies(x, z, Material.MOSS_BLOCK, Material.GRASS_BLOCK, Material.GRASS_BLOCK, Material.MUD, Material.ROOTED_DIRT);
         else opp = kans(x, z, 7) == 0 ? Material.PODZOL : Material.GRASS_BLOCK;
         vul(rx, g + 1, z, rx, hoog - 4, z, Material.STONE);

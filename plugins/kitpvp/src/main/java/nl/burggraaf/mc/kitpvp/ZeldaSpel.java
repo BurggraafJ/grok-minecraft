@@ -304,11 +304,21 @@ final class ZeldaSpel implements Listener {
                 ss.tot = nu + Math.max(2600, Math.min(6000, 1600 + 55L * len));
                 ss.gestuurd = nu;
                 p.sendActionBar(ss.nu);
+                String tekst = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(ss.nu);
+                if (tekst.startsWith("Wiske ·")) wiske(p, 6);
             } else if (ss.nu != null && nu - ss.gestuurd >= 1500) {
                 ss.gestuurd = nu;
                 p.sendActionBar(ss.nu);
             }
         }
+    }
+
+    /** Wiske, het vuurvliegje: een klein lichtje naast je schouder, alleen voor jou te zien. */
+    private void wiske(Player p, int n) {
+        Location l = p.getEyeLocation();
+        org.bukkit.util.Vector links = l.getDirection().crossProduct(new org.bukkit.util.Vector(0, 1, 0)).normalize().multiply(-0.7);
+        l.add(links).add(0, 0.25 + Math.sin(tikken / 9.0) * 0.08, 0);
+        p.spawnParticle(Particle.END_ROD, l, n, 0.06, 0.06, 0.06, 0.004);
     }
 
     // ── de klok ─────────────────────────────────────────────────────────────────────────────
@@ -352,6 +362,7 @@ final class ZeldaSpel implements Listener {
             return;
         }
         hemel(p, ss, l);
+        if (tikken % 60 == 0) wiske(p, 1);
         for (ZeldaHoofdstuk.Rust r : ss.h.rust) if (r.zone.in(l)) geneesBij(p, 2);
         if (p.getFoodLevel() != 17) p.setFoodLevel(17);
         if (nu > ss.volgendWoud && !muziek.speelt(p)) {
@@ -768,6 +779,7 @@ final class ZeldaSpel implements Listener {
         r.leegSinds = 0;
         deur(r.deur, true, r.gebied.midden(w));
         for (Player q : in(r.gebied)) {
+            if (voortgang.van(q.getUniqueId()).zet("r:" + r.id)) voortgang.vuil();
             q.setLevel(0);
             q.setExp(0f);
             muziek.speel(q, ZeldaMuziek.OPGELOST);
@@ -791,9 +803,21 @@ final class ZeldaSpel implements Listener {
             else if (nu - r.leegSinds > 60_000L) herstel(r);
             return;
         }
+        List<Player> in = in(r.gebied);
+        for (Player p : in)                                  // wie hem al eens oploste, hoeft dat niet opnieuw
+            if (voortgang.van(p.getUniqueId()).heeft("r:" + r.id)) {
+                r.opgelost = true;
+                r.leegSinds = 0;
+                r.isAan.clear();
+                for (int i = 0; i < r.dingen.size(); i++) {
+                    int[] d = r.dingen.get(i);
+                    plugin.w.getBlockAt(d[0], d[1], d[2]).setBlockData(r.aan, false);
+                }
+                deur(r.deur, true, r.gebied.midden(plugin.w));
+                return;
+            }
         if (r.isAan.isEmpty()) return;
         long over = r.tot - nu;
-        List<Player> in = in(r.gebied);
         if (over <= 0) {
             r.isAan.clear();
             for (int[] d : r.dingen) plugin.w.getBlockAt(d[0], d[1], d[2]).setBlockData(r.uit, false);

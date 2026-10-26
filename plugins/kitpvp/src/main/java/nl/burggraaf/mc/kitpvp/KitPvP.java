@@ -1009,6 +1009,10 @@ public final class KitPvP extends JavaPlugin implements Listener {
         for (int i = 0; i < stuk.length; i++)
             f.add(Kaart.boven(w, map, "zelda-" + stuk[i], zx - 6 + i * 80, -26, zx + 94 + i * 80, 26, g - 2, zg + 22, 6));
         f.add(Kaart.voor(w, map, "zelda-zij", 0, 1, -30, zx - 6, zx + 470, g, zg + 50, 60, 2));
+        f.add(Kaart.voor(w, map, "zelda-kloof-zij", 0, 1, -6, zx + 158, zx + 208, g, zg + 10, 14, 10));
+        f.add(Kaart.voor(w, map, "zelda-ruine-zij", 0, 1, -12, zx + 110, zx + 156, g + 6, zg + 12, 30, 10));
+        f.add(Kaart.voor(w, map, "zelda-haven-zij", 0, 1, -24, zx + 320, zx + 390, g + 2, zg + 22, 40, 8));
+        f.add(Kaart.voor(w, map, "zelda-kring-zij", 0, 1, -12, zx + 278, zx + 314, g + 6, zg + 14, 34, 10));
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;

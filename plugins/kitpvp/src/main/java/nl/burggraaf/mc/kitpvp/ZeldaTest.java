@@ -145,6 +145,34 @@ final class ZeldaTest {
         start("kitpvp zelda test " + p.getName() + (alles ? " alles" : ""));
     }
 
+    /** Doodgaan in de eerste kamer: respawn bij je rustplaats, spullen houden, kamer terug naar het begin. */
+    void dood() {
+        pl.naarHub(p);
+        z.spel.voortgang.wis(id);
+        ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
+        ZeldaHoofdstuk.Kamer k = h.kamers.get(0);
+        stap("poort", this::doorDePoort, 2, () -> true, 1);
+        stap("kamer " + k.id + " dicht", () -> {
+            if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
+            p.teleport(k.start.midden(h.w).add(0, 1, 0));
+        }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+        stap("dood", () -> p.setHealth(0), 3, () -> {
+            if (p.isDead()) p.spigot().respawn();
+            return !p.isDead();
+        }, 40);
+        stap("respawn", () -> { }, 5, () -> {
+            Location r = h.rust.get(z.spel.sessie(p).rust).plek;
+            moet(p.getLocation().distanceSquared(r) < 4, "na doodgaan niet bij de rustplaats: " + xyz(p.getLocation()) + " (verwacht " + xyz(r) + ")");
+            moet(pl.spelers.van(id).plek() == Toestand.Plek.SPEL, "na doodgaan niet meer in Zelda: " + pl.spelers.van(id));
+            moet(p.getInventory().getItem(0) != null && p.getInventory().getItem(8) != null, "spullen kwijt na doodgaan");
+            var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            moet(max != null && p.getHealth() == max.getValue() && max.getValue() == 16, "leven na respawn " + p.getHealth() + "/" + (max == null ? "?" : max.getValue()));
+            return true;
+        }, 1);
+        stap("kamer " + k.id + " terug", () -> { }, 20, () -> k.fase == ZeldaHoofdstuk.Fase.RUST && k.vijanden.isEmpty() && k.in.isOpen && !k.uit.isOpen, 200);
+        start("kitpvp zelda test " + p.getName() + " dood");
+    }
+
     void verder() {
         stap("poort", this::doorDePoort, 4, () -> true, 1);
         stap("verder", () -> {
