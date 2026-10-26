@@ -250,6 +250,14 @@ final class Zelda implements Modus {
                 if (args.length >= 4 && args[3].equalsIgnoreCase("dood")) t.dood();
                 else t.route(args.length >= 4 && args[3].equalsIgnoreCase("alles"));
             }
+            case "in" -> {
+                if (p == null) {
+                    s.sendMessage("kitpvp zelda in <speler>: speler niet online");
+                    return;
+                }
+                plugin.kiesModus(p, this);
+                s.sendMessage("zelda: " + p.getName() + " " + (spel.speelt(p) ? "is in Zelda (" + spel.sessie(p).h.rust.get(spel.sessie(p).rust).naam + ")" : "kon niet naar binnen"));
+            }
             case "verder" -> {
                 if (p == null) {
                     s.sendMessage("kitpvp zelda verder <speler>: speler niet online");
@@ -263,7 +271,7 @@ final class Zelda implements Modus {
                     sb.append(" · ").append(h.id()).append(":");
                     for (ZeldaHoofdstuk.Kamer k : h.kamers) sb.append(' ').append(k.id).append('=').append(k.fase.name().toLowerCase());
                 }
-                s.sendMessage(sb + " · kitpvp zelda reset|rust|test|verder <speler>");
+                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder <speler>");
             }
         }
     }

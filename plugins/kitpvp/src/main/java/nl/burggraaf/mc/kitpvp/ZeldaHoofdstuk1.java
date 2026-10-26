@@ -642,7 +642,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         zet(84, G + 1, -3, Material.MOSSY_COBBLESTONE);
 
         BlockData poortDicht = hek(Material.SPRUCE_FENCE, true);
-        Kamer k = kamer(new Kamer("open-plek", "De open plek", box(63, G - 1, -13, 89, G + 10, 13), box(67, G, -10, 85, G + 6, 10),
+        Kamer k = kamer(new Kamer("open-plek", "De open plek", box(65, G - 1, -13, 87, G + 10, 13), box(67, G, -10, 85, G + 6, 10),
                 deur(poortDicht, 64, G + 1, -1, G + 3, 1), deur(poortDicht, 88, G + 1, -1, G + 3, 1)));
         for (int a = 0; a < 8; a++) {
             double hoek = Math.PI / 8 + a * Math.PI / 4;
@@ -861,7 +861,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             for (int[] p : new int[][]{{224, 0}, {242, -1}, {233, 9}}) zet(p[0], G + 1, p[1], Material.OCHRE_FROGLIGHT);
         }
         BlockData wortels = Material.MANGROVE_ROOTS.createBlockData();
-        Kamer k = kamer(new Kamer("veen", "Het Veen", box(215, G - 2, -13, 251, G + 12, 13), box(220, G - 1, -10, 246, G + 6, 10),
+        Kamer k = kamer(new Kamer("veen", "Het Veen", box(217, G - 2, -13, 249, G + 12, 13), box(220, G - 1, -10, 246, G + 6, 10),
                 deur(wortels, 216, G + 1, -1, G + 3, 1), deur(wortels, 250, G + 1, -1, G + 3, 1)));
         int[][] sp = {{224, -4}, {230, -9}, {238, -9}, {244, -4}, {244, 4}, {238, 9}, {230, 9}, {224, 4}};
         for (int[] s : sp) {
@@ -976,7 +976,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             }
         }
         BlockData tralies = Bouwer.ruit(Material.IRON_BARS, BlockFace.NORTH, BlockFace.SOUTH);
-        Kamer k = kamer(new Kamer("heksenkring", "Heksenkring", box(282, G - 1, -14, 310, G + 16, 14), box(286, G, -10, 306, G + 8, 10),
+        Kamer k = kamer(new Kamer("heksenkring", "Heksenkring", box(284, G - 1, -14, 308, G + 16, 14), box(286, G, -10, 306, G + 8, 10),
                 deur(tralies, 283, G + 1, -1, G + 3, 1), deur(tralies, 309, G + 1, -1, G + 3, 1)));
         k.muziek = ZeldaMuziek.BAAS;
         k.hemel = 15500;
@@ -1084,7 +1084,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             zet(363, G + 1, -2, Material.SPRUCE_LOG);
         }
         BlockData hekDicht = hek(Material.SPRUCE_FENCE, true);
-        Kamer k = kamer(new Kamer("kade", "De kade", box(324, G - 1, -13, 346, G + 10, 13), box(328, G, -9, 342, G + 6, 9),
+        Kamer k = kamer(new Kamer("kade", "De kade", box(325, G - 1, -12, 345, G + 10, 12), box(328, G, -9, 342, G + 6, 9),
                 deur(hekDicht, 324, G + 1, -1, G + 3, 1), deur(hekDicht, 346, G + 1, -1, G + 3, 1)));
         int[][] sp = {{330, -4}, {336, -5}, {342, -3}, {342, 3}, {336, 5}, {330, 4}};
         for (int[] s : sp) k.spawns.add(plek(s[0], G + 1, s[1], 90f));

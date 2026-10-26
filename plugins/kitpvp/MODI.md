@@ -151,7 +151,7 @@ vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 
 ### Beheer (console of OP)
 
-- `kitpvp zelda` — status (spelers, voortgang, vijanden, fase van elke kamer).
+- `kitpvp zelda` — status (spelers, voortgang, vijanden, fase van elke kamer). `kitpvp zelda in <speler>` — naar binnen (zoals door de poort).
 - `kitpvp zelda reset <speler>` — voortgang wissen. `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen).
 - `kitpvp zelda test <speler> [alles]` — loopt met een echte speler door de poort en het hoofdstuk (kamers verslaan,
   puzzels, uitdaging, vondsten, rustplaatsen, opslag op schijf); zonder `alles` tot de eerste rustplaats na de eerste

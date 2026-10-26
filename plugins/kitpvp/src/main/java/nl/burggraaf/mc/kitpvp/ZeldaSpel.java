@@ -972,7 +972,17 @@ final class ZeldaSpel implements Listener {
     @EventHandler(priority = EventPriority.LOW)
     public void onKlik(PlayerInteractEvent e) {
         Player p = e.getPlayer();
-        if (!speelt(p) || e.getAction() == Action.PHYSICAL) return;
+        if (!speelt(p)) return;
+        Block geklikt = e.getClickedBlock();
+        if (e.getAction() == Action.PHYSICAL) {                 // geen akkers vertrappen
+            if (geklikt != null && geklikt.getType() == Material.FARMLAND) e.setCancelled(true);
+            return;
+        }
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK && geklikt != null && (geklikt.getState() instanceof InventoryHolder
+                || switch (geklikt.getType()) {
+                    case CRAFTING_TABLE, COMPOSTER, CAULDRON, WATER_CAULDRON, FLOWER_POT, LECTERN, CAMPFIRE, SOUL_CAMPFIRE -> true;
+                    default -> false;
+                })) e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);   // geen tonnen, werkbank, ketel: spullen blijven bij jou
         ItemStack it = e.getItem();
         String soort = it == null || !it.hasItemMeta() ? null : it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
         if ("kaart".equals(soort)) {
