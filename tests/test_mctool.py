@@ -200,5 +200,91 @@ class PaneelTest(unittest.TestCase):
                          {"keep_inventory": "true"})
 
 
+class OffsiteDelen(unittest.TestCase):
+    """GitHub-backups in delen: manifest met sha256, samenvoegen en controleren (zonder netwerk)."""
+
+    def _bestand(self, n):
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "survival-20261026-120000-paneel.tar.gz")
+        with open(path, "wb") as f:
+            f.write(os.urandom(n))
+        return path
+
+    def _fake_release(self, path, deel):
+        import io as _io
+        from mctool import offsite
+        man = offsite.plan_delen(path, deel)
+        blobs, assets, off = {}, [], 0
+        data = open(path, "rb").read()
+        for d in man["delen"]:
+            blobs[d["naam"]] = data[off:off + d["grootte"]]; off += d["grootte"]
+        blobs[man["bestand"] + offsite.MANIFEST] = json.dumps(man).encode()
+        for i, (k, v) in enumerate(blobs.items()):
+            assets.append({"name": k, "size": len(v), "url": k, "id": i, "state": "uploaded"})
+        return man, blobs, {"tag_name": "dag-20261026", "assets": assets}
+
+    def _fetch(self, rel, blobs):
+        from unittest import mock
+        from mctool import offsite
+
+        def stream(asset, out, hashes):
+            b = blobs[asset["name"]]
+            out.write(b)
+            for h in hashes:
+                h.update(b)
+            return len(b)
+        dest = tempfile.mkdtemp()
+        with mock.patch.object(offsite, "kies", return_value=rel), mock.patch.object(offsite, "_stream", stream):
+            return offsite.fetch({}, "nieuwste", dest_dir=dest)
+
+    def test_plan_delen(self):
+        import hashlib
+        from mctool import offsite
+        path = self._bestand(2500)
+        man = offsite.plan_delen(path, 1000)
+        self.assertEqual([d["grootte"] for d in man["delen"]], [1000, 1000, 500])
+        self.assertEqual([d["naam"][-7:] for d in man["delen"]], ["deel001", "deel002", "deel003"])
+        self.assertEqual(man["sha256"], hashlib.sha256(open(path, "rb").read()).hexdigest())
+        self.assertEqual(len(offsite.plan_delen(path, 2500)["delen"]), 1)        # past: één bestand, oude naam
+        self.assertEqual(offsite.plan_delen(path, 2500)["delen"][0]["naam"], os.path.basename(path))
+        self.assertEqual(len(offsite.plan_delen(self._bestand(2000), 1000)["delen"]), 2)   # precies 2 delen
+        self.assertLess(offsite.DEEL, 2 * GB)
+
+    def test_samenvoegen_en_controleren(self):
+        from mctool.base import file_hash
+        path = self._bestand(2500)
+        man, blobs, rel = self._fake_release(path, 1000)
+        out = self._fetch(rel, blobs)
+        self.assertEqual(file_hash(out, "sha256"), man["sha256"])
+        self.assertEqual(os.path.basename(out), os.path.basename(path))
+
+    def test_kapot_deel_geeft_fout_en_geen_bestand(self):
+        path = self._bestand(2500)
+        man, blobs, rel = self._fake_release(path, 1000)
+        naam = man["delen"][1]["naam"]
+        blobs[naam] = b"x" + blobs[naam][1:]
+        with self.assertRaises(Fout):
+            self._fetch(rel, blobs)
+
+    def test_oude_backup_zonder_manifest(self):
+        data = os.urandom(300)
+        rel = {"tag_name": "dag-20261025", "assets": [{"name": "survival-20261025-210433.tar.gz", "size": 300, "url": "u", "id": 1}]}
+        out = self._fetch(rel, {"survival-20261025-210433.tar.gz": data})
+        self.assertEqual(open(out, "rb").read(), data)
+
+
+class CiStand(unittest.TestCase):
+    def test_ci(self):
+        from mctool import gitops
+        groen = {"status": "completed", "conclusion": "success", "head_sha": "a" * 40}
+        rood = {"status": "completed", "conclusion": "failure", "head_sha": "b" * 40, "display_title": "x\ny", "html_url": "u"}
+        bezig = {"status": "in_progress", "conclusion": None}
+        weg = {"status": "completed", "conclusion": "cancelled"}
+        self.assertIsNone(gitops.ci_stand(runs=[groen, rood]))
+        self.assertIsNone(gitops.ci_stand(runs=[bezig, rood]))            # loopt nog: stil
+        self.assertEqual(gitops.ci_stand(runs=[weg, rood, groen]), ("bbbbbbb", "x", "u"))
+        self.assertIsNone(gitops.ci_stand(runs=[]))
+
+
 if __name__ == "__main__":
     unittest.main()

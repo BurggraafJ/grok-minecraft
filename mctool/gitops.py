@@ -146,3 +146,44 @@ def status():
         out["fout"] = str(e)
     out["lokaal_gewijzigd"] = dirty()
     return out
+
+
+CI_ROOD = ("failure", "timed_out", "startup_failure", "action_required")
+
+
+def ci_stand(slug_=None, runs=None):
+    """Stand van de CI (GitHub Actions) op main: None als alles goed is of de nieuwste run nog loopt,
+    anders (korte sha, titel, url) van de nieuwste afgeronde rode run. Geannuleerde runs (een nieuwere push
+    annuleert de vorige) tellen niet mee. `runs` alleen voor tests."""
+    if runs is None:
+        s = slug_ or slug()
+        if not s:
+            return None
+        h = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+        t = token()
+        if t:
+            h["Authorization"] = f"Bearer {t}"
+        runs = http_json(f"https://api.github.com/repos/{s}/actions/runs?branch={BRANCH}&event=push&per_page=10",
+                         headers=h, tries=2).get("workflow_runs") or []
+    for r in runs:   # nieuwste eerst
+        if r.get("status") != "completed":
+            return None        # loopt nog: niets zeggen, de volgende ronde ziet de uitkomst
+        if r.get("conclusion") in ("cancelled", "skipped", "neutral"):
+            continue
+        if r.get("conclusion") in CI_ROOD:
+            titel = ((r.get("display_title") or "").splitlines() or [""])[0][:80]
+            return r.get("head_sha", "")[:7], titel, r.get("html_url", "")
+        return None
+    return None
+
+
+def ci_melding(slug_=None):
+    """Eén MELD-regel als de CI van main rood is, anders None (ook als GitHub even niet antwoordt)."""
+    try:
+        rood = ci_stand(slug_)
+    except Fout:
+        return None
+    if not rood:
+        return None
+    sha, titel, url = rood
+    return f"MELD CI op GitHub staat rood op main ({sha} «{titel}»): eerst repareren, zie {url}"

@@ -242,6 +242,12 @@ def ensure(stil=False):
     if gitops.is_repo():
         lines += _git_sync(cfg)
     lines += _weekly_update_check()
+    ci = gitops.ci_melding() if gitops.is_repo() else None
+    if ci:
+        flag = os.path.join(STATE, "gemeld-ci-rood")
+        if not os.path.exists(flag) or time.time() - os.path.getmtime(flag) > 6 * 3600:
+            open(flag, "w").close()
+            lines.append(ci)
     if cfg["tunnel"]["modus"] == "geen" and not cfg.get("offline_test"):
         flag = os.path.join(STATE, "gemeld-geen-tunnel")
         if not os.path.exists(flag) or time.time() - os.path.getmtime(flag) > 86400:

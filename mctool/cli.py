@@ -279,8 +279,8 @@ def h_restore(a):
     name = a.naam
     if name.startswith("github"):
         which = name.split(":", 1)[1] if ":" in name else "nieuwste"
-        path = offsite.fetch(cfg, which)
-        say(f"van GitHub gehaald: {os.path.basename(path)}")
+        path = offsite.fetch(cfg, which, log=say)
+        say(f"van GitHub gehaald en gecontroleerd: {os.path.basename(path)}")
         name = os.path.basename(path)
     say(f"teruggezet: {ops.restore(cfg, name)}")
 
@@ -636,6 +636,28 @@ def _p_restart(a):
     return h_paneel(argparse.Namespace(actie="restart", dienst=a.dienst, rest=[], geen_herstart=False, n=60))
 
 
+def _p_restore(a):
+    """Paneel-modus: `mc restore github[:JJJJMMDD]` haalt de backup op, voegt de delen samen en controleert de
+    sha256, maar zet niets over een draaiende wereld op het paneel. Terugzetten op het paneel: zie BOT.md."""
+    from . import offsite
+    if not a.naam.startswith("github"):
+        raise Fout("in paneel-modus zet je een paneel-backup terug in het paneel (Backups → Restore) of via de API; "
+                   "`mc restore github[:JJJJMMDD]` haalt een GitHub-backup op en controleert hem")
+    which = a.naam.split(":", 1)[1] if ":" in a.naam else "nieuwste"
+    path = offsite.fetch(core.load(), which, log=say)
+    say(f"van GitHub gehaald en gecontroleerd (delen: sha256 per deel en geheel; oud: grootte): {path}")
+    say("terugzetten op het paneel: eerst `mc backup` (paneel), dan uitpakken op de box en "
+        "`mc paneel stop survival` → `mc paneel push survival <map>` → `mc paneel start survival` (BOT.md)")
+
+
+def _p_backups(a):
+    from . import offsite
+    if a.github:
+        offsite.lijst(core.load())
+        return
+    return h_paneel(argparse.Namespace(actie="backups", dienst=None, rest=[], geen_herstart=False, n=60))
+
+
 def _p_niet(a):
     raise Fout(f"`mc {a.cmd}` hoort bij de box-modus; in paneel-modus: mc paneel … (zie BOT.md, Paneel-modus)")
 
@@ -644,7 +666,7 @@ PANEEL_ROUTES = {
     "status": _p_status, "ensure": _p_ensure, "apply": _p_apply, "restart": _p_restart,
     "up": _p_route("start", None), "down": _p_route("stop", None),
     "cmd": _p_route("cmd", "dienst", "commando"), "logs": _p_route("logs"), "backup": _p_backup,
-    "backups": _p_route("backups", None), "tunnel": _p_niet, "staging": _p_niet, "restore": _p_niet,
+    "backups": _p_backups, "tunnel": _p_niet, "staging": _p_niet, "restore": _p_restore,
     "selftest": _p_route("status", None),
 }
 

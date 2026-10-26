@@ -694,12 +694,14 @@ def backup(cfg, svc="survival", naam=None):
 
 
 def _niet_herhalen(lines, uren=6):
-    """Dezelfde MELD niet elk uur opnieuw: pas weer na `uren`."""
+    """Dezelfde MELD niet elk uur opnieuw: pas weer na `uren`. Een regel mag ook (sleutel, regel) zijn: dan telt
+    de sleutel (bv. «ci-rood», zodat elke nieuwe rode commit niet opnieuw meldt)."""
     import hashlib
     d = os.path.join(STATE, "paneel-meldingen"); os.makedirs(d, exist_ok=True)
     uit = []
-    for line in lines:
-        f = os.path.join(d, hashlib.sha1(line.encode()).hexdigest()[:16])
+    for item in lines:
+        key, line = item if isinstance(item, tuple) else (item, item)
+        f = os.path.join(d, hashlib.sha1(key.encode()).hexdigest()[:16])
         if os.path.exists(f) and time.time() - os.path.getmtime(f) < uren * 3600:
             continue
         open(f, "w").close(); uit.append(line)
@@ -738,6 +740,10 @@ def ensure(cfg, stil=False):
             github_backup(cfg, "survival", log=lambda s: None)
         except Exception as e:   # noqa: BLE001 - melden, niet crashen
             lines.append(f"MELD GitHub-backup van survival mislukt: {str(e)[:200]}")
+    # CI op GitHub (Actions op main): rood = één MELD per 6 uur; groen of nog bezig = stil
+    ci = gitops.ci_melding()
+    if ci:
+        lines.append(("ci-rood", ci))
     lines = _niet_herhalen(lines)
     if gitops.is_repo():
         try:

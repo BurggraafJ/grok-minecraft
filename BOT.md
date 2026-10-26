@@ -25,8 +25,12 @@ vrienden ──► 45.43.163.23:25576  Velocity  (server "Burggraafs House", a38
   «This server requires you to connect with Velocity» (getest). De splits hebben een 127.0.0.1-allocatie: van buiten
   onbereikbaar. RCON staat uit (onbereikbaar vanaf de box), `enforce-secure-profile=false` op de backends (de splits
   hebben geen internet om Mojang-sleutels te halen; Velocity controleert ze al met `force-key-authentication`).
-- **De API-sleutel** staat in `data/secrets/sparked_api_key` (of env `SPARKED_API_KEY`); nooit printen of committen.
-  Hij is een *client*-sleutel van Jelles paneelaccount (API Credentials). Het betaalgedeelte (facturatie) kan de Bot niet in.
+- **De API-sleutel** staat in de Secrets van de Bot als `SPARKED_API_KEY` (env) en op de box in
+  `data/secrets/sparked_api_key` (buiten Git, modus 600); `mctool/paneel.py` leest eerst het bestand, anders de env.
+  Nooit printen, loggen of committen. Hij is een *client*-sleutel van Jelles paneelaccount
+  (https://control.sparkedhost.us/account/api) en geldt voor álle servers in dat account; een nieuwe server die Jelle
+  bestelt verschijnt vanzelf. Het betaalgedeelte (facturatie) kan de Bot niet in. Configuratie: `data/config.json`
+  → `"modus": "paneel"` en `"paneel": {"servers": {dienst: id}, "intern_host", "adres"}`.
 - **Wat de box niet kan:** alleen poort 443 naar buiten, dus de node-poort 8080 (signed upload-URL, console-websocket,
   downloads) is dicht. Daarom: uploaden = `POST /files/write` (< 100 MB per keer), grote mappen in tar.gz-delen van
   < 80 MB die op het paneel worden uitgepakt (`mc paneel push`); commando's = `POST /command`, uitvoer uit
@@ -47,7 +51,7 @@ vrienden ──► 45.43.163.23:25576  Velocity  (server "Burggraafs House", a38
 | wijziging uit server.json live zetten | `mc apply` (= `mc paneel deploy`): bouwt, uploadt alleen wat anders is (hash-administratie in `data/state/paneel.json`), patcht configs óp het paneel (lezen → patchen → terugschrijven), herstart alleen wat veranderde, zet daarna gamerules en LuckPerms-rechten via de console. Geen staging meer: test vooraf in CI of op kitpvp. Daarna `mc vastleggen`. |
 | startvariabelen | `mc paneel vars <dienst> LOWER_XMX=1` (staat op alle vier aan: heap = 80% van de container); survival ook `AIKAR_FLAGS=1` |
 | backups | elke nacht automatisch (paneel-schema «mc: dagelijkse backup»: survival 03:00, lobby 03:20, kitpvp 03:40 UTC, velocity zondag 03:50; eerst `save-all flush`), max 3 per server, de oudste gaat er vanzelf af. Zelf: `mc backup` / `mc paneel backup <dienst>`, lijst `mc backups`. Terugzetten: in het paneel (Backups → Restore) of via de API `POST /backups/<uuid>/restore`; eerst een nieuwe backup. Schema's opnieuw: `mc paneel schema`. |
-| backup naar GitHub | `mc backup --github` (= `mc paneel github-backup survival`): pakt survival op het paneel in delen van ±110 MB in (opslaan staat dan ±4 min uit, `save-on` daarna altijd), haalt ze naar `data/servers/survival` op de box, maakt er een tar van en zet die in `grok-minecraft-backups`. Duurt ±8 min. `mc ensure` doet dit vanzelf 1x per dag tussen 04:00 en 08:00 (box-tijd). |
+| backup naar GitHub | `mc backup --github` (= `mc paneel github-backup survival`): pakt survival op het paneel in delen van ±110 MB in (opslaan staat dan ±4 min uit, `save-on` daarna altijd), haalt ze naar `data/servers/survival` op de box, maakt er een tar van en zet die als release `dag-JJJJMMDD` in `grok-minecraft-backups` (laatste 7 dagen). Duurt ±8 min. `mc ensure` doet dit vanzelf 1x per dag tussen 04:00 en 08:00 (box-tijd). Groter dan 1,9 GiB → **delen** (zie hieronder). Lijst: `mc backups --github`. Ophalen: `mc restore github[:JJJJMMDD]` (voegt samen en controleert de sha256; in paneel-modus zet hij níets terug over de draaiende wereld). |
 | hele map erop zetten | `mc paneel push <dienst> [map]` (zonder logs, cache, libraries, versions en plugin-jars) |
 | spiegelen naar de box | `mc paneel spiegel <dienst>` |
 
@@ -57,12 +61,32 @@ het publieke adres). Zijn naam in het paneel is nog «Minecraft Server» (hernoe
 paneel). Een server weghalen of erbij: `data/config.json` → `paneel.servers`, dan `mc apply`; velocity.toml krijgt
 alleen servers die er zijn, en `/kitpvp` zegt netjes «KitPvP is er nu niet» als hij ontbreekt.
 
-**RAM** (plan 8 GB + 2 GB): Velocity 1792 MB (gebruikt ±150 MB; kan naar 768 als er een split bij moet), survival
-5376, lobby 1024, kitpvp 2048. Verdelen kan alleen in het paneel (Server Splitter), niet via de API.
+**RAM en splits** (pakket Neptune 8 GB, $20,72/mnd, plus een losse 2 GB-server): de hoofdserver (Velocity, 1792 MB;
+gebruikt ±150 MB, kan naar 768 als er een split bij moet) is opgesplitst met de **Server Splitter** in survival 5376
+en lobby 1024. **Neptune geeft maar 2 splits**; daarom staat kitpvp (2048) op een losse server. Een los extra
+split-slot kun je niet bijkopen (pas Milky Way, 16 GB, heeft 4). Splitten en RAM verdelen kan alleen in het paneel,
+niet via de API; een nieuwe server erbij bestelt Jelle zelf (https://sparkedhost.com/minecraft-server-hosting, Parijs).
+
+**Uitrollen (deploy):** wijzig `server/server.json` (of `mc plugin add/remove`) → `mc apply` (= `mc paneel deploy`,
+alleen wat anders is) → `mc vastleggen "<wat>"` → controleer dat de CI op GitHub groen wordt (hieronder).
+
+**GitHub-backups in delen:** een release-bestand op GitHub moet < 2 GiB zijn. `mctool/offsite.py` splitst daarom elke
+backup groter dan 1,9 GiB (`offsite.DEEL`; lager kan met `data/config.json` → `offsite.deel_mb`, alleen voor tests)
+in `<naam>.deel001`, `.deel002`, … binnen dezelfde release, plus `<naam>.manifest.json` met de sha256 van het geheel en
+van elk deel. Uploaden gaat eerst naar een concept-release; pas als alle delen er volledig staan, gaat de oude release
+van die dag weg en wordt het concept gepubliceerd (een mislukte upload kost dus nooit de vorige backup). `mc restore
+github` downloadt de delen achter elkaar in één bestand, controleert elk deel en het geheel, en geeft een fout (zonder
+bestand) als er één byte niet klopt. Oude releases met één bestand en geen manifest werken gewoon. Getest heen en
+terug op de echte survival-backup met delen van 200 MB: dezelfde sha256.
+
+**CI:** elke push naar main draait `.github/workflows/ci.yml` (unit-tests + een echte server met alle plugins). Na
+elke push kijken of de run groen wordt; rood = eerst repareren, dan pas verder. `mc ensure` leest de nieuwste
+afgeronde run op main mee (geannuleerde tellen niet; loopt er een, dan stil) en meldt rood als één MELD (hooguit 1x
+per 6 uur). Zelf kijken: GitHub-API `repos/BurggraafJ/grok-minecraft/actions/runs?branch=main` met het token.
 
 **Routine:** `mc ensure --stil` werkt ook in paneel-modus: staat een server uit, dan start hij hem (en meldt het);
 nieuwe commits op GitHub zet hij live; via `netwerk ping` op Velocity controleert hij dat de proxy elke backend ziet; 's nachts
-maakt hij de dagelijkse GitHub-backup. Dezelfde melding komt hooguit 1x per 6 uur. Box-dingen (tunnel, watchdog, slaap,
+maakt hij de dagelijkse GitHub-backup; en hij leest de CI-stand van main mee. Dezelfde melding komt hooguit 1x per 6 uur. Box-dingen (tunnel, watchdog, slaap,
 jars) slaat hij in paneel-modus over. Het paneel herstart een gecrashte server zelf (crash_restarting aan).
 
 De rest van dit handboek beschrijft de box-modus; plugins, chat, netwerk, lobby, parkour en kitpvp werken op het
@@ -170,6 +194,7 @@ Elk uur draait je routine `mc ensure --stil`. Lege uitvoer = alles goed: zeg nie
 | `paneel-API geeft geen stand` | Sleutel ingetrokken of Sparked-storing: probeer later; blijft het, vraag Jelle de API-sleutel na te kijken. |
 | `velocity kan <dienst> niet bereiken` | `mc paneel logs <dienst>`, check adres/poort (kitpvp: publiek ip) en de forwarding-secret; `mc paneel restart <dienst>`. |
 | `GitHub-backup van survival mislukt` | Lees de fout (token, paneel-API); draai `mc backup --github` opnieuw; blijft het, zeg het Jelle één keer. |
+| `CI op GitHub staat rood op main` | Open de run (url in de melding), lees welke stap faalde, repareer, `mc vastleggen`, wacht tot de run groen is. Eerst dit, dan ander werk. |
 | `nog geen tunnel` / `tunnel (ngrok) werkt niet` | Zie **Tunnel**: Jelle moet een ngrok-token of creditcard-verificatie regelen; zeg precies wat. |
 | `updates beschikbaar: …` | Zelfde Minecraft-versie (Paper-build, Velocity, plugins): `mc update apply` als er niemand online is. Een nieuwe Minecraft-versie of een wachtlijst-plugin: zeg het Jelle in één zin met je advies. |
 | `schijf bijna vol` | `mc backups`, oude labels weg, `data/state/losse-plugins` leeg; meld alleen als het niet lukt. |
