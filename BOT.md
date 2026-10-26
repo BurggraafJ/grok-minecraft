@@ -47,7 +47,7 @@ vrienden ──► 45.43.163.23:25576  Velocity  (server "Burggraafs House", a38
 | wijziging uit server.json live zetten | `mc apply` (= `mc paneel deploy`): bouwt, uploadt alleen wat anders is (hash-administratie in `data/state/paneel.json`), patcht configs óp het paneel (lezen → patchen → terugschrijven), herstart alleen wat veranderde, zet daarna gamerules en LuckPerms-rechten via de console. Geen staging meer: test vooraf in CI of op kitpvp. Daarna `mc vastleggen`. |
 | startvariabelen | `mc paneel vars <dienst> LOWER_XMX=1` (staat op alle vier aan: heap = 80% van de container); survival ook `AIKAR_FLAGS=1` |
 | backups | elke nacht automatisch (paneel-schema «mc: dagelijkse backup»: survival 03:00, lobby 03:20, kitpvp 03:40 UTC, velocity zondag 03:50; eerst `save-all flush`), max 3 per server, de oudste gaat er vanzelf af. Zelf: `mc backup` / `mc paneel backup <dienst>`, lijst `mc backups`. Terugzetten: in het paneel (Backups → Restore) of via de API `POST /backups/<uuid>/restore`; eerst een nieuwe backup. Schema's opnieuw: `mc paneel schema`. |
-| backup naar GitHub | `mc backup --github` (= `mc paneel github-backup survival`): spiegelt survival per bestand naar `data/servers/survival` op de box (alleen wat veranderde), maakt er een tar van en zet die in `grok-minecraft-backups`. Doe het als de box toch wakker is (de routine); duurt de eerste keer ±10 min. |
+| backup naar GitHub | `mc backup --github` (= `mc paneel github-backup survival`): pakt survival op het paneel in delen van ±110 MB in (opslaan staat dan ±4 min uit, `save-on` daarna altijd), haalt ze naar `data/servers/survival` op de box, maakt er een tar van en zet die in `grok-minecraft-backups`. Duurt ±8 min. `mc ensure` doet dit vanzelf 1x per dag tussen 04:00 en 08:00 (box-tijd). |
 | hele map erop zetten | `mc paneel push <dienst> [map]` (zonder logs, cache, libraries, versions en plugin-jars) |
 | spiegelen naar de box | `mc paneel spiegel <dienst>` |
 
@@ -61,7 +61,9 @@ alleen servers die er zijn, en `/kitpvp` zegt netjes «KitPvP is er nu niet» al
 5376, lobby 1024, kitpvp 2048. Verdelen kan alleen in het paneel (Server Splitter), niet via de API.
 
 **Routine:** `mc ensure --stil` werkt ook in paneel-modus: staat een server uit, dan start hij hem (en meldt het);
-nieuwe commits op GitHub zet hij live. Het paneel herstart een gecrashte server zelf (crash_restarting aan).
+nieuwe commits op GitHub zet hij live; via `netwerk ping` op Velocity controleert hij dat de proxy elke backend ziet; 's nachts
+maakt hij de dagelijkse GitHub-backup. Dezelfde melding komt hooguit 1x per 6 uur. Box-dingen (tunnel, watchdog, slaap,
+jars) slaat hij in paneel-modus over. Het paneel herstart een gecrashte server zelf (crash_restarting aan).
 
 De rest van dit handboek beschrijft de box-modus; plugins, chat, netwerk, lobby, parkour en kitpvp werken op het
 paneel precies zo.
@@ -164,6 +166,10 @@ Elk uur draait je routine `mc ensure --stil`. Lege uitvoer = alles goed: zeg nie
 | `commits nog niet op GitHub` | Herinner Jelle één keer aan het GitHub-token (zie Wijzigen). |
 | `onbekende speler(s) online: X` | Zeg het Jelle in één zin ("X is online, ken je die?"). Op zijn woord: `mc spelers add X` of bannen. |
 | `backup naar GitHub mislukt` | Meestal het token (verlopen, of de backup-repo niet geselecteerd); zeg het Jelle één keer. |
+| `<dienst> stond uit op het paneel en is gestart` | Paneel: `mc logs <dienst>`; eenmalig niets melden, herhaalt het: oorzaak zoeken. |
+| `paneel-API geeft geen stand` | Sleutel ingetrokken of Sparked-storing: probeer later; blijft het, vraag Jelle de API-sleutel na te kijken. |
+| `velocity kan <dienst> niet bereiken` | `mc paneel logs <dienst>`, check adres/poort (kitpvp: publiek ip) en de forwarding-secret; `mc paneel restart <dienst>`. |
+| `GitHub-backup van survival mislukt` | Lees de fout (token, paneel-API); draai `mc backup --github` opnieuw; blijft het, zeg het Jelle één keer. |
 | `nog geen tunnel` / `tunnel (ngrok) werkt niet` | Zie **Tunnel**: Jelle moet een ngrok-token of creditcard-verificatie regelen; zeg precies wat. |
 | `updates beschikbaar: …` | Zelfde Minecraft-versie (Paper-build, Velocity, plugins): `mc update apply` als er niemand online is. Een nieuwe Minecraft-versie of een wachtlijst-plugin: zeg het Jelle in één zin met je advies. |
 | `schijf bijna vol` | `mc backups`, oude labels weg, `data/state/losse-plugins` leeg; meld alleen als het niet lukt. |

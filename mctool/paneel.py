@@ -693,6 +693,19 @@ def backup(cfg, svc="survival", naam=None):
     return b["attributes"]
 
 
+def _niet_herhalen(lines, uren=6):
+    """Dezelfde MELD niet elk uur opnieuw: pas weer na `uren`."""
+    import hashlib
+    d = os.path.join(STATE, "paneel-meldingen"); os.makedirs(d, exist_ok=True)
+    uit = []
+    for line in lines:
+        f = os.path.join(d, hashlib.sha1(line.encode()).hexdigest()[:16])
+        if os.path.exists(f) and time.time() - os.path.getmtime(f) < uren * 3600:
+            continue
+        open(f, "w").close(); uit.append(line)
+    return uit
+
+
 def ensure(cfg, stil=False):
     """Uurcontrole in paneel-modus: servers aan, GitHub-wijzigingen uitrollen. Lege uitvoer = alles goed."""
     from . import apply as applymod
@@ -708,6 +721,24 @@ def ensure(cfg, stil=False):
                 lines.append(f"MELD {svc} staat uit en starten lukt niet: {e}")
         elif t is None:
             lines.append(f"MELD paneel-API geeft geen stand voor {svc} (sleutel ingetrokken of storing?)")
+    # ziet de proxy zijn backends? (alleen als alles draait; één melding per probleem per 6 uur)
+    if all(toestand(cfg, x) == "running" for x in diensten(cfg)):
+        try:
+            uit = cmd_met_uitvoer(cfg, "velocity", "netwerk ping", wacht=7)
+            for svc in [x for x in diensten(cfg) if x != "velocity"]:
+                if re.search(rf"netwerk ping {svc} \([^)]*\): ONBEREIKBAAR", uit):
+                    lines.append(f"MELD velocity kan {svc} niet bereiken (draait wel op het paneel)")
+        except Fout:
+            pass
+    # GitHub-backup van survival (off-site, naast de 3 paneel-backups): 1x per dag, 's nachts (box-tijd 04-07)
+    st = state()
+    if time.localtime().tm_hour in (4, 5, 6, 7) and time.time() - st.get("github_backup", 0) > 20 * 3600 \
+            and "survival" in diensten(cfg):
+        try:
+            github_backup(cfg, "survival", log=lambda s: None)
+        except Exception as e:   # noqa: BLE001 - melden, niet crashen
+            lines.append(f"MELD GitHub-backup van survival mislukt: {str(e)[:200]}")
+    lines = _niet_herhalen(lines)
     if gitops.is_repo():
         try:
             gitops.pull()
@@ -764,53 +795,100 @@ SPIEGEL_NIET = ("logs", "cache", "libraries", "versions", "oud-paneel", ".trash"
                 "crash-reports", ".paper-remapped")
 
 
+def _remote_files(cfg, svc, d="/", grens=100 * 1024 * 1024):
+    """Wat er ingepakt moet worden: (pad, grootte) van bestanden én van hele mappen < grens (het paneel geeft
+    mapgroottes), alleen grotere mappen worden verder uitgesplitst. Zo blijft het bij een handvol API-aanroepen.
+    Zonder logs/caches/libraries en zonder server.jar en plugin-jars (die komen uit de repo)."""
+    out = []
+    for f in ls(cfg, svc, d) or []:
+        rel = (d.rstrip("/") + "/" + f["name"]).lstrip("/")
+        if (d == "/" and (f["name"] in SPIEGEL_NIET or f["name"].startswith(("archive-", "spiegel-")))) \
+                or f["name"] == "session.lock":
+            continue
+        if f["is_file"]:
+            if not (f["name"].endswith(".jar") and rel.count("/") <= 1):
+                out.append((rel, f["size"]))
+        elif f["size"] > grens:
+            out += _remote_files(cfg, svc, "/" + rel, grens)
+        else:
+            out.append((rel, f["size"]))
+    return out
+
+
 def spiegel(cfg, svc, local_dir=None, log=say):
-    """Haal de server per bestand van het paneel naar de box (alleen wat veranderde). Grote archieven gaan niet
-    door de API (403 boven ~100 MB), losse wereldbestanden wel. Tijdens het kopiëren staat opslaan uit."""
+    """Haal de hele server (zonder logs/caches/jars) naar de box: op het paneel inpakken in delen van < 90 MB
+    (bestanden > ~100 MB lezen weigert de API), lezen, lokaal uitpakken. Opslaan staat alleen tijdens het inpakken
+    uit (kort), dus de kopie is consistent."""
+    import shutil
     local_dir = local_dir or core.server_dir(svc)
-    st = state()
-    index = st.setdefault("spiegel", {}).setdefault(svc, {})
+    files = _remote_files(cfg, svc)
+    groups, cur, size = [], [], 0
+    for rel, sz in sorted(files):
+        if cur and size + sz > 110 * 1024 * 1024:   # wereldbestanden: gzip ≈ 70%
+            groups.append(cur)
+            cur, size = [], 0
+        cur.append(rel)
+        size += sz
+    if cur:
+        groups.append(cur)
     draait = toestand(cfg, svc) == "running"
+    archieven = []
     if draait:
         command(cfg, svc, "save-off")
         command(cfg, svc, "save-all flush")
         time.sleep(10)
-    n = tot = 0
     try:
-        todo = ["/"]
-        while todo:
-            d = todo.pop()
-            for f in ls(cfg, svc, d) or []:
-                rel = (d.rstrip("/") + "/" + f["name"]).lstrip("/")
-                if d == "/" and f["name"] in SPIEGEL_NIET:
-                    continue
-                if f["name"] in (".paper-remapped", "session.lock"):
-                    continue
-                if not f["is_file"]:
-                    todo.append("/" + rel)
-                    continue
-                if f["name"].endswith(".jar") and rel.count("/") <= 1:   # server.jar en plugin-jars: uit de repo
-                    continue
-                key = [f["size"], f["modified_at"]]
-                dst = os.path.join(local_dir, rel)
-                if index.get(rel) == key and os.path.exists(dst):
-                    continue
-                data = read(cfg, svc, "/" + rel)
-                if data is None:
-                    continue
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                with open(dst + ".part", "wb") as fh:
-                    fh.write(data)
-                os.replace(dst + ".part", dst)
-                index[rel] = key
-                n += 1
-                tot += len(data)
+        for i, g in enumerate(groups, 1):
+            voor = {f["name"] for f in ls(cfg, svc, "/") if f["name"].startswith("archive-")}
+            req(cfg, "POST", f"/servers/{sid(cfg, svc)}/files/compress", body={"root": "/", "files": g}, timeout=900)
+            naam = None
+            for _ in range(120):
+                nieuw = [f for f in ls(cfg, svc, "/") if f["name"].startswith("archive-") and f["name"] not in voor]
+                if nieuw:
+                    naam = nieuw[0]["name"]
+                    break
+                time.sleep(2)
+            if not naam:
+                raise Fout(f"{svc}: inpakken van deel {i} gaf geen archief")
+            vorige = -1
+            for _ in range(150):   # inpakken loopt op de achtergrond door: wacht tot de grootte stilstaat
+                time.sleep(3)
+                nu = next((f["size"] for f in ls(cfg, svc, "/") if f["name"] == naam), -1)
+                if nu == vorige and nu > 0:
+                    break
+                vorige = nu
+            doel = f"spiegel-{i:03d}.tar.gz"
+            rename(cfg, svc, "/", [(naam, doel)])
+            archieven.append(doel)
+            log(f"  {svc}: deel {i}/{len(groups)} ingepakt")
     finally:
         if draait:
             command(cfg, svc, "save-on")
-        save_state(st)
-    log(f"  {svc}: {n} bestanden bijgewerkt ({tot // 1048576} MB) in {local_dir}")
-    return n
+    tmp = local_dir + ".spiegel"
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
+    tot = 0
+    try:
+        for a in archieven:
+            data = read(cfg, svc, "/" + a)
+            if data is None:
+                raise Fout(f"{svc}: {a} lezen mislukt (te groot?)")
+            tot += len(data)
+            with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as t:
+                t.extractall(tmp, filter="data")
+    finally:
+        delete(cfg, svc, "/", archieven)
+    # de nieuwe kopie vervangt alles behalve wat het paneel niet heeft (jars, libraries: uit de repo / Paperclip)
+    for rel, _ in files:
+        src, dst = os.path.join(tmp, rel), os.path.join(local_dir, rel)
+        if os.path.exists(src):
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.isdir(dst) and not os.path.islink(dst):
+                shutil.rmtree(dst)
+            os.replace(src, dst)
+    shutil.rmtree(tmp, ignore_errors=True)
+    log(f"  {svc}: {len(files)} bestanden/mappen in {len(archieven)} delen ({tot // 1048576} MB) naar {local_dir}")
+    return len(files)
 
 
 def github_backup(cfg, svc="survival", log=say):
@@ -820,5 +898,6 @@ def github_backup(cfg, svc="survival", log=say):
     spiegel(cfg, svc, log=log)
     path = ops.backup(cfg, "paneel", svc=svc)
     tag, removed = offsite.push(cfg, path)
+    st = state(); st["github_backup"] = time.time(); save_state(st)
     log(f"  op GitHub: {tag}" + (f" (weg: {', '.join(removed)})" if removed else ""))
     return path, tag
