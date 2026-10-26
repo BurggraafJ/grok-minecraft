@@ -157,6 +157,9 @@ abstract class ZeldaHoofdstuk {
         final int seconden;
         final Map<UUID, Long> loopt = new HashMap<>();      // speler → starttijd (ms)
         long openTot;
+        Location bord;                                      // bord met de beste tijden (null = geen)
+        org.bukkit.entity.TextDisplay bordTekst;
+        boolean bordOud = true;
 
         Uitdaging(String id, String naam, Box start, Box finish, Box gebied, Deur poort, int seconden) {
             this.id = id;
@@ -303,6 +306,7 @@ abstract class ZeldaHoofdstuk {
         for (Kamer k : kamers) k.vijanden.forEach(org.bukkit.entity.Entity::remove);     // bij herbouwen tijdens het spel
         for (Vondst v : vondsten) if (v.toon != null) v.toon.remove();
         for (Persoon p : personen) if (p.ent != null) p.ent.remove();
+        for (Uitdaging u : uitdagingen) if (u.bordTekst != null) u.bordTekst.remove();
         rust.clear();
         kamers.clear();
         uitdagingen.clear();

@@ -722,6 +722,7 @@ final class ZeldaSpel implements Listener {
         Long oud = s.beste(u.id);
         boolean record = s.tijd(u.id, ms);
         voortgang.vuil();
+        u.bordOud |= record;
         p.setLevel(0);
         p.setExp(0f);
         muziek.speel(p, ZeldaMuziek.OPGELOST);
@@ -884,6 +885,32 @@ final class ZeldaSpel implements Listener {
                 v.toon.setTransformation(new org.bukkit.util.Transformation(new Vector3f(0, op, 0), new AxisAngle4f(hoek, 0, 1, 0),
                         new Vector3f(0.9f, 0.9f, 0.9f), new AxisAngle4f()));
                 if (tikken % 60 == 0) v.plek.getWorld().spawnParticle(Particle.END_ROD, v.plek, 3, 0.25, 0.3, 0.25, 0.01);
+            }
+        }
+        for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) {           // bord met de beste tijden
+            if (u.bord == null) continue;
+            boolean moet = dichtbij(u.bord, 40);
+            if (moet && (u.bordTekst == null || !u.bordTekst.isValid())) {
+                u.bordTekst = u.bord.getWorld().spawn(u.bord, org.bukkit.entity.TextDisplay.class, d -> {
+                    d.setPersistent(false);
+                    d.addScoreboardTag(TAG);
+                    d.setBillboard(Display.Billboard.CENTER);
+                    d.setBackgroundColor(Color.fromARGB(110, 0, 0, 0));
+                    d.setTransformation(new org.bukkit.util.Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(0.8f, 0.8f, 0.8f), new AxisAngle4f()));
+                });
+                u.bordOud = true;
+            } else if (!moet && u.bordTekst != null) {
+                u.bordTekst.remove();
+                u.bordTekst = null;
+            }
+            if (u.bordTekst != null && u.bordOud) {
+                u.bordOud = false;
+                Component t = Component.text(u.naam, GROEN);
+                var lijst = voortgang.besteTijden(u.id, 5);
+                if (lijst.isEmpty()) t = t.append(Component.text("\nnog geen tijden", NamedTextColor.GRAY));
+                for (int i = 0; i < lijst.size(); i++)
+                    t = t.append(Component.text("\n" + (i + 1) + ". " + lijst.get(i).getKey() + "  " + ZeldaVoortgang.tijd(lijst.get(i).getValue()), NamedTextColor.GRAY));
+                u.bordTekst.text(t);
             }
         }
         for (ZeldaHoofdstuk.Persoon p : h.personen) {

@@ -823,8 +823,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             zet(200, G + 4, -2, Bouwer.gericht(Material.WALL_TORCH, BlockFace.WEST));
             zet(200, G + 4, 2, Bouwer.gericht(Material.WALL_TORCH, BlockFace.WEST));
         }
-        uitdaging(new Uitdaging("kloof", "De Kloof", box(162, G, -5, 164, G + 3, 5), box(202, G, -4, 205, G + 5, 4),
+        Uitdaging kloof = uitdaging(new Uitdaging("kloof", "De Kloof", box(162, G, -5, 164, G + 3, 5), box(202, G, -4, 205, G + 5, 4),
                 box(158, g, -10, 206, G + 12, 10), deur(Bouwer.ruit(Material.IRON_BARS, BlockFace.NORTH, BlockFace.SOUTH), 201, G + 1, -1, G + 3, 1), 25));
+        kloof.bord = new Location(w, X0 + 161.5, G + 3.4, -2.5);
         rustvuur(208, -3);
         rust(new Rust("kloofrand", "Kloofrand", plek(208, G + 1, 0, -90f), box(203, G, -4, 213, G + 6, 4), List.of("schild", "zwaard")));
         verhaal(new Verhaal("zout", box(203, G, -4, 213, G + 6, 4), List.of(

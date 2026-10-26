@@ -89,9 +89,11 @@ het menu) = `Zelda.join` → `plugin.naarSpel(p, this, "<hoofdstuk>")` en je sta
   Golven vijanden (1 extra per extra speler); alles verslagen = deuren open, deuntje, +3 harten. Iedereen binnen dood
   of weg = na 4 s terug naar het begin. Gewonnen kamers gaan na een minuut zonder spelers in de buurt weer dicht.
 - **Uitdaging op tijd**: stap op de startplaat, de poort gaat open, de tijd loopt in de **XP-balk** (getal = seconden,
-  tikjes, de laatste vijf hoger). Haal je de finish: tijd en (bij verbetering) «record», bewaard per speler.
+  tikjes, de laatste vijf hoger). Haal je de finish: tijd en (bij verbetering) «record», bewaard per speler. Bij de
+  start hangt een bord met de vijf beste tijden (alleen als er iemand in de buurt is).
 - **Puzzel (reeks)**: zet alle dingen aan binnen de tijd vanaf het eerste (vuurschalen: rechtsklik; doelwitten: pijl).
-  Opgelost = deur open (of brug erbij) tot het gebied een minuut leeg is.
+  Opgelost = deur open (of brug erbij) tot het gebied een minuut leeg is. Wie hem ooit oploste (`r:<id>`), vindt hem
+  open (handig als je na een dood bij de baas terugkomt).
 - **Vondst**: loop over de sokkel = je hebt het (vlag); de uitrusting volgt altijd uit de vlaggen (zwaard, schild,
   boog met oneindig pijlen, harten). Rustplaatsen geven de vlaggen van ervoor ook (`geeft`), zodat niemand vastloopt.
 - **Verhaal**: de eerste keer in een zone een paar korte regels (`v:<id>` in de voortgang, dus nooit dubbel).
@@ -155,7 +157,8 @@ vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 - `kitpvp zelda reset <speler>` — voortgang wissen. `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen).
 - `kitpvp zelda test <speler> [alles]` — loopt met een echte speler door de poort en het hoofdstuk (kamers verslaan,
   puzzels, uitdaging, vondsten, rustplaatsen, opslag op schijf); zonder `alles` tot de eerste rustplaats na de eerste
-  kamer. **Wist eerst de voortgang van die speler** (alleen voor tests). `kitpvp zelda verder <speler>` — door de poort,
+  kamer; `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
+  voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
 - `kitpvp bouw zelda` — hoofdstuk 1 opnieuw bouwen. `kitpvp kaart` maakt ook `zelda-*.png`.
 

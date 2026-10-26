@@ -99,4 +99,20 @@ class ZeldaVoortgangTest {
         assertEquals("1:05,0", ZeldaVoortgang.tijd(65_000));
         assertEquals("0:00,0", ZeldaVoortgang.tijd(-5));
     }
+
+    @Test
+    void besteTijden() {
+        ZeldaVoortgang v = new ZeldaVoortgang(new File(map, "zelda.yml"));
+        v.van(a).naam = "Anna";
+        v.van(a).tijd("kloof", 19_000);
+        v.van(b).naam = "Bram";
+        v.van(b).tijd("kloof", 15_500);
+        v.van(UUID.randomUUID()).bereik("h1", 2);                // geen tijd: telt niet mee
+        var l = v.besteTijden("kloof", 5);
+        assertEquals(2, l.size());
+        assertEquals("Bram", l.get(0).getKey());
+        assertEquals(15_500L, l.get(0).getValue());
+        assertEquals(1, v.besteTijden("kloof", 1).size());
+        assertTrue(v.besteTijden("anders", 5).isEmpty());
+    }
 }

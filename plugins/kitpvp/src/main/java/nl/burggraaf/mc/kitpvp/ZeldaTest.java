@@ -64,6 +64,7 @@ final class ZeldaTest {
 
     /** Door de poort in de hub, zoals een speler erdoor loopt. */
     private void doorDePoort() {
+        if (p.isDead()) p.spigot().respawn();
         pl.naarHub(p);
         Hub.Raak r = pl.hub.raak(pl.hub.poortPunt(z));
         moet(r != null && !r.dicht() && r.modus() == z, "de Zelda-poort stuurt niet naar Zelda");
@@ -74,6 +75,7 @@ final class ZeldaTest {
     }
 
     void route(boolean alles) {
+        if (p.isDead()) p.spigot().respawn();
         pl.naarHub(p);                                       // eerst uit Zelda, anders schrijft de rustplaats meteen weer
         z.spel.voortgang.wis(id);
         ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
@@ -147,6 +149,7 @@ final class ZeldaTest {
 
     /** Doodgaan in de eerste kamer: respawn bij je rustplaats, spullen houden, kamer terug naar het begin. */
     void dood() {
+        if (p.isDead()) p.spigot().respawn();
         pl.naarHub(p);
         z.spel.voortgang.wis(id);
         ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);

@@ -91,6 +91,17 @@ final class ZeldaVoortgang {
         return standen.computeIfAbsent(id, k -> new Stand());
     }
 
+    /** De beste tijden van een uitdaging: naam en ms, snelste eerst. */
+    List<Map.Entry<String, Long>> besteTijden(String uitdaging, int n) {
+        List<Map.Entry<String, Long>> l = new java.util.ArrayList<>();
+        for (Stand s : standen.values()) {
+            Long t = s.tijden.get(uitdaging);
+            if (t != null) l.add(Map.entry(s.naam == null || s.naam.isEmpty() ? "?" : s.naam, t));
+        }
+        l.sort(Map.Entry.comparingByValue());
+        return l.subList(0, Math.min(n, l.size()));
+    }
+
     boolean bekend(UUID id) {
         return standen.containsKey(id);
     }
