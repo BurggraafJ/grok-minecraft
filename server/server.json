@@ -481,7 +481,7 @@
         "netwerk": true,
         "server-tag": "<green>[Survival]</green> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
-        "tablijst": "<prefix> <white><naam>",
+        "tablijst": "<gray>S</gray> <prefix> <white><naam>",
         "toon-join-quit": false
       },
       "plugins/LuckPerms/config.yml": {
@@ -506,7 +506,7 @@
         "netwerk": true,
         "server-tag": "<aqua>[Lobby]</aqua> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
-        "tablijst": "<prefix> <white><naam>"
+        "tablijst": "<gray>H</gray> <prefix> <white><naam>"
       },
       "plugins/ViaVersion/config.yml": {
         "check-for-updates": false
@@ -520,7 +520,7 @@
         "netwerk": true,
         "server-tag": "<red>[KitPvP]</red> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
-        "tablijst": "<prefix> <white><naam>",
+        "tablijst": "<gray>K</gray> <prefix> <white><naam>",
         "toon-join-quit": false
       },
       "plugins/ViaVersion/config.yml": {

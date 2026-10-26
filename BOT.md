@@ -319,8 +319,10 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   - **Join/leave/wissel** meldt alleen de proxy, één keer voor het hele netwerk (`[+] [Survival] … `, `[-] …`,
     `» naam → KitPvP`); opmaak/Essentials/vanilla zwijgen (`netwerk: true` in opmaak). `netwerk stil 30` (console) =
     30 s geen join/leave-regels.
-  - **TAB (rustig):** kop alleen «Burggraaf Craft», geen voet. Regel: `<beroep> <naam>`; spelers op een andere server
-    krijgen er grijs de servernaam achter. Chat: `[Lobby] Ondernemer Jelle » …` (enkele spaties; opmaak knipt de
+  - **TAB (rustig):** kop alleen «Burggraaf Craft», geen voet. Regel: `S Boer Jelle` = één grijze serverletter
+    (H hub/lobby, S survival, K kitpvp), beroep, naam; netwerkbreed iedereen. Spelers op je eigen server zet de backend
+    (Opmaak `tablijst` per server in server.json, met de letter vast erin), de rest de proxy (Netwerk `tablijst`
+    met `<letter>`, config.json `versie` 3, `letters` om te wijzigen). Chat: `[Lobby] Ondernemer Jelle » …` (enkele spaties; opmaak knipt de
     spatie achter `server-tag`). OP's hebben geen rode naam meer (Essentials `ops-name-color: none`).
   - **Rang en nick** komen van survival (LuckPerms/Essentials): opmaak daar stuurt elk profiel naar de proxy
     (`profielen.json`), die het aan lobby en kitpvp doorgeeft.

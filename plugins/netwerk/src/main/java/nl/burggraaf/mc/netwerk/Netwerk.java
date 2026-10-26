@@ -96,7 +96,8 @@ public final class Netwerk {
     private String joinFormaat = "<gray>[<green>+</green>]</gray> <white><naam>";
     private String quitFormaat = "<gray>[<red>-</red>]</gray> <white><naam>";
     private String wisselFormaat = "<dark_gray>»</dark_gray> <gray><naam></gray> <dark_gray>→</dark_gray> <tag>";
-    private String tabFormaat = "<prefix> <white><naam></white> <dark_gray><servernaam>";
+    private String tabFormaat = "<gray><letter></gray> <prefix> <white><naam>";   // H/S/K vooraan (Jelle 26-10)
+    private final Map<String, String> letters = new HashMap<>(Map.of("lobby", "H", "survival", "S", "kitpvp", "K"));
     private String kop = "<gold>Burggraaf Craft</gold>";
     private int beroepTipMinuten = 10;
 
@@ -221,12 +222,12 @@ public final class Netwerk {
                 o.addProperty("wissel", wisselFormaat);
                 o.addProperty("tablijst", tabFormaat);
                 o.addProperty("kop", kop);
-                o.addProperty("versie", 2);
+                o.addProperty("versie", 3);
                 Files.writeString(f, GSON.toJson(o), StandardCharsets.UTF_8);
             }
             JsonObject o = GSON.fromJson(Files.readString(f, StandardCharsets.UTF_8), JsonObject.class);
-            if (!o.has("versie") || o.get("versie").getAsInt() < 2) {     // 2: rustige TAB (Jelle 26-10)
-                o.addProperty("versie", 2);
+            if (!o.has("versie") || o.get("versie").getAsInt() < 3) {     // 2: rustige TAB, 3: serverletter H/S/K (Jelle 26-10)
+                o.addProperty("versie", 3);
                 o.addProperty("tablijst", tabFormaat);
                 o.addProperty("kop", kop);
                 o.addProperty("aftellen_join", aftellenJoin);
@@ -247,6 +248,7 @@ public final class Netwerk {
             if (o.has("quit")) quitFormaat = o.get("quit").getAsString();
             if (o.has("wissel")) wisselFormaat = o.get("wissel").getAsString();
             if (o.has("tablijst")) tabFormaat = o.get("tablijst").getAsString();
+            if (o.has("letters")) letters.putAll(GSON.fromJson(o.get("letters"), new TypeToken<Map<String, String>>() {}.getType()));
             if (o.has("kop")) kop = o.get("kop").getAsString();
         } catch (IOException | RuntimeException ex) {
             log.warn("config.json niet te lezen, standaardwaarden: {}", ex.toString());
@@ -340,6 +342,8 @@ public final class Netwerk {
                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("naam", naam(p)),
                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("tag", server == null ? Component.empty() : tag(server)),
                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("servernaam", Component.text(server == null ? "" : serverNaam(server))),
+                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("letter", Component.text(server == null ? ""
+                        : letters.getOrDefault(server, serverNaam(server).isEmpty() ? "" : serverNaam(server).substring(0, 1).toUpperCase()))),
                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component("prefix", safe(beroepPrefix(p.getUniqueId().toString()))));
         return MM.deserialize(f, r);
     }
