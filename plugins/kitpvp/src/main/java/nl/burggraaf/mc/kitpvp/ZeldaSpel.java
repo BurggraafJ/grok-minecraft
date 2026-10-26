@@ -775,16 +775,20 @@ final class ZeldaSpel implements Listener {
         }
     }
 
+    /** Puzzel terug naar het begin. */
+    void herstel(ZeldaHoofdstuk.Reeks r) {
+        r.opgelost = false;
+        r.isAan.clear();
+        r.leegSinds = 0;
+        deur(r.deur, false, r.gebied.midden(plugin.w));
+        for (int[] d : r.dingen) plugin.w.getBlockAt(d[0], d[1], d[2]).setBlockData(r.uit, false);
+    }
+
     private void reeks(ZeldaHoofdstuk.Reeks r, long nu) {
         if (r.opgelost) {
             if (!in(r.gebied.groter(6)).isEmpty()) r.leegSinds = 0;
             else if (r.leegSinds == 0) r.leegSinds = nu;
-            else if (nu - r.leegSinds > 60_000L) {
-                r.opgelost = false;
-                r.isAan.clear();
-                deur(r.deur, false, r.gebied.midden(plugin.w));
-                for (int[] d : r.dingen) plugin.w.getBlockAt(d[0], d[1], d[2]).setBlockData(r.uit, false);
-            }
+            else if (nu - r.leegSinds > 60_000L) herstel(r);
             return;
         }
         if (r.isAan.isEmpty()) return;
@@ -1111,6 +1115,12 @@ final class ZeldaSpel implements Listener {
     @EventHandler
     public void onVijandPakt(EntityPickupItemEvent e) {
         if (isVijand(e.getEntity())) e.setCancelled(true);
+    }
+
+    /** Geen prestatie-meldingen in de chat (monster verslagen e.d.): in Zelda blijft het stil. Opmaak slaat null over. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPrestatie(org.bukkit.event.player.PlayerAdvancementDoneEvent e) {
+        if (speelt(e.getPlayer())) e.message(null);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

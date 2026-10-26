@@ -74,6 +74,7 @@ final class ZeldaTest {
     }
 
     void route(boolean alles) {
+        pl.naarHub(p);                                       // eerst uit Zelda, anders schrijft de rustplaats meteen weer
         z.spel.voortgang.wis(id);
         ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
         stap("poort", () -> {
@@ -96,7 +97,14 @@ final class ZeldaTest {
                 stap("vondst " + v.vlag, () -> p.teleport(v.zone.midden(h.w).add(0, 1, 0)), 8, () -> stand().heeft(v.vlag), 40);
             } else if (o instanceof ZeldaHoofdstuk.Kamer k) {
                 kamerGehad = true;
-                stap("kamer " + k.id + " dicht", () -> p.teleport(k.start.midden(h.w).add(0, 1, 0)), 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+                stap("kamer " + k.id + " dicht", () -> {
+                    if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
+                    p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+                if (k.baas != null) stap("baas " + k.baas.naam, () -> {
+                    moet(k.baas.leeft() && k.baas.balk != null, "baas " + k.baas.naam + " is er niet");
+                    if (k.baas.leeft()) k.baas.ent.setHealth(k.baas.ent.getHealth() * 0.55);
+                }, 50, () -> k.vijanden.size() >= 3 && k.baas.balk.progress() < 0.6f, 60);
                 stap("kamer " + k.id + " verslaan", () -> {
                     moet(!k.in.isOpen && !k.uit.isOpen, "kamer " + k.id + ": deuren niet dicht tijdens het gevecht");
                     moet(!k.vijanden.isEmpty(), "kamer " + k.id + ": geen vijanden");
@@ -113,11 +121,14 @@ final class ZeldaTest {
                     moet(z.spel.muziek.lus(p) == null, "kamer " + k.id + ": muziek speelt nog");
                 }, 2, () -> true, 1);
             } else if (o instanceof ZeldaHoofdstuk.Uitdaging u) {
+                stap("uitdaging " + u.id + " dicht", () -> p.teleport(u.start.midden(h.w).add(-3, 1, 0)), 20,
+                        () -> !u.poort.isOpen && h.w.getBlockAt(u.poort.blokken.get(0)[0], u.poort.blokken.get(0)[1], u.poort.blokken.get(0)[2]).getType() == u.poort.dicht.getMaterial(), 80);
                 stap("uitdaging " + u.id + " start", () -> p.teleport(u.start.midden(h.w).add(0, 1, 0)), 8,
                         () -> u.loopt.containsKey(id) && u.poort.isOpen, 40);
                 stap("uitdaging " + u.id + " finish", () -> p.teleport(u.finish.midden(h.w).add(0, 1, 0)), 8, () -> stand().beste(u.id) != null, 40);
             } else if (o instanceof ZeldaHoofdstuk.Reeks r) {
                 stap("puzzel " + r.id, () -> {
+                    if (r.opgelost || !r.isAan.isEmpty()) z.spel.herstel(r);
                     p.teleport(r.gebied.midden(h.w).add(0, 1, 0));
                     for (int i = 0; i < r.dingen.size(); i++) z.spel.activeer(p, r, i);
                 }, 4, () -> r.opgelost && r.deur.isOpen, 20);
