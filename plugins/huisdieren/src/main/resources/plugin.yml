@@ -2,6 +2,13 @@ name: Huisdieren
 version: '${version}'
 main: nl.burggraaf.mc.huisdieren.Huisdieren
 api-version: '${apiVersion}'
-description: "Getemde dieren gaan niet dood maar raken uitgeteld (KO) en herstellen; HP-label boven gewonde dieren."
+description: "Getemde dieren gaan niet dood maar raken uitgeteld (KO); je huisdier loopt mee naar lobby en kitpvp (een kopie, het echte dier blijft op survival)."
 author: Minecraft Bot
-softdepend: [Essentials]
+softdepend: [Essentials, KitPvP, LobbyMelding]
+commands:
+  huisdier:
+    description: "Survival: kies welk dier meegaat. Lobby/kitpvp: meenemen aan/uit."
+    aliases: [huisdieren, dier]
+permissions:
+  huisdieren.beheer:
+    default: op

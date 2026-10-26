@@ -2,3 +2,5 @@
 aan: true
 # Hoe lang een dier uitgeteld blijft (seconden); voeren met zijn eigen voedsel herstelt meteen.
 herstel-seconden: 180
+# auto = kitpvp als KitPvP er is, lobby als LobbyMelding er is, anders survival (echte dieren).
+modus: auto

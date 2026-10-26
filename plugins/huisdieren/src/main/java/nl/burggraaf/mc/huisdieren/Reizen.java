@@ -3,7 +3,6 @@ package nl.burggraaf.mc.huisdieren;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -40,8 +39,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -76,8 +73,12 @@ final class Reizen implements Listener {
     }
 
     static boolean reisbaar(Entity e) {
-        return Huisdieren.huisdier(e) && e.isValid()
-                && (e instanceof Wolf || e instanceof Cat || e instanceof Parrot || e instanceof AbstractHorse);
+        return Huisdieren.huisdier(e) && e.isValid() && reisbaarType(e);
+    }
+
+    /** Wolf, kat, papegaai en paardachtigen (paard, ezel, lama, kameel …) reizen mee; waterdieren niet. */
+    static boolean reisbaarType(Entity e) {
+        return e instanceof Wolf || e instanceof Cat || e instanceof Parrot || e instanceof AbstractHorse;
     }
 
     // ── register ────────────────────────────────────────────────────────────────────────────
@@ -349,17 +350,5 @@ final class Reizen implements Listener {
         if (d != null) for (String id : d.getKeys(false)) grootste = Math.max(grootste, d.getString(id + ".data", "").length() * 3 / 4);
         return "dieren=" + (d == null ? 0 : d.getKeys(false).size()) + " spelers=" + (s == null ? 0 : s.getKeys(false).size())
                 + " grootste=" + grootste + "B sleutel=" + (sleutel != null);
-    }
-
-    Map<String, Object> ruw() {
-        return reg.getValues(false);
-    }
-
-    static boolean gelijk(Object a, Object b) {
-        return Objects.equals(a, b);
-    }
-
-    static String json(Component c) {
-        return c == null ? "" : GsonComponentSerializer.gson().serialize(c);
     }
 }

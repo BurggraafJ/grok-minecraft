@@ -53,6 +53,9 @@ public final class Huisdieren extends JavaPlugin implements Listener {
 
     private NamespacedKey koTot, zat, eigenNaam, naamZichtbaar, hadAi;
     private final Set<UUID> volgen = new HashSet<>();   // KO of gewond: label bijwerken
+    private String modus = "survival";
+    private Reizen reizen;                              // survival: welk dier gaat mee
+    private Kopie kopie;                                // lobby/kitpvp: de kopie die meeloopt
 
     @Override
     public void onEnable() {
@@ -62,13 +65,71 @@ public final class Huisdieren extends JavaPlugin implements Listener {
         eigenNaam = new NamespacedKey(this, "eigen-naam");
         naamZichtbaar = new NamespacedKey(this, "naam-zichtbaar");
         hadAi = new NamespacedKey(this, "had-ai");
-        getServer().getPluginManager().registerEvents(this, this);
-        for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) bekijk(e);
-        Bukkit.getScheduler().runTaskTimer(this, this::tik, 20L, 20L);
+        modus = bepaalModus();
+        byte[] sleutel = Pakket.sleutel(getServer().getWorldContainer().getAbsoluteFile());
+        if (sleutel == null) getLogger().info("geen Velocity-geheim: huisdieren reizen niet mee");
+        if (modus.equals("survival")) {
+            getServer().getPluginManager().registerEvents(this, this);
+            for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) bekijk(e);
+            Bukkit.getScheduler().runTaskTimer(this, this::tik, 20L, 20L);
+            reizen = new Reizen(this, sleutel);
+            getServer().getPluginManager().registerEvents(reizen, this);
+            reizen.start();
+        } else {
+            kopie = new Kopie(this, modus.equals("kitpvp"), sleutel);
+            getServer().getPluginManager().registerEvents(kopie, this);
+            kopie.start();
+        }
+        getLogger().info("modus " + modus);
+    }
+
+    /** survival (echte dieren), lobby of kitpvp (kopie loopt mee). config: modus = auto|survival|lobby|kitpvp. */
+    private String bepaalModus() {
+        String m = getConfig().getString("modus", "auto").toLowerCase(java.util.Locale.ROOT);
+        if (m.equals("survival") || m.equals("lobby") || m.equals("kitpvp")) return m;
+        if (getServer().getPluginManager().getPlugin("KitPvP") != null) return "kitpvp";
+        if (getServer().getPluginManager().getPlugin("LobbyMelding") != null) return "lobby";
+        return "survival";
+    }
+
+    @Override
+    public boolean onCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command command, String label, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("status") && sender.hasPermission("huisdieren.beheer")) {
+            sender.sendMessage("huisdieren " + modus + ": " + (reizen != null ? reizen.status() : kopie.status()));
+            return true;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("zelftest") && sender.hasPermission("huisdieren.beheer")) {
+            sender.sendMessage(Zelftest.draai(this, args.length >= 2 ? args[1] : null));
+            return true;
+        }
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage("/huisdier status | zelftest [speler]");
+            return true;
+        }
+        if (reizen != null) reizen.menu(p);
+        else kopie.wissel(p);
+        return true;
+    }
+
+    String modus() {
+        return modus;
+    }
+
+    Reizen reizen() {
+        return reizen;
+    }
+
+    Kopie kopie() {
+        return kopie;
     }
 
     @Override
     public void onDisable() {
+        if (reizen != null) reizen.stop();
+        if (kopie != null) {
+            kopie.stop();
+            return;
+        }
         // labels van gewonde (niet-KO) dieren terugzetten; KO-dieren houden hun label tot herstel na de herstart
         for (UUID id : volgen) {
             if (Bukkit.getEntity(id) instanceof LivingEntity le && !isKo(le)) zetNaamTerug(le);
@@ -79,7 +140,7 @@ public final class Huisdieren extends JavaPlugin implements Listener {
         return getConfig().getBoolean("aan", true);
     }
 
-    private static boolean huisdier(Entity e) {
+    static boolean huisdier(Entity e) {
         return e instanceof Tameable t && t.isTamed() && t.getOwnerUniqueId() != null && e instanceof LivingEntity;
     }
 
@@ -281,11 +342,49 @@ public final class Huisdieren extends JavaPlugin implements Listener {
         pdc.remove(naamZichtbaar);
     }
 
-    private String naam(LivingEntity dier) {
+    /** De eigen naam als JSON (ook als er nu een HP- of KO-label staat); "" = geen naam. */
+    String echteNaamJson(LivingEntity dier) {
+        String s = dier.getPersistentDataContainer().get(eigenNaam, PersistentDataType.STRING);
+        if (s != null) return s;
+        return dier.customName() == null ? "" : GsonComponentSerializer.gson().serialize(dier.customName());
+    }
+
+    /** Een kopie van survival schoonmaken: geen KO-stand, geen label, eigen naam terug, AI aan. */
+    void maakSchoon(LivingEntity dier) {
+        PersistentDataContainer pdc = dier.getPersistentDataContainer();
+        pdc.remove(koTot);
+        dier.setInvulnerable(false);
+        if (dier instanceof Mob m) {
+            Byte b = pdc.get(hadAi, PersistentDataType.BYTE);
+            if (b != null) m.setAI(b == 1);
+            if (!m.hasAI()) m.setAI(true);
+        }
+        pdc.remove(hadAi);
+        pdc.remove(zat);
+        if (pdc.has(eigenNaam)) zetNaamTerug(dier);
+    }
+
+    static String soort(org.bukkit.entity.EntityType t) {
+        return switch (t.name()) {
+            case "WOLF" -> "Wolf";
+            case "CAT" -> "Kat";
+            case "PARROT" -> "Papegaai";
+            case "HORSE" -> "Paard";
+            case "DONKEY" -> "Ezel";
+            case "MULE" -> "Muilezel";
+            case "LLAMA", "TRADER_LLAMA" -> "Lama";
+            case "CAMEL" -> "Kameel";
+            case "SKELETON_HORSE" -> "Skeletpaard";
+            case "ZOMBIE_HORSE" -> "Zombiepaard";
+            default -> t.name().charAt(0) + t.name().substring(1).toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
+        };
+    }
+
+    String naam(LivingEntity dier) {
         String s = dier.getPersistentDataContainer().get(eigenNaam, PersistentDataType.STRING);
         if (s != null && !s.isEmpty()) return PlainTextComponentSerializer.plainText().serialize(GsonComponentSerializer.gson().deserialize(s));
         if (s == null && dier.customName() != null) return PlainTextComponentSerializer.plainText().serialize(dier.customName());
-        return "Je " + dier.getType().name().toLowerCase().replace('_', ' ');
+        return "Je " + soort(dier.getType()).toLowerCase(java.util.Locale.ROOT);
     }
 
     private void label(LivingEntity dier) {
