@@ -73,7 +73,7 @@ import org.bukkit.scoreboard.Team;
  * KitPvP met een hub. Je komt binnen in de hub ({@link Hub}) en kiest een modus: door een poort lopen, het kompas of
  * {@code /modus}. Een kitmodus brengt je naar zijn kitruimte ({@link Kitruimte}): klik een standaard (of de ster,
  * {@code /kit}) en je springt de arena in met even bescherming. Modi staan in {@link ModusRegister} (zie MODI.md):
- * Story of Zelda (binnenkort), PvP Arena (colosseum + oefenarena met bots), PvP Castle (kasteel).
+ * Story of Zelda (avontuur, {@link Zelda}), PvP Arena (colosseum + oefenarena met bots), PvP Castle (kasteel).
  *
  * <p>Geen drops, geen honger, direct respawnen in de kitruimte van je arena. Kills, doden, reeksen en bots in
  * stats.yml, top 10 op borden, eigen statistieken in de sidebar. Gevecht-tag 10 s (ook op de proxy).
@@ -751,7 +751,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     // ── sidebar ─────────────────────────────────────────────────────────────────────────────
 
-    private String plekNaam(Toestand t) {
+    private String plekNaam(Player p, Toestand t) {
         return switch (t.plek()) {
             case HUB -> "§8Hub";
             case KITRUIMTE -> {
@@ -764,7 +764,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             case SPEL -> {
                 Modus m = modi.get(t.modus());
-                yield "§f" + (m == null ? "—" : m.naam());
+                yield "§f" + (m == null ? "—" : m.plek(p, t));
             }
         };
     }
@@ -785,7 +785,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 {"b", "§7Kit: " + (kit == null ? "§8—" : "§f" + kit.naam())},
                 {"c", "§7Kills: §f" + k + " §8· §7Doden: §f" + d},
                 {"f", "§7Reeks: §f" + reeks.getOrDefault(id, 0)},
-                {"g", "§7Plek: " + plekNaam(t)},
+                {"g", "§7Plek: " + plekNaam(p, t)},
         };
         int score = regels.length;
         for (String[] r : regels) {
@@ -920,7 +920,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         return null;
     }
 
-    /** Console/OP: kitpvp zelftest | bouw [hub|arena|kasteel|alles] | status | aftellen [s]. */
+    /** Console/OP: kitpvp zelftest | test | zelda … | bouw [hub|arena|kasteel|zelda|alles] | kaart | status | aftellen [s]. */
     private void beheer(CommandSender sender, String[] args) {
         if (!sender.hasPermission("kitpvp.beheer")) {
             sender.sendMessage("Geen toegang.");
@@ -954,6 +954,9 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 sender.sendMessage("kitpvp zelftest: " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" ", info));
                 for (String f : fouten) sender.sendMessage("  ✗ " + f);
             }
+            case "zelda" -> {
+                if (modi.get("zelda") instanceof Zelda z) z.beheer(sender, args);
+            }
             case "kaart" -> {
                 try {
                     for (String f : kaarten()) sender.sendMessage("kaart: " + f);
@@ -980,11 +983,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             default -> sender.sendMessage("kitpvp: grond=" + g + " modi=" + modi.alle().size() + " in-arena=" + spelers.aantalInArena()
                     + " spelers=" + Bukkit.getOnlinePlayers().size() + " bouwen=" + (bouwer != null && bouwer.bezig() ? bouwer.inRij() + " stappen" : "klaar")
-                    + " · kitpvp zelftest | test <speler> | bouw [hub|arena|kasteel|alles] | kaart | aftellen [s]");
+                    + " · kitpvp zelftest | test <speler> | zelda | bouw [hub|arena|kasteel|zelda|alles] | kaart | aftellen [s]");
         }
     }
 
-    /** Plaatjes van hub, arena's en kasteel in plugins/KitPvP/kaart/ (om te controleren zonder in te loggen). */
+    /** Plaatjes van hub, arena's, kasteel en Zelda in plugins/KitPvP/kaart/ (om te controleren zonder in te loggen). */
     private List<String> kaarten() throws IOException {
         File map = new File(getDataFolder(), "kaart");
         int hx = Hub.HX, hz = Hub.HZ, kz = KasteelModus.KZ;
@@ -999,6 +1002,13 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "kasteel-noord", 0, -1, kz + 30, -44, 44, g - 3, g + 22, 80, 6));
         f.add(Kaart.voor(w, map, "kasteel-veld", 0, -1, kz + 13, -26, 26, g - 1, g + 14, 30, 10));
         f.add(Kaart.voor(w, map, "kitruimte-arena", 0, 1, -58, -10, 10, g + 7, g + 17, 30, 12));
+        // Story of Zelda, hoofdstuk 1: het hele pad van boven, in stukken van dichtbij, en van opzij
+        int zx = ZeldaHoofdstuk1.X0, zg = g + 8;
+        f.add(Kaart.boven(w, map, "zelda-boven", zx - 8, -48, zx + 480, 48, g - 2, zg + 50, 2));
+        String[] stuk = {"thuis", "ruine", "kloof", "veen", "haven"};
+        for (int i = 0; i < stuk.length; i++)
+            f.add(Kaart.boven(w, map, "zelda-" + stuk[i], zx - 6 + i * 80, -26, zx + 94 + i * 80, 26, g - 2, zg + 22, 6));
+        f.add(Kaart.voor(w, map, "zelda-zij", 0, 1, -30, zx - 6, zx + 470, g, zg + 50, 60, 2));
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;

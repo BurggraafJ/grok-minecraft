@@ -11,8 +11,8 @@ import org.bukkit.entity.Player;
  * {@code modi.registreer(...)}: de hub bouwt dan zijn poort (op {@link PoortStijl#plek}), het modusmenu en
  * {@code /modus} tonen hem, en de zelftest controleert hem. Zie {@code MODI.md}.
  *
- * <p>Een modus met kits (arena's en kitruimtes) erft van {@link KitModus}. Een modus met een eigen spel (zoals Zelda
- * straks) zet zijn spelers in {@link Toestand.Plek#SPEL} via {@link KitPvP#naarSpel} en regelt dan zelf schade,
+ * <p>Een modus met kits (arena's en kitruimtes) erft van {@link KitModus}. Een modus met een eigen spel (zoals Zelda)
+ * zet zijn spelers in {@link Toestand.Plek#SPEL} via {@link KitPvP#naarSpel} en regelt dan zelf schade,
  * honger, doodgaan en grenzen met eigen listeners (registreer die in {@link #aan}).
  */
 public interface Modus {
@@ -75,6 +75,11 @@ public interface Modus {
     /** Metadata kitpvp-stand voor Huisdieren als de speler in {@link Toestand.Plek#SPEL} van deze modus is. */
     default String stand(Player p, Toestand t) {
         return "wacht";
+    }
+
+    /** Plek in de sidebar als de speler in {@link Toestand.Plek#SPEL} van deze modus is (standaard de modusnaam). */
+    default String plek(Player p, Toestand t) {
+        return naam();
     }
 
     /** Respawn na doodgaan in {@link Toestand.Plek#SPEL} van deze modus; null = de hub. */
