@@ -2,18 +2,24 @@ name: KitPvP
 version: '${version}'
 main: nl.burggraaf.mc.kitpvp.KitPvP
 api-version: '${apiVersion}'
-description: "KitPvP-arena: arena en wachtplatform bouwen, kits kiezen, kills/doden/reeksen, geen drops, direct respawnen."
+description: "KitPvP met een hub: modus kiezen (Story of Zelda, PvP Arena, PvP Castle), kitruimte, arena; kills/doden/reeksen, geen drops."
 author: Minecraft Bot
 softdepend: [Opmaak]
 commands:
   kit:
-    description: "Kies een kit (menu)"
+    description: "Kies een kit (in een kitruimte)"
     aliases: [kits]
+  modus:
+    description: "Kies een modus (menu), of /modus <naam>"
+    aliases: [modi]
   arena:
-    description: "Terug naar het wachtplatform (buiten een gevecht). Console: /arena aftellen <s> | bouw | zelftest"
+    description: "Terug naar de hub (buiten een gevecht). Console: /arena aftellen <s> | bouw | zelftest"
   stats:
     description: "Jouw KitPvP-statistieken"
     aliases: [kd]
+  kitpvp:
+    description: "Beheer: kitpvp zelftest | bouw [hub|arena|kasteel|alles] | status | aftellen <s>"
+    permission: kitpvp.beheer
 permissions:
   kitpvp.beheer:
     default: op

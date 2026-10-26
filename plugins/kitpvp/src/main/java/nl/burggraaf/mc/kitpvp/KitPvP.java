@@ -6,9 +6,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,16 +28,9 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.type.Leaves;
-import org.bukkit.block.data.type.Slab;
-import org.bukkit.block.data.type.Stairs;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Display;
@@ -66,73 +62,50 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.LeatherArmorMeta;
-import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
-import org.bukkit.potion.PotionType;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
 /**
- * KitPvP: een ronde arena (colosseum met ruïnes en een middenplateau) en een wachtplatform erboven met kit-standaards.
- * Kies een kit (klik op een standaard, de ster in je hotbar of /kit) en je springt de arena in met even bescherming.
- * Geen drops, geen honger, direct respawnen op het platform. Kills, doden en reeksen in stats.yml, top 10 op een bord,
- * eigen statistieken in de sidebar.
+ * KitPvP met een hub. Je komt binnen in de hub ({@link Hub}) en kiest een modus: door een poort lopen, het kompas of
+ * {@code /modus}. Een kitmodus brengt je naar zijn kitruimte ({@link Kitruimte}): klik een standaard (of de ster,
+ * {@code /kit}) en je springt de arena in met even bescherming. Modi staan in {@link ModusRegister} (zie MODI.md):
+ * Story of Zelda (binnenkort), PvP Arena (colosseum + oefenarena met bots), PvP Castle (kasteel).
+ *
+ * <p>Geen drops, geen honger, direct respawnen in de kitruimte van je arena. Kills, doden, reeksen en bots in
+ * stats.yml, top 10 op borden, eigen statistieken in de sidebar. Gevecht-tag 10 s (ook op de proxy).
  */
 public final class KitPvP extends JavaPlugin implements Listener {
 
-    private static final int BOUW_VERSIE = 3;   // 2: oefenarena met bots erbij, 3: kasteelarena
-    private static final int R = 30;           // arena-straal (binnenkant muur)
-    private static final int BZ = 110, RB = 18; // oefenarena (bots): midden (0, BZ), straal
-    private static final int KZ = -150;        // kasteelarena: midden (0, KZ)
-    private static final long GEVECHT_MS = 10_000L;
+    /** Versie van de arena's (colosseum, oefenarena, kasteel). 3: kasteelarena, 4: hub met modi, kitruimtes, nieuw kasteel. */
+    static final int BOUW_VERSIE = 4;
 
-    private World w;
-    private int g;                             // grondhoogte (vloer van de arena)
-    private Location wacht;                    // wachtplatform
-    private final List<Location> spawns = new ArrayList<>();
-    private final List<Location> botSpawns = new ArrayList<>();
-    private final List<Location> kasteelSpawns = new ArrayList<>();
-    private final Map<UUID, String> arenaKeuze = new HashMap<>();      // voorkeur in het menu: pvp, kasteel of bots
-    private final java.util.Set<UUID> inBotArena = new java.util.HashSet<>();
-    private final Map<UUID, Long> gevechtTot = new HashMap<>();
-    private final Map<UUID, Long> gevechtGemeld = new HashMap<>();
-    private long botsLeegSinds = 0;
-    private final Random rnd = new Random();
-    private NamespacedKey itemKey, kitKey;
+    World w;
+    int g;                                                     // grondhoogte (vloer van de arena's)
+    final Spelers spelers = new Spelers();
+    final ModusRegister modi = new ModusRegister();
+    Hub hub;
+    NamespacedKey itemKey, kitKey, ruimteKey;
+
+    private Gevecht gevecht;
+    private Stats stats;
+    private Bots bots;
+    private Menus menus;
+    private Bouwer bouwer;
     private boolean actief = true;
-
-    private record Kit(String id, String naam, Material icoon, TextColor kleur, String uitleg) {}
-
-    private static final Kit[] KITS = {
-            new Kit("krijger", "Krijger", Material.IRON_SWORD, NamedTextColor.WHITE, "IJzeren harnas, zwaard en schild"),
-            new Kit("boog", "Boogschutter", Material.BOW, NamedTextColor.GREEN, "Boog (oneindig), maliënkolder, stenen zwaard"),
-            new Kit("tank", "Tank", Material.DIAMOND_CHESTPLATE, NamedTextColor.AQUA, "Diamanten borst, bijl en schild, wat trager"),
-            new Kit("ninja", "Ninja", Material.FEATHER, NamedTextColor.DARK_GRAY, "Snel en hoog springen, scherp gouden zwaard"),
-            new Kit("speer", "Speer", Material.TRIDENT, NamedTextColor.DARK_AQUA, "Drietand die terugkomt, ijzer en maliën"),
-            new Kit("heler", "Heler", Material.SPLASH_POTION, NamedTextColor.LIGHT_PURPLE, "Genezende drankjes en regeneratie"),
-            new Kit("hamer", "Hamer", Material.MACE, NamedTextColor.GOLD, "Strijdhamer met windladingen: spring en sla!"),
-    };
-
-    // spelers
-    private final Map<UUID, String> kitVan = new HashMap<>();          // in de arena met deze kit
+    private final Random rnd = new Random();
+    private final List<TextDisplay> ranglijsten = new ArrayList<>();
+    private final Map<UUID, String> arenaKeuze = new HashMap<>();      // kitmenu: gekozen arena binnen de modus
     private final Map<UUID, Long> beschermdTot = new HashMap<>();
     private final Map<UUID, UUID> laatsteAanvaller = new HashMap<>();
     private final Map<UUID, Long> laatsteAanvalTijd = new HashMap<>();
     private final Map<UUID, Integer> reeks = new HashMap<>();
     private final Map<UUID, Scoreboard> borden = new HashMap<>();
-
-    private YamlConfiguration stats;
-    private File statsBestand;
-    private TextDisplay ranglijst;
+    private final Map<UUID, Long> binnenkortGemeld = new HashMap<>();
+    private long seconden = 0;
 
     @Override
     public void onEnable() {
@@ -144,631 +117,138 @@ public final class KitPvP extends JavaPlugin implements Listener {
         }
         itemKey = new NamespacedKey(this, "item");
         kitKey = new NamespacedKey(this, "kit");
-        statsBestand = new File(getDataFolder(), "stats.yml");
-        stats = YamlConfiguration.loadConfiguration(statsBestand);
+        ruimteKey = new NamespacedKey(this, "ruimte");
+        stats = new Stats(new File(getDataFolder(), "stats.yml"), getLogger());
+        gevecht = new Gevecht(this);
+        bots = new Bots(this);
+        menus = new Menus(this);
+        // de modi, in menuvolgorde; een nieuwe modus = hier één regel erbij (zie MODI.md)
+        modi.registreer(new Zelda(this));
+        modi.registreer(new ArenaModus(this));
+        modi.registreer(new KasteelModus(this));
+        hub = new Hub(this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "netwerk:main");
         Bukkit.getScheduler().runTask(this, () -> {
             w = Bukkit.getWorlds().get(0);
-            for (int cx = -4; cx <= 3; cx++)             // arena blijft geladen: kit-standaards en ranglijst verdwijnen anders
-                for (int cz = -12; cz <= 8; cz++) w.addPluginChunkTicket(cx, cz, this);  // ook de oefen- en kasteelarena
-            bouw(false);
-            for (Player p : Bukkit.getOnlinePlayers()) naarWacht(p, false);
+            // alles blijft geladen: standaards, labels en ranglijsten verdwijnen anders
+            for (int cx = -4; cx <= 3; cx++)
+                for (int cz = -12; cz <= 8; cz++) w.addPluginChunkTicket(cx, cz, this);   // colosseum, oefenarena, kasteel
+            for (int cx = Math.floorDiv(Hub.HX - 36, 16); cx <= Math.floorDiv(Hub.HX + 36, 16); cx++)
+                for (int cz = Math.floorDiv(Hub.HZ - 36, 16); cz <= Math.floorDiv(Hub.HZ + 36, 16); cz++) w.addPluginChunkTicket(cx, cz, this);
+            bouw(Set.of());
+            for (Modus m : modi.alle()) m.aan(this);
+            for (Player p : Bukkit.getOnlinePlayers()) naarHub(p);
         });
         Bukkit.getScheduler().runTaskTimer(this, this::elkeSeconde, 40L, 20L);
         Bukkit.getScheduler().runTaskTimer(this, this::meldStand, 40L, 5L);
     }
 
-    /** Voor de plugin Huisdieren: waar staat iedereen (wacht = platform, bots = oefenarena, pvp = PvP of kasteel). */
+    @Override
+    public void onDisable() {
+        if (!actief) return;
+        for (Modus m : modi.alle()) m.uit();
+        if (bouwer != null) bouwer.stop();
+        if (stats != null) stats.bewaar();
+        if (w != null) {
+            for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains("kitpvp") || Bots.is(e)) e.remove();
+        }
+    }
+
+    /** Voor de plugin Huisdieren: waar staat iedereen (wacht = hub of kitruimte, pvp, bots; zie Spelers.stand). */
     private void meldStand() {
         for (Player p : Bukkit.getOnlinePlayers()) {
-            String s = !kitVan.containsKey(p.getUniqueId()) ? "wacht" : inBotArena.contains(p.getUniqueId()) ? "bots" : "pvp";
+            String s = stand(p);
             var m = p.getMetadata("kitpvp-stand");
             if (m.isEmpty() || !s.equals(m.get(0).asString())) p.setMetadata("kitpvp-stand", new org.bukkit.metadata.FixedMetadataValue(this, s));
         }
     }
 
-    @Override
-    public void onDisable() {
-        bewaarStats();
-        if (w != null) {
-            for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains("kitpvp") || isBot(e)) e.remove();
-        }
+    String stand(Player p) {
+        return Spelers.stand(spelers.van(p.getUniqueId()),
+                a -> modi.arena(a) == null ? "wacht" : modi.arena(a).stand,
+                t -> modi.get(t.modus()) == null ? "wacht" : modi.get(t.modus()).stand(p, t));
     }
 
     // ── bouwen ──────────────────────────────────────────────────────────────────────────────
 
-    private boolean plaats;
-
-    private void zet(int x, int y, int z, Material m) {
-        if (plaats) w.getBlockAt(x, y, z).setType(m, false);
-    }
-
-    private void zet(int x, int y, int z, BlockData d) {
-        if (plaats) w.getBlockAt(x, y, z).setBlockData(d, false);
-    }
-
-    private void vul(int x1, int y1, int z1, int x2, int y2, int z2, Material m) {
-        if (!plaats) return;
-        for (int x = Math.min(x1, x2); x <= Math.max(x1, x2); x++)
-            for (int y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
-                for (int z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
-                    Block b = w.getBlockAt(x, y, z);
-                    if (b.getType() != m) b.setType(m, false);
-                }
-    }
-
-    private BlockData trap(Material m, BlockFace f) {
-        Stairs s = (Stairs) m.createBlockData();
-        s.setFacing(f);
-        return s;
-    }
-
-    private BlockData blad(Material m) {
-        Leaves l = (Leaves) m.createBlockData();
-        l.setPersistent(true);
-        return l;
-    }
-
-    private static long hash(int x, int z) {
-        long h = x * 73428767L ^ z * 912931L;
-        h ^= (h >>> 13);
-        h *= 0x5bd1e995L;
-        return Math.abs(h ^ (h >>> 15));
-    }
-
-    void bouw(boolean forceer) {
-        File marker = new File(getDataFolder(), "gebouwd.txt");
-        String eerder = null;
-        try {
-            if (marker.exists()) eerder = java.nio.file.Files.readString(marker.toPath()).trim();
-        } catch (IOException ignored) {
-        }
-        if (eerder != null && eerder.contains(":")) {
-            g = Integer.parseInt(eerder.split(":")[1]);
-        } else {
-            g = w.getHighestBlockYAt(0, 0);
-        }
-        String versie = BOUW_VERSIE + ":" + g;
-        plaats = forceer || !versie.equals(eerder);
-        long t0 = System.currentTimeMillis();
-        int wy = g + 9;                                   // vloer van het wachtplatform
-        if (plaats) {
-            vul(-50, g + 1, -60, 50, g + 30, 50, Material.AIR);
-            vul(-50, g, -60, 50, g, 50, Material.GRASS_BLOCK);
-        }
-        // arena-vloer
-        Material[] vloer = {Material.STONE_BRICKS, Material.COBBLESTONE, Material.MOSSY_STONE_BRICKS, Material.ANDESITE,
-                Material.GRAVEL, Material.COARSE_DIRT, Material.STONE_BRICKS, Material.CRACKED_STONE_BRICKS, Material.MOSS_BLOCK, Material.PACKED_MUD};
-        for (int x = -R - 4; x <= R + 4; x++)
-            for (int z = -R - 4; z <= R + 4; z++) {
-                double r = Math.sqrt(x * x + z * z);
-                if (r > R + 3.5) continue;
-                if (r <= R + 0.5) {
-                    zet(x, g, z, vloer[(int) (hash(x / 3, z / 3) % vloer.length)]);
-                    zet(x, g - 1, z, Material.STONE);
-                } else {                                   // muur: 7 hoog, met kantelen
-                    vul(x, g - 1, z, x, g + 6, z, (hash(x, z) % 5 == 0) ? Material.MOSSY_STONE_BRICKS : Material.STONE_BRICKS);
-                    if (r <= R + 1.5) zet(x, g + 3, z, (hash(x, z) % 9 == 0) ? Material.SEA_LANTERN : Material.CHISELED_STONE_BRICKS);
-                    if (r > R + 2.5 && (Math.floorMod((int) Math.round(Math.atan2(z, x) * 30), 2) == 0)) zet(x, g + 7, z, Material.STONE_BRICK_WALL);
-                }
+    /** Bouw alle delen (hub en die van de modi). {@code forceer}: ids van delen, of "alles". */
+    void bouw(Set<String> forceer) {
+        if (bouwer != null) bouwer.stop();
+        File yml = new File(getDataFolder(), "gebouwd.yml"), oud = new File(getDataFolder(), "gebouwd.txt");
+        YamlConfiguration stand = YamlConfiguration.loadConfiguration(yml);
+        if (stand.contains("grond")) g = stand.getInt("grond");
+        else {
+            String eerder = null;
+            try {
+                if (oud.exists()) eerder = java.nio.file.Files.readString(oud.toPath()).trim();
+            } catch (IOException ignored) {
             }
-        // pilaren met lantaarns
-        for (int i = 0; i < 12; i++) {
-            double a = Math.PI * 2 / 12 * i;
-            int x = (int) Math.round(Math.cos(a) * (R + 2)), z = (int) Math.round(Math.sin(a) * (R + 2));
-            vul(x, g + 7, z, x, g + 9, z, Material.POLISHED_ANDESITE);
-            zet(x, g + 10, z, Material.LANTERN);
+            g = eerder != null && eerder.contains(":") ? Integer.parseInt(eerder.split(":")[1]) : w.getHighestBlockYAt(0, 0);
         }
-        // middenplateau (straal 5, 2 hoog) met trappen
-        for (int x = -5; x <= 5; x++)
-            for (int z = -5; z <= 5; z++) {
-                double r = Math.sqrt(x * x + z * z);
-                if (r > 5.4) continue;
-                vul(x, g + 1, z, x, g + 1, z, Material.STONE_BRICKS);
-                if (r <= 4.4) zet(x, g + 2, z, (x + z) % 2 == 0 ? Material.POLISHED_ANDESITE : Material.SMOOTH_STONE);
-                else {
-                    Slab s = (Slab) Material.STONE_BRICK_SLAB.createBlockData();
-                    zet(x, g + 2, z, s);
-                }
-            }
-        for (BlockFace f : new BlockFace[]{BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
-            for (int i = -1; i <= 1; i++) {
-                int dx = f.getModX(), dz = f.getModZ();
-                int px = dx * 6 + (dz != 0 ? i : 0), pz = dz * 6 + (dx != 0 ? i : 0);
-                zet(px, g + 1, pz, trap(Material.STONE_BRICK_STAIRS, f.getOppositeFace()));
-                int qx = dx * 5 + (dz != 0 ? i : 0), qz = dz * 5 + (dx != 0 ? i : 0);
-                zet(qx, g + 2, qz, trap(Material.STONE_BRICK_STAIRS, f.getOppositeFace()));
-            }
-        }
-        zet(0, g + 3, 0, Material.LODESTONE);
-        // ruïnes op straal 18 (8 stuks), struiken en hooi
-        for (int i = 0; i < 8; i++) {
-            double a = Math.PI * 2 / 8 * i + Math.PI / 8;
-            int cx = (int) Math.round(Math.cos(a) * 18), cz = (int) Math.round(Math.sin(a) * 18);
-            boolean langsX = i % 2 == 0;
-            for (int k = -3; k <= 3; k++) {
-                int x = cx + (langsX ? k : 0), z = cz + (langsX ? 0 : k);
-                int h = 1 + (int) (hash(x, z) % 3);
-                vul(x, g + 1, z, x, g + h, z, hash(x + 1, z) % 3 == 0 ? Material.CRACKED_STONE_BRICKS : Material.MOSSY_STONE_BRICKS);
-            }
-            int ex = cx + (langsX ? 3 : 1), ez = cz + (langsX ? 1 : 3);
-            vul(ex, g + 1, ez, ex, g + 2, ez, Material.MOSSY_STONE_BRICKS);
-            zet(cx, g + 4, cz, Material.MOSSY_STONE_BRICK_SLAB);
-        }
-        for (int i = 0; i < 4; i++) {
-            double a = Math.PI / 2 * i + Math.PI / 4;
-            int cx = (int) Math.round(Math.cos(a) * 11), cz = (int) Math.round(Math.sin(a) * 11);
-            for (int dx = 0; dx <= 1; dx++)
-                for (int dz = 0; dz <= 1; dz++)
-                    for (int dy = 1; dy <= 2; dy++) zet(cx + dx, g + dy, cz + dz, blad(dy == 2 && dx == 1 ? Material.AZALEA_LEAVES : Material.OAK_LEAVES));
-            int hx = (int) Math.round(Math.cos(a + Math.PI / 4) * 25), hz = (int) Math.round(Math.sin(a + Math.PI / 4) * 25);
-            vul(hx, g + 1, hz, hx + 1, g + 1, hz, Material.HAY_BLOCK);
-            zet(hx, g + 2, hz, Material.HAY_BLOCK);
-        }
-        // spawnpunten op straal 24, kijkend naar het midden
-        spawns.clear();
-        for (int i = 0; i < 8; i++) {
-            double a = Math.PI * 2 / 8 * i;
-            double x = Math.cos(a) * 24 + 0.5, z = Math.sin(a) * 24 + 0.5;
-            Location l = new Location(w, x, g + 1, z);
-            l.setDirection(new org.bukkit.util.Vector(-x, 0, -z));
-            vul(l.getBlockX(), g + 1, l.getBlockZ(), l.getBlockX(), g + 3, l.getBlockZ(), Material.AIR);
-            spawns.add(l);
-        }
-        // wachtplatform boven de noordmuur (z −48..−36), kijkt uit over de arena
-        int z1 = -48, z2 = -37, x1 = -12, x2 = 12;
-        vul(x1, wy - 1, z1, x2, wy - 1, z2, Material.POLISHED_DEEPSLATE);
-        for (int x = x1; x <= x2; x++)
-            for (int z = z1; z <= z2; z++) zet(x, wy, z, (Math.abs(x) + z) % 2 == 0 ? Material.POLISHED_ANDESITE : Material.SMOOTH_QUARTZ);
-        for (int x = x1; x <= x2; x++) {
-            zet(x, wy + 1, z1, Material.POLISHED_BLACKSTONE_WALL);
-            zet(x, wy + 1, z2, Material.GLASS_PANE);
-            zet(x, wy + 2, z2, Material.GLASS_PANE);
-        }
-        for (int z = z1; z <= z2; z++) {
-            zet(x1, wy + 1, z, Material.POLISHED_BLACKSTONE_WALL);
-            zet(x2, wy + 1, z, Material.POLISHED_BLACKSTONE_WALL);
-        }
-        for (int[] c : new int[][]{{x1, z1}, {x2, z1}, {x1, z2}, {x2, z2}}) {
-            vul(c[0], wy - 8, c[1], c[0], wy + 2, c[1], Material.POLISHED_DEEPSLATE);
-            zet(c[0], wy + 3, c[1], Material.LANTERN);
-        }
-        for (int x = -9; x <= 9; x += 3) zet(x, wy, z1 + 2, Material.CHISELED_QUARTZ_BLOCK);   // sokkels voor de kits
-        // een rode loper naar het midden
-        for (int z = z1 + 3; z <= z2; z++) zet(0, wy, z, Material.RED_CARPET);
-        wacht = new Location(w, 0.5, wy + 1, -40.5, 180f, 0f);
-        w.setSpawnLocation(wacht);
-        // standaards met de kits (niet opgeslagen: elke start nieuw)
         for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains("kitpvp")) e.remove();
-        for (int i = 0; i < KITS.length; i++) {
-            Kit k = KITS[i];
-            Location l = new Location(w, -9 + 3 * i + 0.5, wy + 1, z1 + 2 + 0.5, 0f, 0f);
-            w.spawn(l, ArmorStand.class, a -> {
-                a.setPersistent(false);
-                a.setInvulnerable(true);
-                a.setGravity(false);
-                a.setArms(true);
-                a.setBasePlate(false);
-                a.addScoreboardTag("kitpvp");
-                a.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, k.id());
-                ItemStack[] uit = uitrusting(k.id());
-                a.getEquipment().setHelmet(uit[0]);
-                a.getEquipment().setChestplate(uit[1]);
-                a.getEquipment().setLeggings(uit[2]);
-                a.getEquipment().setBoots(uit[3]);
-                a.getEquipment().setItemInMainHand(new ItemStack(k.icoon()));
-            });
-            label(l.clone().add(0, 2.5, 0), Component.text(k.naam(), k.kleur(), TextDecoration.BOLD).append(Component.newline())
-                    .append(Component.text(k.uitleg(), NamedTextColor.GRAY)).append(Component.newline())
-                    .append(Component.text("▶ klik om te kiezen", NamedTextColor.YELLOW)), 0.8f);
+        ranglijsten.clear();
+        bouwer = new Bouwer(this, w, g);
+        List<Deel> delen = new ArrayList<>();
+        delen.add(hub.deel());
+        for (Modus m : modi.alle()) delen.addAll(m.delen());
+        Map<String, Integer> nieuw = new LinkedHashMap<>();
+        for (Deel d : delen) {
+            bouwer.plaats = forceer.contains("alles") || forceer.contains(d.id()) || stand.getInt("delen." + d.id(), -1) != d.versie();
+            if (bouwer.plaats) nieuw.put(d.id(), d.versie());
+            d.bouw().accept(bouwer);
         }
-        bouwOefenarena();                                  // na het opruimen van de labels hierboven
-        kasteelSpawns.clear();
-        Kasteel.bouw(this, w, g, KZ, plaats, kasteelSpawns);
-        label(new Location(w, 0.5, wy + 4.2, -44.5), Component.text("⚔ KITPVP ⚔", NamedTextColor.RED, TextDecoration.BOLD)
-                .append(Component.newline()).append(Component.text("Kies een kit en spring de arena in!", NamedTextColor.WHITE)), 1.6f);
-        label(new Location(w, 10.5, wy + 2.2, -40.5), Component.text("Hoe werkt het?", NamedTextColor.GOLD, TextDecoration.BOLD)
-                .append(Component.newline()).append(Component.text("• Kies een kit (klik of de ster)\n• In het menu: PvP, kasteel of bots\n• Kill = vol leven + gouden appel\n• 10 s na een treffer kun je niet weg\n• /lobby · /survival om te gaan", NamedTextColor.GRAY)), 0.9f);
-        Location rl = new Location(w, -10.5, wy + 2.2, -40.5);
-        ranglijst = w.spawn(rl, TextDisplay.class, d -> {
+        bouwer.plaats = false;
+        w.setSpawnLocation(hub.aankomst());
+        werkRanglijstBij();
+        long t0 = System.currentTimeMillis();
+        Bouwer deze = bouwer;
+        if (!nieuw.isEmpty()) getLogger().info("bouwen: " + String.join(", ", nieuw.keySet()) + " (" + deze.inRij() + " stappen, verdeeld over ticks)");
+        deze.start(() -> {
+            if (nieuw.isEmpty()) return;
+            stand.set("grond", g);
+            nieuw.forEach((k, v) -> stand.set("delen." + k, v));
+            try {
+                getDataFolder().mkdirs();
+                stand.save(yml);
+                if (oud.exists() && !oud.delete()) getLogger().fine("gebouwd.txt bleef staan");
+            } catch (IOException e) {
+                getLogger().warning("gebouwd.yml: " + e.getMessage());
+            }
+            getLogger().info("gebouwd: " + String.join(", ", nieuw.keySet()) + " in " + (System.currentTimeMillis() - t0) + " ms, " + deze.gezet + " blokken");
+        });
+    }
+
+    /** Een top-10 bord op deze plek (wordt bij elke kill bijgewerkt). */
+    void ranglijst(Location l) {
+        ranglijsten.add(w.spawn(l, TextDisplay.class, d -> {
             d.setPersistent(false);
             d.setBillboard(Display.Billboard.CENTER);
             d.setBackgroundColor(Color.fromARGB(150, 0, 0, 0));
             d.addScoreboardTag("kitpvp");
-        });
-        werkRanglijstBij();
-        if (plaats) {
-            try {
-                getDataFolder().mkdirs();
-                java.nio.file.Files.writeString(marker.toPath(), versie);
-            } catch (IOException e) {
-                getLogger().warning("gebouwd.txt: " + e.getMessage());
-            }
-            getLogger().info("arena gebouwd in " + (System.currentTimeMillis() - t0) + " ms");
-        }
+        }));
     }
 
-    /** Oefenarena (bots): een kleinere ring ten zuiden van het colosseum, met lage muur, lantaarns en wat dekking. */
-    private void bouwOefenarena() {
-        if (plaats) {
-            vul(-RB - 6, g + 1, BZ - RB - 6, RB + 6, g + 20, BZ + RB + 6, Material.AIR);
-            vul(-RB - 6, g, BZ - RB - 6, RB + 6, g, BZ + RB + 6, Material.GRASS_BLOCK);
-        }
-        for (int x = -RB - 3; x <= RB + 3; x++)
-            for (int z = -RB - 3; z <= RB + 3; z++) {
-                double r = Math.sqrt(x * x + z * z);
-                if (r > RB + 2.5) continue;
-                if (r <= RB + 0.5) {
-                    zet(x, g, BZ + z, hash(x / 2, z / 2) % 4 == 0 ? Material.COARSE_DIRT : Material.SMOOTH_SANDSTONE);
-                    zet(x, g - 1, BZ + z, Material.STONE);
-                } else {
-                    vul(x, g - 1, BZ + z, x, g + 5, BZ + z, hash(x, z) % 6 == 0 ? Material.CUT_SANDSTONE : Material.SANDSTONE);
-                    if (r > RB + 1.5 && hash(x, z) % 7 == 0) zet(x, g + 6, BZ + z, Material.LANTERN);
-                }
-            }
-        for (int i = 0; i < 6; i++) {                     // dekking: lage muurtjes
-            double a = Math.PI * 2 / 6 * i;
-            int cx = (int) Math.round(Math.cos(a) * 9), cz = (int) Math.round(Math.sin(a) * 9);
-            for (int k = -1; k <= 1; k++) vul(cx + (i % 2 == 0 ? k : 0), g + 1, BZ + cz + (i % 2 == 0 ? 0 : k), cx + (i % 2 == 0 ? k : 0), g + 2, BZ + cz + (i % 2 == 0 ? 0 : k), Material.SANDSTONE_WALL);
-        }
-        zet(0, g + 1, BZ, Material.CAMPFIRE);
-        botSpawns.clear();
-        for (int i = 0; i < 6; i++) {
-            double a = Math.PI * 2 / 6 * i + Math.PI / 6;
-            double x = Math.cos(a) * 14 + 0.5, z = Math.sin(a) * 14 + 0.5;
-            Location l = new Location(w, x, g + 1, BZ + z);
-            l.setDirection(new org.bukkit.util.Vector(-x, 0, -z));
-            vul(l.getBlockX(), g + 1, l.getBlockZ(), l.getBlockX(), g + 3, l.getBlockZ(), Material.AIR);
-            botSpawns.add(l);
-        }
-        label(new Location(w, 0.5, g + 8, BZ - RB - 2.5), Component.text("Oefenarena", NamedTextColor.GOLD)
-                .append(Component.newline()).append(Component.text("vecht tegen bots", NamedTextColor.GRAY)), 1.2f);
+    private void werkRanglijstBij() {
+        if (stats == null) return;
+        Component t = stats.ranglijst();
+        for (TextDisplay d : ranglijsten) if (d.isValid()) d.text(t);
     }
 
-    // ── bots (oefenarena) ───────────────────────────────────────────────────────────────────
+    // ── waar je bent: hub, kitruimte, arena ─────────────────────────────────────────────────
 
-    private static final String BOT = "kitpvp-bot";
-
-    private boolean isBot(Entity e) {
-        return e != null && e.getScoreboardTags().contains(BOT);
+    /** Zet de toestand; verlaat je daarmee een modus, dan krijgt die {@code leave}. */
+    private Toestand zetToestand(Player p, Toestand t) {
+        Toestand oud = spelers.zet(p.getUniqueId(), t);
+        String weg = Spelers.verlaten(oud, t);
+        if (weg != null && modi.get(weg) != null) modi.get(weg).leave(p);
+        return oud;
     }
 
-    private List<org.bukkit.entity.LivingEntity> bots() {
-        List<org.bukkit.entity.LivingEntity> l = new ArrayList<>();
-        if (w == null) return l;
-        for (org.bukkit.entity.LivingEntity e : w.getLivingEntities()) if (isBot(e) && !e.isDead()) l.add(e);
-        return l;
-    }
-
-    private void spawnBot() {
-        if (botSpawns.isEmpty()) return;
-        Location l = botSpawns.stream().max(Comparator.comparingDouble(s -> {
-            double min = 1e9;
-            for (UUID id : inBotArena) {
-                Player q = Bukkit.getPlayer(id);
-                if (q != null) min = Math.min(min, q.getLocation().distanceSquared(s));
-            }
-            return min + rnd.nextDouble() * 30;
-        })).get();
-        int soort = rnd.nextInt(3);
-        Class<? extends org.bukkit.entity.Mob> klasse = soort == 0 ? org.bukkit.entity.Skeleton.class
-                : soort == 1 ? org.bukkit.entity.Husk.class : org.bukkit.entity.Zombie.class;
-        w.spawn(l, klasse, m -> {
-            m.setPersistent(false);
-            m.setRemoveWhenFarAway(false);
-            m.setCanPickupItems(false);
-            m.addScoreboardTag(BOT);
-            m.customName(Component.text("Bot", NamedTextColor.GRAY));
-            m.setCustomNameVisible(false);
-            if (m instanceof org.bukkit.entity.Zombie z) {
-                z.setShouldBurnInDay(false);
-                z.setAdult();
-            }
-            if (m instanceof org.bukkit.entity.AbstractSkeleton sk) sk.setShouldBurnInDay(false);
-            var eq = m.getEquipment();
-            boolean boog = m instanceof org.bukkit.entity.Skeleton;
-            eq.setHelmet(new ItemStack(boog ? Material.CHAINMAIL_HELMET : Material.IRON_HELMET));
-            eq.setChestplate(new ItemStack(boog ? Material.LEATHER_CHESTPLATE : Material.CHAINMAIL_CHESTPLATE));
-            eq.setLeggings(new ItemStack(Material.CHAINMAIL_LEGGINGS));
-            eq.setBoots(new ItemStack(Material.IRON_BOOTS));
-            eq.setItemInMainHand(new ItemStack(boog ? Material.BOW : rnd.nextBoolean() ? Material.IRON_SWORD : Material.STONE_AXE));
-            for (EquipmentSlot sl : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.HAND})
-                eq.setDropChance(sl, 0f);
-        });
-        w.spawnParticle(Particle.CLOUD, l.clone().add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0.01);
-    }
-
-    /** Elke seconde: genoeg bots als er iemand in de oefenarena is, weg als hij al 30 s leeg is; bots blijven binnen. */
-    private void botsBijhouden() {
-        inBotArena.removeIf(id -> Bukkit.getPlayer(id) == null || !kitVan.containsKey(id));
-        List<org.bukkit.entity.LivingEntity> nu = bots();
-        long t = System.currentTimeMillis();
-        if (inBotArena.isEmpty()) {
-            if (botsLeegSinds == 0) botsLeegSinds = t;
-            if (t - botsLeegSinds > 30_000L) nu.forEach(Entity::remove);
-            return;
-        }
-        botsLeegSinds = 0;
-        int max = Math.max(1, getConfig().getInt("bots-max", 6));
-        int gewenst = Math.min(max, 1 + 2 * inBotArena.size());
-        if (nu.size() < gewenst && seconden % 2 == 0) spawnBot();
-        for (org.bukkit.entity.LivingEntity b : nu) {
-            Location l = b.getLocation();
-            double dx = l.getX(), dz = l.getZ() - BZ;
-            if (dx * dx + dz * dz > (RB - 1) * (RB - 1) || l.getY() < g - 2) b.teleport(botSpawns.get(rnd.nextInt(botSpawns.size())));
-            if (b instanceof org.bukkit.entity.Mob m && (m.getTarget() == null || !(m.getTarget() instanceof Player pt) || !inBotArena.contains(pt.getUniqueId()))) {
-                Player dichtst = null;
-                double best = 1e9;
-                for (UUID id : inBotArena) {
-                    Player q = Bukkit.getPlayer(id);
-                    if (q == null || beschermdTot.getOrDefault(id, 0L) > t) continue;
-                    double d = q.getLocation().distanceSquared(l);
-                    if (d < best) { best = d; dichtst = q; }
-                }
-                m.setTarget(dichtst);
-            }
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onBotDoel(org.bukkit.event.entity.EntityTargetLivingEntityEvent e) {
-        if (!actief || !isBot(e.getEntity())) return;
-        if (e.getTarget() == null) return;
-        if (!(e.getTarget() instanceof Player p) || !inBotArena.contains(p.getUniqueId())) e.setCancelled(true);
-    }
-
-    @EventHandler
-    public void onBotDood(org.bukkit.event.entity.EntityDeathEvent e) {
-        if (!actief || !isBot(e.getEntity())) return;
-        e.getDrops().clear();
-        e.setDroppedExp(0);
-        Player k = e.getEntity().getKiller();
-        if (k == null || !kitVan.containsKey(k.getUniqueId())) return;
-        var max = k.getAttribute(Attribute.MAX_HEALTH);
-        if (max != null) k.setHealth(Math.min(max.getValue(), k.getHealth() + 8));
-        tel(k.getUniqueId(), k.getName(), "bots");
-        k.sendActionBar(Component.text("Bot verslagen · " + stats.getInt(k.getUniqueId() + ".bots", 0), NamedTextColor.GRAY));
-        k.playSound(k.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.2f);
-    }
-
-    // ── gevecht-tag: 10 s na een treffer niet weg (ook niet via de proxy) ────────────────────
-
-    private boolean inGevecht(UUID id) {
-        return gevechtTot.getOrDefault(id, 0L) > System.currentTimeMillis();
-    }
-
-    private void tag(Player p) {
-        long nu = System.currentTimeMillis();
-        gevechtTot.put(p.getUniqueId(), nu + GEVECHT_MS);
-        if (nu - gevechtGemeld.getOrDefault(p.getUniqueId(), 0L) > 1500L) {   // proxy hooguit ~1x per 1,5 s
-            gevechtGemeld.put(p.getUniqueId(), nu);
-            meldProxy(p, "gevecht:" + GEVECHT_MS);
-        }
-    }
-
-    private void untag(Player p) {
-        if (gevechtTot.remove(p.getUniqueId()) != null) meldProxy(p, "gevecht:0");
-        gevechtGemeld.remove(p.getUniqueId());
-    }
-
-    private void meldProxy(Player p, String wat) {
-        try {
-            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
-            java.io.DataOutputStream out = new java.io.DataOutputStream(buf);
-            out.writeUTF("actie");
-            out.writeUTF(p.getUniqueId().toString());
-            out.writeUTF(wat);
-            p.sendPluginMessage(this, "netwerk:main", buf.toByteArray());
-        } catch (IOException | RuntimeException e) {
-            getLogger().fine("netwerk: " + e.getMessage());
-        }
-    }
-
-    private boolean blokkeerAlsGevecht(Player p) {
-        if (!inGevecht(p.getUniqueId())) return false;
-        long over = gevechtTot.get(p.getUniqueId()) - System.currentTimeMillis();
-        p.sendActionBar(Component.text("⚔ In gevecht · nog " + ((over + 999) / 1000) + " s", NamedTextColor.RED));
-        return true;
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onTreffer(EntityDamageByEntityEvent e) {
-        if (!actief) return;
-        Entity d = e.getDamager();
-        if (d instanceof Projectile pr && pr.getShooter() instanceof Entity sh) d = sh;
-        if (e.getEntity() instanceof Player p && kitVan.containsKey(p.getUniqueId()) && (d instanceof Player || isBot(d))) tag(p);
-        if (d instanceof Player a && kitVan.containsKey(a.getUniqueId()) && (e.getEntity() instanceof Player || isBot(e.getEntity()))) tag(a);
-    }
-
-    private void label(Location l, Component tekst, float schaal) {
-        w.spawn(l, TextDisplay.class, d -> {
-            d.setPersistent(false);
-            d.setBillboard(Display.Billboard.CENTER);
-            d.text(tekst);
-            d.setBackgroundColor(Color.fromARGB(110, 0, 0, 0));
-            d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(), new org.joml.AxisAngle4f(),
-                    new org.joml.Vector3f(schaal, schaal, schaal), new org.joml.AxisAngle4f()));
-            d.addScoreboardTag("kitpvp");
-        });
-    }
-
-    // ── kits ────────────────────────────────────────────────────────────────────────────────
-
-    private static ItemStack ding(Material m, int n) {
-        return new ItemStack(m, n);
-    }
-
-    private static ItemStack betoverd(Material m, Object... ench) {
-        ItemStack it = new ItemStack(m);
-        ItemMeta meta = it.getItemMeta();
-        for (int i = 0; i + 1 < ench.length; i += 2) meta.addEnchant((Enchantment) ench[i], (Integer) ench[i + 1], true);
-        meta.setUnbreakable(true);
-        it.setItemMeta(meta);
-        return it;
-    }
-
-    private static ItemStack leer(Material m, Color c) {
-        ItemStack it = new ItemStack(m);
-        LeatherArmorMeta meta = (LeatherArmorMeta) it.getItemMeta();
-        meta.setColor(c);
-        meta.setUnbreakable(true);
-        it.setItemMeta(meta);
-        return it;
-    }
-
-    private static ItemStack drank(Material m, PotionType t, int n) {
-        ItemStack it = new ItemStack(m, n);
-        PotionMeta meta = (PotionMeta) it.getItemMeta();
-        meta.setBasePotionType(t);
-        it.setItemMeta(meta);
-        return it;
-    }
-
-    /** helm, borst, broek, schoenen */
-    private ItemStack[] uitrusting(String id) {
-        return switch (id) {
-            case "krijger" -> new ItemStack[]{betoverd(Material.IRON_HELMET), betoverd(Material.IRON_CHESTPLATE), betoverd(Material.IRON_LEGGINGS), betoverd(Material.IRON_BOOTS)};
-            case "boog" -> new ItemStack[]{betoverd(Material.CHAINMAIL_HELMET), betoverd(Material.CHAINMAIL_CHESTPLATE), betoverd(Material.CHAINMAIL_LEGGINGS), betoverd(Material.CHAINMAIL_BOOTS)};
-            case "tank" -> new ItemStack[]{betoverd(Material.IRON_HELMET), betoverd(Material.DIAMOND_CHESTPLATE), betoverd(Material.IRON_LEGGINGS), betoverd(Material.IRON_BOOTS)};
-            case "ninja" -> new ItemStack[]{leer(Material.LEATHER_HELMET, Color.fromRGB(0x202020)), leer(Material.LEATHER_CHESTPLATE, Color.fromRGB(0x202020)),
-                    leer(Material.LEATHER_LEGGINGS, Color.fromRGB(0x202020)), betoverd(Material.LEATHER_BOOTS, Enchantment.FEATHER_FALLING, 3)};
-            case "speer" -> new ItemStack[]{betoverd(Material.CHAINMAIL_HELMET), betoverd(Material.IRON_CHESTPLATE), betoverd(Material.CHAINMAIL_LEGGINGS), betoverd(Material.CHAINMAIL_BOOTS)};
-            case "heler" -> new ItemStack[]{betoverd(Material.GOLDEN_HELMET), betoverd(Material.GOLDEN_CHESTPLATE), betoverd(Material.GOLDEN_LEGGINGS), betoverd(Material.GOLDEN_BOOTS)};
-            case "hamer" -> new ItemStack[]{betoverd(Material.IRON_HELMET), betoverd(Material.CHAINMAIL_CHESTPLATE), betoverd(Material.IRON_LEGGINGS), betoverd(Material.IRON_BOOTS, Enchantment.FEATHER_FALLING, 2)};
-            default -> new ItemStack[4];
-        };
-    }
-
-    private void geefKit(Player p, String id) {
-        var inv = p.getInventory();
-        inv.clear();
-        p.getActivePotionEffects().forEach(e -> p.removePotionEffect(e.getType()));
-        ItemStack[] uit = uitrusting(id);
-        inv.setHelmet(uit[0]);
-        inv.setChestplate(uit[1]);
-        inv.setLeggings(uit[2]);
-        inv.setBoots(uit[3]);
-        switch (id) {
-            case "krijger" -> {
-                inv.setItem(0, betoverd(Material.IRON_SWORD, Enchantment.SHARPNESS, 1));
-                inv.setItemInOffHand(betoverd(Material.SHIELD));
-            }
-            case "boog" -> {
-                inv.setItem(0, betoverd(Material.STONE_SWORD));
-                inv.setItem(1, betoverd(Material.BOW, Enchantment.POWER, 2, Enchantment.INFINITY, 1, Enchantment.PUNCH, 1));
-                inv.setItem(9, ding(Material.ARROW, 1));
-            }
-            case "tank" -> {
-                inv.setItem(0, betoverd(Material.IRON_AXE));
-                inv.setItemInOffHand(betoverd(Material.SHIELD));
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, PotionEffect.INFINITE_DURATION, 0, false, false, true));
-            }
-            case "ninja" -> {
-                inv.setItem(0, betoverd(Material.GOLDEN_SWORD, Enchantment.SHARPNESS, 3));
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 1, false, false, true));
-                p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, PotionEffect.INFINITE_DURATION, 1, false, false, true));
-            }
-            case "speer" -> {
-                inv.setItem(0, betoverd(Material.TRIDENT, Enchantment.LOYALTY, 3, Enchantment.IMPALING, 1));
-                inv.setItem(1, betoverd(Material.STONE_SWORD));
-            }
-            case "heler" -> {
-                inv.setItem(0, betoverd(Material.STONE_SWORD, Enchantment.SHARPNESS, 1));
-                inv.setItem(1, drank(Material.SPLASH_POTION, PotionType.STRONG_HEALING, 4));
-                p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, PotionEffect.INFINITE_DURATION, 0, false, false, true));
-            }
-            case "hamer" -> {
-                inv.setItem(0, betoverd(Material.MACE, Enchantment.DENSITY, 1));
-                inv.setItem(1, ding(Material.WIND_CHARGE, 6));
-                inv.setItem(2, betoverd(Material.STONE_SWORD));
-            }
-            default -> { }
-        }
-        inv.setItem(8, ding(Material.GOLDEN_APPLE, 1));
-        p.setHealth(p.getAttribute(Attribute.MAX_HEALTH).getValue());
-        p.setFoodLevel(18);
-        p.setSaturation(0f);
-    }
-
-    private Kit kit(String id) {
-        for (Kit k : KITS) if (k.id().equals(id)) return k;
-        return null;
-    }
-
-    private String arenaNaam(Player p) {
-        if (inBotArena.contains(p.getUniqueId())) return "oefen (bots)";
-        return switch (arenaKeuze.getOrDefault(p.getUniqueId(), "pvp")) {
-            case "bots" -> "oefen (bots)";
-            case "kasteel" -> "kasteel";
-            default -> "PvP";
-        };
-    }
-
-    private void kies(Player p, String id) {
-        Kit k = kit(id);
-        if (k == null || w == null) return;
-        if (kitVan.containsKey(p.getUniqueId())) {
-            p.sendMessage(Component.text("Je bent al in de arena. Eerst terug: /arena (of verslagen worden).", NamedTextColor.GRAY));
-            return;
-        }
-        p.closeInventory();
-        geefKit(p, id);
-        kitVan.put(p.getUniqueId(), id);
-        String keuze = arenaKeuze.getOrDefault(p.getUniqueId(), "pvp");
-        boolean bots = keuze.equals("bots") && !botSpawns.isEmpty();
-        boolean kasteel = keuze.equals("kasteel") && !kasteelSpawns.isEmpty();
-        if (bots) inBotArena.add(p.getUniqueId()); else inBotArena.remove(p.getUniqueId());
-        List<Location> plekken = bots ? botSpawns : kasteel ? kasteelSpawns : spawns;
-        Location doel = plekken.isEmpty() ? wacht : plekken.stream().max(Comparator.comparingDouble(l -> {
-            double min = 1e9;
-            for (Player q : Bukkit.getOnlinePlayers()) {
-                if (q.equals(p) || !kitVan.containsKey(q.getUniqueId())) continue;
-                min = Math.min(min, q.getLocation().distanceSquared(l));
-            }
-            return min + rnd.nextDouble() * 20;
-        })).get();
-        p.teleport(doel);
-        int s = Math.max(0, getConfig().getInt("bescherming-seconden", 3));
-        beschermdTot.put(p.getUniqueId(), System.currentTimeMillis() + s * 1000L);
-        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text((bots ? " · oefenarena" : kasteel ? " · kasteel" : "") + " · " + s + " s bescherming", NamedTextColor.GRAY)));
-        p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.4f, 1f);
-        w.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
-        werkBordBij(p);
-    }
-
-    // ── wachtplatform ───────────────────────────────────────────────────────────────────────
-
-    private ItemStack kiesItem() {
-        ItemStack it = new ItemStack(Material.NETHER_STAR);
-        ItemMeta m = it.getItemMeta();
-        m.displayName(Component.text("Kit kiezen", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
-        m.lore(List.of(Component.text("Klik: kies een kit en spring de arena in", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        m.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "kies");
-        it.setItemMeta(m);
-        return it;
-    }
-
-    private ItemStack lobbyItem() {
-        ItemStack it = new ItemStack(Material.OAK_DOOR);
-        ItemMeta m = it.getItemMeta();
-        m.displayName(Component.text("Naar de lobby", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
-        m.lore(List.of(Component.text("Of typ /lobby, /survival", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        m.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "lobby");
-        it.setItemMeta(m);
-        return it;
-    }
-
-    private String itemSoort(ItemStack it) {
-        if (it == null || !it.hasItemMeta()) return null;
-        return it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
-    }
-
-    private void naarWacht(Player p, boolean bericht) {
-        kitVan.remove(p.getUniqueId());
-        inBotArena.remove(p.getUniqueId());
-        untag(p);
+    /** Schoon beginnen: geen kit, geen tag, vol leven, adventure. */
+    private void schoon(Player p) {
+        gevecht.untag(p);
         beschermdTot.remove(p.getUniqueId());
         laatsteAanvaller.remove(p.getUniqueId());
         p.getInventory().clear();
@@ -780,82 +260,177 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (!p.isDead() && max != null) p.setHealth(max.getValue());
         p.setFoodLevel(18);
         p.setSaturation(0f);
-        p.getInventory().setItem(4, kiesItem());
-        p.getInventory().setItem(8, lobbyItem());
-        if (wacht != null) p.teleport(wacht);
+    }
+
+    void naarHub(Player p) {
+        zetToestand(p, Toestand.HUB);
+        schoon(p);
+        p.getInventory().setItem(4, menus.kompas());
+        p.getInventory().setItem(8, menus.deur());
+        p.getInventory().setHeldItemSlot(4);
+        if (hub.aankomst() != null) p.teleport(hub.aankomst());
         werkBordBij(p);
-        if (bericht) p.sendActionBar(Component.text("Kies een kit om te vechten", NamedTextColor.GRAY));
     }
 
-    private static final class Menu implements InventoryHolder {
-        Inventory inv;
-        public Inventory getInventory() { return inv; }
+    void naarKitruimte(Player p, Kitruimte r, boolean bericht) {
+        zetToestand(p, Toestand.kitruimte(r.modus, r.id));
+        schoon(p);
+        arenaKeuze.put(p.getUniqueId(), r.arena);
+        p.getInventory().setItem(0, menus.kompas());
+        p.getInventory().setItem(4, menus.ster());
+        p.getInventory().setItem(8, menus.deur());
+        p.getInventory().setHeldItemSlot(4);
+        if (r.aankomst != null) p.teleport(r.aankomst);
+        werkBordBij(p);
+        if (bericht) p.sendActionBar(Component.text(r.naam + " · kies een kit", NamedTextColor.GRAY));
     }
 
-    private void openMenu(Player p) {
-        Menu m = new Menu();
-        m.inv = Bukkit.createInventory(m, 27, Component.text("Kies je kit", NamedTextColor.DARK_RED));
-        ItemStack glas = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
-        ItemMeta gm = glas.getItemMeta();
-        gm.setHideTooltip(true);
-        glas.setItemMeta(gm);
-        for (int i = 0; i < 27; i++) m.inv.setItem(i, glas);
-        for (int i = 0; i < KITS.length; i++) {
-            Kit k = KITS[i];
-            ItemStack it = new ItemStack(k.icoon());
-            ItemMeta meta = it.getItemMeta();
-            meta.displayName(Component.text(k.naam(), k.kleur(), TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
-            meta.lore(List.of(Component.text(k.uitleg(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("Klik: kies en spring de arena in", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
-            meta.addItemFlags(org.bukkit.inventory.ItemFlag.values());
-            meta.getPersistentDataContainer().set(kitKey, PersistentDataType.STRING, k.id());
-            it.setItemMeta(meta);
-            m.inv.setItem(10 + i, it);
+    /**
+     * Voor modi met een eigen spel (Zelda, sessie 2): zet de speler in {@link Toestand.Plek#SPEL} van modus {@code m}.
+     * Teleporteren, items en regels doet de modus zelf; KitPvP bemoeit zich dan niet met schade, honger of grenzen.
+     */
+    public void naarSpel(Player p, Modus m, String ruimte) {
+        zetToestand(p, Toestand.spel(m.id(), ruimte));
+        gevecht.untag(p);
+        beschermdTot.remove(p.getUniqueId());
+        werkBordBij(p);
+    }
+
+    /** Modus kiezen (poort of menu): open = erin, binnenkort = één grijze regel. */
+    void kiesModus(Player p, Modus m) {
+        if (m.status() != Modus.Status.OPEN) {
+            binnenkort(p, m);
+            return;
         }
-        String keuze = arenaKeuze.getOrDefault(p.getUniqueId(), "pvp");
-        m.inv.setItem(21, arenaKnop(Material.IRON_SWORD, "PvP-arena", "tegen andere spelers", keuze.equals("pvp"), "pvp"));
-        m.inv.setItem(22, arenaKnop(Material.BOW, "Kasteel", "twee muren, voor bogen", keuze.equals("kasteel"), "kasteel"));
-        m.inv.setItem(23, arenaKnop(Material.ZOMBIE_HEAD, "Oefenarena", "tegen bots", keuze.equals("bots"), "bots"));
-        p.openInventory(m.inv);
+        Toestand t = spelers.van(p.getUniqueId());
+        if (t.inArena() && gevecht.blokkeer(p)) return;
+        p.closeInventory();
+        p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.5f, 1.2f);
+        m.join(p);
     }
 
-    private ItemStack arenaKnop(Material mat, String naam, String uitleg, boolean gekozen, String id) {
-        ItemStack it = new ItemStack(mat);
-        ItemMeta meta = it.getItemMeta();
-        meta.displayName(Component.text(naam, gekozen ? NamedTextColor.GREEN : NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        meta.lore(List.of(Component.text(uitleg + (gekozen ? " · gekozen" : " · klik om te kiezen"), NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)));
-        meta.addItemFlags(org.bukkit.inventory.ItemFlag.values());
-        if (gekozen) meta.setEnchantmentGlintOverride(true);
-        meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "arena:" + id);
-        it.setItemMeta(meta);
-        return it;
+    /** Eén korte grijze regel, hooguit eens per 4 s. */
+    void binnenkort(Player p, Modus m) {
+        long nu = System.currentTimeMillis();
+        if (nu - binnenkortGemeld.getOrDefault(p.getUniqueId(), 0L) < 4000L) return;
+        binnenkortGemeld.put(p.getUniqueId(), nu);
+        p.sendActionBar(Component.text(m.naam() + " · binnenkort", NamedTextColor.GRAY));
+    }
+
+    boolean beschermd(UUID id) {
+        return beschermdTot.getOrDefault(id, 0L) > System.currentTimeMillis();
+    }
+
+    /** Kit kiezen en de arena in. */
+    void kies(Player p, String id, Arena arena) {
+        Kits.Kit k = Kits.kit(id);
+        if (k == null || w == null || arena == null) return;
+        Toestand t = spelers.van(p.getUniqueId());
+        if (t.inArena()) {
+            p.sendMessage(Component.text("Je bent al in de arena. Eerst terug: /arena (of verslagen worden).", NamedTextColor.GRAY));
+            return;
+        }
+        if (!t.beheerd()) return;
+        p.closeInventory();
+        Kits.geef(p, id);
+        zetToestand(p, Toestand.arena(arena.modus, arena.id, id));
+        List<Location> plekken = arena.spawns;
+        Location doel = plekken.isEmpty() ? hub.aankomst() : plekken.stream().max(Comparator.comparingDouble(l -> {
+            double min = 1e9;
+            for (Player q : Bukkit.getOnlinePlayers()) {
+                if (q.equals(p) || !spelers.inArena(q.getUniqueId()) || !q.getWorld().equals(l.getWorld())) continue;
+                min = Math.min(min, q.getLocation().distanceSquared(l));
+            }
+            return min + rnd.nextDouble() * 20;
+        })).get();
+        p.teleport(doel);
+        int s = Math.max(0, getConfig().getInt("bescherming-seconden", 3));
+        beschermdTot.put(p.getUniqueId(), System.currentTimeMillis() + s * 1000L);
+        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text(" · " + s + " s bescherming", NamedTextColor.GRAY)));
+        p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.4f, 1f);
+        w.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
+        werkBordBij(p);
+    }
+
+    /** Waar iemand heen moet die veilig hoort te zijn (hub of zijn kitruimte). */
+    private void terugNaarVeilig(Player p) {
+        Toestand t = spelers.van(p.getUniqueId());
+        Kitruimte r = t.plek() == Toestand.Plek.KITRUIMTE ? modi.kitruimte(t.ruimte()) : null;
+        Location l = r != null ? r.aankomst : hub.aankomst();
+        if (l != null) {
+            p.setFallDistance(0);
+            p.teleport(l);
+        }
+    }
+
+    // ── menu's en items ─────────────────────────────────────────────────────────────────────
+
+    private String itemSoort(ItemStack it) {
+        if (it == null || !it.hasItemMeta()) return null;
+        return it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+    }
+
+    private void openKitMenu(Player p) {
+        Toestand t = spelers.van(p.getUniqueId());
+        if (t.plek() == Toestand.Plek.HUB) {
+            menus.modusMenu(p);
+            return;
+        }
+        if (t.inArena()) {
+            p.sendMessage(Component.text("Je vecht al. /arena om terug te gaan naar de hub.", NamedTextColor.GRAY));
+            return;
+        }
+        Kitruimte r = modi.kitruimte(t.ruimte());
+        if (r != null) menus.kitMenu(p, r, gekozenArena(p, r));
+    }
+
+    private String gekozenArena(Player p, Kitruimte r) {
+        String a = arenaKeuze.get(p.getUniqueId());
+        Arena ar = modi.arena(a);
+        return ar != null && ar.modus.equals(r.modus) ? a : r.arena;
     }
 
     @EventHandler
     public void onMenuKlik(InventoryClickEvent e) {
         if (!actief) return;
-        if (e.getView().getTopInventory().getHolder(false) instanceof Menu) {
+        if (e.getView().getTopInventory().getHolder(false) instanceof Menus.Menu menu) {
             e.setCancelled(true);
             if (!(e.getWhoClicked() instanceof Player p) || e.getRawSlot() >= 27) return;
             ItemStack it = e.getCurrentItem();
             if (it == null || !it.hasItemMeta()) return;
-            String id = it.getItemMeta().getPersistentDataContainer().get(kitKey, PersistentDataType.STRING);
-            if (id != null) Bukkit.getScheduler().runTask(this, () -> kies(p, id));
-            String knop = it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
-            if (knop != null && knop.startsWith("arena:")) {
+            var pdc = it.getItemMeta().getPersistentDataContainer();
+            String kit = pdc.get(kitKey, PersistentDataType.STRING);
+            String knop = pdc.get(itemKey, PersistentDataType.STRING);
+            if (menu.soort.equals("kit") && kit != null) {
+                Toestand t = spelers.van(p.getUniqueId());
+                Kitruimte r = modi.kitruimte(t.ruimte());
+                if (t.plek() == Toestand.Plek.KITRUIMTE && r != null) {
+                    Arena a = modi.arena(gekozenArena(p, r));
+                    Bukkit.getScheduler().runTask(this, () -> kies(p, kit, a));
+                }
+            } else if (knop != null && knop.startsWith("arena:")) {
                 arenaKeuze.put(p.getUniqueId(), knop.substring("arena:".length()));
                 p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
-                Bukkit.getScheduler().runTask(this, () -> openMenu(p));
+                Bukkit.getScheduler().runTask(this, () -> openKitMenu(p));
+            } else if (knop != null && knop.startsWith("modus:")) {
+                Modus m = modi.get(knop.substring("modus:".length()));
+                if (m == null) return;
+                if (m.status() != Modus.Status.OPEN) {
+                    p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.3f, 0.7f);
+                    return;
+                }
+                Bukkit.getScheduler().runTask(this, () -> kiesModus(p, m));
             }
             return;
         }
+        if (e.getWhoClicked() instanceof Player p && !spelers.van(p.getUniqueId()).beheerd()) return;
         if (itemSoort(e.getCurrentItem()) != null || itemSoort(e.getCursor()) != null) e.setCancelled(true);
-        if (e.getWhoClicked() instanceof Player p && !kitVan.containsKey(p.getUniqueId()) && e.getHotbarButton() >= 0) e.setCancelled(true);
+        if (e.getWhoClicked() instanceof Player p && spelers.van(p.getUniqueId()).veilig() && e.getHotbarButton() >= 0) e.setCancelled(true);
     }
 
     @EventHandler
     public void onSleep(InventoryDragEvent e) {
-        if (e.getView().getTopInventory().getHolder(false) instanceof Menu) e.setCancelled(true);
+        if (e.getView().getTopInventory().getHolder(false) instanceof Menus.Menu) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -865,8 +440,15 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (soort == null) return;
         e.setCancelled(true);
         if (e.getHand() == EquipmentSlot.OFF_HAND) return;
-        if (soort.equals("kies")) openMenu(e.getPlayer());
-        else if (soort.equals("lobby") && !blokkeerAlsGevecht(e.getPlayer())) naarServer(e.getPlayer(), "lobby");
+        Player p = e.getPlayer();
+        switch (soort) {
+            case "kies" -> openKitMenu(p);
+            case "modus" -> menus.modusMenu(p);
+            case "lobby" -> {
+                if (!gevecht.blokkeer(p)) naarServer(p, "lobby");
+            }
+            default -> { }
+        }
     }
 
     @EventHandler
@@ -884,7 +466,9 @@ public final class KitPvP extends JavaPlugin implements Listener {
         String id = a.getPersistentDataContainer().get(kitKey, PersistentDataType.STRING);
         if (id == null) return;
         e.setCancelled(true);
-        kies(p, id);
+        Kitruimte r = modi.kitruimte(a.getPersistentDataContainer().get(ruimteKey, PersistentDataType.STRING));
+        if (r == null || spelers.van(p.getUniqueId()).plek() != Toestand.Plek.KITRUIMTE) return;
+        kies(p, id, modi.arena(r.arena));
     }
 
     @EventHandler
@@ -892,7 +476,43 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (e.getRightClicked().getScoreboardTags().contains("kitpvp")) e.setCancelled(true);
     }
 
+    // ── bots ────────────────────────────────────────────────────────────────────────────────
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBotDoel(org.bukkit.event.entity.EntityTargetLivingEntityEvent e) {
+        if (!actief || !Bots.is(e.getEntity()) || e.getTarget() == null) return;
+        if (!(e.getTarget() instanceof Player p) || !arenaIsBots(spelers.arena(p.getUniqueId()))) e.setCancelled(true);
+    }
+
+    private boolean arenaIsBots(String arena) {
+        Arena a = modi.arena(arena);
+        return a != null && a.bots();
+    }
+
+    @EventHandler
+    public void onBotDood(org.bukkit.event.entity.EntityDeathEvent e) {
+        if (!actief || !Bots.is(e.getEntity())) return;
+        e.getDrops().clear();
+        e.setDroppedExp(0);
+        Player k = e.getEntity().getKiller();
+        if (k == null || !spelers.inArena(k.getUniqueId())) return;
+        var max = k.getAttribute(Attribute.MAX_HEALTH);
+        if (max != null) k.setHealth(Math.min(max.getValue(), k.getHealth() + 8));
+        stats.tel(k.getUniqueId(), k.getName(), "bots");
+        k.sendActionBar(Component.text("Bot verslagen · " + stats.get(k.getUniqueId(), "bots"), NamedTextColor.GRAY));
+        k.playSound(k.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.2f);
+    }
+
     // ── gevecht ─────────────────────────────────────────────────────────────────────────────
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTreffer(EntityDamageByEntityEvent e) {
+        if (!actief) return;
+        Entity d = e.getDamager();
+        if (d instanceof Projectile pr && pr.getShooter() instanceof Entity sh) d = sh;
+        if (e.getEntity() instanceof Player p && spelers.inArena(p.getUniqueId()) && (d instanceof Player || Bots.is(d))) gevecht.tag(p);
+        if (d instanceof Player a && spelers.inArena(a.getUniqueId()) && (e.getEntity() instanceof Player || Bots.is(e.getEntity()))) gevecht.tag(a);
+    }
 
     private Player aanvallerVan(Entity d) {
         if (d instanceof Player p) return p;
@@ -905,27 +525,23 @@ public final class KitPvP extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onSchade(EntityDamageEvent e) {
         if (!actief || !(e.getEntity() instanceof Player p)) return;
-        if (e.getEntity().getScoreboardTags().contains("kitpvp")) {
+        Toestand t = spelers.van(p.getUniqueId());
+        if (!t.beheerd()) return;                                  // eigen spel van een modus: die regelt het
+        if (!t.inArena()) {                                        // hub en kitruimte: veilig
             e.setCancelled(true);
+            if (e.getCause() == EntityDamageEvent.DamageCause.VOID) terugNaarVeilig(p);
             return;
         }
-        if (!kitVan.containsKey(p.getUniqueId())) {                // op het platform: veilig
-            e.setCancelled(true);
-            if (e.getCause() == EntityDamageEvent.DamageCause.VOID) naarWacht(p, false);
-            return;
-        }
-        if (beschermdTot.getOrDefault(p.getUniqueId(), 0L) > System.currentTimeMillis()) {
+        if (beschermd(p.getUniqueId())) {
             e.setCancelled(true);
             return;
         }
         if (e instanceof EntityDamageByEntityEvent be) {
             Player a = aanvallerVan(be.getDamager());
             if (a != null && !a.equals(p)) {
-                if (inBotArena.contains(p.getUniqueId()) || inBotArena.contains(a.getUniqueId())) {   // oefenarena: alleen bots
-                    e.setCancelled(true);
-                    return;
-                }
-                if (!kitVan.containsKey(a.getUniqueId())) {     // vanaf het platform aanvallen kan niet
+                Toestand ta = spelers.van(a.getUniqueId());
+                // alleen in dezelfde arena, en nooit in de oefenarena (daar alleen bots)
+                if (!ta.inArena() || !t.ruimte().equals(ta.ruimte()) || arenaIsBots(t.ruimte())) {
                     e.setCancelled(true);
                     return;
                 }
@@ -940,12 +556,19 @@ public final class KitPvP extends JavaPlugin implements Listener {
     public void onDood(PlayerDeathEvent e) {
         if (!actief) return;
         Player dood = e.getPlayer();
+        Toestand t = spelers.van(dood.getUniqueId());
+        if (!t.beheerd()) return;
         e.getDrops().clear();
         e.setDroppedExp(0);
         e.setKeepLevel(true);
-        String kitDood = kitVan.remove(dood.getUniqueId());
-        untag(dood);
-        if (inBotArena.remove(dood.getUniqueId())) {          // oefenarena: telt niet mee, geen melding voor iedereen
+        gevecht.untag(dood);
+        if (!t.inArena()) {
+            e.deathMessage(null);
+            return;
+        }
+        Kitruimte terug = modi.kitruimteVoor(t.ruimte());       // na de respawn: de kitruimte van deze arena
+        zetToestand(dood, terug != null ? Toestand.kitruimte(terug.modus, terug.id) : Toestand.HUB);
+        if (arenaIsBots(t.ruimte())) {                          // oefenarena: telt niet mee, geen melding voor iedereen
             e.deathMessage(null);
             dood.sendActionBar(Component.text("Verslagen in de oefenarena", NamedTextColor.GRAY));
             return;
@@ -953,31 +576,27 @@ public final class KitPvP extends JavaPlugin implements Listener {
         Player killer = dood.getKiller();
         if (killer == null) {
             UUID a = laatsteAanvaller.get(dood.getUniqueId());
-            Long t = laatsteAanvalTijd.get(dood.getUniqueId());
-            if (a != null && t != null && System.currentTimeMillis() - t < 12_000L) killer = Bukkit.getPlayer(a);
+            Long tijd = laatsteAanvalTijd.get(dood.getUniqueId());
+            if (a != null && tijd != null && System.currentTimeMillis() - tijd < 12_000L) killer = Bukkit.getPlayer(a);
         }
         laatsteAanvaller.remove(dood.getUniqueId());
-        tel(dood.getUniqueId(), dood.getName(), "doden");
+        stats.tel(dood.getUniqueId(), dood.getName(), "doden");
         int oudeReeks = reeks.getOrDefault(dood.getUniqueId(), 0);
         reeks.put(dood.getUniqueId(), 0);
         Component naamDood = dood.displayName().colorIfAbsent(NamedTextColor.WHITE);
         if (killer != null && !killer.equals(dood)) {
-            tel(killer.getUniqueId(), killer.getName(), "kills");
+            stats.tel(killer.getUniqueId(), killer.getName(), "kills");
             int r = reeks.merge(killer.getUniqueId(), 1, Integer::sum);
-            if (r > stats.getInt(killer.getUniqueId() + ".beste", 0)) stats.set(killer.getUniqueId() + ".beste", r);
+            stats.reeks(killer.getUniqueId(), r);
             var max = killer.getAttribute(Attribute.MAX_HEALTH);
             double hartjes = killer.getHealth() / 2.0;
-            Kit kk = kit(kitVan.getOrDefault(killer.getUniqueId(), ""));
+            Kits.Kit kk = Kits.kit(String.valueOf(spelers.kit(killer.getUniqueId())));
             e.deathMessage(Component.text("☠ ", NamedTextColor.DARK_RED).append(naamDood)
                     .append(Component.text(" is verslagen door ", NamedTextColor.GRAY))
                     .append(killer.displayName().colorIfAbsent(NamedTextColor.WHITE))
                     .append(Component.text(kk != null ? " (" + kk.naam() + ", ❤ " + String.format(java.util.Locale.ROOT, "%.1f", hartjes) + ")" : "", NamedTextColor.DARK_GRAY)));
             if (max != null) killer.setHealth(max.getValue());
-            if (kitVan.containsKey(killer.getUniqueId())) {
-                if (!killer.getInventory().containsAtLeast(new ItemStack(Material.GOLDEN_APPLE), 3)) killer.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE));
-                if ("hamer".equals(kitVan.get(killer.getUniqueId()))) killer.getInventory().addItem(new ItemStack(Material.WIND_CHARGE, 2));
-                if ("heler".equals(kitVan.get(killer.getUniqueId()))) killer.getInventory().addItem(drank(Material.SPLASH_POTION, PotionType.STRONG_HEALING, 1));
-            }
+            if (spelers.inArena(killer.getUniqueId())) Kits.beloon(killer, spelers.kit(killer.getUniqueId()));
             killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.6f);
             killer.sendActionBar(Component.text("⚔ Kill! Reeks: " + r, NamedTextColor.GOLD));
             if (getConfig().getIntegerList("reeks-melding").contains(r)) {
@@ -992,38 +611,52 @@ public final class KitPvP extends JavaPlugin implements Listener {
         } else {
             e.deathMessage(Component.text("☠ ", NamedTextColor.DARK_RED).append(naamDood).append(Component.text(" is gesneuveld", NamedTextColor.GRAY)));
         }
-        bewaarStats();
+        stats.bewaar();
         werkRanglijstBij();
     }
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
-        if (!actief || wacht == null) return;
-        e.setRespawnLocation(wacht);
+        if (!actief || hub.aankomst() == null) return;
         Player p = e.getPlayer();
-        Bukkit.getScheduler().runTask(this, () -> naarWacht(p, true));
+        Toestand t = spelers.van(p.getUniqueId());
+        if (!t.beheerd()) {
+            Modus m = modi.get(t.modus());
+            Location l = m == null ? null : m.respawn(p, t);
+            if (l != null) {
+                e.setRespawnLocation(l);
+                return;
+            }
+        }
+        Kitruimte r = t.plek() == Toestand.Plek.KITRUIMTE ? modi.kitruimte(t.ruimte()) : null;
+        e.setRespawnLocation(r != null && r.aankomst != null ? r.aankomst : hub.aankomst());
+        Bukkit.getScheduler().runTask(this, () -> {
+            if (!p.isOnline()) return;
+            if (r != null) naarKitruimte(p, r, true);
+            else naarHub(p);
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onHonger(FoodLevelChangeEvent e) {
-        if (!actief) return;
+        if (!actief || e.getEntity() instanceof Player p && !spelers.van(p.getUniqueId()).beheerd()) return;
         e.setCancelled(true);
         if (e.getEntity() instanceof Player p && p.getFoodLevel() != 18) p.setFoodLevel(18);
     }
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (actief) e.setCancelled(true);
+        if (actief && spelers.van(e.getPlayer().getUniqueId()).beheerd()) e.setCancelled(true);
     }
 
     @EventHandler
     public void onOppakken(PlayerAttemptPickupItemEvent e) {
-        if (actief) e.setCancelled(true);
+        if (actief && spelers.van(e.getPlayer().getUniqueId()).beheerd()) e.setCancelled(true);
     }
 
     @EventHandler
     public void onWissel(PlayerSwapHandItemsEvent e) {
-        if (actief && !kitVan.containsKey(e.getPlayer().getUniqueId())) e.setCancelled(true);
+        if (actief && spelers.van(e.getPlayer().getUniqueId()).veilig()) e.setCancelled(true);
     }
 
     @EventHandler
@@ -1043,11 +676,27 @@ public final class KitPvP extends JavaPlugin implements Listener {
     @EventHandler
     public void onBeweeg(PlayerMoveEvent e) {
         if (!actief || w == null) return;
-        Location to = e.getTo();
-        if (to.getY() < g - 10) {                    // ergens doorheen gevallen
-            Player p = e.getPlayer();
-            if (kitVan.containsKey(p.getUniqueId())) p.setHealth(0);
-            else naarWacht(p, false);
+        Location from = e.getFrom(), to = e.getTo();
+        if (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ()) return;
+        Player p = e.getPlayer();
+        Toestand t = spelers.van(p.getUniqueId());
+        if (!t.beheerd() || !to.getWorld().equals(w)) return;
+        if (to.getY() < g - 10) {                                // ergens doorheen gevallen
+            if (t.inArena()) p.setHealth(0);
+            else terugNaarVeilig(p);
+            return;
+        }
+        if (t.plek() == Toestand.Plek.HUB) {
+            Hub.Raak r = hub.raak(to);
+            if (r == null) return;
+            if (r.dicht()) binnenkort(p, r.modus());
+            else kiesModus(p, r.modus());
+        } else if (t.plek() == Toestand.Plek.KITRUIMTE) {
+            Kitruimte r = modi.kitruimte(t.ruimte());
+            String deur = r == null ? null : r.deurBij(to);
+            if (deur == null) return;
+            if (deur.equals("hub")) naarHub(p);
+            else if (modi.kitruimte(deur) != null) naarKitruimte(p, modi.kitruimte(deur), true);
         }
     }
 
@@ -1057,102 +706,86 @@ public final class KitPvP extends JavaPlugin implements Listener {
     public void onJoin(PlayerJoinEvent e) {
         if (!actief) return;
         Player p = e.getPlayer();
-        naarWacht(p, false);
-        // rustig binnenkomen: geen titel of chatblok, één korte actionbar-regel (de ster staat in vak 5)
+        naarHub(p);
+        // rustig binnenkomen: geen titel of chatblok, één korte actiebalkregel
         Bukkit.getScheduler().runTaskLater(this, () -> {
-            if (p.isOnline() && !kitVan.containsKey(p.getUniqueId()))
-                p.sendActionBar(Component.text("KitPvP · kies een kit en arena met de ster", NamedTextColor.GRAY));
+            if (p.isOnline() && spelers.van(p.getUniqueId()).plek() == Toestand.Plek.HUB)
+                p.sendActionBar(Component.text("KitPvP · kies een modus", NamedTextColor.GRAY));
         }, 20L);
         reeks.put(p.getUniqueId(), 0);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
+        if (!actief) return;
         UUID id = e.getPlayer().getUniqueId();
         Player p = e.getPlayer();
-        if (inGevecht(id) && kitVan.containsKey(id) && !inBotArena.contains(id)) {   // weglopen uit een gevecht = verslagen
-            tel(id, p.getName(), "doden");
+        Toestand t = spelers.van(id);
+        if (gevecht.in(id) && t.inArena() && !arenaIsBots(t.ruimte())) {   // weglopen uit een gevecht = verslagen
+            stats.tel(id, p.getName(), "doden");
             UUID a = laatsteAanvaller.get(id);
             Player killer = a == null ? null : Bukkit.getPlayer(a);
-            if (killer != null && kitVan.containsKey(killer.getUniqueId())) {
-                tel(killer.getUniqueId(), killer.getName(), "kills");
+            if (killer != null && spelers.inArena(killer.getUniqueId())) {
+                stats.tel(killer.getUniqueId(), killer.getName(), "kills");
                 int r = reeks.merge(killer.getUniqueId(), 1, Integer::sum);
-                if (r > stats.getInt(killer.getUniqueId() + ".beste", 0)) stats.set(killer.getUniqueId() + ".beste", r);
+                stats.reeks(killer.getUniqueId(), r);
                 var max = killer.getAttribute(Attribute.MAX_HEALTH);
                 if (max != null) killer.setHealth(max.getValue());
                 werkBordBij(killer);
             }
             Bukkit.broadcast(Component.text("☠ ", NamedTextColor.DARK_RED).append(p.displayName().colorIfAbsent(NamedTextColor.WHITE))
                     .append(Component.text(" liep weg uit het gevecht", NamedTextColor.GRAY)));
-            bewaarStats();
+            stats.bewaar();
             werkRanglijstBij();
         }
-        gevechtTot.remove(id);
-        gevechtGemeld.remove(id);
-        inBotArena.remove(id);
-        kitVan.remove(id);
+        Toestand oud = spelers.weg(id);
+        if (oud.modus() != null && modi.get(oud.modus()) != null) modi.get(oud.modus()).leave(p);
+        gevecht.vergeet(id);
         beschermdTot.remove(id);
         reeks.remove(id);
         borden.remove(id);
-        e.getPlayer().getInventory().clear();
+        arenaKeuze.remove(id);
+        binnenkortGemeld.remove(id);
+        if (oud.beheerd()) p.getInventory().clear();
     }
 
-    // ── statistieken, sidebar en ranglijst ──────────────────────────────────────────────────
+    // ── sidebar ─────────────────────────────────────────────────────────────────────────────
 
-    private void tel(UUID id, String naam, String wat) {
-        stats.set(id + ".naam", naam);
-        stats.set(id + "." + wat, stats.getInt(id + "." + wat, 0) + 1);
-    }
-
-    private void bewaarStats() {
-        if (stats == null) return;
-        try {
-            stats.save(statsBestand);
-        } catch (IOException e) {
-            getLogger().warning("stats.yml: " + e.getMessage());
-        }
-    }
-
-    private void werkRanglijstBij() {
-        if (ranglijst == null || !ranglijst.isValid() || stats == null) return;
-        List<String> ids = new ArrayList<>(stats.getKeys(false));
-        ids.sort(Comparator.comparingInt((String k) -> stats.getInt(k + ".kills", 0)).reversed());
-        Component t = Component.text("🏆 TOP KILLERS", NamedTextColor.GOLD, TextDecoration.BOLD);
-        String[] plek = {"🥇", "🥈", "🥉", "4.", "5.", "6.", "7.", "8.", "9.", "10."};
-        int n = 0;
-        for (String id : ids) {
-            if (n >= 10) break;
-            int k = stats.getInt(id + ".kills", 0);
-            if (k == 0) continue;
-            int d = stats.getInt(id + ".doden", 0);
-            t = t.append(Component.newline()).append(Component.text(plek[n] + " " + stats.getString(id + ".naam", "?") + "  ", n < 3 ? NamedTextColor.WHITE : NamedTextColor.GRAY))
-                    .append(Component.text(k + " kills · K/D " + kd(k, d), NamedTextColor.GRAY));
-            n++;
-        }
-        if (n == 0) t = t.append(Component.newline()).append(Component.text("Nog geen kills. Wie wordt de eerste?", NamedTextColor.GRAY));
-        ranglijst.text(t);
-    }
-
-    private static String kd(int k, int d) {
-        return String.format(java.util.Locale.ROOT, "%.2f", d == 0 ? (double) k : (double) k / d);
+    private String plekNaam(Toestand t) {
+        return switch (t.plek()) {
+            case HUB -> "§8Hub";
+            case KITRUIMTE -> {
+                Kitruimte r = modi.kitruimte(t.ruimte());
+                yield "§8" + (r == null ? "—" : r.naam);
+            }
+            case ARENA -> {
+                Arena a = modi.arena(t.ruimte());
+                yield "§f" + (a == null ? "—" : a.naam);
+            }
+            case SPEL -> {
+                Modus m = modi.get(t.modus());
+                yield "§f" + (m == null ? "—" : m.naam());
+            }
+        };
     }
 
     private void werkBordBij(Player p) {
         Scoreboard sb = borden.computeIfAbsent(p.getUniqueId(), k -> Bukkit.getScoreboardManager().getNewScoreboard());
         Objective o = sb.getObjective("kitpvp");
         if (o == null) {
-            o = sb.registerNewObjective("kitpvp", org.bukkit.scoreboard.Criteria.DUMMY, Component.text("⚔ KitPvP", NamedTextColor.RED, TextDecoration.BOLD));
+            o = sb.registerNewObjective("kitpvp", org.bukkit.scoreboard.Criteria.DUMMY, Component.text("⚔ KitPvP", NamedTextColor.RED));
             o.setDisplaySlot(org.bukkit.scoreboard.DisplaySlot.SIDEBAR);
             o.numberFormat(io.papermc.paper.scoreboard.numbers.NumberFormat.blank());
         }
-        String id = p.getUniqueId().toString();
-        int k = stats.getInt(id + ".kills", 0), d = stats.getInt(id + ".doden", 0);
-        Kit kit = kit(kitVan.getOrDefault(p.getUniqueId(), ""));
+        UUID id = p.getUniqueId();
+        int k = stats.get(id, "kills"), d = stats.get(id, "doden");
+        Toestand t = spelers.van(id);
+        Kits.Kit kit = t.kit() == null ? null : Kits.kit(t.kit());
         String[][] regels = {
                 {"b", "§7Kit: " + (kit == null ? "§8—" : "§f" + kit.naam())},
                 {"c", "§7Kills: §f" + k + " §8· §7Doden: §f" + d},
-                {"f", "§7Reeks: §f" + reeks.getOrDefault(p.getUniqueId(), 0)},
-                {"g", "§7Arena: §f" + ((kitVan.containsKey(p.getUniqueId()) ? "" : "§8") + arenaNaam(p))},
+                {"f", "§7Reeks: §f" + reeks.getOrDefault(id, 0)},
+                {"g", "§7Plek: " + plekNaam(t)},
         };
         int score = regels.length;
         for (String[] r : regels) {
@@ -1169,9 +802,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         for (Scoreboard sb : borden.values()) {
             for (Team t : hoofd.getTeams()) {
                 Team kopie = sb.getTeam(t.getName());
-                if (kopie == null) {
-                    kopie = sb.registerNewTeam(t.getName());
-                }
+                if (kopie == null) kopie = sb.registerNewTeam(t.getName());
                 if (!kopie.prefix().equals(t.prefix())) kopie.prefix(t.prefix());
                 for (Team.Option opt : Team.Option.values()) {
                     if (kopie.getOption(opt) != t.getOption(opt)) kopie.setOption(opt, t.getOption(opt));
@@ -1182,31 +813,44 @@ public final class KitPvP extends JavaPlugin implements Listener {
         }
     }
 
-    private long seconden = 0;
-
     private void elkeSeconde() {
         if (!actief || w == null) return;
         seconden++;
         long nu = System.currentTimeMillis();
+        List<Player> inHub = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (p.getFoodLevel() != 18) p.setFoodLevel(18);
-            Long b = beschermdTot.get(p.getUniqueId());
+            UUID id = p.getUniqueId();
+            Toestand t = spelers.van(id);
+            if (t.beheerd() && p.getFoodLevel() != 18) p.setFoodLevel(18);
+            Long b = beschermdTot.get(id);
             if (b != null && b <= nu) {
-                beschermdTot.remove(p.getUniqueId());
-                if (kitVan.containsKey(p.getUniqueId())) p.sendActionBar(Component.text("Bescherming voorbij — vecht!", NamedTextColor.RED));
+                beschermdTot.remove(id);
+                if (t.inArena()) p.sendActionBar(Component.text("Bescherming voorbij — vecht!", NamedTextColor.RED));
             }
-            if (!kitVan.containsKey(p.getUniqueId())) {
-                if (wacht != null && p.getLocation().distanceSquared(wacht) > 30 * 30 && p.getWorld().equals(w)) naarWacht(p, false);
+            if (t.plek() == Toestand.Plek.HUB) {
+                inHub.add(p);
+                if (p.getWorld().equals(w) && !hub.binnen(p.getLocation()) && hub.raak(p.getLocation()) == null) terugNaarVeilig(p);
+            } else if (t.plek() == Toestand.Plek.KITRUIMTE) {
+                Kitruimte r = modi.kitruimte(t.ruimte());
+                if (r != null && p.getWorld().equals(w) && !r.binnen(p.getLocation())) terugNaarVeilig(p);
             }
-            Long gt = gevechtTot.get(p.getUniqueId());
+            Long gt = gevecht.tot(id);
             if (gt != null) {
-                if (gt <= nu) untag(p);
+                if (gt <= nu) gevecht.untag(p);
                 else p.sendActionBar(Component.text("⚔ In gevecht · " + ((gt - nu + 999) / 1000) + " s", NamedTextColor.RED));
             }
             if (seconden % 2 == 0) werkBordBij(p);
         }
-        botsBijhouden();
+        for (Arena a : modi.arenas()) if (a.bots()) bots.tik(w, g, a, seconden);
         spiegelTeams();
+        hub.deeltjes(inHub);
+        for (Modus m : modi.alle()) {
+            try {
+                m.tik();
+            } catch (RuntimeException ex) {
+                getLogger().warning("modus " + m.id() + ": " + ex);
+            }
+        }
     }
 
     // ── commando's ──────────────────────────────────────────────────────────────────────────
@@ -1218,56 +862,109 @@ public final class KitPvP extends JavaPlugin implements Listener {
             return true;
         }
         String c = command.getName().toLowerCase();
-        if (c.equals("kit")) {
-            if (sender instanceof Player p) {
-                if (args.length >= 1 && kit(args[0].toLowerCase()) != null) kies(p, args[0].toLowerCase());
-                else if (kitVan.containsKey(p.getUniqueId())) p.sendMessage(Component.text("Je vecht al. /arena om terug te gaan naar het platform.", NamedTextColor.GRAY));
-                else openMenu(p);
-            }
-            return true;
-        }
-        if (c.equals("stats")) {
-            Player p = sender instanceof Player pl ? pl : null;
-            if (args.length >= 1) p = Bukkit.getPlayerExact(args[0]);
-            if (p == null) {
-                sender.sendMessage("Speler niet gevonden.");
+        switch (c) {
+            case "kit" -> {
+                if (!(sender instanceof Player p)) return true;
+                Toestand t = spelers.van(p.getUniqueId());
+                Kitruimte r = t.plek() == Toestand.Plek.KITRUIMTE ? modi.kitruimte(t.ruimte()) : null;
+                if (args.length >= 1 && r != null && Kits.kit(args[0].toLowerCase()) != null) kies(p, args[0].toLowerCase(), modi.arena(gekozenArena(p, r)));
+                else openKitMenu(p);
                 return true;
             }
-            String id = p.getUniqueId().toString();
-            int k = stats.getInt(id + ".kills", 0), d = stats.getInt(id + ".doden", 0);
-            sender.sendMessage(Component.text("⚔ " + p.getName() + ": " + k + " kills, " + d + " doden, K/D " + kd(k, d)
-                    + ", beste reeks " + stats.getInt(id + ".beste", 0), NamedTextColor.GOLD));
-            return true;
-        }
-        // arena
-        if (args.length >= 1 && args[0].equalsIgnoreCase("aftellen") && sender.hasPermission("kitpvp.beheer")) {
-            int n = 5;
-            try {
-                if (args.length >= 2) n = Math.max(1, Math.min(10, Integer.parseInt(args[1])));
-            } catch (NumberFormatException ignored) {
+            case "modus" -> {
+                if (sender instanceof Player p) {
+                    if (spelers.inArena(p.getUniqueId()) && gevecht.blokkeer(p)) return true;
+                    Modus m = args.length >= 1 ? zoekModus(args[0]) : null;
+                    if (m != null) kiesModus(p, m);
+                    else menus.modusMenu(p);
+                } else {
+                    for (Modus m : modi.alle()) sender.sendMessage(m.id() + " · " + m.naam() + " · " + m.status().name().toLowerCase() + " · poort " + m.poort().plek());
+                }
+                return true;
             }
-            aftellen(n);
-            sender.sendMessage("aftellen " + n + " s gestart voor " + Bukkit.getOnlinePlayers().size() + " spelers");
-            return true;
+            case "stats" -> {
+                Player p = sender instanceof Player pl ? pl : null;
+                if (args.length >= 1) p = Bukkit.getPlayerExact(args[0]);
+                if (p == null) {
+                    sender.sendMessage("Speler niet gevonden.");
+                    return true;
+                }
+                UUID id = p.getUniqueId();
+                int k = stats.get(id, "kills"), d = stats.get(id, "doden");
+                sender.sendMessage(Component.text("⚔ " + p.getName() + ": " + k + " kills, " + d + " doden, K/D " + Stats.kd(k, d)
+                        + ", beste reeks " + stats.get(id, "beste"), NamedTextColor.GOLD));
+                return true;
+            }
+            case "kitpvp" -> {
+                beheer(sender, args);
+                return true;
+            }
+            default -> { }
         }
-        if (args.length >= 1 && args[0].equalsIgnoreCase("bouw") && sender.hasPermission("kitpvp.beheer")) {
-            bouw(true);
-            sender.sendMessage("arena opnieuw gebouwd");
-            return true;
-        }
-        if (args.length >= 1 && args[0].equalsIgnoreCase("zelftest") && sender.hasPermission("kitpvp.beheer")) {
-            sender.sendMessage("kitpvp zelftest: grond=" + g + " wacht=" + (wacht == null ? "-" : wacht.getBlockX() + "," + wacht.getBlockY() + "," + wacht.getBlockZ())
-                    + " spawns=" + spawns.size() + " kits=" + KITS.length + " spelers-in-arena=" + kitVan.size()
-                    + " stats=" + stats.getKeys(false).size() + " ranglijst=" + (ranglijst != null && ranglijst.isValid())
-                    + " kasteelspawns=" + kasteelSpawns.size() + " botspawns=" + botSpawns.size() + " bots=" + bots().size() + " in-oefenarena=" + inBotArena.size());
+        // arena: beheer (zoals vroeger) of terug naar de hub
+        if (args.length >= 1 && sender.hasPermission("kitpvp.beheer") && List.of("aftellen", "bouw", "zelftest", "status").contains(args[0].toLowerCase())) {
+            beheer(sender, args);
             return true;
         }
         if (sender instanceof Player p) {
-            if (kitVan.containsKey(p.getUniqueId()) && blokkeerAlsGevecht(p)) return true;
-            naarWacht(p, true);
+            Toestand t = spelers.van(p.getUniqueId());
+            if (t.inArena() && gevecht.blokkeer(p)) return true;
+            naarHub(p);
         }
         return true;
     }
+
+    private Modus zoekModus(String s) {
+        String z = s.toLowerCase();
+        for (Modus m : modi.alle()) if (m.id().equals(z) || m.naam().toLowerCase().replace(" ", "").contains(z)) return m;
+        return null;
+    }
+
+    /** Console/OP: kitpvp zelftest | bouw [hub|arena|kasteel|alles] | status | aftellen [s]. */
+    private void beheer(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("kitpvp.beheer")) {
+            sender.sendMessage("Geen toegang.");
+            return;
+        }
+        String sub = args.length >= 1 ? args[0].toLowerCase() : "status";
+        switch (sub) {
+            case "aftellen" -> {
+                int n = 5;
+                try {
+                    if (args.length >= 2) n = Math.max(1, Math.min(10, Integer.parseInt(args[1])));
+                } catch (NumberFormatException ignored) {
+                }
+                aftellen(n);
+                sender.sendMessage("aftellen " + n + " s gestart voor " + Bukkit.getOnlinePlayers().size() + " spelers");
+            }
+            case "bouw" -> {
+                Set<String> wat = new HashSet<>();
+                for (int i = 1; i < args.length; i++) wat.add(args[i].toLowerCase());
+                if (wat.isEmpty()) wat.add("alles");
+                bouw(wat);
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Toestand t = spelers.van(p.getUniqueId());
+                    if (t.veilig()) terugNaarVeilig(p);
+                }
+                sender.sendMessage("bouwen gestart: " + String.join(", ", wat) + " (" + bouwer.inRij() + " stappen)");
+            }
+            case "zelftest" -> {
+                List<String> fouten = new ArrayList<>(), info = new ArrayList<>();
+                Zelftest.draai(this, fouten, info);
+                sender.sendMessage("kitpvp zelftest: " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" ", info));
+                for (String f : fouten) sender.sendMessage("  ✗ " + f);
+            }
+            default -> sender.sendMessage("kitpvp: grond=" + g + " modi=" + modi.alle().size() + " in-arena=" + spelers.aantalInArena()
+                    + " spelers=" + Bukkit.getOnlinePlayers().size() + " bouwen=" + (bouwer != null && bouwer.bezig() ? bouwer.inRij() + " stappen" : "klaar")
+                    + " · kitpvp zelftest | bouw [hub|arena|kasteel|alles] | aftellen [s]");
+        }
+    }
+
+    // gegevens voor de zelftest
+    Bouwer bouwer() { return bouwer; }
+    Stats stats() { return stats; }
+    List<TextDisplay> ranglijsten() { return ranglijsten; }
+    Bots bots() { return bots; }
 
     /** Via Velocity (BungeeCord-kanaal) naar een andere server. */
     private void naarServer(Player p, String server) {

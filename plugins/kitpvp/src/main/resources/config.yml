@@ -2,3 +2,4 @@
 actief: true
 bescherming-seconden: 3        # na het kiezen van een kit: zo lang onkwetsbaar (aanvallen heft het op)
 reeks-melding: [3, 5, 7, 10, 15, 20]
+bots-max: 6                    # oefenarena: hoogstens zoveel bots tegelijk
