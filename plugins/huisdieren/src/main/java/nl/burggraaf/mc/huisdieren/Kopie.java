@@ -280,7 +280,7 @@ final class Kopie implements Listener {
             LivingEntity le = (LivingEntity) e;
             boolean v = vecht(le, id);
             if (le.isInvulnerable() == v) le.setInvulnerable(!v);
-            if (!v && le instanceof Mob m && m.getTarget() != null) m.setTarget(null);
+            if (le instanceof Mob m && m.getTarget() != null && (!v || !magDoel(id, m.getTarget()))) m.setTarget(null);
             if (le instanceof Sittable s && s.isSitting()) s.setSitting(false);
             if (!e.getWorld().equals(p.getWorld()) || e.getLocation().distanceSquared(p.getLocation()) > 20 * 20) {
                 Location l = p.getLocation();
@@ -358,8 +358,15 @@ final class Kopie implements Listener {
             e.setCancelled(true);
             return;
         }
+        if (!magDoel(eig, doel)) e.setCancelled(true);
+    }
+
+    /** Een speler (of zijn huisdier) is alleen een doel als jullie allebei in een PvP-arena staan. */
+    private boolean magDoel(UUID eig, Entity doel) {
+        if (doel.getUniqueId().equals(eig) || !doel.isValid()) return false;
         UUID tegen = doel instanceof Player q ? q.getUniqueId() : isKopie(doel) ? eigenaarVan(doel) : null;
-        if (tegen != null && (!pvp(eig) || !pvp(tegen))) e.setCancelled(true);
+        if (tegen == null) return true;
+        return !tegen.equals(eig) && pvp(eig) && pvp(tegen);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

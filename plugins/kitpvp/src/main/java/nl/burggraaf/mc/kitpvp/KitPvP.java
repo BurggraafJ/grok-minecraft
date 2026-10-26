@@ -157,6 +157,16 @@ public final class KitPvP extends JavaPlugin implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()) naarWacht(p, false);
         });
         Bukkit.getScheduler().runTaskTimer(this, this::elkeSeconde, 40L, 20L);
+        Bukkit.getScheduler().runTaskTimer(this, this::meldStand, 40L, 5L);
+    }
+
+    /** Voor de plugin Huisdieren: waar staat iedereen (wacht = platform, bots = oefenarena, pvp = PvP of kasteel). */
+    private void meldStand() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            String s = !kitVan.containsKey(p.getUniqueId()) ? "wacht" : inBotArena.contains(p.getUniqueId()) ? "bots" : "pvp";
+            var m = p.getMetadata("kitpvp-stand");
+            if (m.isEmpty() || !s.equals(m.get(0).asString())) p.setMetadata("kitpvp-stand", new org.bukkit.metadata.FixedMetadataValue(this, s));
+        }
     }
 
     @Override
@@ -888,6 +898,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (d instanceof Player p) return p;
         if (d instanceof Projectile pr && pr.getShooter() instanceof Player p) return p;
         if (d instanceof org.bukkit.entity.TNTPrimed t && t.getSource() instanceof Player p) return p;
+        if (d instanceof org.bukkit.entity.Tameable t && t.isTamed() && t.getOwner() instanceof Player p) return p;   // je huisdier vecht voor jou
         return null;
     }
 

@@ -358,7 +358,9 @@
       "bron": "eigen",
       "pad": "plugins/huisdieren",
       "op": [
-        "survival"
+        "survival",
+        "lobby",
+        "kitpvp"
       ]
     },
     {

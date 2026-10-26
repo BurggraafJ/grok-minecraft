@@ -429,6 +429,29 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   (`herstel-seconden`) of door voeren met zijn eigen eten weer vol leven + actionbar voor de eigenaar. Void, lava en
   stikken: eerst naar Essentials-home `home` of het bed van de eigenaar. `/kill` werkt gewoon. Gewonde dieren tonen
   een HP-label (eigen naam blijft bewaard in de PDC en komt terug). KO-stand in de PDC (overleeft herstart).
+  **Je huisdier gaat mee naar lobby en kitpvp** (Jelle 26-10; plugin draait op alle drie, `modus: auto` kiest zelf:
+  KitPvP aanwezig = kitpvp, LobbyMelding = lobby, anders survival). Temmen kan alleen op survival en het echte dier blijft
+  daar altijd. Per speler gaat er één dier mee: standaard het laatst getemde, `/huisdier` op survival = klein menu
+  (spawn-eieren, glans = gaat mee, barrière = geen). Meereizen kunnen wolf, kat, papegaai en paardachtigen (paard, ezel,
+  muilezel, lama, kameel, skelet-/zombiepaard). Survival houdt `plugins/Huisdieren/reizen.yml` bij (dieren per eigenaar,
+  welke actief is, momentopname = Paper `serializeEntity`, ±0,7 kB, nieuw als naam/variant/halsband/harnas/zadel
+  verandert; elke 10 s gecontroleerd) en zet die als **cookie** `huisdieren:dier` bij de speler (bij binnenkomen en bij
+  elke wijziging). Velocity geeft cookies ongewijzigd door, dus **geen proxywijziging nodig**. Het briefje is
+  ondertekend (HMAC-SHA256 met het Velocity-forwarding-geheim uit `config/paper-global.yml`, gebonden aan de speler):
+  een aangepaste client kan geen ander wezen laten spawnen. Lobby en kitpvp vragen het cookie bij binnenkomst, bewaren
+  het nieuwste in `plugins/Huisdieren/kopie/<uuid>.dat` (zo werkt het ook als je in een nieuwe sessie meteen naar kitpvp
+  gaat) en zetten een **kopie** neer die meeloopt: niet opgeslagen in de wereld, geen drops, niet te berijden, voeren of
+  laten zitten, geen botsing (team `huisdier_kopie`, nooit van een parkourblok duwen), te ver weg = naar je toe
+  geteleporteerd, papegaai mag op je schouder (wordt bij uitloggen weggehaald). **Lobby:** onkwetsbaar, vecht niet.
+  **KitPvP:** een wolf vecht mee (vanilla: wie jou slaat en wie jij slaat; nooit jou, nooit op het platform, niet tegen
+  spelers in de oefenarena), alleen als jij in een arena staat; op het platform is hij onkwetsbaar. KitPvP zet daarvoor
+  metadata `kitpvp-stand` (wacht/pvp/bots) op elke speler, en telt een beet als treffer van de eigenaar (kill, laatste
+  aanvaller, platform-/oefenregels, bescherming). Jijzelf kunt je wolf niet raken. Dodelijke schade = **uitgeschakeld**:
+  hij verdwijnt met wolkjes, jij krijgt één grijze actiebalkregel, en hij komt terug bij je volgende respawn of als je
+  terug op het platform staat (nieuwe ronde). Ga je dood, dan gaat hij mee terug. Andere dieren lopen alleen mee
+  (onkwetsbaar). Op lobby/kitpvp is `/huisdier` = meenemen aan/uit (`verborgen.yml`). Schade in kitpvp raakt het echte
+  dier nooit. Console: `huisdier status`, `huisdier zelftest` (briefje heen en terug, vervalst en andere speler
+  geweigerd; met een spelernaam op lobby/kitpvp zet hij een testwolf als zijn huisdier, alleen voor tests).
 - **Veilige AFK** (eigen plugin VeiligAfk): `/afk` (ook /away) neemt Essentials over: 10 s aftellen (bewegen, schade of
   aanvallen breekt af), daarna geen schade (behalve /kill), geen honger, mobs negeren je, broadcast. Bewegen,
   aanvallen of blokken breken/plaatsen/gebruiken heft het op («Je bent weer kwetsbaar»). [AFK] in TAB en naamlabel

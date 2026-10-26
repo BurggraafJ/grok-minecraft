@@ -28,7 +28,7 @@ final class Zelftest {
             x.customName(net.kyori.adventure.text.Component.text("Testwolf"));
         });
         try {
-            byte[] data = Bukkit.getUnsafe().serializeEntity(w);
+            byte[] data = Bukkit.getUnsafe().serializeEntity(w, io.papermc.paper.entity.EntitySerializationFlag.FORCE);
             Pakket p = new Pakket(System.currentTimeMillis(), w.getUniqueId().toString(), data);
             byte[] b = p.maak(sleutel, eigenaar);
             sb.append(" nbt=").append(data.length).append("B briefje=").append(b.length).append("B");
@@ -46,7 +46,7 @@ final class Zelftest {
                     sb.append(" speler-niet-online");
                 } else {
                     w.setOwner(sp);
-                    byte[] echt = new Pakket(System.currentTimeMillis(), w.getUniqueId().toString(), Bukkit.getUnsafe().serializeEntity(w)).maak(sleutel, sp.getUniqueId());
+                    byte[] echt = new Pakket(System.currentTimeMillis(), w.getUniqueId().toString(), Bukkit.getUnsafe().serializeEntity(w, io.papermc.paper.entity.EntitySerializationFlag.FORCE)).maak(sleutel, sp.getUniqueId());
                     plugin.kopie().testOntvang(sp, echt);
                     sb.append(" kopie-gezet ").append(plugin.kopie().status());
                 }

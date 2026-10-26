@@ -55,6 +55,7 @@ final class Reizen implements Listener {
     private final YamlConfiguration reg;
     private final byte[] sleutel;
     private boolean vuil;
+    private final java.util.Set<String> gemeld = new java.util.HashSet<>();     // één waarschuwing per dier
 
     Reizen(Huisdieren plugin, byte[] sleutel) {
         this.plugin = plugin;
@@ -111,7 +112,7 @@ final class Reizen implements Listener {
                 try {
                     ItemStack it = d.getEquipment().getItem(s);
                     sb.append('|').append(it.getType()).append(it.hasItemMeta() ? it.getItemMeta().hashCode() : 0);
-                } catch (IllegalArgumentException ignored) {
+                } catch (RuntimeException ignored) {
                 }
             }
         }
@@ -131,7 +132,7 @@ final class Reizen implements Listener {
             try {
                 data = Bukkit.getUnsafe().serializeEntity(d);
             } catch (RuntimeException ex) {
-                plugin.getLogger().warning("momentopname van " + d.getType() + " lukt niet: " + ex);
+                if (gemeld.add(id)) plugin.getLogger().warning("momentopname van " + d.getType() + " lukt niet: " + ex);
                 return false;
             }
             if (s == null) {

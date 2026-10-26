@@ -454,6 +454,8 @@ public final class Opmaak extends JavaPlugin implements Listener {
             regel(p, "/afk", "veilig even weg");
         }
         if (pm.getPlugin("KitPvP") != null) regel(p, "/kit · /arena · /stats", "kit en arena kiezen, terug, scores");
+        if (pm.getPlugin("Huisdieren") != null)
+            regel(p, "/huisdier", pm.getPlugin("Essentials") != null ? "kies welk dier met je meeloopt" : "je huisdier mee of thuis");
         if (p.isOp()) regel(p, "/admin · /beroep <speler> <beroep>", "extra's aan/uit, beroep geven");
     }
 
