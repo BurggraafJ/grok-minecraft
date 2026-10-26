@@ -350,26 +350,45 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   Hotbar in de lobby: vak 1 kompas «Level kiezen», vak 5 ster «Server kiezen» (tijdens aftellen barrière, tijdens
   wachten rode wol), vak 9 «Opnieuw» (= `/parkour reset`). `/parkour` vanuit survival: plek onthouden (plugin
   `lobbyreis`), naar je volgende level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp`, eigen code, `BOUW_VERSIE` 3): vlakke wereld, adventure, geen
-  mobs/weer/dag-nacht, `immediate_respawn`. Colosseum (straal 30) met wachtplatform: 7 kits als pantserstandaards
-  (krijger, boog, tank, ninja, speer, heler, hamer) of het kitmenu (ster in vak 5, `/kit`). In het menu kies je de
-  **arena**: PvP-arena (spelers), **Kasteel** (spelers, voor bogen) of **Oefenarena** (ten zuiden, midden 0/110,
-  straal 18: bots). **Kasteel** (eigen code `Kasteel.java`, ten noorden, midden 0/−150): twee kasteelmuren tegenover
-  elkaar (41 lang, 6 hoog, 3 dik; noord rode band, zuid blauwe band) met kantelen om de 3 blokken en een halve
-  borstwering ertussen (eroverheen schieten), schietgaten (1×2) dwars door de muur, poort in het midden, trappen aan
-  beide uiteinden van de binnenplaats omhoog naar de weergang; open middenveld (27 diep) met alleen twee lage muurtjes
-  en wat hooi; buitenmuren 11 hoog. 8 spawns: per kant 2 op de weergang en 2 op de binnenplaats, blik op het veld; je
-  komt op de plek het verst van de anderen. Gewone PvP-regels (stats, gevecht-tag). Bots = zombies,
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`): vlakke
+  wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
+  een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
+  −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
+  het westen. **Drie modi** (poort of kompas in vak 5 / `/modus`, menu en poort doen hetzelfde):
+  **Story of Zelda** (grote poort recht vooruit, dicht met tralies en bordje «Binnenkort»; ertegenaan lopen = één
+  grijze regel; komt in sessie 2), **PvP Arena** (poort links, zwart/rood) en **PvP Castle** (poort rechts,
+  steen/blauw). Door een open poort lopen = naar de **kitruimte** van die modus: een galerij die over de arena
+  uitkijkt, je loopt tussen de 7 kits als pantserstandaards door (krijger, boog, tank, ninja, speer, heler, hamer);
+  klik = die kit en de arena in, met 3 s bescherming. Fallback: ster in vak 5 / `/kit` (kitmenu; bij PvP Arena ook de
+  keuze colosseum of oefenarena), kompas in vak 1 = ander modus. Achterin de kitruimte een deur «Hub».
+  Na een ronde (dood) respawn je in de kitruimte van je arena; `/arena` = terug naar de hub (in gevecht geweigerd).
+  **PvP Arena**: colosseum (straal 30, midden 0/0, kitruimte boven de noordmuur) en, via de zijdeur «Oefenarena» in
+  de kitruimte (of het kitmenu), de **oefenarena** (midden 0/110, straal 18, eigen kitruimte, zijdeur terug).
+  **PvP Castle** (`Kasteel.java`, midden 0/−150, kitruimte erachter in het zuiden): twee kasteelmuren tegenover elkaar
+  (41 lang, 6 hoog, 3 dik; noord rode band en banieren, zuid blauw) met kantelen om de 3 blokken en een halve
+  borstwering ertussen (eroverheen schieten), schietgaten (1×2), poort in het midden met fakkels, trappen aan beide
+  uiteinden van de binnenplaats naar de weergang; open middenveld (27 diep) met alleen twee lage muurtjes en wat hooi;
+  gemengde stenen, buitenmuren 11 hoog met kantelen, ronde hoektorens met vlaggen (rood noord, blauw zuid), gracht
+  rondom met ophaalbrug, sparren en keien. 8 spawns: per kant 2 op de weergang en 2 op de binnenplaats, blik op het
+  veld; je komt op de plek het verst van de anderen. Gewone PvP-regels (stats, gevecht-tag). Bots = zombies,
   husks en skeletten in harnas (tag `kitpvp-bot`, niet opgeslagen, branden niet, geen drops): 1 + 2 per speler in
   de oefenarena (max `bots-max` 6), weg na 30 s leeg; ze vallen alleen spelers in de oefenarena aan; geen PvP daar;
   een bot verslaan = +4 hartjes en `bots` in stats.yml; doodgaan daar telt niet mee. Rustig binnenkomen: geen
-  titel of chatblok, één actiebalkregel. Sidebar: Kit, Kills · Doden, Reeks, Arena.
-  **Gevecht-tag:** 10 s na een treffer (gegeven of gekregen, ook van/aan bots) kun je niet weg: `/arena`, de deur,
-  en op de proxy `/lobby /hub /survival /kitpvp /server /terug /spawn` geweigerd (kitpvp meldt `gevecht:<ms>` aan
-  de proxy); actiebalk «⚔ In gevecht · 7 s». Uitloggen met tag (PvP-arena) = verslagen (dood + kill voor de laatste
-  aanvaller, «liep weg uit het gevecht»). `/arena` = terug naar het platform, `/stats` (`/kd`); top-10 bord;
-  `stats.yml`. Geen drops of oprapen, honger vast, pijlen verdwijnen; kill = volle gezondheid + gouden appel.
-  Console: `arena aftellen N`, `arena bouw`, `arena zelftest`.
+  titel of chatblok, één actiebalkregel («KitPvP · kies een modus»). Sidebar: Kit, Kills · Doden, Reeks, Plek.
+  Metadata `kitpvp-stand` voor Huisdieren: `wacht` (hub, kitruimte), `pvp` (colosseum, kasteel), `bots` (oefenarena);
+  de wolf vecht alleen bij `pvp`/`bots`.
+  **Gevecht-tag:** 10 s na een treffer (gegeven of gekregen, ook van/aan bots) kun je niet weg: `/arena`, `/modus`, de
+  deur, en op de proxy `/lobby /hub /survival /kitpvp /server /terug /spawn` geweigerd (kitpvp meldt `gevecht:<ms>`
+  aan de proxy); actiebalk «⚔ In gevecht · 7 s». Uitloggen met tag (PvP-arena of kasteel) = verslagen (dood + kill
+  voor de laatste aanvaller, «liep weg uit het gevecht»). `/stats` (`/kd`); top-10 borden in de hub en elke
+  kitruimte; `stats.yml` (ongewijzigd). Geen drops of oprapen, honger vast, pijlen verdwijnen; kill = volle
+  gezondheid + gouden appel.
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4;
+  `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
+  over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda-poort;
+  eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`;
+  `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor de Zelda-map: x 1024…2047,
+  z −512…511.
 - **Lobby-poorten** (Survival links, KitPvP rechts van de fontein): label boven de poort, lichtblokken (froglights) in
   de kroon en vlak in de grond langs het pad, en zachte gekleurde deeltjes in de doorgang (elke seconde). Gezet bij
   elke start (`poortenOplichten`), zonder herbouw van de tuin.
