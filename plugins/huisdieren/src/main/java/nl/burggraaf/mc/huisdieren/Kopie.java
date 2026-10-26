@@ -246,7 +246,12 @@ final class Kopie implements Listener {
 
     /** Vecht deze kopie nu mee? Alleen een wolf, alleen in kitpvp, alleen als de eigenaar in een arena staat. */
     private boolean vecht(Entity e, UUID eigenaar) {
-        return kitpvp && e instanceof Wolf && !standVan(eigenaar).equals("wacht");
+        return kitpvp && e instanceof Wolf && vechtStand(standVan(eigenaar));
+    }
+
+    /** KitPvP-standen waarin gevochten wordt; al het andere (wacht = hub/kitruimte, of een nieuwe modus) is veilig. */
+    private static boolean vechtStand(String s) {
+        return s.equals("pvp") || s.equals("bots");
     }
 
     private String standVan(UUID speler) {
@@ -262,7 +267,7 @@ final class Kopie implements Listener {
             UUID id = p.getUniqueId();
             if (kitpvp) {
                 String s = standVan(id), vorig = stand.put(id, s);
-                if (vorig != null && !vorig.equals(s) && s.equals("wacht") && uit.remove(id)) {   // nieuwe ronde
+                if (vorig != null && vechtStand(vorig) && !vechtStand(s) && uit.remove(id)) {   // nieuwe ronde
                     pogingTot.remove(id);
                 }
             }
@@ -301,8 +306,7 @@ final class Kopie implements Listener {
     }
 
     private boolean pvp(UUID speler) {
-        String s = standVan(speler);
-        return !s.equals("wacht") && !s.equals("bots");
+        return standVan(speler).equals("pvp");
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
