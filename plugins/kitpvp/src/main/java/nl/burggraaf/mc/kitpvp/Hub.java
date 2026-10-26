@@ -291,7 +291,7 @@ final class Hub {
                 for (int y = g; y <= g + oh + 1; y++) {
                     if (!wand && y > g) p(s, u, v, y, Material.AIR);
                     else if (!wand) p(s, u, v, y, u == 0 ? st.licht() : st.vloer());
-                    else if (v == -5 && y > g && (u == 0 && y >= g + 2 && y <= g + oh - 1 || Math.abs(u) == 1 && y == g + (oh + 1) / 2)) p(s, u, v, y, st.licht());
+                    else if (v == -5 && (u == 0 && y >= g + 2 && y <= g + oh - 1 || Math.abs(u) == 1 && y >= g + 3 && y <= g + oh - 2)) p(s, u, v, y, st.licht());   // lichtpaneel
                     else p(s, u, v, y, st.rand());
                 }
                 p(s, u, v, g + oh + 2, st.rand());
@@ -399,6 +399,15 @@ final class Hub {
         }
     }
 
+    /** Waar je de poort van modus m raakt: in het open portaal, of (dicht) vlak voor de tralies, kijkend naar buiten. */
+    Location poortPunt(Modus m) {
+        Slot s = SLOTS.get(m.poort().plek());
+        boolean open = m.status() == Modus.Status.OPEN;
+        Location l = punt(s, 0, open ? -2 : 1, g + 1);
+        l.setDirection(new org.bukkit.util.Vector(-s.ix(), 0, -s.iz()));
+        return l;
+    }
+
     // ── zelftest ─────────────────────────────────────────────────────────────────────────────
 
     void zelftest(List<String> fouten, List<String> info) {
@@ -410,7 +419,7 @@ final class Hub {
         if (!onder.getType().isSolid()) fouten.add("hub: geen vloer onder de binnenkomst (" + onder.getType() + ")");
         if (!aankomst.getBlock().isPassable() || !aankomst.clone().add(0, 1, 0).getBlock().isPassable()) fouten.add("hub: binnenkomst zit vast");
         if (w.getBlockAt(HX, g, HZ).getType() != Material.PRISMARINE_BRICKS) fouten.add("hub: fontein ontbreekt");
-        if (w.getBlockAt(HX - H, g + 5, HZ + 10).getType() != Material.QUARTZ_BRICKS) fouten.add("hub: buitenmuur ontbreekt");
+        if (w.getBlockAt(HX - H, g + 5, HZ + 9).getType() != Material.QUARTZ_BRICKS) fouten.add("hub: buitenmuur ontbreekt");
         int poorten = 0;
         for (Modus m : plugin.modi.alle()) {
             Slot s = SLOTS.get(m.poort().plek());
@@ -419,17 +428,14 @@ final class Hub {
             if (lijst != m.poort().rand()) fouten.add("poort " + m.id() + ": omlijsting ontbreekt (" + lijst + ")");
             if (m.status() == Modus.Status.OPEN) {
                 if (midden != Material.AIR) fouten.add("poort " + m.id() + ": open maar de doorgang is " + midden);
-                Location in = punt(s, 0, -2, g + 1);
-                Raak r = raak(in);
+                Raak r = raak(poortPunt(m));
                 if (r == null || r.modus() != m || r.dicht()) fouten.add("poort " + m.id() + ": doorgang stuurt niet naar de modus");
             } else {
                 if (midden != Material.IRON_BARS) fouten.add("poort " + m.id() + ": binnenkort maar niet dicht (" + midden + ")");
                 Block bord = w.getBlockAt(px(s, 0, 1), g + 3, pz(s, 0, 1));
                 if (!(bord.getState() instanceof Sign sg) || !"Binnenkort".equals(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(sg.getSide(Side.FRONT).line(1))))
                     fouten.add("poort " + m.id() + ": bordje «Binnenkort» ontbreekt");
-                Location voor = punt(s, 0, 1, g + 1);
-                voor.setDirection(new org.bukkit.util.Vector(-s.ix(), 0, -s.iz()));
-                Raak r = raak(voor);
+                Raak r = raak(poortPunt(m));
                 if (r == null || r.modus() != m || !r.dicht()) fouten.add("poort " + m.id() + ": tegen de tralies lopen geeft geen melding");
             }
             poorten++;

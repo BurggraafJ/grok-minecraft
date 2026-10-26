@@ -954,14 +954,53 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 sender.sendMessage("kitpvp zelftest: " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" ", info));
                 for (String f : fouten) sender.sendMessage("  ✗ " + f);
             }
+            case "kaart" -> {
+                try {
+                    for (String f : kaarten()) sender.sendMessage("kaart: " + f);
+                } catch (IOException | RuntimeException e) {
+                    sender.sendMessage("kaart mislukt: " + e);
+                }
+            }
+            case "test" -> {
+                Player p = args.length >= 2 ? Bukkit.getPlayerExact(args[1]) : null;
+                if (p == null) {
+                    sender.sendMessage("kitpvp test <speler>: speler niet online");
+                    return;
+                }
+                List<String> fouten = new ArrayList<>(), stappen = new ArrayList<>();
+                Zelftest.loop(this, p, fouten, stappen);
+                sender.sendMessage("kitpvp test " + p.getName() + ": " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" → ", stappen));
+                for (String f : fouten) sender.sendMessage("  ✗ " + f);
+            }
             default -> sender.sendMessage("kitpvp: grond=" + g + " modi=" + modi.alle().size() + " in-arena=" + spelers.aantalInArena()
                     + " spelers=" + Bukkit.getOnlinePlayers().size() + " bouwen=" + (bouwer != null && bouwer.bezig() ? bouwer.inRij() + " stappen" : "klaar")
-                    + " · kitpvp zelftest | bouw [hub|arena|kasteel|alles] | aftellen [s]");
+                    + " · kitpvp zelftest | test <speler> | bouw [hub|arena|kasteel|alles] | kaart | aftellen [s]");
         }
+    }
+
+    /** Plaatjes van hub, arena's en kasteel in plugins/KitPvP/kaart/ (om te controleren zonder in te loggen). */
+    private List<String> kaarten() throws IOException {
+        File map = new File(getDataFolder(), "kaart");
+        int hx = Hub.HX, hz = Hub.HZ, kz = KasteelModus.KZ;
+        List<File> f = new ArrayList<>();
+        f.add(Kaart.boven(w, map, "hub-boven", hx - 36, hz - 36, hx + 36, hz + 36, g - 2, g + 22, 6));
+        f.add(Kaart.voor(w, map, "hub-west", -1, 0, hx + 21, hz - 30, hz + 30, g - 1, g + 18, 60, 8));
+        f.add(Kaart.voor(w, map, "hub-zuid", 0, 1, hz + 8, hx - 30, hx + 30, g - 1, g + 18, 30, 8));
+        f.add(Kaart.voor(w, map, "hub-noord", 0, -1, hz - 8, hx - 30, hx + 30, g - 1, g + 18, 30, 8));
+        f.add(Kaart.voor(w, map, "hub-oost", 1, 0, hx - 21, hz - 30, hz + 30, g - 1, g + 18, 60, 8));
+        f.add(Kaart.boven(w, map, "arena-boven", -52, -62, 52, 136, g - 2, g + 20, 3));
+        f.add(Kaart.boven(w, map, "kasteel-boven", -44, kz - 40, 44, kz + 58, g - 3, g + 22, 5));
+        f.add(Kaart.voor(w, map, "kasteel-noord", 0, -1, kz + 30, -44, 44, g - 3, g + 22, 80, 6));
+        f.add(Kaart.voor(w, map, "kasteel-veld", 0, -1, kz + 13, -26, 26, g - 1, g + 14, 30, 10));
+        f.add(Kaart.voor(w, map, "kitruimte-arena", 0, 1, -58, -10, 10, g + 7, g + 17, 30, 12));
+        List<String> uit = new ArrayList<>();
+        for (File x : f) uit.add(x.getPath());
+        return uit;
     }
 
     // gegevens voor de zelftest
     Bouwer bouwer() { return bouwer; }
+    Gevecht gevecht() { return gevecht; }
     Stats stats() { return stats; }
     List<TextDisplay> ranglijsten() { return ranglijsten; }
     Bots bots() { return bots; }

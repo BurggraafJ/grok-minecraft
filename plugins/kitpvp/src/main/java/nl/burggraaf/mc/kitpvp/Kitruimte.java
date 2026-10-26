@@ -211,6 +211,15 @@ final class Kitruimte {
         return null;
     }
 
+    /** Punt in de nis achter de deur naar de hub / de zijdeur (voor tests). */
+    Location hubdeurPunt() {
+        return punt(-23, 0, y + 1);
+    }
+
+    Location zijdeurPunt() {
+        return punt(-19, 7, y + 1);
+    }
+
     boolean binnen(Location l) {
         if (w == null || !l.getWorld().equals(w)) return false;
         double dx = l.getX() - x0 - 0.5, dz = l.getZ() - z0 - 0.5;
@@ -230,10 +239,10 @@ final class Kitruimte {
         for (Entity e : w.getNearbyEntities(punt(-11, 0, y + 1), 14, 6, 14))
             if (e instanceof ArmorStand a && id.equals(a.getPersistentDataContainer().get(plugin.ruimteKey, PersistentDataType.STRING))) standaards++;
         if (standaards != Kits.KITS.length) fouten.add("kitruimte " + id + ": " + standaards + " standaards (verwacht " + Kits.KITS.length + ")");
-        if (!"hub".equals(deurBij(punt(-23, 0, y + 1)))) fouten.add("kitruimte " + id + ": deur naar de hub werkt niet");
-        if (punt(-23, 0, y + 1).getBlock().getType().isSolid()) fouten.add("kitruimte " + id + ": deur naar de hub is dicht");
+        if (!"hub".equals(deurBij(hubdeurPunt()))) fouten.add("kitruimte " + id + ": deur naar de hub werkt niet");
+        if (hubdeurPunt().getBlock().getType().isSolid()) fouten.add("kitruimte " + id + ": deur naar de hub is dicht");
         if (zijdeur != null) {
-            if (!zijdeur.equals(deurBij(punt(-19, 7, y + 1)))) fouten.add("kitruimte " + id + ": zijdeur werkt niet");
+            if (!zijdeur.equals(deurBij(zijdeurPunt()))) fouten.add("kitruimte " + id + ": zijdeur werkt niet");
             if (plugin.modi.kitruimte(zijdeur) == null) fouten.add("kitruimte " + id + ": zijdeur naar onbekende ruimte " + zijdeur);
         }
     }
