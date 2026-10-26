@@ -180,5 +180,25 @@ class Backups(unittest.TestCase):
         del t
 
 
+
+class PaneelTest(unittest.TestCase):
+    def test_members_sluit_logs_en_plugin_jars_uit_maar_niet_libs(self):
+        import tempfile
+        from mctool import paneel
+        d = tempfile.mkdtemp()
+        for rel in ("logs/latest.log", "server.jar", "plugins/x.jar", "plugins/LuckPerms/libs/a.jar",
+                    "plugins/WorldGuard/cache/c.txt", "world/region/r.0.0.mca", "server.properties"):
+            os.makedirs(os.path.dirname(os.path.join(d, rel)) or d, exist_ok=True)
+            open(os.path.join(d, rel), "w").close()
+        names = sorted(r for r, _ in paneel._members(d, set(paneel.UITSLUIT)))
+        self.assertEqual(names, ["plugins/LuckPerms/libs/a.jar", "plugins/WorldGuard/cache/c.txt",
+                                 "server.properties", "world/region/r.0.0.mca"])
+
+    def test_admin_gamerules(self):
+        from mctool import paneel
+        self.assertEqual(paneel._admin_gamerules("aan: true\ngamerules:\n  keep_inventory: true\nx: 1\n"),
+                         {"keep_inventory": "true"})
+
+
 if __name__ == "__main__":
     unittest.main()

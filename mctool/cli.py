@@ -107,6 +107,15 @@ def build_parser():
     s.add_argument("--login", help="testlogin met deze naam (alleen offline-test)")
     s.add_argument("--geen-extern", action="store_true", help="niet via het internetadres pingen")
 
+    s = sub.add_parser("paneel", help="paneel-modus (Sparked/Pterodactyl): status, deploy, cmd, logs, start, stop, "
+                                      "restart, backup, backups, push, vars")
+    s.add_argument("actie", choices=["status", "deploy", "cmd", "logs", "start", "stop", "restart", "kill", "backup",
+                                     "backups", "push", "vars", "ensure", "schema", "spiegel", "github-backup"])
+    s.add_argument("dienst", nargs="?", help="survival, lobby, kitpvp, velocity (of all)")
+    s.add_argument("rest", nargs=argparse.REMAINDER, help="bij cmd: het commando; bij vars: SLEUTEL=waarde")
+    s.add_argument("--geen-herstart", action="store_true")
+    s.add_argument("-n", type=int, default=60)
+
     sub.add_parser("help", help="deze hulp")
     return p
 
@@ -122,6 +131,8 @@ def main(argv=None):
         p.print_help()
         return 0
     try:
+        if a.cmd in PANEEL_ROUTES and _paneel_actief():
+            return PANEEL_ROUTES[a.cmd](a) or 0
         return HANDLERS[a.cmd](a) or 0
     except Fout as e:
         say(f"FOUT: {e}")
@@ -505,10 +516,143 @@ def h_selftest(a):
     return 0 if ok else 1
 
 
+# ── paneel-modus (data/config.json → modus: paneel) ────────────────────────────────────────────
+
+def _paneel_actief():
+    from . import paneel
+    try:
+        return paneel.actief(core.load())
+    except Fout:
+        return False
+
+
+def h_paneel(a):
+    from . import paneel
+    cfg = core.load()
+    rest = list(getattr(a, "rest", None) or [])
+    if "--geen-herstart" in rest or a.dienst == "--geen-herstart":   # REMAINDER slokt de vlag op
+        rest = [r for r in rest if r != "--geen-herstart"]
+        a.geen_herstart = True
+        if a.dienst == "--geen-herstart":
+            a.dienst = rest.pop(0) if rest else None
+    if a.actie == "logs" and "-n" in rest:   # idem voor -n
+        i = rest.index("-n")
+        a.n = int(rest[i + 1])
+        del rest[i:i + 2]
+    a.rest = rest
+    actie, dienst = a.actie, a.dienst
+    alle = paneel.diensten(cfg)
+    doel = alle if dienst in (None, "all") else [dienst]
+    if actie == "status":
+        paneel.print_status(paneel.status(cfg))
+    elif actie == "ensure":
+        return paneel.ensure(cfg, stil=True)
+    elif actie == "deploy":
+        nieuw = paneel.deploy(cfg, herstart=not a.geen_herstart, alleen=None if dienst in (None, "all") else [dienst])
+        say("uitgerold: " + (", ".join(nieuw) if nieuw else "niets nieuw (paneel = server.json)"))
+    elif actie == "cmd":
+        if not dienst or not a.rest:
+            raise Fout("mc paneel cmd <dienst> <commando>")
+        out = paneel.cmd_met_uitvoer(cfg, dienst, " ".join(a.rest).strip().lstrip("/"))
+        say(out.rstrip() or "(geen uitvoer in de log)")
+    elif actie == "logs":
+        for line in paneel.logs(cfg, dienst or "survival", a.n):
+            say(line)
+    elif actie in ("start", "stop", "restart", "kill"):
+        for svc in (doel if actie != "stop" else list(reversed(doel))):
+            if actie == "restart":
+                paneel.herstart_dienst(cfg, svc)
+            else:
+                paneel.power(cfg, svc, actie)
+                say(f"  {svc}: {actie}")
+    elif actie == "backup":
+        for svc in (doel if dienst else ["survival"]):
+            b = paneel.backup(cfg, svc)
+            say(f"  {svc}: backup {b.get('name')} gestart")
+    elif actie == "backups":
+        for svc in (doel if dienst else ["survival", "lobby"]):
+            for b in paneel.backups(cfg, svc):
+                say(f"  {svc}: {b['name']} · {round((b.get('bytes') or 0) / 1048576)} MB · {b.get('created_at')}"
+                    f"{' · bezig' if not b.get('completed_at') else ''}")
+    elif actie == "push":
+        if not dienst or dienst == "all":
+            raise Fout("mc paneel push <dienst> [lokale map]: zet een map (zonder logs/jars) op het paneel")
+        src = a.rest[0] if a.rest else core.server_dir(dienst)
+        n, tot = paneel.push_tree(cfg, dienst, src, "/")
+        say(f"{dienst}: {n} delen, {tot // 1048576} MB")
+    elif actie == "spiegel":
+        for svc in [d for d in doel if d != "velocity"] if dienst else ["survival"]:
+            paneel.spiegel(cfg, svc)
+    elif actie == "github-backup":
+        paneel.github_backup(cfg, dienst if dienst and dienst != "all" else "survival")
+    elif actie == "schema":
+        paneel.schemas_instellen(cfg)
+    elif actie == "vars":
+        for svc in doel:
+            for kv in a.rest:
+                k, v = kv.split("=", 1)
+                paneel.set_var(cfg, svc, k, v)
+            say(f"  {svc}: {paneel.info(cfg, svc)['invocation']}")
+
+
+def _p_status(a):
+    from . import paneel
+    st = paneel.status(core.load())
+    if a.json:
+        print(json.dumps(st, indent=2, ensure_ascii=False))
+    else:
+        paneel.print_status(st)
+
+
+def _p_route(actie, dienst_attr="dienst", rest_attr=None):
+    def h(a):
+        ns = argparse.Namespace(actie=actie, dienst=getattr(a, dienst_attr, None) if dienst_attr else None,
+                                rest=getattr(a, rest_attr, []) if rest_attr else [], geen_herstart=False,
+                                n=getattr(a, "n", 60))
+        return h_paneel(ns)
+    return h
+
+
+def _p_ensure(a):
+    from . import paneel
+    return paneel.ensure(core.load(), stil=a.stil)
+
+
+def _p_apply(a):
+    from . import paneel
+    if a.dry_run:
+        raise Fout("--dry-run bestaat niet in paneel-modus")
+    nieuw = paneel.deploy(core.load())
+    say("uitgerold op het paneel: " + (", ".join(nieuw) if nieuw else "niets nieuw"))
+
+
+def _p_backup(a):
+    if a.github:
+        return h_paneel(argparse.Namespace(actie="github-backup", dienst=a.dienst, rest=[], geen_herstart=False, n=60))
+    return h_paneel(argparse.Namespace(actie="backup", dienst=a.dienst, rest=[], geen_herstart=False, n=60))
+
+
+def _p_restart(a):
+    return h_paneel(argparse.Namespace(actie="restart", dienst=a.dienst, rest=[], geen_herstart=False, n=60))
+
+
+def _p_niet(a):
+    raise Fout(f"`mc {a.cmd}` hoort bij de box-modus; in paneel-modus: mc paneel … (zie BOT.md, Paneel-modus)")
+
+
+PANEEL_ROUTES = {
+    "status": _p_status, "ensure": _p_ensure, "apply": _p_apply, "restart": _p_restart,
+    "up": _p_route("start", None), "down": _p_route("stop", None),
+    "cmd": _p_route("cmd", "dienst", "commando"), "logs": _p_route("logs"), "backup": _p_backup,
+    "backups": _p_route("backups", None), "tunnel": _p_niet, "staging": _p_niet, "restore": _p_niet,
+    "selftest": _p_route("status", None),
+}
+
+
 HANDLERS = {
     "install": h_install, "ensure": h_ensure, "status": h_status, "up": h_up, "down": h_down,
     "restart": h_restart, "cmd": h_cmd, "logs": h_logs, "errors": h_errors, "spelers": h_spelers,
     "backup": h_backup, "backups": h_backups, "restore": h_restore, "apply": h_apply, "vastleggen": h_vastleggen,
     "plugin": h_plugin, "staging": h_staging, "update": h_update, "tunnel": h_tunnel, "git": h_git,
-    "selftest": h_selftest,
+    "selftest": h_selftest, "paneel": h_paneel,
 }

@@ -4,7 +4,8 @@ description: Gebruik dit bij alles rond de Minecraft-server van Jelle: status en
 ---
 # Minecraft-server beheren
 
-Lees eerst `/workspace/minecraft/repo/BOT.md` (het handboek, uit GitHub) en volg het. Ontbreekt de map:
+Lees eerst `/workspace/minecraft/repo/BOT.md` (het handboek, uit GitHub) en volg het. De servers draaien nu bij Sparked
+Host (paneel-modus, adres `45.43.163.23:25576`); `mc` stuurt ze via de paneel-API aan (BOT.md, Paneel-modus). Ontbreekt de map:
 `git clone https://github.com/BurggraafJ/grok-minecraft /workspace/minecraft/repo` en daarna
 `/workspace/minecraft/repo/mc ensure`.
 

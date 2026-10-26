@@ -253,6 +253,13 @@ public final class Netwerk {
 
     // ── namen, tags en profielen ────────────────────────────────────────────────────────────
 
+    /** "/lobby · /survival · /kitpvp", alleen met servers die in velocity.toml staan. */
+    private String commandoLijst() {
+        StringBuilder sb = new StringBuilder("/" + lobby);
+        for (String s : spel) if (proxy.getServer(s).isPresent()) sb.append(" · /").append(s);
+        return sb.toString();
+    }
+
     private String serverNaam(String s) {
         return namen.getOrDefault(s, s);
     }
@@ -535,8 +542,9 @@ public final class Netwerk {
 
     private void naar(Player p, String server) {
         Optional<RegisteredServer> rs = proxy.getServer(server);
-        if (rs.isEmpty()) {
-            p.sendMessage(Component.text("Die server bestaat niet.", NamedTextColor.RED));
+        if (rs.isEmpty()) {   // bv. kitpvp nog niet in velocity.toml (paneel zonder plek): netjes melden
+            String wat = namen.containsKey(server) ? serverNaam(server) + " is er nu niet" : "Die server bestaat niet";
+            p.sendMessage(Component.text(wat + ".", NamedTextColor.YELLOW));
             return;
         }
         if (serverVan(p).map(server::equals).orElse(false)) {
@@ -591,7 +599,7 @@ public final class Netwerk {
             voet = voet.append(tag(en.getKey())).append(Component.text(" " + en.getValue(), NamedTextColor.WHITE));
         }
         Component kopC = safe(kop).append(Component.newline()).append(Component.text(alle.size() + " online", NamedTextColor.GRAY));
-        Component voetC = voet.append(Component.newline()).append(Component.text("/lobby · /survival · /kitpvp", NamedTextColor.DARK_GRAY));
+        Component voetC = voet.append(Component.newline()).append(Component.text(commandoLijst(), NamedTextColor.DARK_GRAY));
         for (Player kijker : alle) {
             String mijn = waar.get(kijker.getUniqueId());
             if (mijn == null) continue;
@@ -760,6 +768,15 @@ public final class Netwerk {
                 gaatUit.put(s, System.currentTimeMillis());
                 schrijfWachtend();
                 src.sendMessage(Component.text("netwerk: " + n + " spelers van " + s + " wachten in de lobby"));
+            } else if (a.length >= 1 && a[0].equalsIgnoreCase("ping")) {
+                // elke server uit velocity.toml pingen (mc selftest/paneel: ziet de proxy zijn backends?)
+                for (RegisteredServer rs : proxy.getAllServers()) {
+                    String naam = rs.getServerInfo().getName();
+                    rs.ping().orTimeout(5, TimeUnit.SECONDS).whenComplete((ping, fout) -> src.sendMessage(Component.text(
+                            "netwerk ping " + naam + " (" + rs.getServerInfo().getAddress() + "): "
+                                    + (fout != null ? "ONBEREIKBAAR " + fout.getClass().getSimpleName()
+                                    : "ok, " + ping.getVersion().getName() + ", " + ping.getPlayers().map(pl -> pl.getOnline()).orElse(0) + " spelers"))));
+                }
             } else if (a.length >= 1 && a[0].equalsIgnoreCase("stil")) {
                 int s = 30;
                 try {

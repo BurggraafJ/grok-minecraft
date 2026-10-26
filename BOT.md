@@ -4,7 +4,69 @@ Jij beheert in je eentje een Minecraft-server voor Jelle en zijn vrienden: insta
 toevoegen en eigen plugins bouwen. Jelle doet niets met de hand. Lees dit bij elke taak die over de server gaat;
 het is de bron (`/workspace/minecraft/repo/BOT.md`, uit GitHub). Je skill `minecraft-beheer` verwijst hiernaar.
 
-## Hoe het in elkaar zit
+## Paneel-modus: zo draait het nu (sinds 26-10-2026)
+
+De servers draaien niet meer op de box maar bij **Sparked Host** (Apollo-paneel, Pterodactyl-API, Parijs). De box is
+alleen nog de bouwplaats: `mc` bouwt plugins en configs uit `server/server.json` en zet ze via de API op het paneel.
+`data/config.json` → `"modus": "paneel"`; daardoor gaan `mc status`, `cmd`, `logs`, `restart`, `up`, `down`, `apply`,
+`backup`, `backups` en `ensure` vanzelf naar het paneel. Box-modus (lokaal, tunnel, staging) blijft in de code; terug
+= `"modus"` weghalen en `mc up`.
+
+```
+vrienden ──► 45.43.163.23:25576  Velocity  (server "Burggraafs House", a383cf4b, 1792 MB, online-mode, plugin netwerk)
+                 ├─► lobby     172.18.0.1:25567  (split b07dec75, 1024 MB)  ─┐ splits op dezelfde node: alleen
+                 ├─► survival  172.18.0.1:25566  (split aeb277b5, 5376 MB)  ─┘ via het Docker-netwerk bereikbaar
+                 └─► kitpvp    45.43.163.81:25570 (eigen server d4ee4672, 2048 MB, andere node: publiek ip)
+```
+
+- **Adres voor spelers: `45.43.163.23:25576`** (vast; geen tunnel, geen ngrok, de app hoeft niet open).
+- **Veiligheid:** de backends draaien online-mode false + Velocity modern forwarding met het geheim uit
+  `data/secrets/secrets.json` (`config/paper-global.yml` → `proxies.velocity`). Wie kitpvp rechtstreeks probeert krijgt
+  «This server requires you to connect with Velocity» (getest). De splits hebben een 127.0.0.1-allocatie: van buiten
+  onbereikbaar. RCON staat uit (onbereikbaar vanaf de box), `enforce-secure-profile=false` op de backends (de splits
+  hebben geen internet om Mojang-sleutels te halen; Velocity controleert ze al met `force-key-authentication`).
+- **De API-sleutel** staat in `data/secrets/sparked_api_key` (of env `SPARKED_API_KEY`); nooit printen of committen.
+  Hij is een *client*-sleutel van Jelles paneelaccount (API Credentials). Het betaalgedeelte (facturatie) kan de Bot niet in.
+- **Wat de box niet kan:** alleen poort 443 naar buiten, dus de node-poort 8080 (signed upload-URL, console-websocket,
+  downloads) is dicht. Daarom: uploaden = `POST /files/write` (< 100 MB per keer), grote mappen in tar.gz-delen van
+  < 80 MB die op het paneel worden uitgepakt (`mc paneel push`); commando's = `POST /command`, uitvoer uit
+  `logs/latest.log`; bestanden > ~100 MB lezen geeft 403 (losse wereldbestanden lezen kan wel).
+- **De splits (lobby, survival) hebben geen internet (geen DNS).** Gevolgen: Paperclip kan bij een nieuwe Paper-build
+  de Mojang-jar en libraries niet halen (`mc paneel deploy` maakt ze op de box met `-Dpaperclip.patchonly=true` en
+  zet `cache/`, `libraries/`, `versions/` erop); plugins die zelf libraries downloaden (LuckPerms `libs/`, GravesX
+  `lib/`) moeten die map al hebben (de overzet nam ze mee); update-checks en spark-rapporten geven
+  `UnknownHostException` (onschuldig). Een nieuwe plugin die bij de eerste start iets downloadt: eerst lokaal (box-modus
+  of kitpvp, die wel internet heeft) laten draaien en de map met `mc paneel push` meesturen.
+
+| Wat | Commando |
+|---|---|
+| stand van alle servers + adres van buiten | `mc status` (= `mc paneel status`) |
+| een commando | `mc cmd survival <commando>` / `mc paneel cmd velocity netwerk ping` (ziet Velocity alle backends?) |
+| log | `mc logs survival -n 100` |
+| aan/uit/herstart | `mc paneel start|stop|restart|kill <dienst|all>`; `mc restart survival` laat spelers in de lobby wachten |
+| wijziging uit server.json live zetten | `mc apply` (= `mc paneel deploy`): bouwt, uploadt alleen wat anders is (hash-administratie in `data/state/paneel.json`), patcht configs óp het paneel (lezen → patchen → terugschrijven), herstart alleen wat veranderde, zet daarna gamerules en LuckPerms-rechten via de console. Geen staging meer: test vooraf in CI of op kitpvp. Daarna `mc vastleggen`. |
+| startvariabelen | `mc paneel vars <dienst> LOWER_XMX=1` (staat op alle vier aan: heap = 80% van de container); survival ook `AIKAR_FLAGS=1` |
+| backups | elke nacht automatisch (paneel-schema «mc: dagelijkse backup»: survival 03:00, lobby 03:20, kitpvp 03:40 UTC, velocity zondag 03:50; eerst `save-all flush`), max 3 per server, de oudste gaat er vanzelf af. Zelf: `mc backup` / `mc paneel backup <dienst>`, lijst `mc backups`. Terugzetten: in het paneel (Backups → Restore) of via de API `POST /backups/<uuid>/restore`; eerst een nieuwe backup. Schema's opnieuw: `mc paneel schema`. |
+| backup naar GitHub | `mc backup --github` (= `mc paneel github-backup survival`): spiegelt survival per bestand naar `data/servers/survival` op de box (alleen wat veranderde), maakt er een tar van en zet die in `grok-minecraft-backups`. Doe het als de box toch wakker is (de routine); duurt de eerste keer ±10 min. |
+| hele map erop zetten | `mc paneel push <dienst> [map]` (zonder logs, cache, libraries, versions en plugin-jars) |
+| spiegelen naar de box | `mc paneel spiegel <dienst>` |
+
+**KitPvP** staat op een eigen server (Jelle kocht 2 GB erbij) op een andere node, dus Velocity verbindt via het
+publieke ip:poort (`backend_adres` in `mctool/paneel.py` kiest dat vanzelf: 127.0.0.1-allocatie = `172.18.0.1`, anders
+het publieke adres). Zijn naam in het paneel is nog «Minecraft Server» (hernoemen kan niet via de API, alleen in het
+paneel). Een server weghalen of erbij: `data/config.json` → `paneel.servers`, dan `mc apply`; velocity.toml krijgt
+alleen servers die er zijn, en `/kitpvp` zegt netjes «KitPvP is er nu niet» als hij ontbreekt.
+
+**RAM** (plan 8 GB + 2 GB): Velocity 1792 MB (gebruikt ±150 MB; kan naar 768 als er een split bij moet), survival
+5376, lobby 1024, kitpvp 2048. Verdelen kan alleen in het paneel (Server Splitter), niet via de API.
+
+**Routine:** `mc ensure --stil` werkt ook in paneel-modus: staat een server uit, dan start hij hem (en meldt het);
+nieuwe commits op GitHub zet hij live. Het paneel herstart een gecrashte server zelf (crash_restarting aan).
+
+De rest van dit handboek beschrijft de box-modus; plugins, chat, netwerk, lobby, parkour en kitpvp werken op het
+paneel precies zo.
+
+## Hoe het in elkaar zit (box-modus)
 
 ```
 vrienden ──► tunnel (ngrok/bore/playit) ──► Velocity :25565 (alleen premium, online-mode, plugin netwerk)
@@ -323,9 +385,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 ## Harde regels
 
 - **Veiligheid:** online-mode altijd aan (alleen premium-accounts); whitelist zoals `server.json` zegt (nu uit, op
-  Jelles woord); de backends en RCON alleen op 127.0.0.1; OP alleen voor wie Jelle als admin noemt; nooit
+  Jelles woord); de backends en RCON alleen op 127.0.0.1 (paneel: backends alleen via Velocity-forwarding, RCON uit); OP alleen voor wie Jelle als admin noemt; nooit
   `--offline-test` op de box.
-- **Geheimen** (`data/secrets`, RCON-wachtwoorden, het forwarding-geheim, het GitHub- en ngrok-token) nooit in een
+- **Geheimen** (`data/secrets`, RCON-wachtwoorden, het forwarding-geheim, het GitHub-, ngrok- en paneel-token) nooit in een
   chat, commit, PR, Cursor-brief of plugin. Vraag Jelle tokens altijd via de Secrets van de Bot, nooit in de chat.
 - **Plugins** alleen van Modrinth via `mc plugin add` (hashcontrole + staging), of eigen code in `plugins/`. Nooit een
   jar uit een forum, Discord of van een speler.
