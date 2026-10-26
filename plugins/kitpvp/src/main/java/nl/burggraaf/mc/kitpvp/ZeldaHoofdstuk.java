@@ -300,6 +300,9 @@ abstract class ZeldaHoofdstuk {
     /** Begin opnieuw met lege lijsten (bij elke bouw). */
     protected void leeg(World wereld) {
         w = wereld;
+        for (Kamer k : kamers) k.vijanden.forEach(org.bukkit.entity.Entity::remove);     // bij herbouwen tijdens het spel
+        for (Vondst v : vondsten) if (v.toon != null) v.toon.remove();
+        for (Persoon p : personen) if (p.ent != null) p.ent.remove();
         rust.clear();
         kamers.clear();
         uitdagingen.clear();

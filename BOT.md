@@ -350,13 +350,12 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   Hotbar in de lobby: vak 1 kompas «Level kiezen», vak 5 ster «Server kiezen» (tijdens aftellen barrière, tijdens
   wachten rode wol), vak 9 «Opnieuw» (= `/parkour reset`). `/parkour` vanuit survival: plek onthouden (plugin
   `lobbyreis`), naar je volgende level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.1, eigen code; ontwerp in `plugins/kitpvp/MODI.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
   het westen. **Drie modi** (poort of kompas in vak 5 / `/modus`, menu en poort doen hetzelfde):
-  **Story of Zelda** (grote poort recht vooruit, dicht met tralies en bordje «Binnenkort»; ertegenaan lopen = één
-  grijze regel; komt in sessie 2), **PvP Arena** (poort links, zwart/rood) en **PvP Castle** (poort rechts,
+  **Story of Zelda** (grote poort recht vooruit, zie hieronder), **PvP Arena** (poort links, zwart/rood) en **PvP Castle** (poort rechts,
   steen/blauw). Door een open poort lopen = naar de **kitruimte** van die modus: een galerij die over de arena
   uitkijkt, je loopt tussen de 7 kits als pantserstandaards door (krijger, boog, tank, ninja, speer, heler, hamer);
   klik = die kit en de arena in, met 3 s bescherming. Fallback: ster in vak 5 / `/kit` (kitmenu; bij PvP Arena ook de
@@ -375,7 +374,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   de oefenarena (max `bots-max` 6), weg na 30 s leeg; ze vallen alleen spelers in de oefenarena aan; geen PvP daar;
   een bot verslaan = +4 hartjes en `bots` in stats.yml; doodgaan daar telt niet mee. Rustig binnenkomen: geen
   titel of chatblok, één actiebalkregel («KitPvP · kies een modus»). Sidebar: Kit, Kills · Doden, Reeks, Plek.
-  Metadata `kitpvp-stand` voor Huisdieren: `wacht` (hub, kitruimte), `pvp` (colosseum, kasteel), `bots` (oefenarena);
+  Metadata `kitpvp-stand` voor Huisdieren: `wacht` (hub, kitruimte), `pvp` (colosseum, kasteel), `bots` (oefenarena, Zelda);
   de wolf vecht alleen bij `pvp`/`bots`.
   **Gevecht-tag:** 10 s na een treffer (gegeven of gekregen, ook van/aan bots) kun je niet weg: `/arena`, `/modus`, de
   deur, en op de proxy `/lobby /hub /survival /kitpvp /server /terug /spawn` geweigerd (kitpvp meldt `gevecht:<ms>`
@@ -383,13 +382,26 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   voor de laatste aanvaller, «liep weg uit het gevecht»). `/stats` (`/kd`); top-10 borden in de hub en elke
   kitruimte; `stats.yml` (ongewijzigd). Geen drops of oprapen, honger vast, pijlen verdwijnen; kill = volle
   gezondheid + gouden appel.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4;
+  **Story of Zelda** (`Zelda*.java`, ontwerp en «een hoofdstuk toevoegen» in `MODI.md`): avontuur, alleen of samen.
+  Door de poort = naar je **verste rustplaats** (voortgang per speler in `plugins/KitPvP/zelda.yml`, dus de volgende
+  dag verder). Hoofdstuk 1 «Het Lindewoud» (x 1092…1592, z −64…64): Morgal heeft prinses Zelda naar Nachtrots
+  gebracht; met het vuurvliegje Wiske loop je naar het oosten langs 6 rustplaatsen (zielvuur: bewaren, genezen,
+  respawn), 3 kamers die dichtgaan tot alle golven verslagen zijn (gevechtsmuziek), de baas Grauwmoer (nacht,
+  levensbalk), een tijdrace over de Kloof (XP-balk = seconden, beste tijd bewaard), twee puzzels (vuurschalen,
+  doelwitten met de boog), vondsten (schild, zwaard, boog, hartcontainer) en de haven met het schip; Nachtrots ligt
+  aan de horizon. Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  «Nootblokken»). Kaart in vak 9: reizen naar bereikte rustplaatsen, terug naar de hub; `/arena` werkt ook. Geen
+  schade tussen spelers; de wolf vecht mee tegen monsters (`kitpvp-stand` = `bots`). Vijanden alleen tijdens een
+  gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda` (status), `kitpvp zelda reset|rust <speler> [n]`,
+  `kitpvp zelda test <speler> [alles]` (loopt met een echte speler het hoofdstuk door; wist eerst diens voortgang),
+  `kitpvp zelda verder <speler>`, `kitpvp bouw zelda`.
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
-  over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda-poort;
+  over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
   eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,
   `kitpvp kaart` (plaatjes van wat er staat, `plugins/KitPvP/kaart/*.png`), `kitpvp test <speler>` (loopt de hele route
   met een online speler: poorten, deuren, kits, `/arena`, gevecht-tag; niet bij spelers die aan het spelen zijn);
-  `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor de Zelda-map: x 1024…2047,
+  `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor Zelda: x 1024…2047,
   z −512…511.
 - **Lobby-poorten** (Survival links, KitPvP rechts van de fontein): label boven de poort, lichtblokken (froglights) in
   de kroon en vlak in de grond langs het pad, en zachte gekleurde deeltjes in de doorgang (elke seconde). Gezet bij
