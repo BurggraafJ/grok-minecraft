@@ -732,8 +732,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                         r("Kees", "Toen kwamen die moerasdingen. Ik rende!")), (spel, p, s) -> spel.missie(p, "bijl", 1))
                 .gesprek(null, s -> s.missie("bijl") == 1, List.of(r("Kees", "De houtkap ligt achter de Oude Eik, naar het noorden.")), null)
                 .gesprek("kees-2", s -> s.missie("bijl") == 2, List.of(
-                        r("Kees", "Mijn bijl! Jij bent een held."),
-                        r("Kees", "Hier. Dit lag al jaren in mijn schuur.")), (spel, p, s) -> {
+                        r("Kees", "Mijn bijl! Hier, dit lag al jaren in mijn schuur.")), (spel, p, s) -> {
                     spel.missie(p, "bijl", ZeldaVoortgang.KLAAR);
                     spel.beloon(p, STUKJE_KEES, "Hartstukje", null);
                 })
@@ -943,7 +942,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         vul(144, G, 6, 147, G, 8, Material.MOSSY_STONE_BRICKS);
         zet(146, G + 1, 8, Material.CHISELED_STONE_BRICKS);
         zet(145, G + 3, 7, Bouwer.hangend(Material.SOUL_LANTERN));
-        barst(new Barst("tempel", new Deur(BARST.createBlockData(), Material.AIR.createBlockData()).vlak(X0 + 145, G + 1, 5, X0 + 146, G + 2, 5),
+        barst(new Barst("tempelmuur", new Deur(BARST.createBlockData(), Material.AIR.createBlockData()).vlak(X0 + 145, G + 1, 5, X0 + 146, G + 2, 5),
                 box(141, G - 1, -6, 153, G + 8, 10)));
         vondst(new Vondst(STUKJE_TEMPEL, "Hartstukje", "", Material.REDSTONE, plek(146, G + 2.3, 8, 0f), box(144, G, 6, 147, G + 3, 8))).voorwerp = "bommen";
         verhaal(new Verhaal("barst", box(143, G, 2, 151, G + 5, 4), List.of(r("Wiske", "Die muur is gebarsten. Met een flinke klap…"))));
@@ -1009,7 +1008,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         haakpunt(new Haakpunt("richel", X0 + 200, G + 2, -7, plek(200, G - 1, -7, 90f)));
         vondst(new Vondst(STUKJE_RICHEL, "Hartstukje", "", Material.REDSTONE, plek(201, G - 0.6, -7, 0f), box(200, G - 1, -8, 201, G + 1, -6))).voorwerp = "klauwhaak";
         verhaal(new Verhaal("richel", box(158, G, -4, 162, G + 6, 4), List.of(
-                r("Wiske", "Een hartstukje, op die richel aan de overkant. Nog te hoog."))));
+                r("Wiske", "Een hartstukje op die richel! Nog te hoog."))));
         rustvuur(208, -3);
         rust(new Rust("kloofrand", "Kloofrand", plek(208, G + 1, 0, -90f), box(203, G, -4, 213, G + 6, 4), List.of("schild", "zwaard")));
         verhaal(new Verhaal("zout", box(203, G, -4, 213, G + 6, 4), List.of(
@@ -1121,10 +1120,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                         r("Hanne", "Een bezoeker! Pas op, de ketel is heet."),
                         r("Hanne", "Ik brouw bronwater, maar mijn kruiden zijn op."),
                         r("Hanne", "Ze groeien in het Veen. Breng je er drie?")), (spel, p, s) -> spel.missie(p, "moeraskruid", 1))
-                .gesprek(null, s -> s.missie("moeraskruid") == 1, List.of(r("Hanne", "Veenbes, zonnedauw en moerasmunt. Ze glanzen een beetje.")), null)
+                .gesprek(null, s -> s.missie("moeraskruid") == 1, List.of(r("Hanne", "Veenbes, zonnedauw, moerasmunt. Ze glanzen wat.")), null)
                 .gesprek("hanne-2", s -> s.missie("moeraskruid") == 2, List.of(
-                        r("Hanne", "Alle drie! Even roeren…"),
-                        r("Hanne", "Hier, een flesje bronwater. Voor onderweg.")), (spel, p, s) -> {
+                        r("Hanne", "Alle drie! Hier, een flesje bronwater.")), (spel, p, s) -> {
                     spel.missie(p, "moeraskruid", ZeldaVoortgang.KLAAR);
                     spel.beloon(p, "fles1", "Flesje", "drink als je gewond bent");
                     spel.uitleg(p, r("Wiske", "Leeg? Een bron of zielvuur vult het weer."));
@@ -1338,9 +1336,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 .eenmalig("lotje-zilver", s -> s.heeft("e:zilverstrand"), List.of(
                         r("Lotje", "Was je op het Zilverstrand? Zijn daar meer meeuwen?")), null);
         Verhaal einde = verhaal(new Verhaal("brecht", box(360, G, -2, 369, G + 5, 2), List.of(
-                r("Brecht", "Jij joeg ze van de kade? Dan ben jij die van het dorp."),
-                r("Brecht", "Nachtrots ligt achter zwarte nevel. Daar komt geen schip door."),
-                r("Brecht", "Op het Zilverstrand weten ze meer. Zeg maar wanneer."),
+                r("Brecht", "Jij joeg ze weg? Dan ben jij die van het dorp."),
+                r("Brecht", "Om Nachtrots hangt nevel. Daar vaart niemand door."),
+                r("Brecht", "Zodra de wind draait, varen we. Zeg maar wanneer."),
                 r("Wiske", "We komen eraan, Zelda."),
                 r(null, "Het Lindewoud · voltooid"))));
         einde.einde = true;

@@ -205,7 +205,7 @@ final class Zelda implements Modus {
         }
         // Zelda 2.0: eilanden, genezen bij elke kamer, doelen voor /hint, personen, muziek overal, de zee
         int bronnen = 0, doelen = 0, personen = 0, missies = 0, stukjes = 0;
-        java.util.Set<String> mids = new java.util.HashSet<>();
+        java.util.Set<String> mids = new java.util.HashSet<>(), alleStukjes = new java.util.HashSet<>();
         java.util.Set<String> ids = new java.util.HashSet<>();
         List<ZeldaHoofdstuk> allen = new ArrayList<>(HOOFDSTUKKEN);
         allen.add(zee);
@@ -230,7 +230,12 @@ final class Zelda implements Modus {
             java.util.Set<String> hs = new java.util.HashSet<>(), vlaggen = new java.util.HashSet<>();
             for (ZeldaHoofdstuk h : e.delen()) {
                 hs.addAll(h.stukjes);
-                for (ZeldaHoofdstuk.Vondst v : h.vondsten) if (!vlaggen.add(v.vlag)) fouten.add(eid + ": vondst " + v.vlag + " dubbel");
+                for (ZeldaHoofdstuk.Vondst v : h.vondsten) {
+                    if (!vlaggen.add(v.vlag)) fouten.add(eid + ": vondst " + v.vlag + " dubbel");
+                    if (v.voorwerp != null && !ZeldaVoorwerp.LATER.contains(v.voorwerp) && spel.voorwerpen.stream().noneMatch(x -> x.vlag().equals(v.voorwerp)))
+                        fouten.add(eid + ": vondst " + v.vlag + " wacht op onbekend voorwerp " + v.voorwerp);
+                }
+                for (String st : h.stukjes) if (!alleStukjes.add(st)) fouten.add(eid + ": hartstukje " + st + " dubbel");
                 for (ZeldaHoofdstuk.Missie m : h.missies) if (!mids.add(m.id())) fouten.add(eid + ": missie " + m.id() + " dubbel");
             }
             if (hs.size() > 4) fouten.add(eid + ": " + hs.size() + " hartstukjes (hoogstens 4 per eiland)");

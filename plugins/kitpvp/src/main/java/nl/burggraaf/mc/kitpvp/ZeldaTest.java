@@ -175,11 +175,27 @@ final class ZeldaTest {
                         z.spel.herstel(k);
                         p.teleport(k.start.midden(h.w).add(0, 1, 0));
                     }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.GEWONNEN && k.in.isOpen && k.uit.isOpen && k.vijanden.isEmpty(), 40);
-                    stap("kamer " + k.id + " bel", () -> z.spel.luid(p, k), 5,
+                    stap("kamer " + k.id + " van de andere kant", () -> {                  // terug vanaf de uitgang (zijmissies)
+                        z.spel.herstel(k);
+                        p.teleport(k.uit.omvang().midden(h.w).add(2, 0, 0));
+                    }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.GEWONNEN && k.uit.isOpen, 40);
+                    stap("kamer " + k.id + " bel", () -> {                                   // rechtsklik op de bel, zoals een speler
+                        p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                        var b = h.w.getBlockAt(k.bel[0], k.bel[1], k.bel[2]);
+                        var e = new org.bukkit.event.player.PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
+                                p.getInventory().getItemInMainHand(), b, org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND);
+                        z.spel.onKlik(e);
+                        moet(e.isCancelled(), "kamer " + k.id + ": de bel reageert niet op een klik");
+                    }, 5,
                             () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.terug && !k.in.isOpen && !k.vijanden.isEmpty(), 40);
                     stap("kamer " + k.id + " bel verslaan", () -> { }, 5, () -> verslaan(h, k), 1200);
                     stap("kamer " + k.id + " bel gewonnen", () -> moet(k.golf == k.golven.size() + k.extra.size() - 1,
                             "kamer " + k.id + ": met de bel " + (k.golf + 1) + " golven (verwacht " + (k.golven.size() + k.extra.size()) + ")"), 2, () -> true, 1);
+                    stap("kamer " + k.id + " nieuw erbij", () -> {                          // wie hem nog niet won, vecht gewoon
+                        stand().wis("k:" + k.id);
+                        p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                    }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG && !k.terug, 40);
+                    stap("kamer " + k.id + " nieuw erbij verslaan", () -> { }, 5, () -> verslaan(h, k) && stand().heeft("k:" + k.id), 900);
                 }
             } else if (o instanceof ZeldaHoofdstuk.Uitdaging u) {
                 stap("uitdaging " + u.id + " dicht", () -> p.teleport(u.start.midden(h.w).add(-3, 1, 0)), 20,

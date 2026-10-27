@@ -618,7 +618,12 @@ final class ZeldaSpel implements Listener {
                     if (start == null || nu - start > 600) begin(p, u, nu);
                 } else if (start != null && u.finish.in(l)) gehaald(p, s, u, nu - start);
             }
-            for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.fase == ZeldaHoofdstuk.Fase.RUST && k.start.in(l)) binnenKamer(k, nu);
+            for (ZeldaHoofdstuk.Kamer k : h.kamers) {
+                boolean won = s.heeft("k:" + k.id);
+                if (k.fase == ZeldaHoofdstuk.Fase.RUST && k.start.in(l)) binnenKamer(k, nu);
+                else if (k.fase == ZeldaHoofdstuk.Fase.RUST && won && k.uit.omvang().groter(2).in(l)) doorgang(k, List.of(p));   // van de andere kant terug
+                else if (k.fase == ZeldaHoofdstuk.Fase.GEWONNEN && !won && k.start.in(l)) begin(k, nu, false);              // nieuw erbij: gewoon vechten
+            }
         }
     }
 
@@ -734,13 +739,16 @@ final class ZeldaSpel implements Listener {
         if (in.isEmpty()) return;
         List<ZeldaVoortgang.Stand> wie = new ArrayList<>();
         for (Player p : in) wie.add(voortgang.van(p.getUniqueId()));
-        if (!ZeldaRegels.doorgang(wie, k.id)) {
-            begin(k, nu, false);
-            return;
-        }
-        k.fase = ZeldaHoofdstuk.Fase.GEWONNEN;               // gaat na een minuut zonder iemand weer dicht
+        if (!ZeldaRegels.doorgang(wie, k.id)) begin(k, nu, false);
+        else doorgang(k, in);
+    }
+
+    /** Vrije doorgang: beide deuren open (gaat na een minuut zonder iemand weer dicht); de eerste keer legt Wiske de bel uit. */
+    private void doorgang(ZeldaHoofdstuk.Kamer k, List<Player> in) {
+        k.fase = ZeldaHoofdstuk.Fase.GEWONNEN;
         k.leegSinds = 0;
         k.terug = false;
+        k.meegedaan.clear();
         Location midden = k.start.midden(in.get(0).getWorld());
         deur(k.in, true, midden);
         deur(k.uit, true, midden);
@@ -1213,7 +1221,7 @@ final class ZeldaSpel implements Listener {
                     d.setItemStack(new ItemStack(v.item));
                     d.setBillboard(Display.Billboard.FIXED);
                     d.setBrightness(new Display.Brightness(15, 15));
-                    d.setGlowing(true);
+                    d.setGlowing(!v.verborgen);                        // verborgen: niet door de muren heen te zien
                     d.setGlowColorOverride(Color.fromRGB(0xfff2a0));
                 });
             } else if (!moet && v.toon != null) {

@@ -99,8 +99,10 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   Golven vijanden (1 extra per extra speler); alles verslagen = deuren open, deuntje, +3 harten, vlag `k:<kamer>`.
   Iedereen binnen dood of weg = na 4 s terug naar het begin. Gewonnen kamers gaan na een minuut zonder spelers in de
   buurt weer dicht. Doodgaan in een kamer = na de respawn een **tip** van Wiske (`k.tips`, de 1e, dan de 2e).
-  **Vrije doorgang**: won iedereen die de kamer instapt hem al (`k:<kamer>`), dan gaan de deuren gewoon open. Wie nog
-  eens wil, rechtsklikt de **bel** in de kamer (`k.bel`): dan het gevecht met de extra golven erachter (`k.extra`).
+  **Vrije doorgang**: won iedereen die de kamer instapt hem al (`k:<kamer>`), dan gaan de deuren gewoon open; ook als
+  je van de uitgangskant terugkomt (zijmissies). Stapt er iemand binnen die hem nog niet won, dan begint het gevecht
+  gewoon (ook voor wie erbij is). Wie nog eens wil, rechtsklikt de **bel** in de kamer (`k.bel`): dan het gevecht met
+  de extra golven erachter (`k.extra`).
   De zelftest eist hoogstens twee verplichte kamers (niet `vrijwillig`) vóór de eerste baas per deel.
 - **Uitdaging op tijd**: stap op de startplaat, de poort gaat open, de tijd loopt in de **XP-balk** (getal = seconden,
   tikjes, de laatste vijf hoger). Haal je de finish: tijd en (bij verbetering) «record», bewaard per speler. Bij de

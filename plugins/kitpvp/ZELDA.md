@@ -122,9 +122,10 @@ Bos, tempelruïne, kloof, veen, heksenkring, haven (zie `MODI.md` voor de kaart 
 toevoegde, en de keuzes:
 
 - **Rustiger**: de open plek is één golf van twee veenlopers, het Veen twee golven (was drie), de kade één golf (was
-  twee). Verplicht vóór de baas: de open plek en het Veen. Een kamer die je al won (`k:<kamer>`) laat je **vrij door**
-  (afwijking van het plan, waar de tweede golf bij terugkomst kwam: steeds opnieuw vechten past niet bij «niet zo
-  vaak»); de **bel** in de open plek, het Veen en op de kade = nog eens, nu mét de extra golven. Oude standen krijgen
+  twee). Verplicht vóór de baas: de open plek en het Veen. Een kamer die je al won (`k:<kamer>`) laat je **vrij door**,
+  van beide kanten; wie hem nog niet won en binnenstapt, vecht gewoon (ook als er een ander bij is). Dat wijkt af van
+  het plan (daar kwam de tweede golf bij terugkomst): steeds opnieuw vechten past niet bij «niet zo vaak». De **bel**
+  in de open plek, het Veen en op de kade = nog eens, nu mét de extra golven. Oude standen krijgen
   de `k:`-vlaggen van wat ze al voorbij zijn (`ZeldaHoofdstuk1.aanvullen`).
 - **Kees** de houthakker bij Thuis (houtstapel, leeg hakblok): zijmissie *De verloren bijl*. De bijl ligt op het
   hakblok in de nieuwe **houtkap**, een open plek achter de Oude Eik (pad naar het noorden). Beloning: een
@@ -159,7 +160,7 @@ de **Getijdentempel** die bij eb boven water komt.
   (vertelt over de bakens; uitleg). Voorwerp: de **bommenzak** (Mira's oude mijnwerkersbommen, in de kelder van de
   vuurtoren, achter een puzzel met spiegels: licht met de boog op drie doelen). Eén gevecht: de meeuwenrovers op het
   vuurtorenbordes (vrijwillig te herhalen). Later terug: de gebarsten muur in de tempel van het Lindewoud
-  (`barst tempel`, hartstukje erachter).
+  (`barst tempelmuur`, hartstukje erachter).
 - **2b (oost, de tempel)**: de dijk naar de Getijdentempel; puzzels met **eb en vloed** (hendels die water laten
   zakken en stijgen: deuren van water), gebarsten muren (bommen), een tijdrace onder water door. Kerker met twee
   kamers en de baas **Kapitein Zoutbaard**, een verdronken zeerover die door Morgals nevel ronddoolt: hij gooit
@@ -274,7 +275,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    <speler> motor`, en `kitpvp kaart` voor plaatjes. Een nieuw eiland komt dus vanzelf in de route, als het open gaat
    met de vlag van het eiland ervoor.
 7. Bommen (2a): roep `spel.breek(p, b)` aan als een bom ontploft bij `spel.barstBij(plek)`; het Lindewoud heeft er een
-   in de tempel (`barst tempel`, met `hs:lindewoud-4` erachter). Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en
+   in de tempel (`barst tempelmuur`, met `hs:lindewoud-4` erachter). Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en
    zet de speler op `landing()`; het Lindewoud heeft er een boven de richel in de Kloof (`hs:lindewoud-3`).
 
 ## De bouwsessies (in volgorde)

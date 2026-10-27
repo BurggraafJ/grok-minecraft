@@ -14,6 +14,9 @@ import org.bukkit.inventory.ItemStack;
  */
 interface ZeldaVoorwerp {
 
+    /** De vlaggen van de voorwerpen die nog komen (ZELDA.md); een vondst kan er al op wachten ({@code Vondst.voorwerp}). */
+    java.util.List<String> LATER = java.util.List.of("bommen", "klauwhaak", "vuurstaf", "lichtpijlen");
+
     /** Kort en vast (ook de sleutel op het item). */
     String id();
 
