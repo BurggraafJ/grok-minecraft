@@ -19,21 +19,29 @@ import org.bukkit.potion.PotionEffectType;
  * reuzenpaddenstoel (schiet haar eraf met de boog, dan valt ze even versuft neer) of op de grond. Bij twee derde en
  * een derde van haar leven roept ze mosschutters op; onder een derde wordt ze sneller. Haar levensbalk (alleen haar
  * naam) zien alleen de spelers in de kamer.
+ *
+ * <p>Een andere baas is een subklasse die {@link #beweeg} (wat hij elke seconde doet), {@link #schade} (hoeveel een
+ * klap doet), {@link #boem} (een bom in zijn kamer) en {@link #geraakt} (een pijl) anders doet, met een eigen
+ * {@link #soort} en {@link #helper} (bv. {@link Zoutbaard} op eiland 2b).
  */
-final class ZeldaBaas {
+class ZeldaBaas {
 
     final String naam;
     final List<Location> toppen, grond;
     final List<ZeldaHoofdstuk.Regel> bijHelft, bijWinst;
     /** Leven (halve harten) voor één speler, en erbij voor elke speler meer. */
     double leven = 80, levenPerSpeler = 40;
-    /** Hoeveel mosschutters ze oproept bij twee derde en bij een derde van haar leven (0 = geen). */
+    /** Hoeveel helpers hij oproept bij twee derde en bij een derde van zijn leven (0 = geen). */
     int[] oproepen = {2, 2};
-    private final Random rnd = new Random();
+    /** Welke vijand de baas zelf is, en welke hij oproept. */
+    ZeldaHoofdstuk.Soort soort = ZeldaHoofdstuk.Soort.HEKS, helper = ZeldaHoofdstuk.Soort.MOSSCHUTTER;
+    BossBar.Color kleur = BossBar.Color.PURPLE;
+    int naamKleur = 0xc9a0dc;
+    final Random rnd = new Random();
 
     LivingEntity ent;
     BossBar balk;
-    private int tel, verst;
+    int tel, verst;
     private boolean opTop, helftGezegd, oproep1, oproep2;
 
     ZeldaBaas(String naam, List<Location> toppen, List<Location> grond, List<ZeldaHoofdstuk.Regel> bijHelft, List<ZeldaHoofdstuk.Regel> bijWinst) {
@@ -46,7 +54,7 @@ final class ZeldaBaas {
 
     void start(LivingEntity e) {
         ent = e;
-        balk = BossBar.bossBar(Component.text(naam, TextColor.color(0xc9a0dc)), 1f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
+        balk = BossBar.bossBar(Component.text(naam, TextColor.color(naamKleur)), 1f, kleur, BossBar.Overlay.PROGRESS);
         tel = 0;
         verst = 0;
         opTop = false;
@@ -70,7 +78,7 @@ final class ZeldaBaas {
     /**
      * Elke seconde tijdens het gevecht.
      *
-     * @return het aantal mosschutters dat ze nu oproept (0 = geen)
+     * @return het aantal helpers dat hij nu oproept (0 = geen)
      */
     int tik(ZeldaSpel spel, List<Player> in) {
         if (!leeft()) return 0;
@@ -88,19 +96,24 @@ final class ZeldaBaas {
             helftGezegd = true;
             for (Player p : in) for (ZeldaHoofdstuk.Regel r : bijHelft) spel.vertel(p, r);
         }
+        beweeg(spel, in, d);
+        return oproep;
+    }
+
+    /** Wat de baas elke seconde doet. Grauwmoer: om de paar tellen ergens anders verschijnen (een paddenstoel of de grond). */
+    void beweeg(ZeldaSpel spel, List<Player> in, float d) {
         if (verst > 0) {                                     // versuft na een treffer op de paddenstoel
             verst--;
-            return oproep;
+            return;
         }
         int om = d < 0.34f ? 5 : 7;
         if (++tel >= om) {
             tel = 0;
-            boolean top = rnd.nextInt(3) > 0 && !in.isEmpty();
+            boolean top = rnd.nextInt(3) > 0 && !in.isEmpty() && !toppen.isEmpty();
             List<Location> l = top ? toppen : grond;
             spring(l.get(rnd.nextInt(l.size())));
             opTop = top;
         }
-        return oproep;
     }
 
     private void spring(Location naar) {
@@ -124,5 +137,19 @@ final class ZeldaBaas {
         l.getWorld().playSound(l, Sound.ENTITY_WITCH_HURT, 1f, 0.6f);
         verst = 4;
         tel = 0;
+    }
+
+    /** Hoeveel een klap van {@code schade} bij deze baas doet (standaard alles). */
+    double schade(double schade) {
+        return schade;
+    }
+
+    /** Een bom ontploft in de kamer van deze baas (tijdens het gevecht). */
+    void boem(ZeldaSpel spel, Player p, Location l) {
+    }
+
+    /** De baas is verslagen (hij lost op in licht). */
+    void weg(Location l) {
+        l.getWorld().spawnParticle(Particle.END_ROD, l.clone().add(0, 1.2, 0), 40, 0.5, 0.8, 0.5, 0.05);
     }
 }

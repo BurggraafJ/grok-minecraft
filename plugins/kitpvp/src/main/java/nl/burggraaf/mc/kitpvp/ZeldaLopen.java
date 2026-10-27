@@ -16,7 +16,7 @@ import org.bukkit.World;
  * Kun je er lopen? Volgt vanaf de aanleg van een eiland alle plekken waar een speler kan staan: een stap omhoog van
  * hoogstens één blok (springen), omlaag hoogstens drie, over een gat van één blok springen, ladders en water op en neer.
  * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel, een poort voor wie iets
- * heeft, een brug die komt) tellen als open: in het spel gaan ze open. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
+ * heeft, een brug die komt, de sluizen van eb en vloed) tellen als open en het water van een getij als water: in het spel gaan ze open. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
  * kan dat er nog niet is, zoals de klauwhaak), kamers, uitdagingen, verhalen, bronnen, spiegels, bellen en de plek vóór
  * een gebarsten muur. Zo valt een plek op die de test alleen met teleporteren haalt.
  *
@@ -167,6 +167,11 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Barst b : h.barsten) l.opening(b.muur);
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels) l.opening(s.deur);
             for (ZeldaHoofdstuk.Poort p : h.poorten) l.opening(p.deur);
+            for (ZeldaHoofdstuk.Getij g : h.getijden) {                  // eb en vloed: het water telt als water (zwemmen), de deuren als open
+                for (ZeldaHoofdstuk.Deur d : g.lagen) for (int[] c : d.blokken) l.open.put(sleutel(c[0], c[1], c[2]), Material.WATER);
+                for (ZeldaHoofdstuk.Deur d : g.sluizen) l.opening(d);
+                for (ZeldaHoofdstuk.Deur d : g.vloeddeuren) l.opening(d);
+            }
         }
         Location start = e.aanlegPlek();
         l.loop(start.getBlockX(), start.getBlockY(), start.getBlockZ());
@@ -190,6 +195,8 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels)
                 for (int[] c : s.spiegels) if (!l.bij(c, 3)) niet.add(d + "spiegels " + s.id + ": spiegel op " + c[0] + "," + c[1] + "," + c[2]);
             for (ZeldaHoofdstuk.Barst b : h.barsten) if (b.voor != null && !l.bij(b.voor, 1)) niet.add(d + "voor de gebarsten muur " + b.id);
+            for (ZeldaHoofdstuk.Getij g : h.getijden)
+                for (ZeldaHoofdstuk.Getij.Hendel hd : g.hendels) if (!l.bij(new int[]{hd.x(), hd.y(), hd.z()}, 2)) niet.add(d + "getij " + g.id + ": hendel op " + hd.x() + "," + hd.y() + "," + hd.z());
         }
         return niet;
     }

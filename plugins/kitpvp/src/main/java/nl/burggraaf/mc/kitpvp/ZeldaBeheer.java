@@ -95,7 +95,7 @@ final class ZeldaBeheer {
 
     // ── plekken ─────────────────────────────────────────────────────────────────────────────
 
-    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten. */
+    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren. */
     Map<String, Location> plekken() {
         Map<String, Location> m = new LinkedHashMap<>();
         for (ZeldaEiland e : spel.eilanden) {
@@ -105,11 +105,21 @@ final class ZeldaBeheer {
                 if (!h.rust.isEmpty()) zet(m, h.id(), h.rust.get(0).plek);
                 for (ZeldaHoofdstuk.Rust r : h.rust) zet(m, r.id, r.plek);
                 for (ZeldaHoofdstuk.Kamer k : h.kamers) zet(m, k.id, k.start.midden(h.w));
-                for (ZeldaHoofdstuk.Persoon pe : h.personen) zet(m, pe.naam, pe.plek);
+                for (ZeldaHoofdstuk.Persoon pe : h.personen)                       // dezelfde persoon op twee delen (Tijmen): de tweede met het deel erbij
+                    if (m.containsKey(pe.naam.toLowerCase(Locale.ROOT))) zet(m, pe.naam + "-" + h.id(), pe.plek);
+                    else zet(m, pe.naam, pe.plek);
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) zet(m, r.id, r.gebied.midden(h.w));
                 for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) zet(m, u.id, u.start.midden(h.w));
                 for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) zet(m, sp.id, sp.gebied.midden(h.w));
                 for (ZeldaHoofdstuk.Poort po : h.poorten) zet(m, po.id, po.gebied.midden(h.w));
+                for (ZeldaHoofdstuk.Getij g : h.getijden) {
+                    zet(m, g.id, g.gebied.midden(h.w));
+                    for (int i = 0; i < g.hendels.size(); i++) {
+                        ZeldaHoofdstuk.Getij.Hendel hd = g.hendels.get(i);
+                        zet(m, "hendel" + (i + 1), new Location(h.w, hd.x() + 1.5, hd.y(), hd.z() + 0.5));
+                    }
+                }
+                for (ZeldaHoofdstuk.Barst br : h.barsten) zet(m, "muur-" + br.id, br.voor != null ? br.voor : br.muur.omvang().midden(h.w));
             }
         }
         if (spel.zee.w != null && !spel.zee.dek.isEmpty()) zet(m, "zee", spel.zee.dek.get(0));

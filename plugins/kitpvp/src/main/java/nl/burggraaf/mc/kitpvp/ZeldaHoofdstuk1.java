@@ -1822,7 +1822,20 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                         r("Lotje", "Toen de soldaten kwamen, vlogen ze allemaal weg."),
                         r("Lotje", "Nu komen ze terug. Zevenenveertig, achtenveertig…")), null)
                 .eenmalig("lotje-zilver", s -> s.heeft("e:zilverstrand"), List.of(
-                        r("Lotje", "Was je op het Zilverstrand? Zijn daar meer meeuwen?")), null);
+                        r("Lotje", "Was je op het Zilverstrand? Zijn daar meer meeuwen?")), null)
+                // een boodschap over zee (eiland 2b): een zingende schelp uit de getijdenpoelen → het derde flesje
+                .gesprek("lotje-schelp", s -> s.bezocht("e2b", 0) && s.missie("zingschelp") == 0, List.of(
+                        r("Lotje", "Brecht zegt: bij de tempel liggen zingende schelpen."),
+                        r("Lotje", "Hou je er een bij je oor, dan hoor je de zee!"),
+                        r("Lotje", "Neem je er een voor me mee?")), (spel, p, s) -> spel.missie(p, "zingschelp", 1))
+                .gesprek(null, s -> s.missie("zingschelp") == 1, List.of(r("Lotje", "Een zingende schelp! Bij de poelen van de tempel.")), null)
+                .gesprek("lotje-schelp2", s -> s.missie("zingschelp") == 2, List.of(
+                        r("Lotje", "Hij zingt! Ik hoor de zee!"),
+                        r("Lotje", "Hier, deze fles spoelde aan. Jij mag hem.")), (spel, p, s) -> {
+                    spel.missie(p, "zingschelp", ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "fles3", "Flesje", "nog een flesje bronwater");
+                });
+        missie("zingschelp", "De zingende schelp", "Zoek een zingende schelp bij de getijdenpoelen.", "Breng de schelp naar Lotje, op het Lindewoud.");
         Verhaal einde = verhaal(new Verhaal("brecht", box(360, G, -2, 369, G + 5, 2), List.of(
                 r("Brecht", "Jij joeg ze weg? Dan ben jij die van het dorp."),
                 r("Brecht", "En Grauwmoers nevel is weg. Nu kunnen we varen!"),

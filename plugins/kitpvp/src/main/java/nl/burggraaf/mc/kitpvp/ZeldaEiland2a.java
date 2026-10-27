@@ -70,7 +70,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
     @Override int versie() { return VERSIE; }
     @Override String deelId() { return "zelda-e2a"; }
 
-    /** Zolang de Getijdentempel (eiland 2b) er nog niet is: wie alles deed, hoort dat de tempel nog komt. */
+    /** Zolang de Getijdentempel (eiland 2b) er nog niet is: wie alles deed, hoort dat de tempel nog komt (het laatste deel telt). */
     @Override
     String wacht() {
         return "De tempel komt pas bij eb boven. Nog even geduld.";
@@ -547,7 +547,10 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 r("Wiske", "Kijk, op de kaap: een vuurtoren zonder licht."))));
         Persoon brecht = persoon(new Persoon("Brecht", plek(1135, G + 1, -215, 135f), beroep("fisherman"), List.of(
                 r("Brecht", "Zeg maar waarheen. De Zilvermeeuw ligt klaar."))));
-        brecht.gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
+        brecht.eenmalig("brecht-toppen", s -> s.heeft("baken2"), List.of(
+                        r("Brecht", "Het baken brandt! Nu durf ik het noorden in."),
+                        r("Brecht", "Naar de Witte Toppen. Zodra het ijs breekt.")), null)
+                .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
     }
 
     private static Villager.Profession beroep(String id) {
@@ -650,9 +653,19 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                         r("Teun", "Morgal doofde ze. Sindsdien hangt er nevel."),
                         r("Teun", "Mira van de vuurtoren weet waar het eerste ligt.")), null)
                 .gesprek(null, s -> !s.heeft("k:bordes"), List.of(r("Teun", "Rovers op het bordes. Mira zit opgesloten.")), null)
+                // de Getijdentempel (eiland 2b): Teun voer als jongen met Zoutbaard, en bewaart zijn ankersleutel
+                .gesprek("teun-sleutel", s -> (s.heeft("v:ankerpoort") || s.heeft("g:lorre-1")) && !s.heeft("ankersleutel"), List.of(
+                        r("Teun", "Zoutbaard? Met hem voer ik, als jongen."),
+                        r("Teun", "Hij gaf me zijn sleutel. «Tot iemand me komt halen.»"),
+                        r("Teun", "Hij had altijd een ton buskruit bij zich."),
+                        r("Teun", "Eén vonk erin, en hij lag plat. Pas goed op, jong.")),
+                        (spel, p, s) -> spel.beloon(p, "ankersleutel", "Ankersleutel", "opent de Ankerpoort"))
                 .eenmalig("teun-licht", s -> s.heeft(id()), List.of(
                         r("Teun", "De vuurtoren brandt weer. Dat ik dat nog zie."),
-                        r("Teun", "De bundel wijst naar de tempel. Bij eb, jong.")), null);
+                        r("Teun", "De bundel wijst naar de tempel. Bij eb, jong.")), null)
+                .eenmalig("teun-vrij", s -> s.heeft("k:draaikolk"), List.of(
+                        r("Teun", "Je hebt Zoutbaard bevrijd? Dan heeft hij nu rust."),
+                        r("Teun", "Dank je, jong. Dat had hij verdiend.")), null);
         hendrik();
         tijmen();
     }
@@ -880,7 +893,10 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 .eenmalig("mira-2", s -> !s.heeft("zeelicht"), List.of(
                         r("Mira", "Mijn bommen! Wees er zuinig op."),
                         r("Mira", "De meeuwen nestelen op de Meeuwenrots, in de duinen.")), null)
-                .gesprek(null, s -> !s.heeft("zeelicht"), List.of(r("Mira", "De Meeuwenrots, in de duinen. Zoek wat glimt.")), null);
+                .gesprek(null, s -> !s.heeft("zeelicht"), List.of(r("Mira", "De Meeuwenrots, in de duinen. Zoek wat glimt.")), null)
+                .eenmalig("mira-baken", s -> s.heeft("baken2"), List.of(
+                        r("Mira", "Twee lichten op zee: het mijne, en het baken!"),
+                        r("Mira", "Brecht wil naar het noorden. Naar de Witte Toppen.")), null);
     }
 
     // ── 6. de kelder: spiegels, de bommenzak, de gebarsten wand ─────────────────────────────

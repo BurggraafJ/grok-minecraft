@@ -338,4 +338,38 @@ class ZeldaRegelsTest {
         assertEquals("de Gloedberg", ZeldaRegels.inZin("De Gloedberg"));
         assertEquals("Nachtrots", ZeldaRegels.inZin("Nachtrots"));
     }
+
+    @Test
+    void zoutbaardIsTaaiTotZijnTonKnalt() {
+        assertTrue(ZeldaRegels.zoutbaardSchade(10, false) < 5, "zeepokken: een klap doet weinig");
+        assertTrue(ZeldaRegels.zoutbaardSchade(10, true) > 10, "versuft: een klap doet meer");
+        assertEquals(0, ZeldaRegels.zoutbaardSchade(0, true), 1e-9);
+    }
+
+    @Test
+    void getijVultVanOnderEnZaktVanBoven() {
+        assertArrayEquals(new int[]{0, 1, 2, 3, 4}, ZeldaRegels.getijVolgorde(5, true), "vloed: eerst de onderste laag");
+        assertArrayEquals(new int[]{4, 3, 2, 1, 0}, ZeldaRegels.getijVolgorde(5, false), "eb: eerst de bovenste laag weg");
+        assertEquals(0, ZeldaRegels.getijVolgorde(0, true).length);
+    }
+
+    @Test
+    void deGetijdenzaalHeeftEenGalerijEnEenBak() {
+        assertTrue(ZeldaEiland2b.galerij(-10, 0), "de westkant (bij de poort) is galerij");
+        assertTrue(ZeldaEiland2b.galerij(0, -10), "de noordkant is galerij");
+        assertFalse(ZeldaEiland2b.galerij(0, 0), "het midden is de bak");
+        assertFalse(ZeldaEiland2b.galerij(10, 0), "de oostkant (de drempel) ligt los: alleen zwemmend te halen");
+        assertFalse(ZeldaEiland2b.galerij(8, -10), "de noordoosthoek is bak (daar komt de vloeddeur uit)");
+    }
+
+    @Test
+    void eenStukjeOpnieuwOpEenOpenEiland() {
+        ZeldaHoofdstuk.Rust a = new ZeldaHoofdstuk.Rust("a", "A", null, null, java.util.List.of()), b = new ZeldaHoofdstuk.Rust("b", "B", null, null, java.util.List.of());
+        ZeldaHoofdstuk.Verhaal v1 = new ZeldaHoofdstuk.Verhaal("een", null, java.util.List.of()), v2 = new ZeldaHoofdstuk.Verhaal("twee", null, java.util.List.of());
+        ZeldaHoofdstuk.Getij g = new ZeldaHoofdstuk.Getij("getij", "Zaal", null, false);
+        java.util.List<Object> volgorde = java.util.List.of(a, v1, new ZeldaHoofdstuk.Tij(g, null, true), b, v2);
+        assertEquals(java.util.List.of("v:een"), ZeldaRegels.opnieuw(volgorde, a, true), "een getij in de volgorde stoort niet");
+        assertFalse(g.bezig());
+        assertFalse(g.vloed, "een getij begint in rust");
+    }
 }

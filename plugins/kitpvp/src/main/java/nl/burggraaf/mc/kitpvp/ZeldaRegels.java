@@ -217,6 +217,24 @@ final class ZeldaRegels {
         return new Straal(punten, false);
     }
 
+    /**
+     * Hoeveel een klap doet bij Kapitein Zoutbaard: zijn jas zit vol zeepokken (een derde), maar versuft (een bom in zijn
+     * ton) anderhalf keer zoveel.
+     */
+    static double zoutbaardSchade(double schade, boolean versuft) {
+        return schade * (versuft ? 1.5 : 0.35);
+    }
+
+    /**
+     * Eb en vloed: in welke volgorde de lagen van een bak omgaan ({@code n} lagen, 0 = de onderste). Naar vloed vult hij
+     * van onder naar boven, naar eb zakt het water van boven naar onder.
+     */
+    static int[] getijVolgorde(int n, boolean naarVloed) {
+        int[] v = new int[n];
+        for (int i = 0; i < n; i++) v[i] = naarVloed ? i : n - 1 - i;
+        return v;
+    }
+
     /** Een eilandnaam midden in een zin: «Het Lindewoud» → «het Lindewoud». */
     static String inZin(String naam) {
         return naam.startsWith("Het ") ? "het " + naam.substring(4) : naam.startsWith("De ") ? "de " + naam.substring(3) : naam;

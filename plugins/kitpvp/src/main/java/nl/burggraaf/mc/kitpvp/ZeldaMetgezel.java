@@ -34,6 +34,8 @@ final class ZeldaMetgezel {
 
     private final Plugin plugin;
     private final Map<UUID, Fee> feeen = new HashMap<>();
+    /** Hoe fel ze is: het aantal bakens dat weer brandt (elk baken maakt haar feller: meer glans, iets groter). */
+    java.util.function.ToIntFunction<Player> licht = p -> 0;
     private long tik;
 
     ZeldaMetgezel(Plugin plugin) {
@@ -107,8 +109,13 @@ final class ZeldaMetgezel {
             if (f.wijsNaar != null && nu < f.wijsTot) kijk = f.wijsNaar.toVector().subtract(l.toVector());
             if (kijk.lengthSquared() > 0.01) l.setDirection(kijk);
             f.ent.teleport(l);
+            int fel = Math.min(3, licht.applyAsInt(p));
             if (f.wijsNaar != null && nu < f.wijsTot && tik % 2 == 0) p.spawnParticle(Particle.END_ROD, l, 1, 0.02, 0.02, 0.02, 0);
-            else if (tik % 40 == 0) p.spawnParticle(Particle.END_ROD, l.clone().add(0, 0.3, 0), 1, 0.1, 0.1, 0.1, 0.005);
+            else if (tik % (40 >> fel) == 0) p.spawnParticle(Particle.END_ROD, l.clone().add(0, 0.3, 0), 1, 0.1 + 0.05 * fel, 0.1, 0.1 + 0.05 * fel, 0.005);
+            if (tik % 40 == 0) {                                            // feller = iets groter
+                var sc = f.ent.getAttribute(Attribute.SCALE);
+                if (sc != null && sc.getBaseValue() != 0.8 + 0.1 * fel) sc.setBaseValue(0.8 + 0.1 * fel);
+            }
         }
         for (var it = feeen.entrySet().iterator(); it.hasNext(); ) {
             var e = it.next();

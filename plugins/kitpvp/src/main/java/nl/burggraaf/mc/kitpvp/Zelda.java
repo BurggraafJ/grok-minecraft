@@ -32,6 +32,8 @@ final class Zelda implements Modus {
     private final KitPvP plugin;
     /** De eilanden in de volgorde van het verhaal (zie ZELDA.md). Een nieuw eiland = één regel erbij. */
     final List<ZeldaEiland> EILANDEN;
+    /** Eilanden die eraan komen (nog niet gebouwd): de Witte Toppen gaan open met het Getijdenbaken (zie ZELDA.md). */
+    final List<ZeldaEiland.Komt> KOMT = List.of(new ZeldaEiland.Komt("witte-toppen", "De Witte Toppen", Material.SNOW_BLOCK, "baken2"));
     /** Alle delen van alle eilanden. */
     final List<ZeldaHoofdstuk> HOOFDSTUKKEN;
     final ZeldaZee zee;
@@ -41,7 +43,7 @@ final class Zelda implements Modus {
         this.plugin = plugin;
         EILANDEN = List.of(
                 new ZeldaEiland("lindewoud", "Het Lindewoud", Material.OAK_SAPLING, List.of(new ZeldaHoofdstuk1(plugin)), "haven", null, "h1", List.of()),
-                new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(new ZeldaEiland2a(plugin)), "steiger", "h1", "baken2", List.of(
+                new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(new ZeldaEiland2a(plugin), new ZeldaEiland2b(plugin)), "steiger", "h1", "baken2", List.of(
                         ZeldaHoofdstuk.r("Brecht", "Op het Zilverstrand woont mijn zus Mira."),
                         ZeldaHoofdstuk.r("Brecht", "Zij past op de vuurtoren. Al twintig jaar."),
                         ZeldaHoofdstuk.r("Wiske", "Een vuurtoren wijst de weg. Precies wat we zoeken!"))));
@@ -137,7 +139,7 @@ final class Zelda implements Modus {
         YamlConfiguration gebouwd = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gebouwd.yml"));
         Bouwer b = plugin.bouwer();
         boolean klaar = b == null || !b.bezig();
-        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0;
+        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0;
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
             String hid = "zelda " + h.id();
             if (klaar && gebouwd.getInt("delen." + h.deelId(), -1) != h.versie())
@@ -223,6 +225,30 @@ final class Zelda implements Modus {
                 if (po.mag.test(new ZeldaVoortgang.Stand())) fouten.add(hid + ": poort " + po.id + " gaat voor iedereen open");
                 if (klaar && !po.deur.isOpen && !deurKlopt(h, po.deur, false)) fouten.add(hid + ": poort " + po.id + " staat open");
             }
+            // eb en vloed (eiland 2b): in rust zoals het hoort (water, sluizen, vloeddeuren), hendels op hun plek, niet voor iedereen
+            for (ZeldaHoofdstuk.Getij g : h.getijden) {
+                getijden++;
+                if (!inGebied(g.gebied) || g.lagen.isEmpty() || g.hendels.isEmpty()) fouten.add(hid + ": getij " + g.id + " zonder lagen of hendels, of buiten het gebied");
+                for (ZeldaHoofdstuk.Getij.Hendel hd : g.hendels) {
+                    if (hd.mag().test(new ZeldaVoortgang.Stand())) fouten.add(hid + ": getij " + g.id + ": een hendel werkt voor iedereen");
+                    if (klaar && h.w.getBlockAt(hd.x(), hd.y(), hd.z()).getType() != Material.LEVER) fouten.add(hid + ": getij " + g.id + ": geen hendel op " + hd.x() + "," + hd.y() + "," + hd.z());
+                }
+                if (!klaar || g.bezig() || g.vloed != g.rustVloed) continue;
+                for (ZeldaHoofdstuk.Deur l : g.lagen)
+                    if (!deurKlopt(h, l, !g.rustVloed)) fouten.add(hid + ": getij " + g.id + ": een laag staat niet in rust (" + (g.rustVloed ? "vloed" : "eb") + ")");
+                for (ZeldaHoofdstuk.Deur d : g.sluizen) if (!deurKlopt(h, d, !g.rustVloed)) fouten.add(hid + ": getij " + g.id + ": een sluis staat verkeerd");
+                for (ZeldaHoofdstuk.Deur d : g.vloeddeuren) if (!deurKlopt(h, d, g.rustVloed)) fouten.add(hid + ": getij " + g.id + ": een vloeddeur staat verkeerd");
+            }
+            // een baas met kruittonnen (Zoutbaard): de tonnen staan er als er niet gevochten wordt, en hij kan bij elke ton staan
+            for (ZeldaHoofdstuk.Kamer k : h.kamers) {
+                if (!(k.baas instanceof Zoutbaard zb)) continue;
+                for (int i = 0; i < zb.tonnen.size(); i++) {
+                    int[] t = zb.tonnen.get(i);
+                    if (!k.binnen.in(t[0], t[1], t[2]) || !k.binnen.in(zb.grond.get(i))) fouten.add(hid + ": kamer " + k.id + ": ton " + i + " ligt niet in de kamer");
+                    if (klaar && k.fase == ZeldaHoofdstuk.Fase.RUST && h.w.getBlockAt(t[0], t[1], t[2]).getType() != Material.BARREL) fouten.add(hid + ": kamer " + k.id + ": ton " + i + " is weg");
+                    if (klaar && (!vrij(zb.grond.get(i)) || !zb.grond.get(i).clone().add(0, -1, 0).getBlock().getType().isSolid())) fouten.add(hid + ": kamer " + k.id + ": plek bij ton " + i + " niet vrij");
+                }
+            }
             for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) {
                 haken++;
                 if (!h.speelgebied.in(hp.landing())) fouten.add(hid + ": haakpunt " + hp.id() + " buiten het speelgebied");
@@ -303,6 +329,8 @@ final class Zelda implements Modus {
                 if (!vrij(l) || !l.clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add("zelda zee: dekplek " + xyz(l) + " niet vrij of zonder vloer");
         }
         for (ZeldaMuziek.Lied l : ZeldaMuziek.alle()) if (l.lengte() == 0) fouten.add("zelda: lied " + l.id() + " is leeg");
+        for (ZeldaEiland.Komt k : KOMT)                                  // een eiland dat eraan komt: nog niet echt gebouwd
+            if (!eids.add(k.id())) fouten.add("zelda: eiland " + k.id() + " staat ook bij KOMT (haal het daar weg)");
         java.util.Set<Integer> vakken = new java.util.HashSet<>();
         for (ZeldaVoorwerp v : spel.voorwerpen) if (!vakken.add(v.vak()) || v.vak() < 2 || v.vak() > 6) fouten.add("zelda: voorwerp " + v.id() + " in vak " + v.vak() + " (dubbel of buiten 2 … 6)");
         // opslag: schrijven en teruglezen in een proefbestand
@@ -343,7 +371,7 @@ final class Zelda implements Modus {
         info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
                 + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
                 + " personen=" + personen + " missies=" + missies + " hartstukjes=" + stukjes + " barsten=" + barsten + " haakpunten=" + haken
-                + " spiegels=" + spieg + " poorten=" + poorten + " voorwerpen=" + spel.voorwerpen.size()
+                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
     }

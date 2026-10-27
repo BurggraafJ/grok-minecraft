@@ -61,7 +61,7 @@ abstract class ZeldaHoofdstuk {
     }
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
-    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER }
+    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -362,6 +362,7 @@ abstract class ZeldaHoofdstuk {
         org.bukkit.entity.EntityType soort = org.bukkit.entity.EntityType.VILLAGER;
         Villager.Type streek;                               // kleding van een dorpeling (null = vlakte)
         boolean kind;                                       // klein (een kind)
+        java.util.function.Consumer<org.bukkit.entity.Entity> uiterlijk;   // na het verschijnen (bv. de kleur van een papegaai)
         LivingEntity ent;
 
         Persoon(String naam, Location plek, Villager.Profession beroep, List<Regel> praat) {
@@ -470,6 +471,49 @@ abstract class ZeldaHoofdstuk {
     /** In de volgorde van het pad: hier praat je met {@code wie} (de test praat tot hij niets nieuws meer heeft). */
     record Praten(Persoon wie) {}
 
+    /**
+     * Eb en vloed in een bak (een zaal, een poel): een hendel omzetten laat het water laag voor laag zakken of stijgen.
+     * {@code lagen} van onder naar boven (dicht = water, open = lucht). Een {@code sluis} is open bij eb (bij vloed drukt
+     * het water hem dicht), een {@code vloeddeur} alleen bij vloed. Wie aan een hendel mag trekken staat in {@link Hendel#mag}
+     * (bv. de maanparel van Tijmen); {@code onthoud} = de vlag voor wie hem omzette. Een minuut niemand in de buurt = terug
+     * naar de rust ({@code rustVloed}). {@code kitpvp zelda lopen} telt het water als water (zwemmen) en alle deuren als open.
+     */
+    static final class Getij {
+        /** Een hendel (blok {@link Material#LEVER}): wie mag eraan trekken, en wat Wiske zegt als het (nog) niet mag. */
+        record Hendel(int x, int y, int z, Predicate<ZeldaVoortgang.Stand> mag, Regel nee) {}
+
+        final String id, naam;
+        final Box gebied;
+        final List<Deur> lagen = new ArrayList<>(), sluizen = new ArrayList<>(), vloeddeuren = new ArrayList<>();
+        final List<Hendel> hendels = new ArrayList<>();
+        final boolean rustVloed;
+        String onthoud;
+        // tijdens het spel
+        boolean vloed;                                      // zo staat hij (of: daar gaat hij heen, als hij {@link #bezig} is)
+        int laag = -1;                                      // de volgende laag die omgaat (-1 = stil)
+        long volgende, leegSinds;
+
+        Getij(String id, String naam, Box gebied, boolean rustVloed) {
+            this.id = id;
+            this.naam = naam;
+            this.gebied = gebied;
+            this.rustVloed = rustVloed;
+            this.vloed = rustVloed;
+        }
+
+        boolean bezig() {
+            return laag >= 0;
+        }
+
+        Hendel hendel(int x, int y, int z) {
+            for (Hendel h : hendels) if (h.x() == x && h.y() == y && h.z() == z) return h;
+            return null;
+        }
+    }
+
+    /** In de volgorde van het pad: hier zet je het getij om (de test trekt aan de hendel, tot het {@code vloed} is). */
+    record Tij(Getij g, Getij.Hendel h, boolean vloed) {}
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -486,6 +530,7 @@ abstract class ZeldaHoofdstuk {
     final List<Haakpunt> haakpunten = new ArrayList<>();
     final List<Spiegels> spiegels = new ArrayList<>();
     final List<Poort> poorten = new ArrayList<>();
+    final List<Getij> getijden = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -567,12 +612,14 @@ abstract class ZeldaHoofdstuk {
         for (Object o : volgorde) {
             String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
-                    : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id : null;
+                    : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id
+                    : o instanceof Getij g ? g.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
         for (Persoon p : personen) if (p.naam.equals(id)) return p;
         for (Barst b : barsten) if (b.id.equals(id)) return b;
+        for (Getij g : getijden) if (g.id.equals(id)) return g;
         return null;
     }
 
@@ -590,6 +637,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Persoon p) return p.plek;
         if (o instanceof Barst b) return b.muur.omvang().midden(w);
         if (o instanceof Poort po) return po.gebied.midden(w);
+        if (o instanceof Getij g) return g.gebied.midden(w);
         return null;
     }
 
@@ -624,6 +672,7 @@ abstract class ZeldaHoofdstuk {
         haakpunten.clear();
         spiegels.clear();
         poorten.clear();
+        getijden.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -654,6 +703,19 @@ abstract class ZeldaHoofdstuk {
         poorten.add(p);
         volgorde.add(p);
         return p;
+    }
+
+    /** Een bak met eb en vloed (niet in de volgorde: zet hem om met {@link #tij}). */
+    protected Getij getij(Getij g) {
+        getijden.add(g);
+        return g;
+    }
+
+    /** Op dit punt van het pad zet je het getij om met hendel {@code h} (naar vloed of eb). */
+    protected Tij tij(Getij g, Getij.Hendel h, boolean vloed) {
+        Tij t = new Tij(g, h, vloed);
+        volgorde.add(t);
+        return t;
     }
 
     /** Op dit punt van het pad praat je met {@code p} (bv. de wegwijzer die je verder stuurt). */

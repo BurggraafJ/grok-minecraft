@@ -22,6 +22,13 @@ import org.bukkit.Material;
 record ZeldaEiland(String id, String naam, Material icoon, List<ZeldaHoofdstuk> delen, String aanleg, String openNa, String klaar,
                    List<ZeldaHoofdstuk.Regel> overtocht) {
 
+    /**
+     * Een eiland dat eraan komt maar nog niet gebouwd is: zodra je {@code openNa} hebt (een baken brandt), staat het grijs
+     * op de zeekaart en bij Brecht («nog even geduld»), en zegt Wiske dat jullie er straks heen varen. De sessie die het
+     * eiland bouwt, haalt het hier weg en zet het echte eiland in {@code Zelda.EILANDEN}.
+     */
+    record Komt(String id, String naam, Material icoon, String openNa) {}
+
     ZeldaEiland {
         if (id == null || !id.matches("[a-z][a-z0-9-]*")) throw new IllegalArgumentException("ongeldig eiland-id: " + id);
         if (delen.isEmpty()) throw new IllegalArgumentException(id + ": geen delen");

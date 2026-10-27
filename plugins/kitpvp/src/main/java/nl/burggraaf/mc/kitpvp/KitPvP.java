@@ -1066,6 +1066,16 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.boven(w, map, "zelda-e2a-duinen", 1100, -416, 1222, -340, g - 2, zg + 24, 6));
         f.add(Kaart.voor(w, map, "zelda-e2a-rots-zij", 0, -1, -376, 1180, 1216, g, zg + 24, 30, 10));
         f.add(Kaart.voor(w, map, "zelda-e2a-duinen-zij", 0, -1, -345, 1096, 1224, g, zg + 24, 80, 4));
+        // eiland 2b, de Getijdentempel: alles van boven, het plein en de tempel, de zaal en de kelders (onder het dak),
+        // de Draaikolk, de toren van opzij, het wrak, de poelen (en de gang eronder)
+        f.add(Kaart.boven(w, map, "zelda-e2b-boven", ZeldaEiland2b.X1, -430, ZeldaEiland2b.X2, -262, g - 2, zg + 30, 3));
+        f.add(Kaart.boven(w, map, "zelda-e2b-tempel", 1256, -362, 1358, -312, g - 2, zg + 11, 6));
+        f.add(Kaart.boven(w, map, "zelda-e2b-kelders", 1284, -362, 1322, -316, g, zg - 2, 12));
+        f.add(Kaart.voor(w, map, "zelda-e2b-zaal-zij", 0, 1, -330, 1284, 1358, g, zg + 34, 40, 6));
+        f.add(Kaart.voor(w, map, "zelda-e2b-kelders-zij", 1, 0, 1300, -362, -316, g, zg + 4, 30, 10));
+        f.add(Kaart.boven(w, map, "zelda-e2b-wrak", 1296, -416, 1338, -392, g - 2, zg + 14, 10));
+        f.add(Kaart.boven(w, map, "zelda-e2b-poelen", 1270, -300, 1330, -268, g - 2, zg + 8, 8));
+        f.add(Kaart.voor(w, map, "zelda-e2b-duik-zij", 0, 1, -284, 1276, 1326, g, zg + 4, 6, 10));
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;

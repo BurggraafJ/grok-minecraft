@@ -131,6 +131,16 @@ final class ZeldaTest {
                         stil();
                     }, 2, () -> true, 1);
         }
+        // een baken dat brandt kondigt het volgende eiland aan: grijs op de kaart («nog even geduld»), en Wiske weet ervan
+        if (alles) for (ZeldaEiland.Komt k : z.KOMT) stap("aangekondigd: " + k.id(), () -> {
+            stil();
+            z.spel.kaart(p);
+            boolean staat = menuHeeft("komt:" + k.id());
+            p.closeInventory();
+            moet(staat == stand().heeft(k.openNa()), k.naam() + (staat ? " staat al op de kaart zonder " : " staat niet op de kaart met ") + k.openNa());
+            moet(!stand().heeft(k.openNa()) || z.spel.komt(stand()) != null, "Wiske weet niet dat " + k.naam() + " eraan komt");
+            stil();
+        }, 2, () -> true, 1);
         // later terug: met een nieuw voorwerp (bommen) naar een eerder eiland varen (via de kaart) en daar halen wat nu kan
         if (alles) for (ZeldaEiland e : z.EILANDEN) {
             List<ZeldaHoofdstuk.Vondst> nu = new ArrayList<>();
@@ -218,6 +228,22 @@ final class ZeldaTest {
                     if (po.deur.isOpen) z.spel.herstel(po);
                     p.teleport(vrij(po.gebied.midden(h.w).add(0, 1, 0)));
                 }, 8, () -> po.deur.isOpen, 40);
+            } else if (o instanceof ZeldaHoofdstuk.Tij t) {                   // eb of vloed: een echte klik op de hendel
+                ZeldaHoofdstuk.Getij g = t.g();
+                stap("getij " + g.id + (t.vloed() ? " vloed" : " eb"), () -> {
+                    if (g.bezig() || g.vloed == t.vloed()) z.spel.zetGetij(g, !t.vloed(), true);   // eerst de andere kant op
+                    hendelKlik(h, g, t.h());
+                }, 10, () -> !g.bezig() && g.vloed == t.vloed(), 120);
+                stap("getij " + g.id + " klopt", () -> {
+                    for (ZeldaHoofdstuk.Deur l : g.lagen) {
+                        int[] c = l.blokken.get(0);
+                        Material m = h.w.getBlockAt(c[0], c[1], c[2]).getType();
+                        moet(m == (t.vloed() ? Material.WATER : Material.AIR), "getij " + g.id + ": laag op hoogte " + c[1] + " is " + m);
+                    }
+                    for (ZeldaHoofdstuk.Deur d : g.sluizen) moet(d.isOpen != t.vloed(), "getij " + g.id + ": sluis " + (d.isOpen ? "open" : "dicht"));
+                    for (ZeldaHoofdstuk.Deur d : g.vloeddeuren) moet(d.isOpen == t.vloed(), "getij " + g.id + ": vloeddeur " + (d.isOpen ? "open" : "dicht"));
+                    if (g.onthoud != null) moet(stand().heeft(g.onthoud), "getij " + g.id + ": " + g.onthoud + " niet onthouden");
+                }, 2, () -> true, 1);
             } else if (o instanceof ZeldaHoofdstuk.Kamer k && k.alleenBel) {  // een oefenplek: rustig, tot je de bel luidt
                 kamerGehad = true;
                 stap("kamer " + k.id + " rustig", () -> {
@@ -244,6 +270,25 @@ final class ZeldaTest {
                     if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
                     p.teleport(k.start.midden(h.w).add(0, 1, 0));
                 }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+                if (k.baas instanceof Zoutbaard zb) stap("bom in de ton van " + zb.naam, () -> {     // een echte bom in de ton waar hij bij staat
+                    moet(stand().heeft("bommen"), "geen bommen voor " + zb.naam);
+                    var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    if (max != null) p.setHealth(max.getValue());
+                    zb.tel = -100;                                                     // even niet springen
+                    int[] t = zb.tonnen.get(zb.bij);
+                    Location ton = new Location(h.w, t[0] + 0.5, t[1] + 0.5, t[2] + 0.5);
+                    org.bukkit.util.Vector naarMidden = k.start.midden(h.w).toVector().subtract(ton.toVector()).setY(0).normalize();
+                    Location voor = vrij(ton.clone().add(naarMidden.multiply(3.2)).add(0, 0.5, 0));
+                    voor.setDirection(ton.toVector().subtract(voor.toVector().add(new org.bukkit.util.Vector(0, 1.62, 0))));
+                    p.teleport(voor);
+                    p.setCooldown(ZeldaSpel.Bommen.ITEM, 0);
+                    z.spel.voorwerp("bommen").gebruik(z.spel, p, null);
+                }, 50, () -> zb.versuft > 0, 60);
+                if (k.baas instanceof Zoutbaard zb) stap(zb.naam + " versuft", () -> {
+                    int[] t = zb.tonnen.get(zb.bij);
+                    moet(h.w.getBlockAt(t[0], t[1], t[2]).getType() == Material.AIR, "de ton is niet gesprongen");
+                    moet(zb.schade(10) > 10, zb.naam + ": versuft doet een klap niet meer pijn");
+                }, 2, () -> true, 1);
                 if (k.baas != null) stap("baas " + k.baas.naam, () -> {
                     moet(k.baas.leeft() && k.baas.balk != null, "baas " + k.baas.naam + " is er niet");
                     if (k.baas.leeft()) k.baas.ent.setHealth(k.baas.ent.getHealth() * 0.55);
@@ -315,6 +360,26 @@ final class ZeldaTest {
             }
         }
         return alles;
+    }
+
+    /** Rechtsklik op een hendel van het getij, zoals een speler (vanaf de kant waar je staat). */
+    private void hendelKlik(ZeldaHoofdstuk h, ZeldaHoofdstuk.Getij g, ZeldaHoofdstuk.Getij.Hendel hd) {
+        p.teleport(vrij(new Location(h.w, hd.x() - 0.5, hd.y(), hd.z() + 0.5)));
+        var e = new org.bukkit.event.player.PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
+                p.getInventory().getItemInMainHand(), h.w.getBlockAt(hd.x(), hd.y(), hd.z()), org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND);
+        z.spel.onKlik(e);
+        moet(e.isCancelled(), "getij " + g.id + ": de hendel reageert niet op een klik");
+    }
+
+    /** Staat er in het open Zelda-menu een item met deze soort? */
+    private boolean menuHeeft(String soort) {
+        var view = p.getOpenInventory();
+        if (!(view.getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu)) return false;
+        for (int i = 0; i < view.getTopInventory().getSize(); i++) {
+            var it = view.getTopInventory().getItem(i);
+            if (it != null && it.hasItemMeta() && soort.equals(it.getItemMeta().getPersistentDataContainer().get(z.spel.itemKey, org.bukkit.persistence.PersistentDataType.STRING))) return true;
+        }
+        return false;
     }
 
     /** Rechtsklik op de bel van een kamer, zoals een speler (vanuit het midden van de kamer). */
@@ -629,6 +694,33 @@ final class ZeldaTest {
                 stand().wis(v.vlag);
                 sp.uitrusten(p, stand());
                 stil();
+            }, 2, () -> true, 1);
+        }
+        ZeldaHoofdstuk.Getij getij = null;
+        for (ZeldaHoofdstuk d : z.HOOFDSTUKKEN) if (getij == null && !d.getijden.isEmpty()) getij = d.getijden.get(0);
+        if (getij != null) {
+            ZeldaHoofdstuk.Getij g = getij;
+            ZeldaHoofdstuk.Getij.Hendel hd = g.hendels.get(0);
+            stap("getij: vast", () -> {                                          // zonder wat ervoor nodig is: hij zit vast
+                if (g.vloed != g.rustVloed) z.spel.zetGetij(g, g.rustVloed, true);
+                stil();
+                z.spel.trek(p, g, hd);
+                moet(!g.bezig() && g.vloed == g.rustVloed, "getij: de hendel ging om zonder " + g.id);
+                moet(rij().contains(hd.nee().tekst()), "getij: Wiske zegt niet waarom hij vastzit: " + rij());
+                stil();
+            }, 2, () -> true, 1);
+            stap("getij: om", () -> {
+                for (String v : new String[]{"maanparel", "r:getij"}) stand().zet(v);
+                moet(hd.mag().test(stand()), "getij: hendel mag nog steeds niet");
+                z.spel.trek(p, g, hd);
+                moet(g.bezig() && g.vloed != g.rustVloed, "getij: de hendel gaat niet om");
+            }, 5, () -> !g.bezig(), 100);
+            stap("getij: water", () -> {
+                int[] c = g.lagen.get(g.lagen.size() - 1).blokken.get(0);
+                Material m = z.zee.w.getBlockAt(c[0], c[1], c[2]).getType();
+                moet(m == (g.vloed ? Material.WATER : Material.AIR), "getij: bovenste laag is " + m);
+                z.spel.zetGetij(g, g.rustVloed, true);
+                for (String v : new String[]{"maanparel", "r:getij"}) stand().wis(v);
             }, 2, () -> true, 1);
         }
         ZeldaEiland e = h.eiland;
