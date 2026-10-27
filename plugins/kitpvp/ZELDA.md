@@ -283,7 +283,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | harnas | `ZeldaSpel.harnas` | vlaggen `harnas1` … `harnas4`, zichtbaar, met versiering vanaf trap 3 |
 | personen | `ZeldaHoofdstuk.Persoon` + `Gesprek` | gesprek per voorwaarde (eerste dat klopt), `Actie` daarna (missie, beloning); glinstert zacht als er iets nieuws is; elk wezen kan (dorpeling met streek, of `soort`) |
 | zijmissies | `ZeldaHoofdstuk.Missie`, `spel.missie`, `spel.beloon` | stappen 1 … n, `KLAAR`; staan op de kaart onder «Opdrachten» en in `/hint` |
-| hint | `spel.hint`, `/hint`, klik op Wiske | doelen in volgorde; tweede keer binnen 2 min = `verder` + Wiske wijst; geen doel = zijmissie of «verder varen»; zelf aanbieden na 6 min zonder voortgang |
+| hint | `spel.hint`, `/hint`, klik op Wiske | doelen in volgorde; tweede keer binnen 2 min = `verder` + Wiske wijst; geen doel = zijmissie, «verder varen», iemand met nieuws, iets dat je met een nieuw voorwerp kunt halen (hier of op een ander eiland: «vaar er eens heen»), `wacht()`; zelf aanbieden na 6 min zonder voortgang |
 | uitleg | `Verhaal.uitleg`, kaart «Uitleg: aan/uit» | uitleg overslaan; `Kamer.tips` na doodgaan |
 | opnieuw | kaart: rechtsklik op een zielvuur | vergeet `v:`/`r:` na die rustplaats, reist erheen |
 | kaart | `spel.kaart` | zielvuren van dit eiland, eilanden (varen), opdrachten, harten, harnas, flesjes, uitleg, hub |

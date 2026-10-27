@@ -140,8 +140,10 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   of «nog even geduld» als er nog geen ander eiland is.
 - **Wiske**: een kleine fee naast je schouder; ze komt voor je zweven als ze praat. **Klik op haar of `/hint`**: eerst
   een duwtje (het eerste doel van het eiland dat nog niet klaar is), binnen twee minuten nog eens = wat je moet doen en
-  ze vliegt even die kant op. Geen doel meer = je zijmissies, «verder varen», of wie er iets nieuws te vertellen heeft
-  («Kees wil je iets vertellen», nog eens = ze wijst). Zes minuten zonder voortgang: ze biedt één keer hulp aan.
+  ze vliegt even die kant op. Geen doel meer = je zijmissies, «verder varen», wie er iets nieuws te vertellen heeft
+  («Kees wil je iets vertellen», nog eens = ze wijst), wat je met een nieuw voorwerp nu kunt halen (hier, of «Op het
+  Lindewoud kun je nu iets halen»), en anders wat het eiland nog laat wachten (`wacht()`, bv. «nog even geduld»). Zes
+  minuten zonder voortgang: ze biedt één keer hulp aan.
 - **Huisdier**: vlag `dier:<soort>`; de eerste keer kies je een naam (klein menu). Loopt mee, zit als je stilstaat,
   snuffelt verborgen vondsten op (loopt erheen en gaat erbij zitten). Onkwetsbaar, vecht niet.
 - **Tekst**: alles op **één plek**, de actiebalk, één grijze regel tegelijk (spreker in groen), elke regel 2,5–6 s.
