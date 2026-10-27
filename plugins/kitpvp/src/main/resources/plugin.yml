@@ -19,8 +19,11 @@ commands:
     aliases: [kd]
   hint:
     description: "Story of Zelda: Wiske helpt je op weg"
+  zelda:
+    description: "Zelda-beheer (OP): /zelda beheer [aan|uit] · /zelda ga <plek> · /zelda plekken"
+    permission: kitpvp.beheer
   kitpvp:
-    description: "Beheer: kitpvp zelftest | test <speler> | zelda [in|reset|rust|test|verder|vaar|vlag|hint] | bouw [hub|arena|kasteel|zelda|zelda-zee|alles] | kaart | status | aftellen <s>"
+    description: "Beheer: kitpvp zelftest | test <speler> | zelda [in|reset|rust|test|verder|vaar|vlag|hint|beheer] | bouw [hub|arena|kasteel|zelda|zelda-zee|alles] | kaart | status | aftellen <s>"
     permission: kitpvp.beheer
 permissions:
   kitpvp.beheer:

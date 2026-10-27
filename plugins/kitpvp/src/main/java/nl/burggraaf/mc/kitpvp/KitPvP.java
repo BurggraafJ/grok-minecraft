@@ -924,6 +924,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 if (sender instanceof Player p && modi.get("zelda") instanceof Zelda z) z.spel.hint(p);
                 return true;
             }
+            case "zelda" -> {                                        // beheermodus (kitpvp.beheer, zie plugin.yml)
+                if (!(sender instanceof Player p)) sender.sendMessage("alleen in de game; console: kitpvp zelda …");
+                else if (modi.get("zelda") instanceof Zelda z) z.spel.beheer.commando(p, args);
+                return true;
+            }
             default -> { }
         }
         // arena: beheer (zoals vroeger) of terug naar de hub
@@ -937,6 +942,13 @@ public final class KitPvP extends JavaPlugin implements Listener {
             naarHub(p);
         }
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (actief && command.getName().equalsIgnoreCase("zelda") && sender.hasPermission("kitpvp.beheer") && modi.get("zelda") instanceof Zelda z)
+            return z.spel.beheer.tab(args);
+        return List.of();
     }
 
     private Modus zoekModus(String s) {

@@ -351,11 +351,11 @@ final class ZeldaTest {
             sp.uitrusten(p, stand());
             moet(p.getInventory().getChestplate() != null && p.getInventory().getChestplate().getType() == Material.IRON_CHESTPLATE, "harnas 2 is geen ijzer");
         }, 2, () -> true, 1);
-        stap("huisdier", () -> {
+        if (ZeldaDier.AAN) stap("huisdier", () -> {
             stand().zet("dier:vos");
             stand().dier = "Pluis";
         }, 30, () -> sp.dier.van(p) != null, 60);
-        stap("huisdier loopt mee", () -> p.teleport(new Location(h.w, ZeldaHoofdstuk1.X0 + 30.5, bron.midden.getY(), 2.5)), 100,
+        if (ZeldaDier.AAN) stap("huisdier loopt mee", () -> p.teleport(new Location(h.w, ZeldaHoofdstuk1.X0 + 30.5, bron.midden.getY(), 2.5)), 100,
                 () -> sp.dier.van(p) != null && sp.dier.van(p).getLocation().distance(p.getLocation()) < 6, 100);
         ZeldaHoofdstuk.Persoon proef = new ZeldaHoofdstuk.Persoon("Proef", p.getLocation(), null, List.of(ZeldaHoofdstuk.r("Proef", "Hallo.")));
         proef.gesprek("proef-1", s -> s.missie("proef") == 0, List.of(ZeldaHoofdstuk.r("Proef", "Help je mij?")), (spel, q, s) -> spel.missie(q, "proef", 1));

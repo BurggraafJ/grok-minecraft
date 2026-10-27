@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.4, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.4.1, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -395,7 +395,8 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   de oefenarena (max `bots-max` 6), weg na 30 s leeg; ze vallen alleen spelers in de oefenarena aan; geen PvP daar;
   een bot verslaan = +4 hartjes en `bots` in stats.yml; doodgaan daar telt niet mee. Rustig binnenkomen: geen
   titel of chatblok, één actiebalkregel («KitPvP · kies een modus»). Sidebar: Kit, Kills · Doden, Reeks, Plek.
-  Metadata `kitpvp-stand` voor Huisdieren: `wacht` (hub, kitruimte), `pvp` (colosseum, kasteel), `bots` (oefenarena, Zelda);
+  Metadata `kitpvp-stand` voor Huisdieren: `wacht` (hub, kitruimte), `pvp` (colosseum, kasteel), `bots` (oefenarena),
+  `geen` (Zelda: geen huisdier mee, Jelle 27-10, "het leidt af"; Huisdieren 1.1.1 haalt de kopie dan weg);
   de wolf vecht alleen bij `pvp`/`bots`.
   **Gevecht-tag:** 10 s na een treffer (gegeven of gekregen, ook van/aan bots) kun je niet weg: `/arena`, `/modus`, de
   deur, en op de proxy `/lobby /hub /survival /kitpvp /server /terug /spawn` geweigerd (kitpvp meldt `gevecht:<ms>`
@@ -427,10 +428,19 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   eiland (overtocht aan dek van de Zilvermeeuw, bouwdeel `zelda-zee` op x 1840…2040, z −510…−330), uitleg aan/uit,
   hub. Volgende eilanden (Zilverstrand, Witte Toppen, Gloedberg, Nachtrots) komen in losse sessies (lijst in
   ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
-  «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; de wolf vecht mee tegen monsters
-  (`kitpvp-stand` = `bots`). Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
+  «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
+  (`kitpvp-stand` = `geen`; het eigen Zelda-dier staat uit met `ZeldaDier.AAN = false` tot een later eiland het in het
+  verhaal brengt, vlaggen `dier:*` blijven bewaard).
+  **Beheermodus (OP/admins, `kitpvp.beheer`, kitpvp 2.4.1, Jelle 27-10 "door de map vliegen"):** `/zelda` of
+  `/zelda beheer [aan|uit]` = vliegen, onkwetsbaar, vijanden negeren je; kamers, rustplaatsen, vondsten, verhaal en
+  uitdagingen reageren niet op je en je mag buiten het eiland; bij uit (of naar de hub, uitloggen, herstart) staat je
+  voortgang in zelda.yml weer precies zoals ervoor en ga je terug naar je rustplaats. `/zelda ga <plek>` (tab vult aan;
+  een uniek begin is genoeg) = erheen, zet beheer zo nodig aan: eiland (`lindewoud`), deel (`h1`), rustplaats (`thuis`,
+  `eik`, `ruine`, `kloofrand`, `moerashut`, `haven`), kamer (`open-plek`, `veen`, `heksenkring`, `kade`), persoon
+  (`kees`, `hanne`, `brecht`, `lotje`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. Console:
+  `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
   (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor]` (loopt met een
-  echte speler; wist eerst diens voortgang), `kitpvp zelda verder|vaar|vlag|hint <speler> …`, `kitpvp bouw zelda`.
+  echte speler; wist eerst diens voortgang), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp bouw zelda`.
   **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 3, `zelda-zee` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;

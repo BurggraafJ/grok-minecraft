@@ -151,6 +151,8 @@ final class ZeldaSpel implements Listener {
     final ZeldaDier dier = new ZeldaDier();
     final List<ZeldaVoorwerp> voorwerpen = new ArrayList<>();
     final Map<UUID, Sessie> sessies = new HashMap<>();
+    /** Beheermodus voor OP's (/zelda beheer): vliegen, onkwetsbaar, de wereld reageert niet op je. */
+    final ZeldaBeheer beheer = new ZeldaBeheer(this);
     ZeldaVoortgang voortgang;
     final NamespacedKey itemKey;
     private final NamespacedKey hartKey;
@@ -204,6 +206,15 @@ final class ZeldaSpel implements Listener {
     /** Het deel met dit id (null = bestaat niet). */
     ZeldaHoofdstuk deel(String id) {
         for (ZeldaHoofdstuk h : hoofdstukken) if (h.id().equals(id)) return h;
+        return null;
+    }
+
+    /** Het deel (van welk eiland ook) waar deze plek in ligt, of null. */
+    ZeldaHoofdstuk deelOveral(Location l) {
+        for (ZeldaEiland e : eilanden) {
+            ZeldaHoofdstuk h = e.deelBij(l);
+            if (h != null) return h;
+        }
         return null;
     }
 
@@ -282,6 +293,7 @@ final class ZeldaSpel implements Listener {
 
     /** Speler gaat weg (hub, andere modus, uitloggen). */
     void weg(Player p) {
+        beheer.uit(p, false);                                // beheer: voortgang terug, vliegen uit
         Sessie ss = sessies.remove(p.getUniqueId());
         muziek.vergeet(p.getUniqueId());
         metgezel.weg(p.getUniqueId());
@@ -492,7 +504,7 @@ final class ZeldaSpel implements Listener {
         }
         veilig("wiske", () -> metgezel.tik(spelers));
         if (tikken % 5 == 0) {
-            for (Player p : spelers) if (!p.isDead() && sessie(p).vaart == null) veilig("zones", () -> zones(p, sessie(p), nu));
+            for (Player p : spelers) if (!p.isDead() && sessie(p).vaart == null && !beheer.is(p.getUniqueId())) veilig("zones", () -> zones(p, sessie(p), nu));
             for (ZeldaHoofdstuk h : hoofdstukken) {
                 for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) uitdaging(u, nu);
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) reeks(r, nu);
@@ -534,6 +546,17 @@ final class ZeldaSpel implements Listener {
         Location l = p.getLocation();
         if (p.isDead()) return;
         if (p.getFoodLevel() != 17) p.setFoodLevel(17);
+        if (beheer.is(p.getUniqueId())) {                    // beheer: overal mogen zijn, geen genezen of hulp
+            beheer.houVast(p);
+            ZeldaHoofdstuk hier = deelOveral(l);
+            if (hier != null) {
+                ss.h = hier;
+                ss.vaart = null;
+                hemel(p, ss, l);
+                muziek.achter(p, hier.muziek(l));
+            }
+            return;
+        }
         if (ss.vaart != null) {
             overtocht(p, ss, nu);
             return;
@@ -568,7 +591,7 @@ final class ZeldaSpel implements Listener {
         ss.inBron = bron;
         muziek.achter(p, ss.h.muziek(l));
         // huisdier gevonden maar nog naamloos: even vragen hoe hij heet
-        if (ZeldaDier.soort(s) != null && s.dier == null && !ss.naamGevraagd && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
+        if (ZeldaDier.AAN && ZeldaDier.soort(s) != null && s.dier == null && !ss.naamGevraagd && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
             ss.naamGevraagd = true;
             naamMenu(p);
         }
@@ -725,7 +748,7 @@ final class ZeldaSpel implements Listener {
         List<Player> l = new ArrayList<>();
         for (UUID id : sessies.keySet()) {
             Player p = Bukkit.getPlayer(id);
-            if (p != null && !p.isDead() && b.in(p.getLocation())) l.add(p);
+            if (p != null && !p.isDead() && !beheer.is(id) && b.in(p.getLocation())) l.add(p);
         }
         return l;
     }
@@ -1895,6 +1918,12 @@ final class ZeldaSpel implements Listener {
         if (e.getDamager() instanceof Player p && metgezel.isFee(e.getEntity()) && p.getUniqueId().equals(metgezel.eigenaar(e.getEntity()))) hint(p);
     }
 
+    /** Beheer: onkwetsbaar (ook vallen, lava, vijanden). */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBeheerSchade(EntityDamageEvent e) {
+        if (beheer.is(e.getEntity())) e.setCancelled(true);
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onNpcSchade(EntityDamageEvent e) {
         if (e.getEntity().getScoreboardTags().contains(NPC)) e.setCancelled(true);
@@ -1969,7 +1998,7 @@ final class ZeldaSpel implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onDoel(EntityTargetEvent e) {
         if (e.getTarget() == null) return;
-        if (e.getTarget().getScoreboardTags().contains(NPC)) e.setCancelled(true);
+        if (e.getTarget().getScoreboardTags().contains(NPC) || beheer.is(e.getTarget())) e.setCancelled(true);
         else if (isVijand(e.getEntity()) && isVijand(e.getTarget())) e.setCancelled(true);
     }
 
@@ -2015,6 +2044,12 @@ final class ZeldaSpel implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(PlayerJoinEvent e) {
         harten(e.getPlayer(), -1);                           // na een crash nooit met Zelda-harten in de hub
+        Player p = e.getPlayer();                            // en nooit nog vliegend of onkwetsbaar uit beheer
+        if (p.getGameMode() == org.bukkit.GameMode.ADVENTURE || p.getGameMode() == org.bukkit.GameMode.SURVIVAL) {
+            p.setFlying(false);
+            p.setAllowFlight(false);
+            p.setInvulnerable(false);
+        }
     }
 
     // ── voor de zelftest ────────────────────────────────────────────────────────────────────

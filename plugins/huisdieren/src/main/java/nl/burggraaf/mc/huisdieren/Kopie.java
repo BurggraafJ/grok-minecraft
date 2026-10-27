@@ -213,7 +213,7 @@ final class Kopie implements Listener {
         UUID id = p.getUniqueId();
         weg(id);
         Pakket pk = bewaard(id);
-        if (pk == null || pk.leeg() || verborgen.contains(id) || p.isDead()) return;
+        if (pk == null || pk.leeg() || verborgen.contains(id) || p.isDead() || geenDier(id)) return;
         Entity e;
         try {
             e = Bukkit.getUnsafe().deserializeEntity(pk.data, p.getWorld(), false);
@@ -268,6 +268,11 @@ final class Kopie implements Listener {
         return s.equals("pvp") || s.equals("bots");
     }
 
+    /** KitPvP-stand {@code geen}: hier loopt geen huisdier mee (Story of Zelda). */
+    private boolean geenDier(UUID speler) {
+        return kitpvp && standVan(speler).equals("geen");
+    }
+
     private String standVan(UUID speler) {
         Player p = Bukkit.getPlayer(speler);
         if (p == null) return "wacht";
@@ -287,6 +292,10 @@ final class Kopie implements Listener {
                     if (k instanceof LivingEntity kl) opstaan(id, kl);
                     else ko.remove(id);
                 }
+            }
+            if (geenDier(id)) {                                              // kitpvp-modus zonder huisdier (Zelda)
+                if (kopie.containsKey(id)) weg(id);
+                continue;
             }
             Entity e = huidige(id);
             if (e == null) {

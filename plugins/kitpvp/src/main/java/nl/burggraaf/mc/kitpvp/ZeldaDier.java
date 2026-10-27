@@ -32,6 +32,8 @@ import org.bukkit.entity.Sittable;
 final class ZeldaDier {
 
     static final String TAG = "zelda-dier";
+    /** Uit tot een later eiland het dier in het verhaal brengt (Jelle 27-10: het leidt af). Vlaggen blijven bewaard. */
+    static final boolean AAN = false;
     static final List<String> SOORTEN = List.of("vos", "sneeuwvos", "kat", "konijn");   // geen wolf: skeletten vluchten ervoor
     static final List<String> NAMEN = List.of("Pluis", "Vonk", "Sneeuw", "Bram", "Kiek");
 
@@ -72,6 +74,10 @@ final class ZeldaDier {
      */
     void tik(Map<Player, ZeldaVoortgang.Stand> spelers, Function<Player, List<Location>> verborgen) {
         tik++;
+        if (!AAN) {
+            if (!dieren.isEmpty()) weg();
+            return;
+        }
         long nu = System.currentTimeMillis();
         Set<UUID> wie = new HashSet<>();
         for (var e : spelers.entrySet()) {

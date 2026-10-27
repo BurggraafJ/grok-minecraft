@@ -91,10 +91,10 @@ final class Zelda implements Modus {
         spel.weg(p);
     }
 
-    /** De wolf vecht mee tegen monsters, nooit tegen spelers (zoals in de oefenarena). */
+    /** Geen huisdier (plugin Huisdieren) in Zelda: het leidt af (Jelle 27-10); een eigen dier komt later in het verhaal. */
     @Override
     public String stand(Player p, Toestand t) {
-        return "bots";
+        return "geen";
     }
 
     @Override
@@ -410,6 +410,18 @@ final class Zelda implements Modus {
                 ZeldaSpel.Sessie ss = spel.sessie(p);
                 s.sendMessage("zelda: hint voor " + p.getName() + (ss == null ? " (niet in Zelda)" : " · doel " + ss.hintDoel));
             }
+            case "beheer" -> {                               // kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]
+                if (p == null) {
+                    s.sendMessage("kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken] · in beheer: " + spel.beheer.aantal());
+                    return;
+                }
+                String[] rest = args.length >= 4 ? java.util.Arrays.copyOfRange(args, 3, args.length) : new String[0];
+                if (rest.length >= 1 && (rest[0].equalsIgnoreCase("aan") || rest[0].equalsIgnoreCase("uit"))) rest = new String[]{"beheer", rest[0]};
+                spel.beheer.commando(p, rest.length == 0 ? new String[]{"beheer"} : rest);
+                s.sendMessage("zelda: " + p.getName() + " beheer " + (spel.beheer.is(p.getUniqueId()) ? "aan" : "uit")
+                        + (spel.speelt(p) ? " · " + spel.sessie(p).h.id() + " " + p.getLocation().getBlockX() + "," + p.getLocation().getBlockY() + "," + p.getLocation().getBlockZ()
+                        + " · vliegen=" + p.getAllowFlight() + " onkwetsbaar=" + p.isInvulnerable() : ""));
+            }
             case "verder" -> {
                 if (p == null) {
                     s.sendMessage("kitpvp zelda verder <speler>: speler niet online");
@@ -423,7 +435,7 @@ final class Zelda implements Modus {
                     sb.append(" · ").append(h.id()).append(":");
                     for (ZeldaHoofdstuk.Kamer k : h.kamers) sb.append(' ').append(k.id).append('=').append(k.fase.name().toLowerCase());
                 }
-                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint <speler>");
+                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer <speler>");
             }
         }
     }
