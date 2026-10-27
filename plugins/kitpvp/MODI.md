@@ -64,59 +64,92 @@ de respawn na een ronde (`kitruimteVoor(arena)`), de sidebar en `kitpvp zelftest
 
 ## Story of Zelda
 
-Een avontuur in hoofdstukken, alleen of samen. De grote poort in het westen van de hub is **open**: erdoor lopen (of
-het menu) = `Zelda.join` → `plugin.naarSpel(p, this, "<hoofdstuk>")` en je staat bij je **verste rustplaats**.
-`/arena` of de kaart («Terug naar de hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek).
+Een avontuur over de eilanden van de Glazen Zee, alleen of samen. **Ontwerp, verhaal, eilandenplan en de bouwsessies:
+`ZELDA.md`.** De grote poort in het westen van de hub is **open**: erdoor lopen (of het menu) = `Zelda.join` →
+`plugin.naarSpel(p, this, "<deel>")` en je staat bij je **laatste rustplaats**. `/arena` of de kaart («Terug naar de
+hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek, Wiske, huisdier).
 
 ### Klassen
 
 | klasse | wat |
 |---|---|
-| `Zelda` | de modus: poort, `delen()` (één deel per hoofdstuk), join/leave/respawn/stand/plek, zelftest, `kitpvp zelda …` |
-| `ZeldaHoofdstuk` | basis van een hoofdstuk + de onderdelen: `Rust`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon`, `Box` |
-| `ZeldaHoofdstuk1` | «Het Lindewoud»: de wereld (terrein, bos, gebouwen) en zijn onderdelen, in de volgorde van het pad |
-| `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, verteller, uitrusting, kaart, listeners |
+| `Zelda` | de modus: poort, `EILANDEN`, `delen()` (één bouwdeel per eilanddeel + de zee), join/leave/respawn/stand/plek, zelftest, `kitpvp zelda …` |
+| `ZeldaEiland` | een eiland: id, naam, icoon, delen, aanleg-rustplaats (steiger), `openNa`-vlag, `klaar`-vlag, overtochtregels |
+| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Box` |
+| `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1): de wereld en zijn onderdelen, in de volgorde van het pad; `motor()` = bronnen, uitleg, tips, doelen |
+| `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
+| `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
+| `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
+| `ZeldaDier` | je eigen huisdier (vlag `dier:<soort>`): loopt mee, snuffelt verborgen vondsten op |
+| `ZeldaVoorwerp` | een voorwerp in de hotbar (nu: het flesje; later bommen, klauwhaak, vuurstaf, lichtpijlen) |
+| `ZeldaRegels` | regels zonder wereld (unit-tests): harten, hartstukjes, harnas, flesjes, welk doel, opnieuw vanaf hier |
 | `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk) |
-| `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; lussen (gevecht, baas) en losse deuntjes; categorie «Nootblokken» |
-| `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (verste rustplaats per hoofdstuk, vlaggen, beste tijden) |
-| `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door het hoofdstuk |
+| `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; drie lagen: achtergrond (altijd), lus (gevecht, baas), deuntjes; categorie «Nootblokken» |
+| `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden) |
+| `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door het hoofdstuk; `test <speler> motor`: alle motoronderdelen |
 
 ### Hoe het speelt
 
-- **Rustplaats** (zielvuur): loop erlangs = voortgang bewaard («Rustplaats · Oude Eik», deuntje), vol leven, en hier
-  kom je terug na doodgaan. Staan bij een rustplaats geneest. Index 0 = het begin van het hoofdstuk.
+- **Rustplaats** (zielvuur): loop erlangs = je **laatste** rustplaats (daar kom je binnen en na doodgaan terug); de
+  eerste keer «Rustplaats · Oude Eik» en een deuntje. Staan bij een rustplaats geneest en vult je flesjes. Index 0 =
+  het begin van het deel. Oude standen (zonder laatste) beginnen bij hun verste rustplaats.
+- **Bron** (feeënkring, alleen licht): erin staan geneest snel en vult je flesjes. Bij elke kamer een rustplaats of
+  bron binnen 32 blokken (de zelftest eist het).
 - **Kamer**: wie de `start`-zone in loopt, sluit beide deuren (schrik-deuntje + gevechtsmuziek voor wie binnen is).
-  Golven vijanden (1 extra per extra speler); alles verslagen = deuren open, deuntje, +3 harten. Iedereen binnen dood
-  of weg = na 4 s terug naar het begin. Gewonnen kamers gaan na een minuut zonder spelers in de buurt weer dicht.
+  Golven vijanden (1 extra per extra speler); alles verslagen = deuren open, deuntje, +3 harten, vlag `k:<kamer>`.
+  Iedereen binnen dood of weg = na 4 s terug naar het begin. Gewonnen kamers gaan na een minuut zonder spelers in de
+  buurt weer dicht. Doodgaan in een kamer = na de respawn een **tip** van Wiske (`k.tips`, de 1e, dan de 2e).
 - **Uitdaging op tijd**: stap op de startplaat, de poort gaat open, de tijd loopt in de **XP-balk** (getal = seconden,
   tikjes, de laatste vijf hoger). Haal je de finish: tijd en (bij verbetering) «record», bewaard per speler. Bij de
   start hangt een bord met de vijf beste tijden (alleen als er iemand in de buurt is).
 - **Puzzel (reeks)**: zet alle dingen aan binnen de tijd vanaf het eerste (vuurschalen: rechtsklik; doelwitten: pijl).
   Opgelost = deur open (of brug erbij) tot het gebied een minuut leeg is. Wie hem ooit oploste (`r:<id>`), vindt hem
   open (handig als je na een dood bij de baas terugkomt).
-- **Vondst**: loop over de sokkel = je hebt het (vlag); de uitrusting volgt altijd uit de vlaggen (zwaard, schild,
-  boog met oneindig pijlen, harten). Rustplaatsen geven de vlaggen van ervoor ook (`geeft`), zodat niemand vastloopt.
-- **Verhaal**: de eerste keer in een zone een paar korte regels (`v:<id>` in de voortgang, dus nooit dubbel).
+- **Vondst**: loop over de sokkel = je hebt het (vlag); de uitrusting volgt altijd uit de vlaggen: zwaard, schild,
+  boog met oneindig pijlen, voorwerpen (vak 3 … 7), **harten** (8 + hartcontainers `hart…` + een hart per vier
+  **hartstukjes** `hs:…`), **harnas** (`harnas1` … `harnas4`, zichtbaar), **flesjes** (`fles1` … `fles4`, vak 3,
+  rechtsklik = vijf harten). Rustplaatsen geven de vlaggen van ervoor ook (`geeft`). Een vondst met `verborgen` wordt
+  door je huisdier opgesnuffeld; met `vereist` alleen te zien als je die vlag hebt.
+- **Verhaal**: de eerste keer in een zone een paar korte regels (`v:<id>`, dus nooit dubbel). Met `uitleg` = uitleg
+  (hoe iets werkt), overgeslagen als je op de kaart «Uitleg: uit» kiest.
+- **Personen**: rechtsklik = praten. Het eerste `Gesprek` waarvan de voorwaarde klopt, anders het gewone praatje;
+  daarna een `Actie` (zijmissie beginnen of verder: `spel.missie`, beloning: `spel.beloon`). Heeft iemand iets nieuws
+  (een gesprek met id dat je nog niet hoorde), dan glinstert hij zacht, alleen voor jou.
+- **Wiske**: een kleine fee naast je schouder; ze komt voor je zweven als ze praat. **Klik op haar of `/hint`**: eerst
+  een duwtje (het eerste doel van het eiland dat nog niet klaar is), binnen twee minuten nog eens = wat je moet doen en
+  ze vliegt even die kant op. Geen doel meer = je zijmissies of «verder varen». Zes minuten zonder voortgang: ze biedt
+  één keer hulp aan.
+- **Huisdier**: vlag `dier:<soort>`; de eerste keer kies je een naam (klein menu). Loopt mee, zit als je stilstaat,
+  snuffelt verborgen vondsten op (loopt erheen en gaat erbij zitten). Onkwetsbaar, vecht niet.
 - **Tekst**: alles op **één plek**, de actiebalk, één grijze regel tegelijk (spreker in groen), elke regel 2,5–6 s.
-  Geen titels, geen chat. Muziek kan zachter met de schuif «Nootblokken».
+  Geen titels, geen chat. 
+- **Muziek, altijd**: een achtergrondlied per streek (`muziek(Location)`: Thuis, Woud, Tempel, Veen, Haven, Zee),
+  daarboven de gevechts- of baaslus en losse deuntjes. Zachter met de schuif «Nootblokken».
 - **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen vanzelf genezen;
-  wel bij rustplaatsen, gewonnen kamers en soms een hartje van een vijand). **Samen**: geen schade aan elkaar; de
-  wolf (Huisdieren) vecht mee tegen monsters (`stand` = `bots`).
-- **Kaart** (vak 9): reizen naar elke bereikte rustplaats (zo help je een vriend die verder terug is) en terug naar de hub.
+  wel bij rustplaatsen, bronnen, flesjes, gewonnen kamers en soms een hartje van een vijand). **Samen**: geen schade
+  aan elkaar; de wolf (Huisdieren) vecht mee tegen monsters (`stand` = `bots`).
+- **Kaart** (vak 9): de zielvuren van dit eiland (klik = reizen, **rechtsklik = opnieuw vanaf hier**: verhaal, uitleg
+  en puzzels erna komen terug, spullen blijven), de eilanden die open zijn (klik = **varen**), opdrachten, harten en
+  hartstukjes, harnas, flesjes, **Uitleg: aan/uit**, terug naar de hub.
+- **Overtocht**: varen = een paar tellen aan dek van de Zilvermeeuw op open zee (zeemansmuziek, schuim, Brecht aan
+  het roer, een regel van Wiske of Brecht; de eerste keer de overtochtregels van het eiland), dan aan land bij de
+  aanleg van het eiland (vlag `e:<eiland>`).
 - **Hemel**: per speler; de dag schuift op van ochtend tot zonsondergang naarmate je verder komt (de baaskamer is nacht).
-- **Grenzen**: wie buiten het speelgebied komt, gaat terug naar zijn rustplaats.
+- **Grenzen**: wie buiten de delen van zijn eiland komt, gaat terug naar zijn rustplaats.
 - **Entiteiten**: vijanden alleen tijdens een gevecht (tag `zelda`, niet opgeslagen, geen drops, branden niet);
-  zwevende vondsten en personen alleen als er iemand in de buurt is. Geen vaste chunk-tickets in het Zelda-gebied.
+  zwevende vondsten en personen alleen als er iemand in de buurt is; één Wiske (en eventueel één huisdier) per
+  speler in Zelda. Geen vaste chunk-tickets in het Zelda-gebied.
 
-### Hoofdstuk 1: «Het Lindewoud» (`h1`, deel `zelda`, x 1092 … 1592, z −64 … 64)
+### Eiland 1: «Het Lindewoud» (`h1`, deel `zelda`, x 1092 … 1592, z −64 … 64)
 
 Morgal, de Nachtvorst, heeft prinses Zelda meegenomen naar zijn kasteel Nachtrots, over de zee. Wiske, een
-vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
+fee, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 
 | rx (x = 1100 + rx) | wat | soort |
 |---|---|---|
 | 0 … 30 | huisje aan de bosrand, moestuin, put; begin | rust 0 «Thuis», verhaal |
 | 30 … 90 | bospad, **de open plek** (palissade, 2 golven veenlopers en spinnen) | kamer |
+| 47 | feeënkring (bron, alleen licht) | bron |
 | 91 | Eikenschild | vondst |
 | 100 | de Oude Eik | rust 1 |
 | 114 … 152 | **tempelruïne**: drie vuurschalen (grond, torenvoet via puin, zuil in een vijver), 25 s | puzzel |
@@ -128,6 +161,7 @@ vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 | 253 | Jagersboog | vondst |
 | 258 | moerashut | rust 4 «Moerashut» |
 | 262 … 276 | **drie doelen** over een kanaal, 15 s, dan komt de brug | puzzel |
+| 279 | feeënkring voor de Heksenkring | bron |
 | 282 … 310 | **de Heksenkring**: baas Grauwmoer (nacht, baasmuziek, levensbalk) | kamer + baas |
 | 313 | Hartcontainer (+1 hart) | vondst |
 | 319 | | rust 5 «Haventrap» |
@@ -135,21 +169,28 @@ vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 | 347 … 381 | pier, visser Brecht, het schip de Zilvermeeuw (je kunt aan boord) | verhaal: einde (`h1`) |
 | 420 … 472 | Nachtrots op een eiland aan de horizon | versiering |
 
-### Een hoofdstuk toevoegen
+### Een eiland toevoegen
 
-1. Maak `ZeldaHoofdstuk2 extends ZeldaHoofdstuk` met een eigen `id()` (`h2`), `naam()`, `deelId()` (`zelda2`) en
-   `versie()`. Kies een eigen stuk van `Zelda.GEBIED` (bv. het schip en de zee: x 1600 … 2040).
+Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `ZELDA.md`. Kort:
+
+1. Per half eiland een klasse `ZeldaEiland2a extends ZeldaHoofdstuk` met eigen `id()` (`e2a`), `naam()`, `deelId()`
+   (`zelda-e2a`) en `versie()`, in zijn eigen vak van `Zelda.GEBIED` (tabel in ZELDA.md).
 2. In `bouw(Bouwer b)`: `leeg(b.w)`, zet `speelgebied`, bouw de wereld (alleen als `b.plaats`; chunk-tickets aan het
-   begin erbij en aan het eind weer weg, zie hoofdstuk 1) en maak de onderdelen aan met `rust(…)`, `kamer(…)`,
-   `uitdaging(…)`, `reeks(…)`, `vondst(…)`, `verhaal(…)`, `persoon(…)` — in de volgorde van het pad (de test loopt ze
-   in die volgorde af). Zet de begintoestand van deuren en puzzels altijd (zie het eind van `ZeldaHoofdstuk1.bouw`).
-3. Zet hem in `Zelda` in `HOOFDSTUKKEN` (`List.of(new ZeldaHoofdstuk1(plugin), new ZeldaHoofdstuk2(plugin))`).
-4. Doorgang: het `einde`-verhaal van hoofdstuk 1 zet de vlag `h1`. Laat dan (bv. aan boord van het schip, een zone of
-   persoon) `stand.hoofdstuk = "h2"` zetten en naar `h2.rust.get(0).plek` teleporteren; `join` neemt daarna vanzelf
-   `stand.hoofdstuk`. (Die overstap zit er nog niet in: er is nog geen hoofdstuk 2.)
-5. Nieuwe vijanden: een waarde in `ZeldaHoofdstuk.Soort` en een geval in `ZeldaSpel.spawn`. Nieuwe muziek: een `Lied`
-   in `ZeldaMuziek` (de unit-test controleert het bereik). Een nieuwe baas: een `ZeldaBaas` (of subklasse) op de kamer.
-6. Een gewijzigd hoofdstuk: hoog `versie()` op, dan herbouwt alleen dat deel bij de volgende start.
+   begin erbij en aan het eind weer weg, zie hoofdstuk 1 en `ZeldaZee`) en maak de onderdelen aan met `rust(…)`,
+   `bron(…)`, `kamer(…)`, `uitdaging(…)`, `reeks(…)`, `vondst(…)`, `verhaal(…)`, `persoon(…).gesprek(…)`, `missie(…)`
+   en `doel(…)`, in de volgorde van het pad (de test loopt ze in die volgorde af; iets later toegevoegds zet je met
+   `na("<id>", …)` op zijn plek). Zet de begintoestand van deuren en puzzels altijd (zie het eind van
+   `ZeldaHoofdstuk1.bouw`). Geef `muziek(Location)`, `plekNaam(Location)` en `hemel(Location)` per streek.
+3. Eén regel in `Zelda.EILANDEN`: `new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(deel2a,
+   deel2b), "steiger", "h1", "baken2", List.of(r("Brecht", "…")))`. Dan staat het op de kaart van wie `h1` heeft en
+   werkt varen (`spel.vaar`). Brecht op het vorige eiland kan in een gesprek `spel.vaar(p, spel.eiland("…"))` doen.
+4. Nieuwe vijanden: een waarde in `ZeldaHoofdstuk.Soort` en een geval in `ZeldaSpel.spawn`. Nieuwe muziek: een `Lied`
+   in `ZeldaMuziek` en in `alle()` (de unit-test controleert bereik, lengte en volume). Een nieuwe baas: een `ZeldaBaas`
+   (of subklasse) op de kamer. Een nieuw voorwerp: een `ZeldaVoorwerp` in `spel.voorwerpen`.
+5. Een gewijzigd deel: hoog `versie()` op, dan herbouwt alleen dat deel bij de volgende start. Teksten, doelen,
+   gesprekken en bronnen zonder blokken: geen versie nodig (ze worden bij elke start opnieuw aangemaakt).
+6. `kitpvp zelda test <speler> alles` loopt het eerste deel af; voor een nieuw deel: `kitpvp zelda rust` /
+   `vlag` om de speler daar te krijgen, of breid `ZeldaTest.route` uit met dat deel.
 
 ### Beheer (console of OP)
 
@@ -160,7 +201,14 @@ vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
   kamer; `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
   voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
-- `kitpvp bouw zelda` — hoofdstuk 1 opnieuw bouwen. `kitpvp kaart` maakt ook `zelda-*.png`.
+- `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), bron,
+  flesje, hartstukjes, harnas, huisdier (verschijnt, loopt mee), gesprek en zijmissie met beloning, opnieuw vanaf een
+  rustplaats, uitleg uit, varen en aankomen, tip na doodgaan in een kamer, de kaart, en weg = alles weg. Wist eerst en
+  na afloop de voortgang van die speler (alleen voor tests).
+- `kitpvp zelda vaar <speler> <eiland>` — de overtocht naar een eiland. `kitpvp zelda vlag <speler> <vlag>` — een
+  vlag aan (nog eens = uit), bv. `fles1`, `hs:test`, `harnas2`, `dier:vos`, `o:uitleg-uit` (helpen en testen).
+  `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.
+- `kitpvp bouw zelda` — hoofdstuk 1 opnieuw bouwen, `kitpvp bouw zelda-zee` de zee. `kitpvp kaart` maakt ook `zelda-*.png`.
 
 ## Ruimte in de wereld
 
@@ -170,7 +218,7 @@ vuurvliegje, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 | colosseum + kitruimte | −50 … 50 | −60 … 50 | midden 0/0, kitruimte boven de noordmuur (z −57 … −35) |
 | oefenarena + kitruimte | −24 … 24 | 51 … 134 | midden 0/110, kitruimte z 63 … 87 |
 | kasteel + kitruimte | −42 … 42 | −188 … −94 | midden 0/−150, gracht rondom, kitruimte z −119 … −95 |
-| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); hoofdstuk 1 gebruikt x 1092 … 1592, z −64 … 64 |
+| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); hoofdstuk 1 gebruikt x 1092 … 1592, z −64 … 64; de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
 
 Alle huidige gebieden liggen in de chunks die de plugin geladen houdt (`onEnable`). Het Zelda-gebied niet: alleen
 tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze zien (de server heeft 1–2 GB).
@@ -178,7 +226,7 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
 ## Bouwen en beheer
 
 - `plugins/KitPvP/gebouwd.yml`: `grond` (vloerhoogte) en per deel de gebouwde versie (`hub`, `arena`, `kasteel`,
-  `zelda`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
+  `zelda`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
   `plugins/KitPvP/zelda.yml`: voortgang in Story of Zelda.
 - Console: `kitpvp zelftest`, `kitpvp bouw [hub|arena|kasteel|zelda|alles]`, `kitpvp status`, `kitpvp aftellen <s>`,
   `kitpvp zelda …` (zie hierboven), `kitpvp kaart` (PNG's van hub, arena's, kasteel en Zelda in
@@ -193,4 +241,6 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
   elke kitruimte (7 standaards, deuren, binnenkomst), alle spawns (vrij, met vloer), ranglijsten, of het bouwen klaar
   is, en Zelda (deel gebouwd in de goede versie, rustplaatsen vrij met vloer, kamers: spawns, deuren in de
   begintoestand, puzzels en uitdaging in rust, alles binnen het gebied, een einde, muziek, voortgang schrijven en
-  teruglezen, niet te veel entiteiten).
+  teruglezen, niet te veel entiteiten; Zelda 2.0: eilanden met een aanleg, delen die elkaar niet overlappen, doelen
+  op het eiland, genezen bij elke kamer, bronnen met vloer, personen binnen het speelgebied, de zee gebouwd met vrije
+  dekplekken, niet meer feeën dan spelers).

@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.1, eigen code; ontwerp in `plugins/kitpvp/MODI.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.3, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -403,20 +403,26 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   voor de laatste aanvaller, «liep weg uit het gevecht»). `/stats` (`/kd`); top-10 borden in de hub en elke
   kitruimte; `stats.yml` (ongewijzigd). Geen drops of oprapen, honger vast, pijlen verdwijnen; kill = volle
   gezondheid + gouden appel.
-  **Story of Zelda** (`Zelda*.java`, ontwerp en «een hoofdstuk toevoegen» in `MODI.md`): avontuur, alleen of samen.
-  Door de poort = naar je **verste rustplaats** (voortgang per speler in `plugins/KitPvP/zelda.yml`, dus de volgende
-  dag verder). Hoofdstuk 1 «Het Lindewoud» (x 1092…1592, z −64…64): Morgal heeft prinses Zelda naar Nachtrots
-  gebracht; met het vuurvliegje Wiske loop je naar het oosten langs 6 rustplaatsen (zielvuur: bewaren, genezen,
-  respawn), 3 kamers die dichtgaan tot alle golven verslagen zijn (gevechtsmuziek), de baas Grauwmoer (nacht,
-  levensbalk), een tijdrace over de Kloof (XP-balk = seconden, beste tijd bewaard), twee puzzels (vuurschalen,
-  doelwitten met de boog), vondsten (schild, zwaard, boog, hartcontainer) en de haven met het schip; Nachtrots ligt
-  aan de horizon. Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
-  «Nootblokken»). Kaart in vak 9: reizen naar bereikte rustplaatsen, terug naar de hub; `/arena` werkt ook. Geen
-  schade tussen spelers; de wolf vecht mee tegen monsters (`kitpvp-stand` = `bots`). Vijanden alleen tijdens een
-  gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda` (status), `kitpvp zelda reset|rust <speler> [n]`,
-  `kitpvp zelda test <speler> [alles]` (loopt met een echte speler het hoofdstuk door; wist eerst diens voortgang),
-  `kitpvp zelda verder <speler>`, `kitpvp bouw zelda`.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 1;
+  **Story of Zelda** (`Zelda*.java`; plan en bouwsessies in `ZELDA.md`, techniek in `MODI.md`): avontuur over de
+  eilanden van de Glazen Zee, alleen of samen. Door de poort = naar je **laatste rustplaats** (voortgang per speler in
+  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu één eiland: «Het Lindewoud» (hoofdstuk 1,
+  x 1092…1592, z −64…64): Morgal heeft prinses Zelda naar Nachtrots gebracht; met de fee Wiske loop je naar het oosten
+  langs 6 rustplaatsen (zielvuur: bewaren, genezen, flesjes vullen, respawn), 2 feeënkringen (bronnen), 3 kamers die
+  dichtgaan tot alle golven verslagen zijn, de baas Grauwmoer, een tijdrace over de Kloof, twee puzzels, vondsten en
+  de haven met het schip. **Zelda 2.0-motor** (Jelle 27-10, "veel groter"): muziek altijd (achtergrond per streek,
+  gevecht/baas eroverheen); **Wiske** is een kleine fee (allay, alleen voor jou zichtbaar) naast je schouder; klik op
+  haar of **`/hint`** = een duwtje, nog eens = wat je moet doen en ze wijst; tips na doodgaan in een kamer; uitleg
+  halverwege, op de kaart uit te zetten; harten + hartstukjes (vier = een hart), harnas in vijf trappen, flesjes
+  (vak 3, vijf harten), eigen huisdier (vlag `dier:<soort>`, loopt mee en snuffelt verborgen dingen op), personen met
+  gesprekken en zijmissies, **kaart** (vak 9): reizen, **rechtsklik = opnieuw vanaf hier**, varen naar een ander
+  eiland (overtocht aan dek van de Zilvermeeuw, bouwdeel `zelda-zee` op x 1840…2040, z −510…−330), uitleg aan/uit,
+  hub. Volgende eilanden (Zilverstrand, Witte Toppen, Gloedberg, Nachtrots) komen in losse sessies (lijst in
+  ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; de wolf vecht mee tegen monsters
+  (`kitpvp-stand` = `bots`). Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
+  (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor]` (loopt met een
+  echte speler; wist eerst diens voortgang), `kitpvp zelda verder|vaar|vlag|hint <speler> …`, `kitpvp bouw zelda`.
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 2, `zelda-zee` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
   eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,
