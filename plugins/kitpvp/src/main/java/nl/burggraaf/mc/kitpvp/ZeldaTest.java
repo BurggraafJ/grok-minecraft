@@ -176,6 +176,173 @@ final class ZeldaTest {
         start("kitpvp zelda test " + p.getName() + " dood");
     }
 
+    /**
+     * {@code kitpvp zelda test <speler> motor}: de motor van Zelda 2.0 met een echte speler: Wiske vliegt mee, altijd
+     * muziek, /hint (en nog eens), bron (genezen, flesjes vol), flesje drinken, hartstukjes, harnas, huisdier (verschijnt
+     * en loopt mee), gesprek en zijmissie met beloning, opnieuw vanaf een rustplaats, uitleg uit, varen (overtocht en
+     * aankomst), een tip na doodgaan in een kamer, de kaart, en weg = alles weer weg. Wist eerst en na afloop de
+     * voortgang van die speler (alleen voor tests).
+     */
+    void motor() {
+        if (p.isDead()) p.spigot().respawn();
+        pl.naarHub(p);
+        z.spel.voortgang.wis(id);
+        ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
+        ZeldaSpel sp = z.spel;
+        stap("poort", this::doorDePoort, 2, () -> true, 1);
+        stap("wiske", () -> { }, 10, () -> {
+            var f = sp.metgezel.van(p);
+            return f != null && f.getLocation().distance(p.getEyeLocation()) < 4 && p.canSee(f);
+        }, 40);
+        stap("muziek", () -> moet(sp.muziek.achter(p) == ZeldaMuziek.THUIS, "thuis speelt " + sp.muziek.achter(p)), 25, () -> true, 1);
+        stap("hint", () -> {
+            sp.sessie(p).rij.clear();
+            sp.hint(p);
+            moet("schild".equals(sp.sessie(p).hintDoel), "hint: doel " + sp.sessie(p).hintDoel + " (verwacht schild)");
+            moet(!sp.sessie(p).rij.isEmpty() || sp.sessie(p).nu != null, "hint: Wiske zegt niets");
+        }, 60, () -> true, 1);
+        stap("hint nog eens", () -> {
+            sp.hint(p);
+            String tekst = rij();
+            moet(tekst.contains("glanst"), "hint 2 zegt niet wat je moet doen: " + tekst);
+        }, 2, () -> true, 1);
+        ZeldaHoofdstuk.Bron bron = h.bronnen.get(0);
+        stap("bron", () -> {
+            stand().zet("fles1");
+            stand().teller("fles-vol", 0);
+            sp.uitrusten(p, stand());
+            moet(item(2) == Material.GLASS_BOTTLE, "leeg flesje niet in vak 3 maar " + item(2));
+            p.setHealth(6);
+            p.teleport(bron.midden);
+        }, 50, () -> p.getHealth() > 10 && ZeldaRegels.vol(stand()) == 1 && item(2) == Material.POTION, 60);
+        stap("flesje", () -> {
+            p.teleport(new Location(h.w, ZeldaHoofdstuk1.X0 + 38.5, bron.midden.getY(), 3.5));
+            p.setHealth(4);
+            sp.voorwerp("fles").gebruik(sp, p, null);
+            moet(p.getHealth() >= 13, "flesje geneest niet: " + p.getHealth());
+            moet(ZeldaRegels.vol(stand()) == 0 && item(2) == Material.GLASS_BOTTLE, "flesje niet leeg na drinken");
+        }, 2, () -> true, 1);
+        stap("hartstukjes", () -> {
+            for (String v : new String[]{"hs:a", "hs:b", "hs:c", "hs:d"}) stand().zet(v);
+            sp.uitrusten(p, stand());
+            var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            moet(max != null && max.getValue() == 18, "vier hartstukjes: " + (max == null ? "?" : max.getValue()) + " (verwacht 18)");
+        }, 2, () -> true, 1);
+        stap("harnas", () -> {
+            stand().zet("harnas2");
+            sp.uitrusten(p, stand());
+            moet(p.getInventory().getChestplate() != null && p.getInventory().getChestplate().getType() == Material.IRON_CHESTPLATE, "harnas 2 is geen ijzer");
+        }, 2, () -> true, 1);
+        stap("huisdier", () -> {
+            stand().zet("dier:vos");
+            stand().dier = "Pluis";
+        }, 30, () -> sp.dier.van(p) != null, 60);
+        stap("huisdier loopt mee", () -> p.teleport(new Location(h.w, ZeldaHoofdstuk1.X0 + 30.5, bron.midden.getY(), 2.5)), 100,
+                () -> sp.dier.van(p) != null && sp.dier.van(p).getLocation().distance(p.getLocation()) < 6, 100);
+        ZeldaHoofdstuk.Persoon proef = new ZeldaHoofdstuk.Persoon("Proef", p.getLocation(), null, List.of(ZeldaHoofdstuk.r("Proef", "Hallo.")));
+        proef.gesprek("proef-1", s -> s.missie("proef") == 0, List.of(ZeldaHoofdstuk.r("Proef", "Help je mij?")), (spel, q, s) -> spel.missie(q, "proef", 1));
+        proef.gesprek("proef-2", s -> s.missie("proef") == 1, List.of(ZeldaHoofdstuk.r("Proef", "Dank je!")), (spel, q, s) -> {
+            spel.missie(q, "proef", ZeldaVoortgang.KLAAR);
+            spel.beloon(q, "fles2", "Flesje", "nog een");
+        });
+        stap("gesprek", () -> {
+            stil();
+            moet(proef.nieuw(stand()), "persoon heeft niets nieuws");
+            sp.praat(p, proef);
+            moet(stand().missie("proef") == 1 && stand().heeft("g:proef-1"), "missie niet begonnen");
+            stil();
+            sp.praat(p, proef);
+            moet(stand().missieKlaar("proef") && ZeldaRegels.flessen(stand()) == 2, "missie niet klaar of geen beloning");
+            moet(!proef.nieuw(stand()), "persoon blijft iets nieuws hebben");
+            stil();
+        }, 2, () -> true, 1);
+        stap("opnieuw", () -> {
+            stand().zet("v:tempel");
+            stand().zet("r:vuren");
+            stand().bezoek(h.id(), 1);
+            sp.opnieuw(p, h, 1);
+            moet(!stand().heeft("v:tempel") && !stand().heeft("r:vuren"), "opnieuw vergat de tempel niet");
+            moet(p.getLocation().distanceSquared(h.rust.get(1).plek) < 4, "opnieuw: niet bij " + h.rust.get(1).naam);
+        }, 20, () -> true, 1);
+        stap("uitleg uit", () -> {
+            stand().zet("o:uitleg-uit");
+            stand().wis("v:uitleg-kaart");
+            stil();
+            p.teleport(h.rust.get(2).plek);
+        }, 20, () -> stand().heeft("v:uitleg-kaart"), 40);
+        stap("uitleg uit stil", () -> moet(!rij().contains("Je kaart"), "uitleg kwam toch: " + rij()), 2, () -> true, 1);
+        ZeldaEiland e = h.eiland;
+        stap("varen", () -> {
+            stil();
+            sp.vaar(p, e);
+            moet(sp.sessie(p).vaart != null && z.zee.speelgebied.in(p.getLocation()), "niet aan boord: " + xyz(p.getLocation()));
+            moet(sp.muziek.achter(p) == ZeldaMuziek.ZEE, "aan boord speelt " + sp.muziek.achter(p));
+            moet(z.plek(p, pl.spelers.van(id)).equals("Op zee"), "plek aan boord: " + z.plek(p, pl.spelers.van(id)));
+        }, 40, () -> sp.sessie(p).vaart == null, 400);
+        stap("aankomst", () -> {
+            moet(p.getLocation().distanceSquared(e.aanlegPlek()) < 4, "niet bij de aanleg: " + xyz(p.getLocation()));
+            moet(stand().heeft("e:" + e.id()), "aankomst niet onthouden");
+        }, 10, () -> true, 1);
+        ZeldaHoofdstuk.Kamer k = h.kamers.get(1);
+        stap("tip: kamer " + k.id, () -> {
+            stil();
+            if (k.fase != ZeldaHoofdstuk.Fase.RUST) sp.herstel(k);
+            p.teleport(k.start.midden(h.w).add(0, 1, 0));
+        }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+        stap("tip: dood", () -> {
+            stil();
+            p.setHealth(0);
+        }, 3, () -> {
+            if (p.isDead()) p.spigot().respawn();
+            return !p.isDead();
+        }, 40);
+        stap("tip: Wiske", () -> { }, 4, () -> rij().contains(k.tips.get(0).tekst()), 40);
+        stap("kaart", () -> {
+            stil();
+            sp.kaart(p);
+            moet(p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu, "kaart ging niet open");
+            p.closeInventory();
+        }, 2, () -> true, 1);
+        stap("weg", () -> pl.naarHub(p), 10, () -> {
+            var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            moet(sp.metgezel.van(p) == null && sp.dier.van(p) == null, "Wiske of huisdier bleef staan");
+            moet(max != null && max.getValue() == 20, "harten na Zelda: " + (max == null ? "?" : max.getValue()));
+            moet(sp.muziek.achter(p) == null, "muziek speelt door in de hub");
+            return true;
+        }, 1);
+        stap("kamer terug", () -> { }, 20, () -> k.fase == ZeldaHoofdstuk.Fase.RUST && k.vijanden.isEmpty(), 200);
+        stap("opruimen", () -> {
+            z.spel.voortgang.wis(id);
+            z.spel.bewaar();
+        }, 1, () -> true, 1);
+        start("kitpvp zelda test " + p.getName() + " motor");
+    }
+
+    private Material item(int vak) {
+        var it = p.getInventory().getItem(vak);
+        return it == null ? Material.AIR : it.getType();
+    }
+
+    /** Alles wat er nu op de actiebalk staat of nog komt, als platte tekst. */
+    private String rij() {
+        ZeldaSpel.Sessie ss = z.spel.sessie(p);
+        if (ss == null) return "";
+        var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
+        StringBuilder sb = new StringBuilder();
+        if (ss.nu != null) sb.append(plain.serialize(ss.nu)).append(" | ");
+        for (var c : ss.rij) sb.append(plain.serialize(c)).append(" | ");
+        return sb.toString();
+    }
+
+    /** De verteller leeg (zodat een test kan praten). */
+    private void stil() {
+        ZeldaSpel.Sessie ss = z.spel.sessie(p);
+        if (ss == null) return;
+        ss.rij.clear();
+        ss.nu = null;
+        ss.tot = 0;
+    }
+
     void verder() {
         stap("poort", this::doorDePoort, 4, () -> true, 1);
         stap("verder", () -> {

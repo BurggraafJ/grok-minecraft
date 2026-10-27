@@ -143,6 +143,18 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         return "De Haven";
     }
 
+    /** Altijd muziek: per streek een eigen lied (zie ZeldaMuziek). */
+    @Override
+    ZeldaMuziek.Lied muziek(Location l) {
+        return switch (plekNaam(l)) {
+            case "Thuis" -> ZeldaMuziek.THUIS;
+            case "Tempelruïne" -> ZeldaMuziek.TEMPEL;
+            case "Het Veen", "Heksenkring" -> ZeldaMuziek.VEEN;
+            case "De Haven" -> ZeldaMuziek.HAVEN;
+            default -> ZeldaMuziek.WOUD;
+        };
+    }
+
     // ── hulpjes ─────────────────────────────────────────────────────────────────────────────
 
     private void zet(int rx, int y, int z, Material m) {
@@ -512,7 +524,63 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             zetDeur(r.deur, false);
             for (int[] d : r.dingen) b.zetAltijd(d[0], d[1], d[2], r.uit);
         }
+        motor();
         b = null;
+    }
+
+    /**
+     * Zelda 2.0 (zonder blokken, dus zonder herbouw): bronnen bij de kamers, uitleg halverwege (over te slaan), tips
+     * na doodgaan en de doelen voor {@code /hint}.
+     */
+    private void motor() {
+        // genezen bij elke kamer: twee feeënkringen (alleen licht, geen blokken)
+        bron("bron-bospad", plek(47, G + 1, 3, 0f));
+        bron("bron-kring", plek(279, G + 1, 0, 0f));
+        // uitleg halverwege (overgeslagen met «Uitleg: uit» op de kaart)
+        for (String id : new String[]{"tempel", "kloof", "doelen"}) if (onderdeel(id) instanceof Verhaal v) v.uitleg = true;
+        Verhaal hulp = na("intro", verhaal(new Verhaal("hulp", box(4, G, -8, 30, G + 6, 10), List.of(
+                r("Wiske", "Weet je het even niet? Klik op mij, of typ /hint.")))));
+        hulp.vereist = "v:intro";
+        hulp.uitleg = true;
+        na("hulp", verhaal(new Verhaal("uitleg-bron", box(45, G, 1, 49, G + 4, 5), List.of(
+                r("Wiske", "Een feeënkring. Sta erin, dan genees je."))))).uitleg = true;
+        na("eik", verhaal(new Verhaal("uitleg-rust", box(96, G, -6, 108, G + 6, 7), List.of(
+                r("Wiske", "Bij een zielvuur bewaar je je reis, en genees je."),
+                r("Wiske", "Val je, dan begin je hier weer."))))).uitleg = true;
+        na("ruine", verhaal(new Verhaal("uitleg-kaart", box(154, G, -4, 162, G + 6, 4), List.of(
+                r("Wiske", "Je kaart, vak 9: reizen naar elk zielvuur."),
+                r("Wiske", "Rechtsklik op een zielvuur: dat stuk opnieuw."))))).uitleg = true;
+        // tips na doodgaan in een kamer (eerste keer de eerste tip, dan de tweede)
+        for (Kamer k : kamers) switch (k.id) {
+            case "open-plek" -> k.tips.addAll(List.of(r("Wiske", "Niet stilstaan. Slaan, stap terug, weer slaan."),
+                    r("Wiske", "Spinnen springen. Wacht tot ze landen.")));
+            case "veen" -> k.tips.addAll(List.of(r("Wiske", "Eerst de mosschutters: die schieten van ver."),
+                    r("Wiske", "Houd rechts: je schild vangt de pijlen.")));
+            case "heksenkring" -> k.tips.addAll(List.of(r("Wiske", "Staat ze op een paddenstoel? Schiet haar eraf met je boog."),
+                    r("Wiske", "Eerst haar helpers, dan zij.")));
+            case "kade" -> k.tips.addAll(List.of(r("Wiske", "De kruisbogen achterin eerst. Blokkeer met je schild."),
+                    r("Wiske", "Bij het zielvuur aan de trap genees je weer.")));
+            default -> { }
+        }
+        // de doelen van het pad, voor /hint (eerst een duwtje, nog eens vragen = wat je moet doen)
+        doel("schild", "Volg het pad naar het oosten, het bos in.", "Achter de open plek glanst iets op een sokkel.",
+                plekVan("schild"), s -> s.heeft("schild"));
+        doel("vuren", "De oude tempel. Steek de drie vuurschalen aan.", "Eén op de grond, één op de torenvoet, één midden in de vijver. Snel!",
+                plekVan("vuren"), s -> s.heeft("r:vuren") || s.heeft("zwaard"));
+        doel("zwaard", "In het heiligdom achter de poort ligt een zwaard.", "Door de open poort, helemaal achterin.",
+                plekVan("zwaard"), s -> s.heeft("zwaard"));
+        doel("kloof", "Over de Kloof. Stap op de plaat en ren.", "Van pilaar naar pilaar, dan over de stam. Niet stilstaan.",
+                plekVan("kloof"), s -> s.rust(id()) >= 3);
+        doel("boog", "Door het Veen, naar het oosten.", "Voorbij het Veen ligt een boog. Blijf op de droge plekken.",
+                plekVan("boog"), s -> s.heeft("boog"));
+        doel("doelen", "Drie doelen aan de overkant. Pak je boog.", "Raak ze alle drie binnen vijftien tellen, dan komt de brug.",
+                plekVan("doelen"), s -> s.heeft("r:doelen") || s.heeft("hart1"));
+        doel("heks", "Achter de brug wacht Grauwmoer, in de Heksenkring.", "Staat ze op een paddenstoel? Schiet haar eraf.",
+                plekVan("heksenkring"), s -> s.heeft("hart1"));
+        doel("kade", "Naar de haven. Morgals soldaten bezetten de kade.", "Over de kade, naar de pier.",
+                plekVan("kade"), s -> s.heeft("k:kade") || s.heeft(id()));
+        doel("brecht", "Zoek de visser op de pier.", "Helemaal aan het eind van de pier, bij het schip.",
+                plekVan("brecht"), s -> s.heeft(id()));
     }
 
     private void zetDeur(Deur d, boolean open) {

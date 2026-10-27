@@ -15,13 +15,14 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 /**
- * Story of Zelda: een avontuur in hoofdstukken, alleen of samen. Door de grote poort in de hub (west) kom je bij je
- * verste rustplaats. Een hoofdstuk ({@link ZeldaHoofdstuk}) is een eigen stuk wereld (een {@link Deel}) met
- * rustplaatsen, kamers die opengaan als je de vijanden verslaat, uitdagingen op tijd, puzzels, vondsten en verhaal;
- * {@link ZeldaSpel} laat het werken, {@link ZeldaVoortgang} bewaart per speler hoe ver je bent (zelda.yml).
+ * Story of Zelda: een avontuur over de eilanden van de Glazen Zee, alleen of samen (ontwerp: ZELDA.md). Door de grote
+ * poort in de hub (west) kom je bij je laatste rustplaats. Een eiland ({@link ZeldaEiland}) bestaat uit één of twee
+ * delen ({@link ZeldaHoofdstuk}, elk een eigen stuk wereld: een {@link Deel}) met rustplaatsen, bronnen, kamers,
+ * uitdagingen, puzzels, vondsten, personen, zijmissies en verhaal; tussen de eilanden vaar je met de Zilvermeeuw
+ * ({@link ZeldaZee}). {@link ZeldaSpel} laat het werken, {@link ZeldaVoortgang} bewaart per speler hoe ver je bent.
  *
- * <p>Een hoofdstuk erbij: een subklasse van {@link ZeldaHoofdstuk} met een eigen deel-id, in {@link #HOOFDSTUKKEN}
- * (zie MODI.md). De wereld ligt in {@link #GEBIED}.
+ * <p>Een eiland erbij: delen (subklassen van {@link ZeldaHoofdstuk} met een eigen deel-id) en één regel in
+ * {@link #EILANDEN} (zie ZELDA.md en MODI.md). De wereld ligt in {@link #GEBIED}.
  */
 final class Zelda implements Modus {
 
@@ -29,13 +30,22 @@ final class Zelda implements Modus {
     static final int[] GEBIED = {1024, -512, 2047, 511};
 
     private final KitPvP plugin;
+    /** De eilanden in de volgorde van het verhaal (zie ZELDA.md). Een nieuw eiland = één regel erbij. */
+    final List<ZeldaEiland> EILANDEN;
+    /** Alle delen van alle eilanden. */
     final List<ZeldaHoofdstuk> HOOFDSTUKKEN;
+    final ZeldaZee zee;
     final ZeldaSpel spel;
 
     Zelda(KitPvP plugin) {
         this.plugin = plugin;
-        HOOFDSTUKKEN = List.of(new ZeldaHoofdstuk1(plugin));
-        spel = new ZeldaSpel(plugin, this, HOOFDSTUKKEN);
+        EILANDEN = List.of(
+                new ZeldaEiland("lindewoud", "Het Lindewoud", Material.OAK_SAPLING, List.of(new ZeldaHoofdstuk1(plugin)), "haven", null, "h1", List.of()));
+        List<ZeldaHoofdstuk> alle = new ArrayList<>();
+        for (ZeldaEiland e : EILANDEN) alle.addAll(e.delen());
+        HOOFDSTUKKEN = List.copyOf(alle);
+        zee = new ZeldaZee(plugin);
+        spel = new ZeldaSpel(plugin, this, EILANDEN, zee);
     }
 
     @Override public String id() { return "zelda"; }
@@ -55,6 +65,7 @@ final class Zelda implements Modus {
     public List<Deel> delen() {
         List<Deel> d = new ArrayList<>();
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) d.add(new Deel(h.deelId(), h.versie(), h::bouw));
+        d.add(new Deel(zee.deelId(), zee.versie(), zee::bouw));
         return d;
     }
 
@@ -94,7 +105,8 @@ final class Zelda implements Modus {
     @Override
     public String plek(Player p, Toestand t) {
         ZeldaSpel.Sessie ss = spel.sessie(p);
-        return ss == null ? naam() : ss.h.plekNaam(p.getLocation());
+        if (ss == null) return naam();
+        return ss.vaart != null ? zee.plekNaam(p.getLocation()) : ss.h.plekNaam(p.getLocation());
     }
 
     // ── zelftest ────────────────────────────────────────────────────────────────────────────
@@ -172,6 +184,61 @@ final class Zelda implements Modus {
             boolean einde = h.verhalen.stream().anyMatch(v -> v.einde);
             if (!einde) fouten.add(hid + ": geen einde");
         }
+        // Zelda 2.0: eilanden, genezen bij elke kamer, doelen voor /hint, personen, muziek overal, de zee
+        int bronnen = 0, doelen = 0, personen = 0, missies = 0;
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        List<ZeldaHoofdstuk> allen = new ArrayList<>(HOOFDSTUKKEN);
+        allen.add(zee);
+        for (ZeldaHoofdstuk h : allen) if (!ids.add(h.id())) fouten.add("zelda: dubbel deel-id " + h.id());
+        for (int i = 0; i < allen.size(); i++)
+            for (int j = i + 1; j < allen.size(); j++) {
+                ZeldaHoofdstuk.Box a = allen.get(i).speelgebied, c = allen.get(j).speelgebied;
+                if (a != null && c != null && a.x1() <= c.x2() && c.x1() <= a.x2() && a.z1() <= c.z2() && c.z1() <= a.z2())
+                    fouten.add("zelda: speelgebied van " + allen.get(i).id() + " en " + allen.get(j).id() + " overlappen");
+            }
+        java.util.Set<String> eids = new java.util.HashSet<>();
+        for (ZeldaEiland e : EILANDEN) {
+            String eid = "zelda eiland " + e.id();
+            if (!eids.add(e.id())) fouten.add(eid + ": dubbel");
+            if (e.aanlegRust() == null) fouten.add(eid + ": aanleg " + e.aanleg() + " is geen rustplaats van " + e.delen().get(0).id());
+            List<ZeldaHoofdstuk.Doel> ed = new ArrayList<>();
+            for (ZeldaHoofdstuk h : e.delen()) ed.addAll(h.doelen);
+            doelen += ed.size();
+            if (ed.isEmpty()) fouten.add(eid + ": geen doelen (voor /hint)");
+            for (ZeldaHoofdstuk.Doel d : ed)
+                if (d.plek() == null || e.deelBij(d.plek()) == null) fouten.add(eid + ": doel " + d.id() + " ligt niet op het eiland");
+            for (ZeldaHoofdstuk h : e.delen()) {
+                bronnen += h.bronnen.size();
+                personen += h.personen.size();
+                missies += h.missies.size();
+                if (h.speelgebied == null) continue;
+                for (ZeldaHoofdstuk.Persoon pe : h.personen) if (!h.speelgebied.in(pe.plek)) fouten.add(eid + ": " + pe.naam + " staat buiten het speelgebied");
+                for (ZeldaHoofdstuk.Bron br : h.bronnen) if (!h.speelgebied.in(br.midden)) fouten.add(eid + ": bron " + br.id + " buiten het speelgebied");
+                for (ZeldaHoofdstuk.Rust r : h.rust) if (h.muziek(r.plek) == null) fouten.add(eid + ": geen muziek bij " + r.id);
+                // genezen in of bij elke kamer: een rustplaats of bron binnen 32 blokken van de ingang
+                for (ZeldaHoofdstuk.Kamer k : h.kamers) {
+                    Location in = k.in.omvang().midden(h.w);
+                    boolean heel = false;
+                    for (ZeldaHoofdstuk g : e.delen()) {
+                        for (ZeldaHoofdstuk.Rust r : g.rust) heel |= r.plek.distanceSquared(in) < 32 * 32;
+                        for (ZeldaHoofdstuk.Bron br : g.bronnen) heel |= br.midden.distanceSquared(in) < 32 * 32;
+                    }
+                    if (!heel) fouten.add(eid + ": kamer " + k.id + ": geen rustplaats of bron in de buurt (genezen)");
+                }
+                if (klaar) for (ZeldaHoofdstuk.Bron br : h.bronnen)
+                    if (!br.midden.clone().add(0, -1, 0).getBlock().getType().isSolid() || !vrij(br.midden))
+                        fouten.add(eid + ": bron " + br.id + " zonder vloer of niet vrij op " + xyz(br.midden));
+            }
+        }
+        if (klaar && gebouwd.getInt("delen." + zee.deelId(), -1) != zee.versie())
+            fouten.add("zelda zee: niet gebouwd (gebouwd.yml " + gebouwd.getInt("delen." + zee.deelId(), -1) + ", verwacht " + zee.versie() + ")");
+        if (zee.w == null || zee.dek.isEmpty()) fouten.add("zelda zee: niet geladen");
+        else {
+            if (!inGebied(zee.speelgebied)) fouten.add("zelda zee: buiten het Zelda-gebied");
+            if (zee.personen.isEmpty()) fouten.add("zelda zee: geen kapitein");
+            if (klaar) for (Location l : zee.dek)
+                if (!vrij(l) || !l.clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add("zelda zee: dekplek " + xyz(l) + " niet vrij of zonder vloer");
+        }
         for (ZeldaMuziek.Lied l : ZeldaMuziek.alle()) if (l.lengte() == 0) fouten.add("zelda: lied " + l.id() + " is leeg");
         // opslag: schrijven en teruglezen in een proefbestand
         File proef = new File(plugin.getDataFolder(), "zelda-zelftest.yml");
@@ -181,21 +248,37 @@ final class Zelda implements Modus {
             v.van(id).bereik("h1", 3);
             v.van(id).zet("zwaard");
             v.van(id).tijd("kloof", 12345);
+            v.van(id).laatste = "h1:2";
+            v.van(id).missies.put("proef", 2);
+            v.van(id).teller("fles-vol", 1);
+            v.van(id).dier = "Pluis";
             v.bewaar();
             ZeldaVoortgang terug = new ZeldaVoortgang(proef);
-            if (terug.van(id).rust("h1") != 3 || !terug.van(id).heeft("zwaard") || terug.van(id).beste("kloof") != 12345L)
+            ZeldaVoortgang.Stand t = terug.van(id);
+            if (t.rust("h1") != 3 || !t.heeft("zwaard") || t.beste("kloof") != 12345L || !"h1:2".equals(t.laatste) || t.missie("proef") != 2
+                    || t.teller("fles-vol") != 1 || !"Pluis".equals(t.dier) || !t.bezocht("h1", 3))
                 fouten.add("zelda: voortgang komt niet goed terug uit het bestand");
         } catch (Exception e) {
             fouten.add("zelda: voortgang bewaren mislukt: " + e);
         } finally {
             if (proef.exists() && !proef.delete()) fouten.add("zelda: proefbestand bleef staan");
         }
-        int ents = 0;
-        if (plugin.w != null) for (Entity e : plugin.w.getEntities()) if (e.getScoreboardTags().contains(ZeldaSpel.TAG)) ents++;
+        int ents = 0, feeen = 0;
+        if (plugin.w != null) for (Entity e : plugin.w.getEntities()) {
+            if (e.getScoreboardTags().contains(ZeldaSpel.TAG)) ents++;
+            if (e.getScoreboardTags().contains(ZeldaMetgezel.TAG)) feeen++;
+        }
         if (ents > 60) fouten.add("zelda: " + ents + " entiteiten (te veel)");
-        info.add("zelda=" + status().name().toLowerCase() + " hoofdstukken=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
-                + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond
-                + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents);
+        if (feeen > spel.sessies.size()) fouten.add("zelda: " + feeen + " feeën voor " + spel.sessies.size() + " spelers");
+        for (var e : spel.sessies.entrySet()) {
+            Player p = Bukkit.getPlayer(e.getKey());
+            if (p != null && !p.isDead() && spel.metgezel.van(p) == null)
+                info.add("(wiske van " + p.getName() + " nog niet in de wereld)");
+        }
+        info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
+                + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
+                + " personen=" + personen + " missies=" + missies + " liedjes=" + ZeldaMuziek.alle().size()
+                + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
     }
 
     private static boolean deurKlopt(ZeldaHoofdstuk h, ZeldaHoofdstuk.Deur d, boolean open) {
@@ -234,8 +317,10 @@ final class Zelda implements Modus {
                     s.sendMessage("geen nummer: " + args[3]);
                     return;
                 }
-                st.rust.put(h.id(), n);
+                st.rust.put(h.id(), Math.max(n, st.rust(h.id())));
                 st.hoofdstuk = h.id();
+                st.laatste = h.id() + ":" + n;
+                for (int i = 0; i <= n; i++) st.bezoek(h.id(), i);
                 st.vlaggen.addAll(h.rust.get(n).geeft);
                 spel.voortgang.vuil();
                 spel.bewaar();
@@ -248,6 +333,7 @@ final class Zelda implements Modus {
                 }
                 ZeldaTest t = new ZeldaTest(plugin, this, p, s);
                 if (args.length >= 4 && args[3].equalsIgnoreCase("dood")) t.dood();
+                else if (args.length >= 4 && args[3].equalsIgnoreCase("motor")) t.motor();
                 else t.route(args.length >= 4 && args[3].equalsIgnoreCase("alles"));
             }
             case "in" -> {
@@ -256,7 +342,39 @@ final class Zelda implements Modus {
                     return;
                 }
                 plugin.kiesModus(p, this);
-                s.sendMessage("zelda: " + p.getName() + " " + (spel.speelt(p) ? "is in Zelda (" + spel.sessie(p).h.rust.get(spel.sessie(p).rust).naam + ")" : "kon niet naar binnen"));
+                s.sendMessage("zelda: " + p.getName() + " " + (spel.speelt(p) ? "is in Zelda (" + spel.sessie(p).rustplaats().naam + ")" : "kon niet naar binnen"));
+            }
+            case "vaar" -> {
+                ZeldaEiland e = args.length >= 4 ? spel.eiland(args[3].toLowerCase()) : null;
+                if (p == null || e == null || !spel.speelt(p)) {
+                    s.sendMessage("kitpvp zelda vaar <speler in Zelda> <eiland> (eilanden: " + String.join(", ", EILANDEN.stream().map(ZeldaEiland::id).toList()) + ")");
+                    return;
+                }
+                spel.vaar(p, e);
+                s.sendMessage("zelda: " + p.getName() + " vaart naar " + e.naam());
+            }
+            case "vlag" -> {
+                if (p == null || args.length < 4) {
+                    s.sendMessage("kitpvp zelda vlag <speler> <vlag> (nog eens = weg; bv. fles1, hs:test, harnas2, dier:vos, o:uitleg-uit)");
+                    return;
+                }
+                ZeldaVoortgang.Stand st = spel.voortgang.van(p.getUniqueId());
+                boolean aan = st.zet(args[3]);
+                if (!aan) st.wis(args[3]);
+                if (args[3].startsWith("fles")) ZeldaRegels.vulFlessen(st);
+                spel.voortgang.vuil();
+                spel.bewaar();
+                if (spel.speelt(p)) spel.uitrusten(p, st);
+                s.sendMessage("zelda: " + p.getName() + " " + args[3] + " " + (aan ? "aan" : "uit"));
+            }
+            case "hint" -> {
+                if (p == null) {
+                    s.sendMessage("kitpvp zelda hint <speler>");
+                    return;
+                }
+                spel.hint(p);
+                ZeldaSpel.Sessie ss = spel.sessie(p);
+                s.sendMessage("zelda: hint voor " + p.getName() + (ss == null ? " (niet in Zelda)" : " · doel " + ss.hintDoel));
             }
             case "verder" -> {
                 if (p == null) {
@@ -271,7 +389,7 @@ final class Zelda implements Modus {
                     sb.append(" · ").append(h.id()).append(":");
                     for (ZeldaHoofdstuk.Kamer k : h.kamers) sb.append(' ').append(k.id).append('=').append(k.fase.name().toLowerCase());
                 }
-                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder <speler>");
+                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint <speler>");
             }
         }
     }

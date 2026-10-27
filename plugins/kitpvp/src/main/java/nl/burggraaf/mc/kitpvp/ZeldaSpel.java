@@ -68,41 +68,73 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.inventory.meta.ArmorMeta;
+import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.inventory.meta.trim.ArmorTrim;
+import org.bukkit.inventory.meta.trim.TrimMaterial;
+import org.bukkit.inventory.meta.trim.TrimPattern;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
 /**
- * De motor van Story of Zelda: wie er speelt (een {@link Sessie} per speler), de zones van het hoofdstuk (rustplaats,
- * verhaal, vondst, kamer, uitdaging), vijanden, de baas, muziek, de verteller (alles wat spelers lezen staat op één
- * plek: de actiebalk, één korte grijze regel tegelijk), uitrusting uit de voortgang, en de kaart (reizen tussen
- * bereikte rustplaatsen). KitPvP laat spelers in {@link Toestand.Plek#SPEL} met rust; dit regelt schade, honger,
- * doodgaan, drops en grenzen voor wie in Zelda is.
+ * De motor van Story of Zelda: wie er speelt (een {@link Sessie} per speler), de zones van het eiland (rustplaats,
+ * verhaal, vondst, kamer, uitdaging, bron), vijanden, de baas, muziek (altijd een achtergrond per streek), de verteller
+ * (alles wat spelers lezen staat op één plek: de actiebalk, één korte grijze regel tegelijk), Wiske de fee
+ * ({@link ZeldaMetgezel}), je huisdier ({@link ZeldaDier}), personen met gesprekken en zijmissies, {@code /hint},
+ * uitrusting uit de voortgang (harten, hartstukjes, harnas, flesjes, voorwerpen), de kaart (reizen tussen bereikte
+ * rustplaatsen, opnieuw vanaf een rustplaats, uitleg aan/uit, varen naar een ander eiland) en de overtocht over zee.
+ * KitPvP laat spelers in {@link Toestand.Plek#SPEL} met rust; dit regelt schade, honger, doodgaan, drops en grenzen
+ * voor wie in Zelda is. Zie ZELDA.md voor het ontwerp.
  */
 final class ZeldaSpel implements Listener {
 
     static final String TAG = "zelda", NPC = "zelda-npc";
     static final TextColor GROEN = TextColor.color(0x8fcf6a);
-    private static final int BASIS_HARTEN = 8;
+    /** Na zo lang zonder voortgang biedt Wiske één keer hulp aan (en dan pas weer na {@link #AANBOD_OPNIEUW}). */
+    static final long VAST_MS = 6 * 60_000L, AANBOD_OPNIEUW = 10 * 60_000L;
+
+    /** Een overtocht naar een ander eiland. */
+    record Vaart(ZeldaEiland naar, long tot, boolean eerste) {}
 
     /** Per speler in Zelda. */
     static final class Sessie {
-        final ZeldaHoofdstuk h;
+        ZeldaHoofdstuk h;                                    // het deel waar je nu bent
+        ZeldaHoofdstuk rh;                                   // het deel van je rustplaats
         int rust;                                            // waar je na doodgaan terugkomt
+        Vaart vaart;                                         // aan boord (null = op een eiland)
         final Deque<Component> rij = new ArrayDeque<>();
         Component nu;
-        long tot, gestuurd, volgendWoud, laatsteHemel = -1;
+        long tot, gestuurd, laatsteHemel = -1;
+        long hintTijd, hintWacht, laatsteVoortgang, aangeboden, bronDeuntje;
+        String hintDoel, tip;
+        int voortgangStand;
+        boolean inBron, naamGevraagd;
+        final Map<String, Integer> doden = new HashMap<>();  // kamer → keer doodgegaan (voor tips)
 
         Sessie(ZeldaHoofdstuk h, int rust) {
             this.h = h;
+            this.rh = h;
             this.rust = rust;
+        }
+
+        ZeldaHoofdstuk.Rust rustplaats() {
+            return rh.rust.get(Math.max(0, Math.min(rust, rh.rust.size() - 1)));
         }
     }
 
-    /** Herkenning van het kaartmenu. */
+    /** Herkenning van het kaartmenu en het naammenu. */
     static final class Menu implements InventoryHolder {
         Inventory inv;
+        final boolean naam;
+
+        Menu(boolean naam) {
+            this.naam = naam;
+        }
 
         public Inventory getInventory() {
             return inv;
@@ -111,21 +143,33 @@ final class ZeldaSpel implements Listener {
 
     final KitPvP plugin;
     final Zelda modus;
-    final List<ZeldaHoofdstuk> hoofdstukken;
+    final List<ZeldaEiland> eilanden;
+    final List<ZeldaHoofdstuk> hoofdstukken;                 // alle delen van alle eilanden
+    final ZeldaZee zee;
     final ZeldaMuziek muziek = new ZeldaMuziek();
+    final ZeldaMetgezel metgezel;
+    final ZeldaDier dier = new ZeldaDier();
+    final List<ZeldaVoorwerp> voorwerpen = new ArrayList<>();
     final Map<UUID, Sessie> sessies = new HashMap<>();
     ZeldaVoortgang voortgang;
-    private final NamespacedKey itemKey, hartKey;
+    final NamespacedKey itemKey;
+    private final NamespacedKey hartKey;
     private final Random rnd = new Random();
     private final List<BukkitTask> taken = new ArrayList<>();
     private long tikken;
 
-    ZeldaSpel(KitPvP plugin, Zelda modus, List<ZeldaHoofdstuk> hoofdstukken) {
+    ZeldaSpel(KitPvP plugin, Zelda modus, List<ZeldaEiland> eilanden, ZeldaZee zee) {
         this.plugin = plugin;
         this.modus = modus;
-        this.hoofdstukken = hoofdstukken;
+        this.eilanden = eilanden;
+        List<ZeldaHoofdstuk> alle = new ArrayList<>();
+        for (ZeldaEiland e : eilanden) alle.addAll(e.delen());
+        this.hoofdstukken = List.copyOf(alle);
+        this.zee = zee;
+        this.metgezel = new ZeldaMetgezel(plugin);
         this.itemKey = new NamespacedKey(plugin, "zelda");
         this.hartKey = new NamespacedKey(plugin, "zelda-harten");
+        voorwerpen.add(new Flesje());
     }
 
     void aan() {
@@ -141,18 +185,44 @@ final class ZeldaSpel implements Listener {
             Player p = Bukkit.getPlayer(id);
             if (p != null) weg(p);
         }
-        for (ZeldaHoofdstuk h : hoofdstukken) {
+        for (ZeldaHoofdstuk h : delen()) {
             for (ZeldaHoofdstuk.Kamer k : h.kamers) k.vijanden.forEach(Entity::remove);
             for (ZeldaHoofdstuk.Vondst v : h.vondsten) if (v.toon != null) v.toon.remove();
             for (ZeldaHoofdstuk.Persoon p : h.personen) if (p.ent != null) p.ent.remove();
         }
+        metgezel.weg();
+        dier.weg();
         if (plugin.w != null) for (Entity e : plugin.w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
         bewaar();
     }
 
     ZeldaHoofdstuk hoofdstuk(String id) {
+        ZeldaHoofdstuk h = deel(id);
+        return h == null ? hoofdstukken.get(0) : h;
+    }
+
+    /** Het deel met dit id (null = bestaat niet). */
+    ZeldaHoofdstuk deel(String id) {
         for (ZeldaHoofdstuk h : hoofdstukken) if (h.id().equals(id)) return h;
-        return hoofdstukken.get(0);
+        return null;
+    }
+
+    ZeldaEiland eiland(String id) {
+        for (ZeldaEiland e : eilanden) if (e.id().equals(id)) return e;
+        return null;
+    }
+
+    /** Alle delen met onderdelen: de eilanden en de zee. */
+    private List<ZeldaHoofdstuk> delen() {
+        List<ZeldaHoofdstuk> l = new ArrayList<>(hoofdstukken);
+        l.add(zee);
+        return l;
+    }
+
+    private static <T> List<T> alle(ZeldaEiland e, java.util.function.Function<ZeldaHoofdstuk, List<T>> wat) {
+        List<T> l = new ArrayList<>();
+        for (ZeldaHoofdstuk h : e.delen()) l.addAll(wat.apply(h));
+        return l;
     }
 
     boolean speelt(Player p) {
@@ -172,26 +242,49 @@ final class ZeldaSpel implements Listener {
             s.naam = p.getName();
             voortgang.vuil();
         }
-        ZeldaHoofdstuk h = hoofdstuk(s.hoofdstuk);
-        int r = Math.max(0, Math.min(s.rust(h.id()), h.rust.size() - 1));
+        // waar je verder gaat: je laatste rustplaats, of (oude stand) de verste van je hoofdstuk
+        ZeldaHoofdstuk h = null;
+        int r = 0;
+        String[] pl = ZeldaRegels.plek(s.laatste);
+        if (pl != null && deel(pl[0]) != null && Integer.parseInt(pl[1]) < deel(pl[0]).rust.size()) {
+            h = deel(pl[0]);
+            r = Integer.parseInt(pl[1]);
+        }
+        if (h == null) {
+            h = hoofdstuk(s.hoofdstuk);
+            r = Math.max(0, Math.min(s.rust(h.id()), h.rust.size() - 1));
+        }
         Sessie ss = new Sessie(h, r);
-        ss.volgendWoud = System.currentTimeMillis() + 40_000L;
+        long nu = System.currentTimeMillis();
+        ss.laatsteVoortgang = nu;
+        ss.voortgangStand = s.voortgang();
         sessies.put(p.getUniqueId(), ss);
         for (String v : h.rust.get(r).geeft) if (s.zet(v)) voortgang.vuil();
         uitrusten(p, s);
+        p.getInventory().setHeldItemSlot(0);
         herstel(p);
         Location l = h.rust.get(r).plek;
         p.teleport(l);
         p.setFallDistance(0);
         hemel(p, ss, l);
         muziek.speel(p, ZeldaMuziek.BEGIN);
+        muziek.achter(p, h.muziek(l));
         if (s.heeft("v:intro")) zeg(p, Component.text(h.naam() + " · " + h.rust.get(r).naam + " · vak 8 = terug naar de hub", NamedTextColor.GRAY));
+        if (s.zet("v:wiske")) {                              // Wiske is nu te zien: wie al speelde, krijgt het even te horen
+            voortgang.vuil();
+            if (s.heeft("v:intro")) {
+                vertel(p, ZeldaHoofdstuk.r("Wiske", "Kijk, nu zie je me beter! Ik vlieg met je mee."));
+                if (!s.heeft("o:uitleg-uit")) vertel(p, ZeldaHoofdstuk.r("Wiske", "Weet je het even niet? Klik op mij, of typ /hint."));
+            }
+        }
     }
 
     /** Speler gaat weg (hub, andere modus, uitloggen). */
     void weg(Player p) {
         Sessie ss = sessies.remove(p.getUniqueId());
         muziek.vergeet(p.getUniqueId());
+        metgezel.weg(p.getUniqueId());
+        dier.weg(p.getUniqueId());
         if (ss != null) for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.baas != null && k.baas.balk != null) p.hideBossBar(k.baas.balk);
         for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) u.loopt.remove(p.getUniqueId());
         p.resetPlayerTime();
@@ -222,7 +315,7 @@ final class ZeldaSpel implements Listener {
 
     Location respawn(Player p) {
         Sessie ss = sessie(p);
-        return ss == null ? null : ss.h.rust.get(ss.rust).plek;
+        return ss == null ? null : ss.rustplaats().plek;
     }
 
     void bewaar() {
@@ -236,18 +329,32 @@ final class ZeldaSpel implements Listener {
 
     // ── uitrusting (volgt uit de voortgang) ─────────────────────────────────────────────────
 
-    private ItemStack ding(Material m, String naam, String soort) {
+    ItemStack ding(Material m, String naam, String soort) {
         ItemStack it = new ItemStack(m);
         ItemMeta meta = it.getItemMeta();
         meta.displayName(Component.text(naam, NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
         meta.setUnbreakable(true);
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_DYE, ItemFlag.HIDE_ENCHANTS);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_DYE, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ARMOR_TRIM);
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, soort);
-        if (meta instanceof LeatherArmorMeta lm) lm.setColor(soort.equals("laarzen") ? Color.fromRGB(0x5b3a22) : Color.fromRGB(0x3f8a2e));
+        if (meta instanceof LeatherArmorMeta lm) lm.setColor(switch (soort) {
+            case "laarzen" -> Color.fromRGB(0x5b3a22);
+            case "broek" -> Color.fromRGB(0x6b4a2a);
+            default -> Color.fromRGB(0x3f8a2e);
+        });
         it.setItemMeta(meta);
         return it;
     }
 
+    /** Een grijze regel onder de naam van een item (menu). */
+    static void lore(ItemStack it, String... regels) {
+        ItemMeta meta = it.getItemMeta();
+        List<Component> l = new ArrayList<>();
+        for (String r : regels) l.add(Component.text(r, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        meta.lore(l);
+        it.setItemMeta(meta);
+    }
+
+    /** Alles wat je bij je hebt volgt uit je voortgang: zwaard, schild, boog, voorwerpen, kaart, harnas en harten. */
     void uitrusten(Player p, ZeldaVoortgang.Stand s) {
         var inv = p.getInventory();
         inv.clear();
@@ -259,15 +366,70 @@ final class ZeldaSpel implements Listener {
             inv.setItem(17, ding(Material.ARROW, "Pijl", "pijl"));
         }
         if (s.heeft("schild")) inv.setItemInOffHand(ding(Material.SHIELD, "Eikenschild", "schild"));
+        for (ZeldaVoorwerp v : voorwerpen) if (s.heeft(v.vlag())) vernieuw(p, s, v);
         inv.setItem(8, ding(Material.MAP, "Kaart", "kaart"));
         inv.setItem(Menus.HUB_VAK, plugin.hubItem());
-        inv.setHelmet(ding(Material.LEATHER_HELMET, "Muts", "muts"));
-        inv.setChestplate(ding(Material.LEATHER_CHESTPLATE, "Groene tuniek", "tuniek"));
-        inv.setBoots(ding(Material.LEATHER_BOOTS, "Laarzen", "laarzen"));
-        inv.setHeldItemSlot(0);
-        int extra = 0;
-        for (String v : s.vlaggen) if (v.startsWith("hart")) extra++;
-        harten(p, BASIS_HARTEN + extra);
+        harnas(p, ZeldaRegels.harnas(s));
+        harten(p, ZeldaRegels.harten(s));
+    }
+
+    /** Zet één voorwerp opnieuw in zijn vak (bv. na drinken). */
+    void vernieuw(Player p, ZeldaVoortgang.Stand s, ZeldaVoorwerp v) {
+        ItemStack it = s.heeft(v.vlag()) ? v.item(this, p, s) : null;
+        if (it != null) {
+            ItemMeta meta = it.getItemMeta();
+            meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "v:" + v.id());
+            it.setItemMeta(meta);
+        }
+        p.getInventory().setItem(v.vak(), it);
+    }
+
+    ZeldaVoorwerp voorwerp(String id) {
+        for (ZeldaVoorwerp v : voorwerpen) if (v.id().equals(id)) return v;
+        return null;
+    }
+
+    /** Harnas {@code n} (0 = groene tuniek … 4 = lichtharnas, zie {@link ZeldaRegels#HARNAS_NAAM}). */
+    private void harnas(Player p, int n) {
+        var inv = p.getInventory();
+        String naam = ZeldaRegels.HARNAS_NAAM[n];
+        switch (n) {
+            case 0 -> {
+                inv.setHelmet(ding(Material.LEATHER_HELMET, "Muts", "muts"));
+                inv.setChestplate(ding(Material.LEATHER_CHESTPLATE, naam, "tuniek"));
+                inv.setLeggings(null);
+                inv.setBoots(ding(Material.LEATHER_BOOTS, "Laarzen", "laarzen"));
+            }
+            case 1 -> {
+                inv.setHelmet(ding(Material.LEATHER_HELMET, "Muts", "muts"));
+                inv.setChestplate(ding(Material.CHAINMAIL_CHESTPLATE, naam, "tuniek"));
+                inv.setLeggings(ding(Material.LEATHER_LEGGINGS, "Broek", "broek"));
+                inv.setBoots(ding(Material.LEATHER_BOOTS, "Laarzen", "laarzen"));
+            }
+            case 2 -> {
+                inv.setHelmet(ding(Material.CHAINMAIL_HELMET, naam, "muts"));
+                inv.setChestplate(ding(Material.IRON_CHESTPLATE, naam, "tuniek"));
+                inv.setLeggings(ding(Material.CHAINMAIL_LEGGINGS, naam, "broek"));
+                inv.setBoots(ding(Material.LEATHER_BOOTS, "Laarzen", "laarzen"));
+            }
+            default -> {
+                Material[] set = n == 3 ? new Material[]{Material.IRON_HELMET, Material.IRON_CHESTPLATE, Material.IRON_LEGGINGS, Material.IRON_BOOTS}
+                        : new Material[]{Material.DIAMOND_HELMET, Material.DIAMOND_CHESTPLATE, Material.DIAMOND_LEGGINGS, Material.DIAMOND_BOOTS};
+                ItemStack[] stuk = new ItemStack[4];
+                String[] soort = {"muts", "tuniek", "broek", "laarzen"};
+                for (int i = 0; i < 4; i++) {
+                    stuk[i] = ding(set[i], naam, soort[i]);
+                    if (stuk[i].getItemMeta() instanceof ArmorMeta am) {
+                        am.setTrim(new ArmorTrim(n == 3 ? TrimMaterial.COPPER : TrimMaterial.GOLD, n == 3 ? TrimPattern.RIB : TrimPattern.SPIRE));
+                        stuk[i].setItemMeta(am);
+                    }
+                }
+                inv.setHelmet(stuk[0]);
+                inv.setChestplate(stuk[1]);
+                inv.setLeggings(stuk[2]);
+                inv.setBoots(stuk[3]);
+            }
+        }
     }
 
     /** Zet het aantal harten (via een eigen modifier, zodat het buiten Zelda nooit blijft hangen); -1 = weg. */
@@ -306,7 +468,7 @@ final class ZeldaSpel implements Listener {
                 ss.gestuurd = nu;
                 p.sendActionBar(ss.nu);
                 String tekst = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(ss.nu);
-                if (tekst.startsWith("Wiske ·")) wiske(p, 6);
+                if (tekst.startsWith("Wiske ·")) metgezel.praat(p);
             } else if (ss.nu != null && nu - ss.gestuurd >= 1500) {
                 ss.gestuurd = nu;
                 p.sendActionBar(ss.nu);
@@ -314,13 +476,6 @@ final class ZeldaSpel implements Listener {
         }
     }
 
-    /** Wiske, het vuurvliegje: een klein lichtje naast je schouder, alleen voor jou te zien. */
-    private void wiske(Player p, int n) {
-        Location l = p.getEyeLocation();
-        org.bukkit.util.Vector links = l.getDirection().crossProduct(new org.bukkit.util.Vector(0, 1, 0)).normalize().multiply(-0.7);
-        l.add(links).add(0, 0.25 + Math.sin(tikken / 9.0) * 0.08, 0);
-        p.spawnParticle(Particle.END_ROD, l, n, 0.06, 0.06, 0.06, 0.004);
-    }
 
     // ── de klok ─────────────────────────────────────────────────────────────────────────────
 
@@ -328,12 +483,15 @@ final class ZeldaSpel implements Listener {
         tikken++;
         muziek.tik();
         long nu = System.currentTimeMillis();
+        List<Player> spelers = new ArrayList<>();
+        for (var e : new ArrayList<>(sessies.entrySet())) {
+            Player p = Bukkit.getPlayer(e.getKey());
+            if (p == null) sessies.remove(e.getKey());
+            else spelers.add(p);
+        }
+        metgezel.tik(spelers);
         if (tikken % 5 == 0) {
-            for (var e : new ArrayList<>(sessies.entrySet())) {
-                Player p = Bukkit.getPlayer(e.getKey());
-                if (p == null) sessies.remove(e.getKey());
-                else if (!p.isDead()) zones(p, e.getValue(), nu);
-            }
+            for (Player p : spelers) if (!p.isDead() && sessie(p).vaart == null) zones(p, sessie(p), nu);
             for (ZeldaHoofdstuk h : hoofdstukken) {
                 for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) uitdaging(u, nu);
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) reeks(r, nu);
@@ -342,39 +500,83 @@ final class ZeldaSpel implements Listener {
         if (tikken % 10 == 0) {
             verteller(nu);
             for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) kamer(k, nu);
+            Map<Player, ZeldaVoortgang.Stand> wie = new HashMap<>();
+            for (Player p : spelers) wie.put(p, voortgang.van(p.getUniqueId()));
+            dier.tik(wie, this::verborgen);
+            bronnen();
         }
         if (tikken % 20 == 0) {
-            for (var e : new ArrayList<>(sessies.entrySet())) {
-                Player p = Bukkit.getPlayer(e.getKey());
-                if (p != null) seconde(p, e.getValue(), nu);
-            }
-            for (ZeldaHoofdstuk h : hoofdstukken) decor(h);
+            for (Player p : spelers) seconde(p, sessie(p), nu);
+            for (ZeldaHoofdstuk h : delen()) decor(h);
             if (tikken % 200 == 0) bewaar();
         }
     }
 
-    /** Elke seconde per speler: hemel, grenzen, rust genezen, af en toe een zacht motief. */
+    /** Elke seconde per speler: grenzen, het deel waar je bent, hemel, genezen, muziek, de overtocht, hulp aanbieden. */
     private void seconde(Player p, Sessie ss, long nu) {
         Location l = p.getLocation();
         if (p.isDead()) return;
-        if (!ss.h.speelgebied.in(l) || !l.getWorld().equals(ss.h.w)) {
-            p.setFallDistance(0);
-            p.teleport(ss.h.rust.get(ss.rust).plek);
+        if (p.getFoodLevel() != 17) p.setFoodLevel(17);
+        if (ss.vaart != null) {
+            overtocht(p, ss, nu);
             return;
         }
+        ZeldaHoofdstuk hier = ss.h.eiland == null ? null : ss.h.eiland.deelBij(l);
+        if (hier == null) {                                  // buiten het eiland: terug naar je rustplaats
+            p.setFallDistance(0);
+            p.teleport(ss.rustplaats().plek);
+            return;
+        }
+        ss.h = hier;
         hemel(p, ss, l);
-        if (tikken % 60 == 0) wiske(p, 1);
-        for (ZeldaHoofdstuk.Rust r : ss.h.rust) if (r.zone.in(l)) geneesBij(p, 2);
-        if (p.getFoodLevel() != 17) p.setFoodLevel(17);
-        if (nu > ss.volgendWoud && !muziek.speelt(p)) {
-            ss.volgendWoud = nu + 45_000L + rnd.nextInt(35_000);
-            muziek.speel(p, ZeldaMuziek.WOUD);
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        boolean genees = false, bron = false;
+        for (ZeldaHoofdstuk h : ss.h.eiland.delen()) {
+            for (ZeldaHoofdstuk.Rust r : h.rust) genees |= r.zone.in(l);
+            for (ZeldaHoofdstuk.Bron b : h.bronnen) bron |= b.zone.in(l);
+        }
+        if (genees || bron) {
+            geneesBij(p, bron ? 4 : 2);
+            if (ZeldaRegels.vulFlessen(s)) {
+                voortgang.vuil();
+                vernieuw(p, s, voorwerp("fles"));
+                if (ZeldaRegels.flessen(s) > 0) zeg(p, Component.text("Flesjes vol", NamedTextColor.GRAY));
+            }
+        }
+        if (bron && !ss.inBron && nu > ss.bronDeuntje) {
+            ss.bronDeuntje = nu + 30_000L;
+            muziek.speel(p, ZeldaMuziek.BRON);
+            p.spawnParticle(Particle.HEART, p.getLocation().add(0, 1.2, 0), 4, 0.4, 0.4, 0.4, 0);
+        }
+        ss.inBron = bron;
+        muziek.achter(p, ss.h.muziek(l));
+        // huisdier gevonden maar nog naamloos: even vragen hoe hij heet
+        if (ZeldaDier.soort(s) != null && s.dier == null && !ss.naamGevraagd && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
+            ss.naamGevraagd = true;
+            naamMenu(p);
+        }
+        // vast? na een tijd zonder voortgang biedt Wiske één keer hulp aan
+        int v = s.voortgang();
+        if (v != ss.voortgangStand) {
+            ss.voortgangStand = v;
+            ss.laatsteVoortgang = nu;
+        } else if (nu - ss.laatsteVoortgang > VAST_MS && nu > ss.aangeboden && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
+            ss.aangeboden = nu + AANBOD_OPNIEUW;
+            muziek.speel(p, ZeldaMuziek.HINT);
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "Kwijt? Klik op mij, dan help ik je."));
         }
     }
 
+    /** Staat deze speler in een kamer waar gevochten wordt? */
+    boolean inGevecht(Player p) {
+        for (ZeldaHoofdstuk h : hoofdstukken)
+            for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.binnen.in(p.getLocation())) return true;
+        return false;
+    }
+
     private void hemel(Player p, Sessie ss, Location l) {
-        long t = ss.h.hemel(l);
-        for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.hemel >= 0 && k.binnen.in(l)) t = k.hemel;
+        long t = ss.vaart != null ? zee.hemel(l) : ss.h.hemel(l);
+        if (ss.vaart == null) for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.hemel >= 0 && k.binnen.in(l)) t = k.hemel;
         if (Math.abs(t - ss.laatsteHemel) > 40) {
             ss.laatsteHemel = t;
             p.setPlayerTime(t, false);
@@ -385,28 +587,38 @@ final class ZeldaSpel implements Listener {
 
     private void zones(Player p, Sessie ss, long nu) {
         Location l = p.getLocation();
-        ZeldaHoofdstuk h = ss.h;
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
-        for (ZeldaHoofdstuk.Rust r : h.rust) if (r.zone.in(l)) rust(p, ss, s, r);
-        for (ZeldaHoofdstuk.Verhaal v : h.verhalen)
-            if (v.zone.in(l) && !s.heeft("v:" + v.id) && (v.vereist == null || s.heeft(v.vereist))) verhaal(p, ss, s, v);
-        for (ZeldaHoofdstuk.Vondst v : h.vondsten) if (v.zone.in(l) && !s.heeft(v.vlag)) vind(p, s, v);
-        for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) {
-            Long start = u.loopt.get(p.getUniqueId());
-            if (u.start.in(l)) {
-                if (start == null || nu - start > 600) begin(p, u, nu);
-            } else if (start != null && u.finish.in(l)) gehaald(p, s, u, nu - start);
+        if (ss.h.eiland == null) return;
+        for (ZeldaHoofdstuk h : ss.h.eiland.delen()) {
+            for (ZeldaHoofdstuk.Rust r : h.rust) if (r.zone.in(l)) rust(p, ss, s, h, r);
+            for (ZeldaHoofdstuk.Verhaal v : h.verhalen)
+                if (v.zone.in(l) && !s.heeft("v:" + v.id) && (v.vereist == null || s.heeft(v.vereist))) verhaal(p, h, s, v);
+            for (ZeldaHoofdstuk.Vondst v : h.vondsten)
+                if (v.zone.in(l) && !s.heeft(v.vlag) && (v.vereist == null || s.heeft(v.vereist))) vind(p, s, v);
+            for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) {
+                Long start = u.loopt.get(p.getUniqueId());
+                if (u.start.in(l)) {
+                    if (start == null || nu - start > 600) begin(p, u, nu);
+                } else if (start != null && u.finish.in(l)) gehaald(p, s, u, nu - start);
+            }
+            for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.fase == ZeldaHoofdstuk.Fase.RUST && k.start.in(l)) begin(k, nu);
         }
-        for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.fase == ZeldaHoofdstuk.Fase.RUST && k.start.in(l)) begin(k, nu);
     }
 
-    private void rust(Player p, Sessie ss, ZeldaVoortgang.Stand s, ZeldaHoofdstuk.Rust r) {
+    private void rust(Player p, Sessie ss, ZeldaVoortgang.Stand s, ZeldaHoofdstuk h, ZeldaHoofdstuk.Rust r) {
+        ss.rh = h;
         ss.rust = r.index;
         boolean nieuw = false;
         for (String v : r.geeft) nieuw |= s.zet(v);
         if (nieuw) uitrusten(p, s);
-        if (s.bereik(ss.h.id(), r.index)) {
-            s.hoofdstuk = ss.h.id();
+        String hier = h.id() + ":" + r.index;
+        if (!hier.equals(s.laatste)) {
+            s.laatste = hier;
+            s.hoofdstuk = h.id();
+            nieuw = true;
+        }
+        s.bereik(h.id(), r.index);
+        if (s.bezoek(h.id(), r.index)) {
             voortgang.vuil();
             bewaar();
             zeg(p, Component.text("Rustplaats · " + r.naam, NamedTextColor.GRAY));
@@ -416,12 +628,13 @@ final class ZeldaSpel implements Listener {
         } else if (nieuw) voortgang.vuil();
     }
 
-    private void verhaal(Player p, Sessie ss, ZeldaVoortgang.Stand s, ZeldaHoofdstuk.Verhaal v) {
+    private void verhaal(Player p, ZeldaHoofdstuk h, ZeldaVoortgang.Stand s, ZeldaHoofdstuk.Verhaal v) {
         s.zet("v:" + v.id);
         voortgang.vuil();
+        if (v.uitleg && s.heeft("o:uitleg-uit")) return;      // uitleg overslaan
         for (ZeldaHoofdstuk.Regel r : v.regels) vertel(p, r);
         if (v.einde) {
-            s.zet(ss.h.id());
+            s.zet(h.id());
             bewaar();
             muziek.speel(p, ZeldaMuziek.KLAAR);
             p.getWorld().spawnParticle(Particle.END_ROD, p.getLocation().add(0, 1.5, 0), 40, 1.2, 1, 1.2, 0.02);
@@ -430,12 +643,17 @@ final class ZeldaSpel implements Listener {
 
     private void vind(Player p, ZeldaVoortgang.Stand s, ZeldaHoofdstuk.Vondst v) {
         s.zet(v.vlag);
+        if (v.vlag.startsWith("fles")) ZeldaRegels.vulFlessen(s);
         voortgang.vuil();
         bewaar();
         uitrusten(p, s);
         if (v.vlag.startsWith("hart")) herstel(p);
         muziek.speel(p, ZeldaMuziek.VONDST);
-        zeg(p, Component.text(v.naam, NamedTextColor.WHITE).append(Component.text(" · " + v.uitleg, NamedTextColor.GRAY)));
+        if (v.vlag.startsWith("hs:")) {                       // hartstukje: «3 van 4», of een hart erbij
+            int los = ZeldaRegels.losseStukjes(s);
+            if (los == 0) herstel(p);
+            zeg(p, Component.text(v.naam, NamedTextColor.WHITE).append(Component.text(los == 0 ? " · een hart erbij" : " · " + los + " van " + ZeldaRegels.STUKJES_PER_HART, NamedTextColor.GRAY)));
+        } else zeg(p, Component.text(v.naam, NamedTextColor.WHITE).append(Component.text(" · " + v.uitleg, NamedTextColor.GRAY)));
         p.getWorld().spawnParticle(Particle.END_ROD, v.plek, 30, 0.3, 0.5, 0.3, 0.05);
         if (v.toon != null && v.toon.isValid() && !nodig(v, p.getUniqueId())) {
             v.toon.remove();
@@ -580,6 +798,8 @@ final class ZeldaSpel implements Listener {
         Location midden = k.start.midden(in.get(0).getWorld());
         deur(k.in, true, midden);
         deur(k.uit, true, midden);
+        for (UUID id : k.meegedaan)
+            if (sessies.containsKey(id) && voortgang.van(id).zet("k:" + k.id)) voortgang.vuil();
         for (Player p : in) {
             muziek.lus(p, null);
             muziek.speel(p, ZeldaMuziek.GEWONNEN);
@@ -848,7 +1068,7 @@ final class ZeldaSpel implements Listener {
             if (id.equals(behalve)) continue;
             Player p = Bukkit.getPlayer(id);
             if (p != null && p.getWorld().equals(v.plek.getWorld()) && p.getLocation().distanceSquared(v.plek) < 48 * 48
-                    && !voortgang.van(id).heeft(v.vlag)) return true;
+                    && !voortgang.van(id).heeft(v.vlag) && (v.vereist == null || voortgang.van(id).heeft(v.vereist))) return true;
         }
         return false;
     }
@@ -917,75 +1137,393 @@ final class ZeldaSpel implements Listener {
         for (ZeldaHoofdstuk.Persoon p : h.personen) {
             boolean moet = dichtbij(p.plek, 56);
             if (moet && (p.ent == null || !p.ent.isValid())) {
-                p.ent = p.plek.getWorld().spawn(p.plek, Villager.class, v -> {
-                    v.setPersistent(false);
-                    v.addScoreboardTag(TAG);
-                    v.addScoreboardTag(NPC);
-                    v.setAI(false);
-                    v.setInvulnerable(true);
-                    v.setSilent(true);
-                    v.setCollidable(false);
-                    if (p.beroep != null) v.setProfession(p.beroep);
-                    v.setVillagerLevel(5);
-                    v.customName(Component.text(p.naam, GROEN));
-                    v.setCustomNameVisible(false);
-                    v.setRotation(p.plek.getYaw(), 0);
+                @SuppressWarnings("unchecked")
+                Class<Entity> klasse = (Class<Entity>) (p.soort.getEntityClass() == null ? Villager.class : p.soort.getEntityClass());
+                Entity nieuw = p.plek.getWorld().spawn(p.plek, klasse, e -> {
+                    e.setPersistent(false);
+                    e.addScoreboardTag(TAG);
+                    e.addScoreboardTag(NPC);
+                    e.setInvulnerable(true);
+                    e.setSilent(true);
+                    e.customName(Component.text(p.naam, GROEN));
+                    e.setCustomNameVisible(false);
+                    e.setRotation(p.plek.getYaw(), 0);
+                    if (e instanceof LivingEntity le) {
+                        le.setAI(false);
+                        le.setCollidable(false);
+                        le.setRemoveWhenFarAway(false);
+                    }
+                    if (e instanceof Villager v) {
+                        if (p.beroep != null) v.setProfession(p.beroep);
+                        if (p.streek != null) v.setVillagerType(p.streek);
+                        v.setVillagerLevel(5);
+                    }
                 });
+                if (nieuw instanceof LivingEntity le) p.ent = le;
+                else nieuw.remove();
             } else if (!moet && p.ent != null) {
                 p.ent.remove();
                 p.ent = null;
             }
         }
+        // wie iets nieuws te zeggen heeft (een gesprek dat je nog niet hoorde), glinstert zacht: alleen voor jou
+        if (tikken % 40 == 0) for (ZeldaHoofdstuk.Persoon pe : h.personen) {
+            if (pe.ent == null || !pe.ent.isValid() || pe.gesprekken.isEmpty()) continue;
+            for (UUID id : sessies.keySet()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p == null || !p.getWorld().equals(pe.plek.getWorld()) || p.getLocation().distanceSquared(pe.plek) > 24 * 24) continue;
+                if (pe.nieuw(voortgang.van(id)))
+                    p.spawnParticle(Particle.WAX_OFF, pe.ent.getLocation().add(0, pe.ent.getHeight() + 0.4, 0), 3, 0.15, 0.1, 0.15, 0.3);
+            }
+        }
     }
 
-    // ── kaart: reizen ───────────────────────────────────────────────────────────────────────
+    /** Bronnen (feeënkringen): een zachte ring van licht, alleen als er iemand in de buurt is. */
+    private void bronnen() {
+        for (ZeldaHoofdstuk h : hoofdstukken)
+            for (ZeldaHoofdstuk.Bron b : h.bronnen) {
+                if (!dichtbij(b.midden, 32)) continue;
+                double hoek = tikken / 10.0 * 0.5;
+                for (int i = 0; i < 6; i++) {
+                    double a = hoek + i * Math.PI / 3;
+                    Location l = b.midden.clone().add(Math.cos(a) * 1.3, 0.15 + (i % 2) * 0.1, Math.sin(a) * 1.3);
+                    b.midden.getWorld().spawnParticle(Particle.DUST, l, 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(0xf7a8d8), 0.9f));
+                }
+                if (tikken % 40 == 0) b.midden.getWorld().spawnParticle(Particle.END_ROD, b.midden.clone().add(0, 0.8, 0), 2, 0.4, 0.4, 0.4, 0.01);
+            }
+    }
 
-    private void kaart(Player p) {
+    /** Verborgen vondsten in de buurt die deze speler nog niet heeft (voor het snuffelen van zijn huisdier). */
+    private List<Location> verborgen(Player p) {
+        List<Location> l = new ArrayList<>();
         Sessie ss = sessie(p);
-        if (ss == null) return;
+        if (ss == null || ss.vaart != null || ss.h.eiland == null) return l;
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
-        Menu m = new Menu();
-        m.inv = Bukkit.createInventory(m, 27, Component.text(ss.h.naam(), NamedTextColor.DARK_GRAY));
-        int verst = s.rust(ss.h.id());
-        for (ZeldaHoofdstuk.Rust r : ss.h.rust) {
-            if (r.index > 17) break;
-            int slot = 1 + r.index + (r.index >= 7 ? 2 : 0);
-            ItemStack it;
-            if (r.index <= verst) {
-                it = ding(r.index == ss.rust ? Material.SOUL_CAMPFIRE : Material.CAMPFIRE, r.naam, "rust:" + r.index);
+        for (ZeldaHoofdstuk h : ss.h.eiland.delen())
+            for (ZeldaHoofdstuk.Vondst v : h.vondsten)
+                if (v.verborgen && !s.heeft(v.vlag) && (v.vereist == null || s.heeft(v.vereist))) l.add(v.plek);
+        return l;
+    }
+
+    // ── kaart: reizen, opnieuw, uitleg, varen ───────────────────────────────────────────────
+
+    /**
+     * De kaart (vak 9): bovenaan de rustplaatsen van dit eiland (klik = reizen, rechtsklik = opnieuw vanaf hier: de
+     * uitleg en puzzels erna komen terug), dan de eilanden (klik = varen), onderaan opdrachten, harten, harnas, uitleg
+     * aan/uit en terug naar de hub.
+     */
+    void kaart(Player p) {
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null || ss.h.eiland == null) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        ZeldaEiland eiland = ss.h.eiland;
+        Menu m = new Menu(false);
+        m.inv = Bukkit.createInventory(m, 36, Component.text(eiland.naam(), NamedTextColor.DARK_GRAY));
+        int slot = 0;
+        for (ZeldaHoofdstuk h : eiland.delen())
+            for (ZeldaHoofdstuk.Rust r : h.rust) {
+                if (slot > 17) break;
+                ItemStack it;
+                boolean hier = h == ss.rh && r.index == ss.rust;
+                if (s.bezocht(h.id(), r.index)) {
+                    it = ding(hier ? Material.SOUL_CAMPFIRE : Material.CAMPFIRE, r.naam, "rust:" + h.id() + ":" + r.index);
+                    lore(it, hier ? "hier ben je" : "klik: reizen", "rechtsklik: opnieuw vanaf hier");
+                } else it = ding(Material.GRAY_STAINED_GLASS_PANE, "…", "niets");
+                m.inv.setItem(slot++, it);
+            }
+        slot = 18;
+        for (ZeldaEiland e : eilanden) {
+            if (!e.open(s) || e.aanlegRust() == null) continue;
+            ItemStack it = ding(e.icoon(), e.naam(), "eiland:" + e.id());
+            lore(it, e == eiland ? "hier ben je" : "klik: varen");
+            if (e == eiland) {
                 ItemMeta meta = it.getItemMeta();
-                meta.lore(List.of(Component.text(r.index == ss.rust ? "hier ben je" : "reizen", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+                meta.setEnchantmentGlintOverride(true);
                 it.setItemMeta(meta);
-            } else it = ding(Material.GRAY_STAINED_GLASS_PANE, "…", "niets");
-            m.inv.setItem(slot, it);
+            }
+            m.inv.setItem(slot++, it);
+            if (slot > 26) break;
         }
-        m.inv.setItem(26, ding(Material.OAK_DOOR, "Terug naar de hub", "hub"));
+        // opdrachten (zijmissies waar je mee bezig bent)
+        List<String> regels = new ArrayList<>();
+        for (ZeldaEiland e : eilanden)
+            for (ZeldaHoofdstuk.Missie mi : ZeldaRegels.bezig(alle(e, h -> h.missies), s)) regels.add(mi.naam() + ": " + ZeldaRegels.stap(mi, s));
+        ItemStack op = ding(Material.WRITABLE_BOOK, "Opdrachten", "niets");
+        lore(op, regels.isEmpty() ? new String[]{"geen"} : regels.toArray(new String[0]));
+        m.inv.setItem(27, op);
+        ItemStack hart = ding(Material.RED_DYE, ZeldaRegels.harten(s) + " harten", "niets");
+        lore(hart, "hartstukjes " + ZeldaRegels.losseStukjes(s) + " van " + ZeldaRegels.STUKJES_PER_HART);
+        m.inv.setItem(28, hart);
+        int hn = ZeldaRegels.harnas(s);
+        m.inv.setItem(29, ding(new Material[]{Material.LEATHER_CHESTPLATE, Material.CHAINMAIL_CHESTPLATE, Material.IRON_CHESTPLATE,
+                Material.IRON_CHESTPLATE, Material.DIAMOND_CHESTPLATE}[hn], ZeldaRegels.HARNAS_NAAM[hn], "niets"));
+        if (ZeldaRegels.flessen(s) > 0) {
+            ItemStack fl = ding(Material.GLASS_BOTTLE, "Flesjes", "niets");
+            lore(fl, ZeldaRegels.vol(s) + " van " + ZeldaRegels.flessen(s) + " vol", "vullen bij een bron of zielvuur");
+            m.inv.setItem(30, fl);
+        }
+        boolean uitleg = !s.heeft("o:uitleg-uit");
+        ItemStack ui = ding(uitleg ? Material.BOOK : Material.GRAY_DYE, "Uitleg: " + (uitleg ? "aan" : "uit"), "uitleg");
+        lore(ui, "klik: " + (uitleg ? "uit (alleen het verhaal)" : "aan"));
+        m.inv.setItem(32, ui);
+        m.inv.setItem(35, ding(Material.OAK_DOOR, "Terug naar de hub", "hub"));
         p.openInventory(m.inv);
+    }
+
+    /** Naar rustplaats {@code i} van deel {@code h} (alleen als je die al bereikte). */
+    void reis(Player p, ZeldaHoofdstuk h, int i) {
+        Sessie ss = sessie(p);
+        if (ss == null || i < 0 || i >= h.rust.size() || !voortgang.van(p.getUniqueId()).bezocht(h.id(), i)) return;
+        ss.h = h;
+        ss.rh = h;
+        ss.rust = i;
+        p.setFallDistance(0);
+        p.teleport(h.rust.get(i).plek);
+        p.playSound(p, Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
+    }
+
+    /** Opnieuw vanaf rustplaats {@code i}: de verhalen en puzzels erna vergeten (niet je spullen), en erheen. */
+    void opnieuw(Player p, ZeldaHoofdstuk h, int i) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        if (i < 0 || i >= h.rust.size() || !s.bezocht(h.id(), i)) return;
+        for (String v : ZeldaRegels.opnieuw(h.volgorde, h.rust.get(i))) s.wis(v);
+        voortgang.vuil();
+        reis(p, h, i);
+        zeg(p, Component.text("Opnieuw vanaf " + h.rust.get(i).naam, NamedTextColor.GRAY));
+    }
+
+    // ── varen: de overtocht naar een ander eiland ───────────────────────────────────────────
+
+    /** Aan boord van de Zilvermeeuw; na een paar tellen leg je aan bij {@code naar}. */
+    void vaar(Player p, ZeldaEiland naar) {
+        Sessie ss = sessie(p);
+        if (ss == null || naar == null || naar.aanlegRust() == null || zee.dek.isEmpty()) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        boolean eerste = !s.heeft("e:" + naar.id());
+        long nu = System.currentTimeMillis();
+        ss.vaart = new Vaart(naar, nu + (eerste && !naar.overtocht().isEmpty() ? 16_000L : 9_000L), eerste);
+        ss.rij.clear();
+        ss.nu = null;
+        ss.tot = 0;
+        muziek.lus(p, null);
+        muziek.achter(p, ZeldaMuziek.ZEE);
+        p.setFallDistance(0);
+        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 25, 0, false, false, false));
+        p.teleport(zee.dek.get(rnd.nextInt(zee.dek.size())));
+        ss.laatsteHemel = -1;
+        hemel(p, ss, p.getLocation());
+        p.playSound(p, Sound.ENTITY_BOAT_PADDLE_WATER, 0.6f, 0.8f);
+        if (eerste && !naar.overtocht().isEmpty()) for (ZeldaHoofdstuk.Regel r : naar.overtocht()) vertel(p, r);
+        else {
+            String[][] zinnen = {{"Wiske", "Kijk, meeuwen! Dan is er land in de buurt."}, {"Brecht", "Nog even, dan leggen we aan."},
+                    {"Wiske", "Zeeziek? Ik niet. Ik heb vleugels."}, {"Brecht", "De Glazen Zee is kalm vandaag."}};
+            String[] z = zinnen[rnd.nextInt(zinnen.length)];
+            vertel(p, ZeldaHoofdstuk.r(z[0], z[1]));
+        }
+    }
+
+    /** Elke seconde aan boord: golven en schuim, aan dek blijven, en aankomen. */
+    private void overtocht(Player p, Sessie ss, long nu) {
+        Location l = p.getLocation();
+        if (!zee.speelgebied.in(l)) {
+            p.setFallDistance(0);
+            p.teleport(zee.dek.get(0));
+        }
+        hemel(p, ss, l);
+        var w = zee.w;
+        double y = zee.G - 0.6;
+        for (int i = 0; i < 6; i++) {                        // schuim langs de romp en voor de boeg
+            double x = ZeldaZee.X0 + 3 + rnd.nextDouble() * 26;
+            double z = ZeldaZee.MZ + (rnd.nextBoolean() ? 1 : -1) * (4.4 + rnd.nextDouble() * 0.8);
+            p.spawnParticle(Particle.SPLASH, new Location(w, x, y + 0.6, z), 6, 0.4, 0.1, 0.2, 0.1);
+        }
+        p.spawnParticle(Particle.CLOUD, new Location(w, ZeldaZee.X0 + 31, y + 0.4, ZeldaZee.MZ), 4, 0.6, 0.1, 0.8, 0.02);
+        p.spawnParticle(Particle.BUBBLE, new Location(w, ZeldaZee.X0 - 1, y, ZeldaZee.MZ), 8, 1.2, 0.2, 1.5, 0.05);
+        if (tikken % 60 == 0) p.playSound(p, Sound.AMBIENT_UNDERWATER_EXIT, 0.25f, 0.6f);
+        if (nu >= ss.vaart.tot()) aankomst(p, ss);
+    }
+
+    private void aankomst(Player p, Sessie ss) {
+        ZeldaEiland e = ss.vaart.naar();
+        ss.vaart = null;
+        ZeldaHoofdstuk.Rust r = e.aanlegRust();
+        ZeldaHoofdstuk h = e.delen().get(0);
+        ss.h = h;
+        ss.rh = h;
+        ss.rust = r.index;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        if (s.zet("e:" + e.id())) voortgang.vuil();
+        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 25, 0, false, false, false));
+        p.setFallDistance(0);
+        p.teleport(r.plek);
+        ss.laatsteHemel = -1;
+        hemel(p, ss, r.plek);
+        muziek.achter(p, h.muziek(r.plek));
+        p.playSound(p, Sound.BLOCK_WOOD_PLACE, 0.6f, 0.8f);
+        zeg(p, Component.text(e.naam(), NamedTextColor.GRAY));
+    }
+
+    // ── hint: Wiske helpt (niet te veel) ────────────────────────────────────────────────────
+
+    /**
+     * {@code /hint} of klik op Wiske. De eerste keer een duwtje (het doel), vraag je het binnen twee minuten nog eens,
+     * dan zegt ze wat je moet doen en vliegt ze even die kant op. Geen doel meer? Dan je zijmissies, of verder varen.
+     */
+    void hint(Player p) {
+        Sessie ss = sessie(p);
+        if (ss == null) {
+            p.sendActionBar(Component.text("Hint · alleen in Story of Zelda", NamedTextColor.GRAY));
+            return;
+        }
+        long nu = System.currentTimeMillis();
+        if (nu < ss.hintWacht) return;
+        ss.hintWacht = nu + 2500;
+        ss.rij.clear();
+        ss.tot = 0;
+        ss.aangeboden = nu + AANBOD_OPNIEUW;
+        muziek.speel(p, ZeldaMuziek.HINT);
+        if (ss.vaart != null) {
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "We zijn onderweg. Even genieten van de zee."));
+            return;
+        }
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        ZeldaEiland e = ss.h.eiland;
+        ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(alle(e, h -> h.doelen), s);
+        if (d != null) {
+            boolean nogEens = d.id().equals(ss.hintDoel) && nu - ss.hintTijd < 120_000L;
+            ss.hintDoel = d.id();
+            ss.hintTijd = nu;
+            if (nogEens) {
+                vertel(p, ZeldaHoofdstuk.r("Wiske", d.verder() != null ? d.verder() : d.tekst()));
+                metgezel.wijs(p, d.plek());
+            } else vertel(p, ZeldaHoofdstuk.r("Wiske", d.tekst()));
+            return;
+        }
+        ss.hintDoel = null;
+        List<ZeldaHoofdstuk.Missie> bezig = ZeldaRegels.bezig(alle(e, h -> h.missies), s);
+        if (!bezig.isEmpty()) {
+            ZeldaHoofdstuk.Missie m = bezig.get(rnd.nextInt(bezig.size()));
+            vertel(p, ZeldaHoofdstuk.r("Wiske", m.naam() + ": " + ZeldaRegels.stap(m, s)));
+            return;
+        }
+        for (ZeldaEiland o : eilanden)
+            if (o != e && o.open(s) && o.aanlegRust() != null && !s.heeft("e:" + o.id())) {
+                vertel(p, ZeldaHoofdstuk.r("Wiske", "Hier zijn we klaar. Op je kaart (vak 9) kun je naar " + o.naam() + " varen."));
+                return;
+            }
+        vertel(p, ZeldaHoofdstuk.r("Wiske", "Ik weet het ook niet. Kijk eens rond, praat met wie je ziet."));
+    }
+
+    // ── personen, gesprekken en zijmissies ──────────────────────────────────────────────────
+
+    /** Praten met een persoon: het gesprek dat nu klopt (of zijn gewone praatje), daarna wat er moet gebeuren. */
+    void praat(Player p, ZeldaHoofdstuk.Persoon pe) {
+        Sessie ss = sessie(p);
+        if (ss == null || !ss.rij.isEmpty() || ss.nu != null) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        ZeldaHoofdstuk.Gesprek g = pe.gesprek(s);
+        if (pe.ent != null && pe.ent.isValid()) {             // kijk de speler aan
+            Location kijk = pe.ent.getLocation().setDirection(p.getLocation().toVector().subtract(pe.ent.getLocation().toVector()));
+            pe.ent.setRotation(kijk.getYaw(), 0);
+        }
+        for (ZeldaHoofdstuk.Regel r : g == null ? pe.praat : g.regels()) vertel(p, r);
+        if (g == null) return;
+        if (g.id() != null && s.zet("g:" + g.id())) voortgang.vuil();
+        if (g.daarna() != null) g.daarna().doe(this, p, s);
+    }
+
+    /** Zet een zijmissie op stap {@code stap} (1 = begonnen, {@link ZeldaVoortgang#KLAAR} = klaar), met een zacht deuntje. */
+    void missie(Player p, String id, int stap) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        if (s.missie(id) == stap) return;
+        s.missies.put(id, stap);
+        voortgang.vuil();
+        bewaar();
+        String naam = id;
+        for (ZeldaHoofdstuk h : hoofdstukken) if (h.missie(id) != null) naam = h.missie(id).naam();
+        muziek.speel(p, ZeldaMuziek.OPDRACHT);
+        if (stap == 1) zeg(p, Component.text("Opdracht · " + naam, NamedTextColor.GRAY));
+        else if (stap == ZeldaVoortgang.KLAAR) zeg(p, Component.text("Opdracht voltooid · " + naam, NamedTextColor.GRAY));
+    }
+
+    /** Een beloning (vlag): uitrusting bijwerken, deuntje, één regel. */
+    void beloon(Player p, String vlag, String naam, String uitleg) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        if (!s.zet(vlag)) return;
+        if (vlag.startsWith("fles")) ZeldaRegels.vulFlessen(s);
+        voortgang.vuil();
+        bewaar();
+        uitrusten(p, s);
+        muziek.speel(p, ZeldaMuziek.VONDST);
+        zeg(p, Component.text(naam, NamedTextColor.WHITE).append(Component.text(uitleg == null || uitleg.isEmpty() ? "" : " · " + uitleg, NamedTextColor.GRAY)));
+    }
+
+    /** Je huisdier heeft nog geen naam: kies er een (dicht je het menu, dan krijgt hij de eerste). */
+    void naamMenu(Player p) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        Menu m = new Menu(true);
+        m.inv = Bukkit.createInventory(m, 9, Component.text("Hoe heet hij?", NamedTextColor.DARK_GRAY));
+        for (int i = 0; i < ZeldaDier.NAMEN.size(); i++) m.inv.setItem(2 + i, ding(Material.NAME_TAG, ZeldaDier.NAMEN.get(i), "naam:" + i));
+        if (ZeldaDier.soort(s) != null) p.openInventory(m.inv);
+    }
+
+    private void kiesNaam(Player p, String naam) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        if (s.dier != null) return;
+        s.dier = naam;
+        voortgang.vuil();
+        bewaar();
+        p.playSound(p, Sound.ENTITY_FOX_AMBIENT, 0.6f, 1.4f);
+        zeg(p, Component.text(naam, GROEN).append(Component.text(" · loopt met je mee", NamedTextColor.GRAY)));
     }
 
     @EventHandler
     public void onMenu(InventoryClickEvent e) {
-        if (!(e.getView().getTopInventory().getHolder(false) instanceof Menu)) return;
+        if (!(e.getView().getTopInventory().getHolder(false) instanceof Menu menu)) return;
         e.setCancelled(true);
-        if (!(e.getWhoClicked() instanceof Player p) || e.getRawSlot() >= 27) return;
+        if (!(e.getWhoClicked() instanceof Player p) || e.getRawSlot() >= e.getView().getTopInventory().getSize()) return;
         ItemStack it = e.getCurrentItem();
         String soort = it == null || !it.hasItemMeta() ? null : it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
         if (soort == null) return;
         Sessie ss = sessie(p);
+        if (menu.naam) {
+            if (soort.startsWith("naam:")) {
+                String naam = ZeldaDier.NAMEN.get(Integer.parseInt(soort.substring(5)));
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    kiesNaam(p, naam);
+                    p.closeInventory();
+                });
+            }
+            return;
+        }
+        boolean rechts = e.getClick().isRightClick();
         if (soort.equals("hub")) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 p.closeInventory();
                 plugin.naarHub(p);
             });
+        } else if (soort.equals("uitleg")) {
+            ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+            if (!s.wis("o:uitleg-uit")) s.zet("o:uitleg-uit");
+            voortgang.vuil();
+            p.playSound(p, Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
+            Bukkit.getScheduler().runTask(plugin, () -> kaart(p));
         } else if (soort.startsWith("rust:") && ss != null) {
-            int i = Integer.parseInt(soort.substring(5));
-            if (i > voortgang.van(p.getUniqueId()).rust(ss.h.id()) || i >= ss.h.rust.size()) return;
+            String[] d = soort.split(":");
+            ZeldaHoofdstuk h = deel(d[1]);
+            int i = Integer.parseInt(d[2]);
+            if (h == null) return;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 p.closeInventory();
-                ss.rust = i;
-                p.setFallDistance(0);
-                p.teleport(ss.h.rust.get(i).plek);
-                p.playSound(p, Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
+                if (rechts) opnieuw(p, h, i);
+                else reis(p, h, i);
+            });
+        } else if (soort.startsWith("eiland:") && ss != null) {
+            ZeldaEiland naar = eiland(soort.substring(7));
+            if (naar == null || naar == ss.h.eiland || !naar.open(voortgang.van(p.getUniqueId()))) return;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                p.closeInventory();
+                vaar(p, naar);
             });
         }
     }
@@ -993,6 +1531,60 @@ final class ZeldaSpel implements Listener {
     @EventHandler
     public void onMenuSleep(InventoryDragEvent e) {
         if (e.getView().getTopInventory().getHolder(false) instanceof Menu) e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onMenuDicht(InventoryCloseEvent e) {
+        if (e.getView().getTopInventory().getHolder(false) instanceof Menu m && m.naam && e.getPlayer() instanceof Player p)
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (p.isOnline() && voortgang.van(p.getUniqueId()).dier == null && ZeldaDier.soort(voortgang.van(p.getUniqueId())) != null)
+                    kiesNaam(p, ZeldaDier.NAMEN.get(0));
+            });
+    }
+
+    // ── het flesje (voorwerp in vak 3) ──────────────────────────────────────────────────────
+
+    /** Flesjes met bronwater: rechtsklik = drinken (vijf harten). Vullen bij een bron of zielvuur. */
+    final class Flesje implements ZeldaVoorwerp {
+        public String id() { return "fles"; }
+        public String vlag() { return "fles1"; }
+        public int vak() { return 2; }
+
+        public ItemStack item(ZeldaSpel spel, Player p, ZeldaVoortgang.Stand s) {
+            int n = ZeldaRegels.flessen(s), v = ZeldaRegels.vol(s);
+            ItemStack it;
+            if (v > 0) {
+                it = ding(Material.POTION, "Flesje met bronwater", "fles");
+                if (it.getItemMeta() instanceof PotionMeta pm) {
+                    pm.setColor(Color.fromRGB(0xf7a8d8));
+                    pm.setMaxStackSize(8);
+                    pm.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+                    it.setItemMeta(pm);
+                }
+                it.setAmount(v);
+                lore(it, "rechtsklik: drinken", v + " van " + n + " vol");
+            } else {
+                it = ding(Material.GLASS_BOTTLE, "Leeg flesje", "fles");
+                it.setAmount(Math.max(1, n));
+                lore(it, "vullen bij een bron of zielvuur");
+            }
+            return it;
+        }
+
+        public void gebruik(ZeldaSpel spel, Player p, PlayerInteractEvent e) {
+            ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+            var max = p.getAttribute(Attribute.MAX_HEALTH);
+            if (max == null || p.getHealth() >= max.getValue()) return;
+            if (!ZeldaRegels.drink(s)) {
+                p.playSound(p, Sound.ITEM_BOTTLE_EMPTY, 0.4f, 1.2f);
+                return;
+            }
+            voortgang.vuil();
+            geneesBij(p, ZeldaRegels.FLES_HP);
+            p.playSound(p, Sound.ENTITY_GENERIC_DRINK, 0.7f, 1.1f);
+            p.spawnParticle(Particle.HEART, p.getLocation().add(0, 1.4, 0), 5, 0.4, 0.3, 0.4, 0);
+            vernieuw(p, s, this);
+        }
     }
 
     // ── gebeurtenissen ──────────────────────────────────────────────────────────────────────
@@ -1018,6 +1610,13 @@ final class ZeldaSpel implements Listener {
             if (e.getHand() == EquipmentSlot.HAND) kaart(p);
             return;
         }
+        if (soort != null && soort.startsWith("v:")) {             // een voorwerp (flesje, …)
+            e.setCancelled(true);
+            ZeldaVoorwerp v = voorwerp(soort.substring(2));
+            if (v != null && e.getHand() == EquipmentSlot.HAND && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK))
+                v.gebruik(this, p, e);
+            return;
+        }
         if (e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getHand() == EquipmentSlot.HAND) {
             Block b = e.getClickedBlock();
             for (ZeldaHoofdstuk.Reeks r : sessie(p).h.reeksen) {
@@ -1035,6 +1634,11 @@ final class ZeldaSpel implements Listener {
     @EventHandler
     public void onPijl(ProjectileHitEvent e) {
         if (!(e.getEntity().getShooter() instanceof Player p) || !speelt(p)) return;
+        String vk = e.getEntity().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        if (vk != null && vk.startsWith("v:") && voorwerp(vk.substring(2)) != null) {
+            voorwerp(vk.substring(2)).raak(this, p, e);
+            return;
+        }
         if (e.getHitEntity() != null) {
             ZeldaBaas baas = baasVan(e.getHitEntity());
             if (baas != null) baas.geraakt();
@@ -1054,13 +1658,27 @@ final class ZeldaSpel implements Listener {
 
     @EventHandler
     public void onPraat(PlayerInteractEntityEvent e) {
-        if (!e.getRightClicked().getScoreboardTags().contains(NPC)) return;
+        Entity wie = e.getRightClicked();
+        if (!wie.getScoreboardTags().contains(NPC)) return;
         e.setCancelled(true);
         Player p = e.getPlayer();
         Sessie ss = sessie(p);
-        if (ss == null || e.getHand() != EquipmentSlot.HAND || !ss.rij.isEmpty() || ss.nu != null) return;
-        for (ZeldaHoofdstuk.Persoon pe : ss.h.personen)
-            if (e.getRightClicked().equals(pe.ent)) for (ZeldaHoofdstuk.Regel r : pe.praat) vertel(p, r);
+        if (ss == null || e.getHand() != EquipmentSlot.HAND) return;
+        if (metgezel.isFee(wie)) {                                   // klik op Wiske = hint
+            if (p.getUniqueId().equals(metgezel.eigenaar(wie))) hint(p);
+            return;
+        }
+        if (dier.isDier(wie)) {                                      // aaien
+            p.spawnParticle(Particle.HEART, wie.getLocation().add(0, 0.8, 0), 2, 0.2, 0.2, 0.2, 0);
+            return;
+        }
+        List<ZeldaHoofdstuk.Persoon> personen = new ArrayList<>(zee.personen);
+        if (ss.h.eiland != null) personen.addAll(alle(ss.h.eiland, h -> h.personen));
+        for (ZeldaHoofdstuk.Persoon pe : personen)
+            if (wie.equals(pe.ent)) {
+                praat(p, pe);
+                return;
+            }
     }
 
     private static Player speler(Entity d) {
@@ -1087,6 +1705,12 @@ final class ZeldaSpel implements Listener {
         if (isVijand(doel) && isVijand(bron)) e.setCancelled(true);
     }
 
+    /** Wiske een tik geven (linksklik) is ook om hulp vragen. NPC-schade is al geannuleerd. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onTikWiske(EntityDamageByEntityEvent e) {
+        if (e.getDamager() instanceof Player p && metgezel.isFee(e.getEntity()) && p.getUniqueId().equals(metgezel.eigenaar(e.getEntity()))) hint(p);
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onNpcSchade(EntityDamageEvent e) {
         if (e.getEntity().getScoreboardTags().contains(NPC)) e.setCancelled(true);
@@ -1102,7 +1726,14 @@ final class ZeldaSpel implements Listener {
         e.setDroppedExp(0);
         e.deathMessage(null);
         muziek.lus(p, null);
-        for (ZeldaHoofdstuk.Uitdaging u : sessie(p).h.uitdagingen) u.loopt.remove(p.getUniqueId());
+        Sessie ss = sessie(p);
+        for (ZeldaHoofdstuk.Uitdaging u : ss.h.uitdagingen) u.loopt.remove(p.getUniqueId());
+        for (ZeldaHoofdstuk h : hoofdstukken)                        // doodgegaan in een kamer: straks een tip
+            for (ZeldaHoofdstuk.Kamer k : h.kamers)
+                if (k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.binnen.in(p.getLocation()) && !k.tips.isEmpty()) {
+                    ss.doden.merge(k.id, 1, Integer::sum);
+                    ss.tip = h.id() + ":" + k.id;
+                }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -1115,9 +1746,21 @@ final class ZeldaSpel implements Listener {
             p.setLevel(0);
             p.setExp(0f);
             Sessie ss = sessie(p);
+            ss.h = ss.rh;
             ss.laatsteHemel = -1;
             hemel(p, ss, p.getLocation());
             p.playSound(p, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 0.4f, 1.4f);
+            if (ss.tip != null) {                                    // een tip van Wiske voor de kamer waar je viel
+                String[] t = ss.tip.split(":", 2);
+                ss.tip = null;
+                ZeldaHoofdstuk h = deel(t[0]);
+                ZeldaHoofdstuk.Kamer k = null;
+                if (h != null) for (ZeldaHoofdstuk.Kamer x : h.kamers) if (x.id.equals(t[1])) k = x;
+                if (k != null) {
+                    int n = ss.doden.getOrDefault(k.id, 1);
+                    if (n <= k.tips.size()) vertel(p, k.tips.get(n - 1));
+                }
+            }
         });
     }
 

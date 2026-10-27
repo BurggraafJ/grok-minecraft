@@ -16,9 +16,20 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 /**
- * Voortgang in Story of Zelda, per speler: per hoofdstuk de verste rustplaats (checkpoint), vlaggen (vondsten zoals
- * {@code zwaard}, gezien verhaal {@code v:intro}, voltooid {@code h1}) en beste tijden van uitdagingen. Staat in
- * {@code plugins/KitPvP/zelda.yml}; zo ga je de volgende dag verder waar je was.
+ * Voortgang in Story of Zelda, per speler. Staat in {@code plugins/KitPvP/zelda.yml}; zo ga je de volgende dag verder
+ * waar je was.
+ * <ul>
+ *   <li>{@code laatste}: de rustplaats waar je het laatst was ({@code h1:3}); daar kom je binnen en na doodgaan terug.
+ *       Oude standen (zonder) vallen terug op de verste rustplaats van {@code hoofdstuk}.</li>
+ *   <li>{@code rust}: per deel de verste rustplaats (index), {@code bezocht}: alle bereikte rustplaatsen ({@code h1:0},
+ *       {@code e2a:3}; de kaart reist daarheen; bij het lezen aangevuld uit {@code rust}).</li>
+ *   <li>{@code vlaggen}: vondsten ({@code zwaard}, {@code hart1}, hartstukje {@code hs:<id>}, {@code fles1},
+ *       {@code harnas2}, {@code dier:vos}), gezien verhaal {@code v:<id>}, opgeloste puzzel {@code r:<id>}, gewonnen
+ *       kamer {@code k:<id>}, gesprek {@code g:<id>}, voltooid {@code h1}, opties {@code o:<naam>}.</li>
+ *   <li>{@code missies}: zijmissies, per id de stap (1 … n bezig, {@link #KLAAR} = klaar).</li>
+ *   <li>{@code tellers}: getallen (bv. {@code fles-vol}); {@code dier}: de naam van je huisdier; {@code tijden}: beste
+ *       tijden van uitdagingen in ms.</li>
+ * </ul>
  */
 final class ZeldaVoortgang {
 
@@ -29,6 +40,11 @@ final class ZeldaVoortgang {
         final Map<String, Integer> rust = new LinkedHashMap<>();
         final Set<String> vlaggen = new LinkedHashSet<>();
         final Map<String, Long> tijden = new LinkedHashMap<>();
+        String laatste;                                         // "h1:3": waar je verder gaat; null = verste van hoofdstuk
+        final Set<String> bezocht = new LinkedHashSet<>();      // "h1:0", "h1:3": bereikte rustplaatsen
+        final Map<String, Integer> missies = new LinkedHashMap<>();
+        final Map<String, Integer> tellers = new LinkedHashMap<>();
+        String dier;                                            // naam van je huisdier (null = nog geen naam)
 
         /** De verste rustplaats in dit hoofdstuk (0 = het begin). */
         int rust(String h) {
@@ -63,6 +79,56 @@ final class ZeldaVoortgang {
             return true;
         }
 
+        boolean wis(String vlag) {
+            return vlaggen.remove(vlag);
+        }
+
+        /** Hoeveel vlaggen met dit begin (bv. {@code hs:} = hartstukjes). */
+        int aantal(String begin) {
+            int n = 0;
+            for (String v : vlaggen) if (v.startsWith(begin)) n++;
+            return n;
+        }
+
+        /** Rustplaats {@code i} van deel {@code h} bezocht; true als dat nieuw is. */
+        boolean bezoek(String h, int i) {
+            return bezocht.add(h + ":" + i);
+        }
+
+        boolean bezocht(String h, int i) {
+            return bezocht.contains(h + ":" + i);
+        }
+
+        /** Stap van zijmissie {@code id}: 0 = niet begonnen, 1 … n = bezig, {@link #KLAAR} = klaar. */
+        int missie(String id) {
+            return missies.getOrDefault(id, 0);
+        }
+
+        boolean missieKlaar(String id) {
+            return missie(id) == KLAAR;
+        }
+
+        int teller(String id) {
+            return tellers.getOrDefault(id, 0);
+        }
+
+        void teller(String id, int n) {
+            if (n == 0) tellers.remove(id);
+            else tellers.put(id, n);
+        }
+
+        /** Een getal dat telt hoe ver je bent (nieuwe vlag, rustplaats, missiestap): verandert = voortgang. */
+        int voortgang() {
+            int m = 0;
+            for (var e : missies.entrySet()) m = 31 * m + e.getKey().hashCode() + e.getValue();
+            return vlaggen.size() * 1009 + bezocht.size() * 31 + m;
+        }
+
+        /** Oude standen: de rustplaatsen tot en met de verste tellen als bezocht. */
+        void vulBezocht() {
+            for (var e : rust.entrySet()) for (int i = 0; i <= e.getValue(); i++) bezocht.add(e.getKey() + ":" + i);
+        }
+
         Stand kopie() {
             Stand s = new Stand();
             s.naam = naam;
@@ -70,9 +136,17 @@ final class ZeldaVoortgang {
             s.rust.putAll(rust);
             s.vlaggen.addAll(vlaggen);
             s.tijden.putAll(tijden);
+            s.laatste = laatste;
+            s.bezocht.addAll(bezocht);
+            s.missies.putAll(missies);
+            s.tellers.putAll(tellers);
+            s.dier = dier;
             return s;
         }
     }
+
+    /** Stap van een voltooide zijmissie. */
+    static final int KLAAR = 1000;
 
     private final File bestand;
     private final Map<UUID, Stand> standen = new HashMap<>();
@@ -151,6 +225,14 @@ final class ZeldaVoortgang {
             s.vlaggen.addAll(c.getStringList("vlaggen"));
             ConfigurationSection t = c.getConfigurationSection("tijden");
             if (t != null) for (String u : t.getKeys(false)) s.tijden.put(u, t.getLong(u));
+            s.laatste = c.getString("laatste");
+            s.bezocht.addAll(c.getStringList("bezocht"));
+            s.vulBezocht();
+            ConfigurationSection m = c.getConfigurationSection("missies");
+            if (m != null) for (String u : m.getKeys(false)) s.missies.put(u, m.getInt(u));
+            ConfigurationSection n = c.getConfigurationSection("tellers");
+            if (n != null) for (String u : n.getKeys(false)) s.tellers.put(u, n.getInt(u));
+            s.dier = c.getString("dier");
             standen.put(id, s);
         }
     }
@@ -158,7 +240,7 @@ final class ZeldaVoortgang {
     /** Schrijf alles weg (eerst naar een tijdelijk bestand, dan vervangen: nooit half geschreven). */
     void bewaar() throws IOException {
         YamlConfiguration y = new YamlConfiguration();
-        y.options().setHeader(List.of("Story of Zelda: voortgang per speler (verste rustplaats per hoofdstuk, vondsten, beste tijden in ms)."));
+        y.options().setHeader(List.of("Story of Zelda: voortgang per speler (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, beste tijden in ms)."));
         for (Map.Entry<UUID, Stand> e : standen.entrySet()) {
             Stand s = e.getValue();
             String k = "spelers." + e.getKey();
@@ -167,6 +249,11 @@ final class ZeldaVoortgang {
             for (var r : s.rust.entrySet()) y.set(k + ".rust." + r.getKey(), r.getValue());
             y.set(k + ".vlaggen", List.copyOf(s.vlaggen));
             for (var t : s.tijden.entrySet()) y.set(k + ".tijden." + t.getKey(), t.getValue());
+            if (s.laatste != null) y.set(k + ".laatste", s.laatste);
+            if (!s.bezocht.isEmpty()) y.set(k + ".bezocht", List.copyOf(s.bezocht));
+            for (var m : s.missies.entrySet()) y.set(k + ".missies." + m.getKey(), m.getValue());
+            for (var n : s.tellers.entrySet()) y.set(k + ".tellers." + n.getKey(), n.getValue());
+            if (s.dier != null) y.set(k + ".dier", s.dier);
         }
         File map = bestand.getAbsoluteFile().getParentFile();
         if (map != null) map.mkdirs();

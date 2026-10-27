@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -23,6 +24,10 @@ import org.bukkit.entity.Villager;
  *
  * <p>Alle plekken zijn absolute wereldcoördinaten binnen {@link Zelda#GEBIED}. {@link #bouw} draait bij elke start (dan
  * worden de onderdelen opnieuw berekend); blokken zet hij alleen als het deel herbouwd wordt.
+ *
+ * <p>Zelda 2.0 (zie ZELDA.md): een hoofdstuk is een <em>deel</em> van een eiland ({@link ZeldaEiland}); een eiland heeft
+ * één of twee delen. Erbij gekomen: bronnen (genezen en flesjes vullen), doelen (voor {@code /hint}), personen met
+ * gesprekken, zijmissies, uitleg die je kunt overslaan, tips na doodgaan en muziek per plek.
  */
 abstract class ZeldaHoofdstuk {
 
@@ -124,6 +129,7 @@ abstract class ZeldaHoofdstuk {
         final List<Location> spawns = new ArrayList<>();
         final List<List<Soort>> golven = new ArrayList<>();
         final List<Regel> bijStart = new ArrayList<>();
+        final List<Regel> tips = new ArrayList<>();         // na de 1e, 2e … keer doodgaan hier: één tip (Wiske)
         ZeldaMuziek.Lied muziek = ZeldaMuziek.GEVECHT;
         ZeldaBaas baas;                                     // alleen bij een baaskamer
         long hemel = -1;                                    // eigen hemeltijd binnen (-1 = die van de plek)
@@ -219,6 +225,8 @@ abstract class ZeldaHoofdstuk {
         final Material item;
         final Location plek;
         final Box zone;
+        boolean verborgen;                                  // niet in het pad: je huisdier snuffelt hem op
+        String vereist;                                     // alleen te zien en te pakken met deze vlag (bv. een missiestap)
         ItemDisplay toon;
 
         Vondst(String vlag, String naam, String uitleg, Material item, Location plek, Box zone) {
@@ -238,6 +246,7 @@ abstract class ZeldaHoofdstuk {
         final List<Regel> regels;
         String vereist;                                     // alleen als je deze vlag hebt
         boolean einde;                                      // hoofdstuk voltooid
+        boolean uitleg;                                     // uitleg (hoe iets werkt): overgeslagen met «Uitleg: uit»
 
         Verhaal(String id, Box zone, List<Regel> regels) {
             this.id = id;
@@ -246,13 +255,29 @@ abstract class ZeldaHoofdstuk {
         }
     }
 
+    /** Wat er na een gesprek gebeurt (missie beginnen, beloning geven): {@code (spel, speler, stand) -> …}. */
+    @FunctionalInterface
+    interface Actie {
+        void doe(ZeldaSpel spel, org.bukkit.entity.Player p, ZeldaVoortgang.Stand s);
+    }
+
+    /**
+     * Een gesprek: als {@code als} klopt (bv. een missiestap), zegt de persoon {@code regels} en daarna gebeurt
+     * {@code daarna}. Een persoon neemt het eerste gesprek dat klopt. Met een {@code id} wordt het onthouden
+     * ({@code g:<id>}); zolang je een gesprek met id nog niet hoorde, glinstert de persoon zacht (er is iets nieuws).
+     */
+    record Gesprek(String id, Predicate<ZeldaVoortgang.Stand> als, List<Regel> regels, Actie daarna) {}
+
     /** Een personage dat er staat (rechtsklik = praten). Alleen in de wereld als er iemand in de buurt is. */
     static final class Persoon {
         final String naam;
         final Location plek;
         final Villager.Profession beroep;
-        final List<Regel> praat;
-        Villager ent;
+        final List<Regel> praat;                            // als geen gesprek klopt
+        final List<Gesprek> gesprekken = new ArrayList<>();
+        org.bukkit.entity.EntityType soort = org.bukkit.entity.EntityType.VILLAGER;
+        Villager.Type streek;                               // kleding van een dorpeling (null = vlakte)
+        LivingEntity ent;
 
         Persoon(String naam, Location plek, Villager.Profession beroep, List<Regel> praat) {
             this.naam = naam;
@@ -260,7 +285,48 @@ abstract class ZeldaHoofdstuk {
             this.beroep = beroep;
             this.praat = praat;
         }
+
+        /** Een gesprek erbij (in volgorde: het eerste dat klopt telt). */
+        Persoon gesprek(String id, Predicate<ZeldaVoortgang.Stand> als, List<Regel> regels, Actie daarna) {
+            gesprekken.add(new Gesprek(id, als, regels, daarna));
+            return this;
+        }
+
+        /** Het gesprek dat nu klopt (null = het gewone {@link #praat}). */
+        Gesprek gesprek(ZeldaVoortgang.Stand s) {
+            for (Gesprek g : gesprekken) if (g.als() == null || g.als().test(s)) return g;
+            return null;
+        }
+
+        /** Heeft deze persoon iets nieuws voor je? */
+        boolean nieuw(ZeldaVoortgang.Stand s) {
+            Gesprek g = gesprek(s);
+            return g != null && g.id() != null && !s.heeft("g:" + g.id());
+        }
     }
+
+    /** Een bron (feeënkring): erin staan geneest, en je flesjes worden weer vol. Zet hem bij elke kamer. */
+    static final class Bron {
+        final String id;
+        final Location midden;
+        final Box zone;
+
+        Bron(String id, Location midden, Box zone) {
+            this.id = id;
+            this.midden = midden;
+            this.zone = zone;
+        }
+    }
+
+    /**
+     * Een doel van het hoofdpad, voor {@code /hint} (en Wiske): het eerste doel dat nog niet {@code klaar} is, is waar
+     * je heen moet. {@code tekst} = de eerste hint (een duwtje), {@code verder} = als je het nog eens vraagt (wat je
+     * moet doen); Wiske vliegt dan ook even die kant op ({@code plek}).
+     */
+    record Doel(String id, String tekst, String verder, Location plek, Predicate<ZeldaVoortgang.Stand> klaar) {}
+
+    /** Een zijmissie: per stap een korte zin voor de hint en het opdrachtenlijstje (stap 1 = {@code stappen.get(0)}). */
+    record Missie(String id, String naam, List<String> stappen) {}
 
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
@@ -271,7 +337,11 @@ abstract class ZeldaHoofdstuk {
     final List<Vondst> vondsten = new ArrayList<>();
     final List<Verhaal> verhalen = new ArrayList<>();
     final List<Persoon> personen = new ArrayList<>();
+    final List<Bron> bronnen = new ArrayList<>();
+    final List<Doel> doelen = new ArrayList<>();
+    final List<Missie> missies = new ArrayList<>();
     final List<Object> volgorde = new ArrayList<>();
+    ZeldaEiland eiland;                                     // gezet door ZeldaEiland
     World w;
     Box speelgebied;                                        // wie hierbuiten komt, gaat terug naar zijn rustplaats
 
@@ -300,6 +370,47 @@ abstract class ZeldaHoofdstuk {
         return naam();
     }
 
+    /** Achtergrondmuziek op deze plek (nooit null: er is altijd muziek). Een eiland kiest per streek een eigen lied. */
+    ZeldaMuziek.Lied muziek(Location l) {
+        return ZeldaMuziek.WOUD;
+    }
+
+    /** Een onderdeel op id (rust, kamer, uitdaging, puzzel, verhaal; vondst op vlag; bron; persoon op naam), of null. */
+    Object onderdeel(String id) {
+        for (Object o : volgorde) {
+            String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
+                    : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag : null;
+            if (id.equals(i)) return o;
+        }
+        for (Bron b : bronnen) if (b.id.equals(id)) return b;
+        for (Persoon p : personen) if (p.naam.equals(id)) return p;
+        return null;
+    }
+
+    /** Waar een onderdeel ligt (om naartoe te wijzen), of null. */
+    Location plekVan(String id) {
+        Object o = onderdeel(id);
+        if (o instanceof Rust r) return r.plek;
+        if (o instanceof Kamer k) return k.start.midden(w);
+        if (o instanceof Uitdaging u) return u.start.midden(w);
+        if (o instanceof Reeks r) return r.gebied.midden(w);
+        if (o instanceof Verhaal v) return v.zone.midden(w);
+        if (o instanceof Vondst v) return v.plek;
+        if (o instanceof Bron b) return b.midden;
+        if (o instanceof Persoon p) return p.plek;
+        return null;
+    }
+
+    Rust rust(String id) {
+        for (Rust r : rust) if (r.id.equals(id)) return r;
+        return null;
+    }
+
+    Missie missie(String id) {
+        for (Missie m : missies) if (m.id().equals(id)) return m;
+        return null;
+    }
+
     /** Begin opnieuw met lege lijsten (bij elke bouw). */
     protected void leeg(World wereld) {
         w = wereld;
@@ -314,6 +425,9 @@ abstract class ZeldaHoofdstuk {
         vondsten.clear();
         verhalen.clear();
         personen.clear();
+        bronnen.clear();
+        doelen.clear();
+        missies.clear();
         volgorde.clear();
     }
 
@@ -357,5 +471,36 @@ abstract class ZeldaHoofdstuk {
     protected Persoon persoon(Persoon p) {
         personen.add(p);
         return p;
+    }
+
+    /** Zet een onderdeel in de volgorde van het pad direct na onderdeel {@code id} (voor wat later is toegevoegd). */
+    protected <T> T na(String id, T o) {
+        Object voor = onderdeel(id);
+        if (voor == null || !volgorde.remove(o)) return o;
+        volgorde.add(volgorde.indexOf(voor) + 1, o);
+        return o;
+    }
+
+    protected Bron bron(Bron b) {
+        bronnen.add(b);
+        return b;
+    }
+
+    /** Een bron: een feeënkring met straal 1,5 rond {@code midden} (de vloer eronder moet er al zijn). */
+    protected Bron bron(String id, Location midden) {
+        int x = midden.getBlockX(), y = midden.getBlockY(), z = midden.getBlockZ();
+        return bron(new Bron(id, midden, Box.van(x - 1, y - 1, z - 1, x + 1, y + 3, z + 1)));
+    }
+
+    protected Doel doel(String id, String tekst, String verder, Location plek, Predicate<ZeldaVoortgang.Stand> klaar) {
+        Doel d = new Doel(id, tekst, verder, plek, klaar);
+        doelen.add(d);
+        return d;
+    }
+
+    protected Missie missie(String id, String naam, String... stappen) {
+        Missie m = new Missie(id, naam, List.of(stappen));
+        missies.add(m);
+        return m;
     }
 }

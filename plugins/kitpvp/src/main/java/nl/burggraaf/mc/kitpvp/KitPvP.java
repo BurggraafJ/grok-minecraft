@@ -920,6 +920,10 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 beheer(sender, args);
                 return true;
             }
+            case "hint" -> {
+                if (sender instanceof Player p && modi.get("zelda") instanceof Zelda z) z.spel.hint(p);
+                return true;
+            }
             default -> { }
         }
         // arena: beheer (zoals vroeger) of terug naar de hub

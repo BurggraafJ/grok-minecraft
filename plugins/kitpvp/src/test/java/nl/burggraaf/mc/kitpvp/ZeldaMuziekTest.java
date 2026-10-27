@@ -45,4 +45,25 @@ class ZeldaMuziekTest {
         assertTrue(ZeldaMuziek.BAAS.lus());
         assertFalse(ZeldaMuziek.VONDST.lus());
     }
+
+    @Test
+    void maatUitDeMaatstreep() {
+        assertEquals(3, ZeldaMuziek.spoor(ZeldaMuziek.Instr.HARP, 0.5f, "d4 . . | a4 . .").maat());
+        assertEquals(8, ZeldaMuziek.spoor(ZeldaMuziek.Instr.HARP, 0.5f, "d4 . a4").maat(), "zonder maatstreep: 8");
+        assertEquals(6, ZeldaMuziek.HAVEN.maat());
+        assertEquals(6, ZeldaMuziek.ZEE.maat());
+        assertEquals(8, ZeldaMuziek.WOUD.maat());
+    }
+
+    @Test
+    void achtergrondIsAltijdEenLangeLus() {
+        for (ZeldaMuziek.Lied l : java.util.List.of(ZeldaMuziek.THUIS, ZeldaMuziek.WOUD, ZeldaMuziek.TEMPEL, ZeldaMuziek.VEEN, ZeldaMuziek.HAVEN, ZeldaMuziek.ZEE)) {
+            assertTrue(l.lus(), l.id() + " moet een lus zijn (nooit stilte)");
+            assertEquals(0, l.lengte() % l.maat(), l.id() + ": hele maten (wisselen gebeurt op een maatstreep)");
+            assertTrue(l.lengte() * l.tik() >= 20 * 14, l.id() + ": te kort, dan wordt hij snel saai (" + l.lengte() * l.tik() / 20.0 + " s)");
+            for (ZeldaMuziek.Spoor s : l.sporen()) assertTrue(s.volume() <= 0.3f, l.id() + ": achtergrond hoort zacht te zijn");
+        }
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (ZeldaMuziek.Lied l : ZeldaMuziek.alle()) assertTrue(ids.add(l.id()), "dubbel lied-id " + l.id());
+    }
 }

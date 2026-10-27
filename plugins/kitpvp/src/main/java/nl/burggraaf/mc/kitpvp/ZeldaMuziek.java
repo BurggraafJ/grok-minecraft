@@ -15,16 +15,20 @@ import org.bukkit.entity.Player;
  * Muziek voor Story of Zelda, met nootblokgeluiden (categorie «Nootblokken», dus spelers kunnen hem zachter zetten).
  * Een {@link Lied} is een paar sporen in een eenvoudig schrift: één teken per stap, {@code .} = rust, {@code d4} of
  * {@code f#5} = een noot (bereik f#3 … f#5, zoals een nootblok), {@code a4+c#5} = akkoord, {@code x} = slag
- * (percussie), {@code |} = maatstreep (alleen voor het lezen). Per speler loopt hoogstens één lus (gevecht, baas) en
- * daarbovenop losse deuntjes (rustplaats, vondst, gewonnen); tijdens een deuntje speelt de lus zachter.
+ * (percussie), {@code |} = maatstreep (alleen voor het lezen).
+ *
+ * <p>Per speler drie lagen: de <b>achtergrond</b> (altijd, per streek: thuis, woud, tempel, veen, haven, zee; wisselt op
+ * een maatstreep), daarboven hoogstens één <b>lus</b> (gevecht, baas: de achtergrond zwijgt dan) en losse
+ * <b>deuntjes</b> (rustplaats, vondst, gewonnen; de rest speelt dan zachter). Zo is het in Zelda nooit stil.
  */
 final class ZeldaMuziek {
 
     enum Instr { HARP, BASS, BELL, FLUTE, CHIME, XYLO, PLING, GUITAR, DIDGE, BIT, KICK, SNARE, HAT, IRON, BANJO }
 
-    record Spoor(Instr instr, float volume, int[][] stappen) {}
+    /** {@code maat}: stappen tot de eerste maatstreep ({@code |}), anders 8. */
+    record Spoor(Instr instr, float volume, int[][] stappen, int maat) {}
 
-    record Lied(String id, int tik, boolean lus, int lengte, List<Spoor> sporen) {}
+    record Lied(String id, int tik, boolean lus, int lengte, int maat, List<Spoor> sporen) {}
 
     /** Noot → stap boven f#3 (0 … 24). */
     static int noot(String s) {
@@ -58,8 +62,12 @@ final class ZeldaMuziek {
 
     static Spoor spoor(Instr instr, float volume, String noten) {
         List<int[]> stappen = new ArrayList<>();
+        int maat = 0;
         for (String t : noten.trim().split("\\s+")) {
-            if (t.equals("|")) continue;
+            if (t.equals("|")) {
+                if (maat == 0) maat = stappen.size();
+                continue;
+            }
             if (t.equals(".")) {
                 stappen.add(null);
                 continue;
@@ -69,13 +77,13 @@ final class ZeldaMuziek {
             for (int i = 0; i < ak.length; i++) n[i] = noot(ak[i]);
             stappen.add(n);
         }
-        return new Spoor(instr, volume, stappen.toArray(new int[0][]));
+        return new Spoor(instr, volume, stappen.toArray(new int[0][]), maat > 0 ? maat : 8);
     }
 
     static Lied lied(String id, int tik, boolean lus, Spoor... sporen) {
         int lengte = 0;
         for (Spoor s : sporen) lengte = Math.max(lengte, s.stappen().length);
-        return new Lied(id, tik, lus, lengte, List.of(sporen));
+        return new Lied(id, tik, lus, lengte, sporen.length == 0 ? 8 : sporen[0].maat(), List.of(sporen));
     }
 
     /** Toonhoogte voor een nootblok: 0.5 … 2.0. */
@@ -144,11 +152,6 @@ final class ZeldaMuziek {
             spoor(Instr.FLUTE, 0.45f, "f#4 . a4 . b4 . . . | a4 . f#4 . e4 . . . | d4 . e4 . f#4 . a4 . | f#4 . . . . . . ."),
             spoor(Instr.HARP, 0.35f, "d4+f#4 . . . . . . . | a3+c#4 . . . . . . . | b3+d4 . . . . . . . | d4+a4 . . . . . . ."));
 
-    /** Zacht motief in het bos, af en toe. */
-    static final Lied WOUD = lied("woud", 5, false,
-            spoor(Instr.FLUTE, 0.2f, "a4 . . f#4 . . e4 . | d4 . . . . . . ."),
-            spoor(Instr.HARP, 0.18f, "d4 . . . . . . . | b3 . . . . . . ."));
-
     /** Hoofdstuk voltooid. */
     static final Lied KLAAR = lied("klaar", 3, false,
             spoor(Instr.HARP, 0.6f, "d4 f#4 a4 d5 a4 f#4 a4 d5 | e4 g4 b4 e5 b4 g4 b4 e5 | f#4 a4 c#5 f#5 c#5 a4 c#5 e5 | d5 . . . . . . ."),
@@ -156,8 +159,112 @@ final class ZeldaMuziek {
             spoor(Instr.BASS, 0.7f, "d4 . . . . . . . | e4 . . . . . . . | f#4 . . . . . . . | d4 . . . . . . ."),
             spoor(Instr.FLUTE, 0.4f, ". . . . . . . . | . . . . . . . . | . . . . . . . . | a4 . . . . . . ."));
 
+
+    // ── achtergrond: altijd één van deze (per streek); rustig, lang, zacht ─────────────────────
+
+    /** Thuis aan de bosrand: rustig, in D. */
+    static final Lied THUIS = lied("thuis", 5, true,
+            spoor(Instr.FLUTE, 0.26f, "a4 . . . f#4 . a4 . | b4 . . . . . a4 . | f#4 . . . d4 . e4 . | e4 . . . . . . . "
+                    + "| a4 . . . f#4 . a4 . | d5 . . . b4 . . . | c#5 . . . e4 . c#5 . | d5 . . . . . . . "
+                    + "| b4 . . . d5 . . . | c#5 . . . a4 . . . | a4 . . . f#4 . . . | b4 . . . . . . . "
+                    + "| g4 . . . b4 . . . | a4 . . . c#5 . e5 . | d5 . . . a4 . f#4 . | d4 . . . . . . ."),
+            spoor(Instr.HARP, 0.16f, "d4 . a4 . f#4 . a4 . | g3 . d4 . b3 . d4 . | b3 . f#4 . d4 . f#4 . | a3 . e4 . c#4 . e4 . "
+                    + "| d4 . a4 . f#4 . a4 . | g3 . d4 . b3 . d4 . | a3 . e4 . c#4 . e4 . | d4 . a4 . f#4 . a4 . "
+                    + "| g3 . d4 . b3 . d4 . | a3 . e4 . c#4 . e4 . | f#3 . c#4 . a3 . c#4 . | b3 . f#4 . d4 . f#4 . "
+                    + "| g3 . d4 . b3 . d4 . | a3 . e4 . c#4 . e4 . | d4 . a4 . f#4 . a4 . | d4 . a4 . f#4 . d4 ."),
+            spoor(Instr.BASS, 0.2f, "d4 . . . a3 . . . | g3 . . . d4 . . . | b3 . . . f#3 . . . | a3 . . . e4 . . . "
+                    + "| d4 . . . a3 . . . | g3 . . . d4 . . . | a3 . . . e4 . . . | d4 . . . a3 . . . "
+                    + "| g3 . . . d4 . . . | a3 . . . e4 . . . | f#3 . . . c#4 . . . | b3 . . . f#3 . . . "
+                    + "| g3 . . . d4 . . . | a3 . . . e4 . . . | d4 . . . a3 . . . | d4 . . . . . . ."),
+            spoor(Instr.CHIME, 0.12f, ". . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . . . e5 . "
+                    + "| . . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . . . a4 . "
+                    + "| . . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . . . f#5 . "
+                    + "| . . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . . . d5 ."));
+
+    /** Het woud: een beekje van harp, de fluit erboven, in b-klein. */
+    static final Lied WOUD = lied("woud", 4, true,
+            spoor(Instr.HARP, 0.13f, "b3 d4 f#4 b4 f#4 d4 b3 d4 | g3 b3 d4 g4 d4 b3 g3 b3 | d4 f#4 a4 d5 a4 f#4 d4 f#4 | a3 c#4 e4 a4 e4 c#4 a3 c#4 "
+                    + "| b3 d4 f#4 b4 f#4 d4 b3 d4 | g3 b3 d4 g4 d4 b3 g3 b3 | g3 b3 e4 g4 e4 b3 g3 b3 | f#3 a#3 c#4 f#4 c#4 a#3 f#3 a#3 "
+                    + "| g3 b3 d4 g4 d4 b3 g3 b3 | d4 f#4 a4 d5 a4 f#4 d4 f#4 | a3 c#4 e4 a4 e4 c#4 a3 c#4 | b3 d4 f#4 b4 f#4 d4 b3 d4 "
+                    + "| g3 b3 d4 g4 d4 b3 g3 b3 | d4 f#4 a4 d5 a4 f#4 d4 f#4 | g3 b3 e4 g4 f#3 a#3 c#4 f#4 | b3 d4 f#4 b4 f#4 d4 b3 f#3"),
+            spoor(Instr.FLUTE, 0.24f, "f#4 . . . . . b4 . | d5 . . . b4 . . . | a4 . . . f#4 . a4 . | e4 . . . . . . . "
+                    + "| f#4 . . . . . b4 . | d5 . . . e5 . d5 . | b4 . . . g4 . . . | a#4 . . . c#5 . . . "
+                    + "| d5 . . . . . b4 . | a4 . . . . . f#4 . | e4 . . . a4 . c#5 . | b4 . . . . . . . "
+                    + "| d5 . . . b4 . g4 . | f#4 . . . a4 . d5 . | e5 . . . c#5 . . . | b4 . . . . . . ."),
+            spoor(Instr.BASS, 0.17f, "b3 . . . . . . . | g3 . . . . . . . | d4 . . . . . . . | a3 . . . . . . . "
+                    + "| b3 . . . . . . . | g3 . . . . . . . | e4 . . . . . . . | f#3 . . . . . . . "
+                    + "| g3 . . . . . . . | d4 . . . . . . . | a3 . . . . . . . | b3 . . . . . . . "
+                    + "| g3 . . . . . . . | d4 . . . . . . . | e4 . . . f#3 . . . | b3 . . . . . . ."));
+
+    /** De tempelruïne: klokjes en ijzer, oud en stil, in a-klein. */
+    static final Lied TEMPEL = lied("tempel", 5, true,
+            spoor(Instr.BELL, 0.16f, "a3+c4+e4 . . . . . . . | a3+c4+f4 . . . . . . . | b3+d4+g4 . . . . . . . | b3+e4+g4 . . . . . . . "
+                    + "| a3+c4+e4 . . . . . . . | a3+c4+f4 . . . . . . . | a3+d4+f4 . . . . . . . | g#3+b3+e4 . . . . . . ."),
+            spoor(Instr.IRON, 0.2f, ". . e5 . . . d5 . | c5 . . . . . a4 . | b4 . . . d5 . . . | e4 . . . . . . . "
+                    + "| . . a4 . . . c5 . | f4 . . . a4 . c5 . | d5 . . . f4 . a4 . | g#4 . . . b4 . e5 ."),
+            spoor(Instr.DIDGE, 0.1f, "a3 . . . . . . . | . . . . . . . . | g3 . . . . . . . | . . . . . . . . "
+                    + "| a3 . . . . . . . | . . . . . . . . | d4 . . . . . . . | e4 . . . . . . ."),
+            spoor(Instr.CHIME, 0.1f, ". . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . . . e5 . "
+                    + "| . . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . . . . b4"));
+
+    /** Het Veen: druppels en een brommende grondtoon, in e-klein. */
+    static final Lied VEEN = lied("veen", 5, true,
+            spoor(Instr.DIDGE, 0.17f, "e4 . . . . . . . | e4 . . . . . . . | c4 . . . . . . . | b3 . . . . . . . "
+                    + "| e4 . . . . . . . | e4 . . . . . . . | c4 . . . . . . . | a#3 . . . b3 . . ."),
+            spoor(Instr.HARP, 0.13f, "e4 . g4 . b4 . . . | e4 . g4 . c5 . . . | c4 . e4 . g4 . . . | b3 . d#4 . f#4 . . . "
+                    + "| e4 . g4 . b4 . . . | e4 . a4 . c5 . . . | c4 . e4 . a4 . . . | a#3 . . . b3 . d#4 ."),
+            spoor(Instr.XYLO, 0.13f, ". . . . . . . b4 | . . . . e5 . . . | . . . . . . g4 . | . . . f#4 . . . . "
+                    + "| . . . . . . . e5 | . . . . c5 . . . | . . . . . . a4 . | . . . . . . . ."),
+            spoor(Instr.BELL, 0.09f, ". . . . . . . . | . . . . . . . . | . . . . . . . . | b4 . . . . . . . "
+                    + "| . . . . . . . . | . . . . . . . . | . . . . . . . . | a#4 . . . . . . ."));
+
+    /** De haven: een zeemanslied in drieën, in G. */
+    static final Lied HAVEN = lied("haven", 4, true,
+            spoor(Instr.FLUTE, 0.24f, "d4 . g4 . g4 a4 | b4 . . . g4 . | e4 . c5 . c5 b4 | b4 . . . g4 . "
+                    + "| a4 . f#4 . a4 b4 | c5 . . . a4 . | b4 . g4 . a4 b4 | a4 . . . . . "
+                    + "| d5 . . . b4 . | c5 . e5 . c5 . | b4 . d5 . b4 . | g4 . . . e4 . "
+                    + "| e4 . g4 . c5 . | a4 . f#4 . a4 . | g4 . b4 . a4 f#4 | g4 . . . . ."),
+            spoor(Instr.GUITAR, 0.16f, "g3 . b3+d4 . b3+d4 . | g3 . b3+d4 . b3+d4 . | g3 . c4+e4 . c4+e4 . | g3 . b3+d4 . b3+d4 . "
+                    + "| a3 . d4+f#4 . d4+f#4 . | a3 . d4+f#4 . d4+f#4 . | g3 . b3+d4 . b3+d4 . | a3 . d4+f#4 . d4+f#4 . "
+                    + "| g3 . b3+d4 . b3+d4 . | g3 . c4+e4 . c4+e4 . | g3 . b3+d4 . b3+d4 . | g3 . b3+e4 . b3+e4 . "
+                    + "| g3 . c4+e4 . c4+e4 . | a3 . d4+f#4 . d4+f#4 . | g3 . b3+d4 . b3+d4 . | g3 . b3+d4 . . ."),
+            spoor(Instr.BASS, 0.2f, "g3 . . . . . | g3 . . . . . | c4 . . . . . | g3 . . . . . | d4 . . . . . | d4 . . . . . | g3 . . . . . | d4 . . . . . "
+                    + "| g3 . . . . . | c4 . . . . . | g3 . . . . . | e4 . . . . . | c4 . . . . . | d4 . . . . . | g3 . . . . . | g3 . . . . ."));
+
+    /** Op zee, aan boord van de Zilvermeeuw: vrolijk en vooruit, in D. */
+    static final Lied ZEE = lied("zee", 3, true,
+            spoor(Instr.FLUTE, 0.26f, "a4 . f#4 a4 . d5 | b4 . . g4 . . | a4 . f#4 d4 . f#4 | e4 . . . . . "
+                    + "| a4 . f#4 a4 . d5 | d5 . b4 d5 . e5 | c#5 . a4 e4 . c#5 | d5 . . . . . "
+                    + "| f#5 . d5 b4 . d5 | d5 . b4 g4 . b4 | a4 . f#4 d4 . f#4 | a4 . . e4 . . "
+                    + "| b4 . c#5 d5 . b4 | g4 . a4 b4 . d5 | c#5 . e5 c#5 . a4 | d5 . . . . ."),
+            spoor(Instr.HARP, 0.15f, ". . d4+f#4 . . d4+a4 | . . d4+g4 . . b3+d4 | . . d4+f#4 . . d4+a4 | . . c#4+e4 . . c#4+e4 "
+                    + "| . . d4+f#4 . . d4+a4 | . . d4+g4 . . b3+d4 | . . c#4+e4 . . c#4+e4 | . . d4+f#4 . . d4+a4 "
+                    + "| . . d4+f#4 . . b3+d4 | . . d4+g4 . . b3+d4 | . . d4+f#4 . . d4+a4 | . . c#4+e4 . . c#4+e4 "
+                    + "| . . d4+f#4 . . b3+d4 | . . d4+g4 . . b3+d4 | . . c#4+e4 . . c#4+e4 | . . d4+f#4 . . ."),
+            spoor(Instr.BASS, 0.22f, "d4 . . a3 . . | g3 . . d4 . . | d4 . . a3 . . | a3 . . e4 . . | d4 . . a3 . . | g3 . . d4 . . | a3 . . e4 . . | d4 . . a3 . . "
+                    + "| b3 . . f#3 . . | g3 . . d4 . . | d4 . . a3 . . | a3 . . e4 . . | b3 . . f#3 . . | g3 . . d4 . . | a3 . . e4 . . | d4 . . . . ."),
+            spoor(Instr.HAT, 0.08f, "x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . "
+                    + "| x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . x . . | x . . . . ."));
+
+    /** Een bron (feeënkring): genezen, flesjes vol. */
+    static final Lied BRON = lied("bron", 2, false,
+            spoor(Instr.CHIME, 0.35f, "d4 f#4 a4 d5 f#5 d5 a4 f#4 | e4 g4 b4 e5 . . . ."),
+            spoor(Instr.BELL, 0.25f, "d4+a4 . . . . . . . | e4+b4 . . . d5+f#5 . . ."),
+            spoor(Instr.HARP, 0.2f, ". . . . . . . . | . . . . a4 . d5 ."));
+
+    /** Wiske heeft een hint (zacht, kort). */
+    static final Lied HINT = lied("hint", 2, false,
+            spoor(Instr.CHIME, 0.3f, "a4 . d5 . f#5 . . ."),
+            spoor(Instr.BELL, 0.15f, ". . . . d5 . . ."));
+
+    /** Een opdracht: begonnen of een stap verder. */
+    static final Lied OPDRACHT = lied("opdracht", 3, false,
+            spoor(Instr.HARP, 0.45f, "g4 . b4 . d5 . . ."),
+            spoor(Instr.FLUTE, 0.3f, ". . . . d5 . e5 ."));
+
     static List<Lied> alle() {
-        return List.of(GEVECHT, BAAS, DICHT, GEWONNEN, VONDST, RUST, OPGELOST, MISLUKT, BEGIN, WOUD, KLAAR);
+        return List.of(GEVECHT, BAAS, DICHT, GEWONNEN, VONDST, RUST, OPGELOST, MISLUKT, BEGIN, KLAAR,
+                THUIS, WOUD, TEMPEL, VEEN, HAVEN, ZEE, BRON, HINT, OPDRACHT);
     }
 
     // ── afspelen ────────────────────────────────────────────────────────────────────────────
@@ -172,9 +279,12 @@ final class ZeldaMuziek {
     }
 
     private static final class Speler {
-        Afspeel lus;
+        Afspeel lus, achter;
+        Lied volgende;                                          // achtergrond die op de volgende maatstreep begint
         final List<Afspeel> los = new ArrayList<>();
     }
+
+
 
     private final Map<UUID, Speler> spelers = new HashMap<>();
 
@@ -190,11 +300,34 @@ final class ZeldaMuziek {
         return s == null || s.lus == null ? null : s.lus.lied;
     }
 
+    /**
+     * Zet de achtergrond van deze speler (null = geen). Een ander lied begint op de volgende maatstreep van het
+     * huidige (dan loopt het mooi door); zonder lopende achtergrond meteen.
+     */
+    void achter(Player p, Lied l) {
+        Speler s = spelers.computeIfAbsent(p.getUniqueId(), k -> new Speler());
+        if (l == null) {
+            s.achter = null;
+            s.volgende = null;
+        } else if (s.achter == null) s.achter = new Afspeel(l);
+        else if (s.achter.lied != l) s.volgende = l;
+        else s.volgende = null;
+    }
+
+    /** De achtergrond die nu speelt (of zo meteen begint). */
+    Lied achter(Player p) {
+        Speler s = spelers.get(p.getUniqueId());
+        if (s == null) return null;
+        if (s.volgende != null) return s.volgende;
+        return s.achter == null ? null : s.achter.lied;
+    }
+
     /** Een los deuntje erbovenop. */
     void speel(Player p, Lied l) {
         spelers.computeIfAbsent(p.getUniqueId(), k -> new Speler()).los.add(new Afspeel(l));
     }
 
+    /** Speelt er iets dat níet de achtergrond is (lus of deuntje)? */
     boolean speelt(Player p) {
         Speler s = spelers.get(p.getUniqueId());
         return s != null && (s.lus != null || !s.los.isEmpty());
@@ -216,8 +349,15 @@ final class ZeldaMuziek {
             }
             float demp = s.los.isEmpty() ? 1f : 0.35f;
             if (s.lus != null) stap(p, s.lus, demp);
+            else if (s.achter != null) {
+                if (s.volgende != null && s.achter.wacht == 0 && s.achter.stap % s.achter.lied.maat() == 0) {
+                    s.achter = new Afspeel(s.volgende);
+                    s.volgende = null;
+                }
+                stap(p, s.achter, demp);
+            }
             s.los.removeIf(a -> !stap(p, a, 1f));
-            if (s.lus == null && s.los.isEmpty()) it.remove();
+            if (s.lus == null && s.achter == null && s.los.isEmpty()) it.remove();
         }
     }
 

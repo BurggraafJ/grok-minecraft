@@ -94,6 +94,70 @@ class ZeldaVoortgangTest {
     }
 
     @Test
+    void nieuweVeldenBewarenEnTerugLezen() throws Exception {
+        File f = new File(map, "zelda.yml");
+        ZeldaVoortgang v = new ZeldaVoortgang(f);
+        ZeldaVoortgang.Stand s = v.van(a);
+        s.laatste = "h1:2";
+        assertTrue(s.bezoek("h1", 2));
+        assertFalse(s.bezoek("h1", 2));
+        s.missies.put("lamp", 1);
+        s.missies.put("vlieger", ZeldaVoortgang.KLAAR);
+        s.teller("fles-vol", 2);
+        s.dier = "Pluis";
+        v.vuil();
+        v.bewaar();
+        ZeldaVoortgang.Stand t = new ZeldaVoortgang(f).van(a);
+        assertEquals("h1:2", t.laatste);
+        assertTrue(t.bezocht("h1", 2));
+        assertFalse(t.bezocht("h1", 1));
+        assertEquals(1, t.missie("lamp"));
+        assertTrue(t.missieKlaar("vlieger"));
+        assertEquals(0, t.missie("onbekend"));
+        assertEquals(2, t.teller("fles-vol"));
+        assertEquals("Pluis", t.dier);
+        t.teller("fles-vol", 0);
+        assertFalse(t.tellers.containsKey("fles-vol"), "nul = weg");
+    }
+
+    @Test
+    void oudeStandWordtAangevuld() throws Exception {
+        File f = new File(map, "zelda.yml");
+        Files.writeString(f.toPath(), "spelers:\n  " + a + ":\n    naam: Oud\n    hoofdstuk: h1\n    rust: {h1: 3}\n    vlaggen: [schild, zwaard, v:intro]\n");
+        ZeldaVoortgang.Stand s = new ZeldaVoortgang(f).van(a);
+        assertNull(s.laatste, "geen laatste: dan geldt de verste rustplaats");
+        for (int i = 0; i <= 3; i++) assertTrue(s.bezocht("h1", i), "rustplaats " + i + " telt als bezocht");
+        assertFalse(s.bezocht("h1", 4));
+        assertTrue(s.heeft("zwaard"));
+        assertTrue(s.missies.isEmpty() && s.tellers.isEmpty() && s.dier == null);
+    }
+
+    @Test
+    void tellenEnVoortgang() {
+        ZeldaVoortgang.Stand s = new ZeldaVoortgang.Stand();
+        int v0 = s.voortgang();
+        s.zet("hs:a");
+        s.zet("hs:b");
+        s.zet("hart1");
+        assertEquals(2, s.aantal("hs:"));
+        assertEquals(1, s.aantal("hart"));
+        int v1 = s.voortgang();
+        assertNotEquals(v0, v1, "nieuwe vlag = voortgang");
+        s.bezoek("h1", 1);
+        assertNotEquals(v1, s.voortgang(), "nieuwe rustplaats = voortgang");
+        int v2 = s.voortgang();
+        s.missies.put("lamp", 1);
+        assertNotEquals(v2, s.voortgang(), "missiestap = voortgang");
+        assertTrue(s.wis("hs:a"));
+        assertFalse(s.wis("hs:a"));
+        ZeldaVoortgang.Stand k = s.kopie();
+        k.missies.put("lamp", 2);
+        k.bezoek("h1", 5);
+        assertEquals(1, s.missie("lamp"));
+        assertFalse(s.bezocht("h1", 5));
+    }
+
+    @Test
     void tijdOpmaak() {
         assertEquals("0:21,4", ZeldaVoortgang.tijd(21_430));
         assertEquals("1:05,0", ZeldaVoortgang.tijd(65_000));
