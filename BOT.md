@@ -302,7 +302,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
     een herstart. Laatste server per speler in `laatste.json`. De lobby-actiebalk is verder stil (alleen even
     «Je blijft in de lobby · ster = server kiezen» na annuleren).
   - **Wisselen:** `/lobby` (`/hub`), `/survival`, `/kitpvp`, `/server <naam>`, `/terug` (= je laatste spelserver), de
-    ster in vak 5 in de lobby (menu Survival · KitPvP · Parkour · Tuin-spawn), de twee poorten bij de fontein, en de
+    ster in vak 5 in de lobby (menu Survival · KitPvP · Parkour · De brink), de twee poorten op de brink, en de
     deur in vak 9 op kitpvp.
   - **Herstarts:** `mc restart survival|kitpvp` telt op die server af (`lobbyreis aftellen 5` / `arena aftellen 5`),
     dan `netwerk wacht <server>` (console): iedereen naar de lobby, gemarkeerd als wachtend (`wachtend.json`, `mc` leest
@@ -327,29 +327,47 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   - **Rang en nick** komen van survival (LuckPerms/Essentials): opmaak daar stuurt elk profiel naar de proxy
     (`profielen.json`), die het aan lobby en kitpvp doorgeeft.
   - Console: `mc cmd velocity netwerk status` (wie waar, laatste, wachtend), `netwerk wacht <server>`, `netwerk stil <s>`.
-- **Lobby = de tuin** (plugin `lobby-melding`, `BOUW_VERSIE` 6, procedureel; klasse `Tuin`): ~250×250 blokken.
-  Plaza met fontein (spawn 0.5/9.5, kijkt naar het noorden), daarachter twee poorten: links Survival (hout/bladeren),
-  rechts KitPvP (zwart/rood) — erdoorheen lopen = naar die server. Gracht rond het midden met vier bruggen, lanen
-  noord-zuid en oost-west met hagen, bloemranden en lantaarns, een dorp van 20 huisjes langs de noord-zuidlaan,
-  muziektent, marktkraampjes, eendenvijver met brug, heggendoolhof met gouden blok, prieel, boomgaard met bijen en
-  pompoenen, picknickweide met bloemenspiraal, tulpenvelden langs de oost-westlaan, molen, kas, uitkijktoren,
-  bloemenhart. Alle chunks van de tuin houdt de plugin geladen (plugin-chunktickets), zodat borden en labels blijven.
-  Veilig: onkwetsbaar, geen honger, adventure; wie valt gaat naar de spawn. Op staging (motd STAGING) doet hij niets.
-  `/spawn` (`/tuin`) = naar de fontein. `mc cmd lobby lobbymelding info` = korte stand.
-- **Parkour (10 levels)** verspreid door de tuin: aan de **parkourlanen** (x = ±41) met per level een bloemenpoortje
-  en bord. Oost (x 46…): 1 Opwarmer (z −104), 2 Sprongen (−76), 3 Zigzag (−48), 4 IJsbaan (48), 5 Ladders (76); west
-  6 Honing, 7 Slijm, 8 Waterval, 9 Neo, 10 Meester (zelfde z). Per level een huis in de levelkleur met binnenmuur
-  «Ranglijst» (top 5), stadion met tribunes, vlaggen, schijnwerpers en scorebord. Beste tijd per speler per level in
-  `tijden.yml`, voortgang in `voortgang.yml` (blijven bewaard bij een herbouw). Val-check alleen tijdens een run.
-  **Start = 3×3 limoen platform** (`BOUW_VERSIE` 7), je staat in het midden en kijkt naar de eerste sprong; de sprongen
-  rekenen vanaf de voorrand. Finish is ook 3×3. Tussen-checkpoints zijn er niet: vallen = terug naar de start.
-  **Reset alleen bij echt de grond raken** (Jelle 26-10): voeten op vloerhoogte (gras/vloer, alle baanblokken liggen
-  hoger), erdoorheen, of in water lager dan de baan. Even op een rand, muur, plafond of tribune landen reset niet
-  meer. Terugstappen het huis in stopt de run. Meldingen alleen op de actiebalk (grijs).
-  Na een level «✔ Level X gehaald!» + 3-2-1, dan door naar het volgende.
-  Hotbar in de lobby: vak 1 kompas «Level kiezen», vak 5 ster «Server kiezen» (tijdens aftellen barrière, tijdens
-  wachten rode wol), vak 9 «Opnieuw» (= `/parkour reset`). `/parkour` vanuit survival: plek onthouden (plugin
-  `lobbyreis`), naar je volgende level; `/terug` brengt je terug.
+- **Lobby = de tuin** (plugin `lobby-melding` 2.0, `BOUW_VERSIE` 8, klasse `Tuin` + `Banen`; Jelle 27-10: dorps- en
+  tuingevoel, geen grote gebouwen): een klein tuindorp van ±116×116 blokken (x/z −58…58). Midden de **brink**: plein
+  van kinderkopjes met een waterput, de linde met een rond bankje, het theehuis «De Linde» (terras met parasols) en de
+  bakker (luifel, toonbank), prikbord met de records per level en een wegwijzer. Spawn 0.5/9.5, je kijkt naar het
+  noorden recht op de **twee poorten** (links Survival: rozenboog van azalea, rechts KitPvP: zwarte stenen boog met
+  rood), met een tulpenperk ertussen — erdoorheen lopen = naar die server. Om de brink een ring van kinderkopjes (de
+  dorpsstraat), daarbuiten de erven, elk met een eigen tuin en een parkour-level: vijver met visserhuisje en wilgen,
+  buxustuin met tulpenperken, boomgaard met bijen, boerderij met schuur, kippen en schapen, ommuurde moestuin met kasje,
+  rozenpergola, drie huisjes met voortuin, speeltuin, bos met de grote eik en boomhut, de molen in het korenveld,
+  de **pluktuin** (bedden met zonnebloemen, seringen, pioenen, schuurtje, bijenkasten) en het **kruidenwiel** met
+  picknickboom achter de huisjes. Alles uit code (`Plan` = tekening zonder server); `Bouwer` zet alleen wat anders is,
+  chunk voor chunk (±20 ms per tick). Bij een nieuwe `BOUW_VERSIE` ruimt hij ook alles van de oude tuin op tot x/z ±130
+  (plat gras); bij dezelfde versie maar een andere tekening (vingerafdruk in `gebouwd.txt`) bouwt hij bij. De 64 chunks
+  van de tuin blijven geladen (plugin-chunktickets) voor borden, labels en de paar dieren (niet opgeslagen).
+  Veilig: onkwetsbaar, geen honger, adventure; wie onder de wereld valt gaat naar de spawn. Op staging (motd STAGING)
+  doet hij niets. `/spawn` (`/tuin`) = naar de brink. Console: `lobbymelding info`, `zelftest` (eerste regel `OK` of
+  `FOUT (n)`: sprongen nagerekend, elke stap en poort in de wereld, spawn, labels, afwijkende blokken), `kaart`
+  (plaatjes van wat er staat: `plugins/LobbyMelding/kaart/*.png`), `bouw` (nalopen en bijzetten),
+  `voortgang <speler> [n]` (voor tests).
+- **Parkour (10 levels)**, elk in zijn eigen tuin: 1 Stapstenen (vijver) ★, 2 Buxushagen ★, 3 Boomstronken
+  (boomgaard) ★★, 4 Hooiberg ★★, 5 Tuinmuur (klimop op, over de muur) ★★★, 6 Pergola ★★★, 7 Daken (schoorsteen op,
+  over de nokken) ★★★, 8 Speeltuin (slijm-trampolines) ★★★★, 9 Boomhut (de eik in) ★★★★, 10 Molen (de mast op, naar de
+  stelling) ★★★★★. **Start = 3×3** met een groen midden (je staat in het midden en kijkt naar de eerste sprong),
+  **finish = 3×3** met een gouden midden, bordje «Parkour n» bij de start met erboven de top 3. Geen tussen-checkpoints.
+  **Elke sprong is nagerekend** (`Sprong`: de bewegingsregels van Minecraft per tick, voorzichtig: stil vertrekken):
+  minstens 0,5 blok speling, en een luchtstrook zo breed als een speler vrij tot boven je hoofd (`Baan.controleer`,
+  unit-tests en `zelftest`). Moeilijkheid loopt op: level 1–2 overal bijna 2 blokken speling, 9–10 met krappe sprongen
+  (4 ver en 1 omlaag, 3 ver vanaf één blok, schuin omhoog).
+  **Reset alleen bij echt de grond raken** (Jelle 26-10, `Regels.grondcontact`): voeten op vloerhoogte (gras, pad,
+  tapijt; alle baanblokken liggen hoger), erdoorheen, of in het water. Midden in een sprong, aan een ladder of even op
+  een rand, muur, dak of hek landen reset niet. Naast de start de grond op stappen stopt de run zonder terugzetten.
+  Gehaald: «✔ Level 3 · 0:12.4 · record» op de actiebalk, na 3 s door naar de start van het volgende (blijf je niet op
+  de finish staan, dan niet). Tijdens een run de tijd op de actiebalk. Alles grijs, alleen de actiebalk, geen chat.
+  Voortgang per speler in `voortgang.yml` (`<uuid>` = gehaald, `gespeeld.<uuid>` = hoogste ooit gestart; bleef bij de
+  nieuwe levels gewoon staan), beste tijden in `tijden.yml` (`banen: 2`; de tijden van de oude levels staan bij de
+  eerste start ongewijzigd in `tijden-tuin1.yml`, de ranglijsten beginnen leeg).
+  Hotbar in de lobby: vak 1 kompas «Parkour» (menu met de tien levels: groen = gehaald, geel = open, grijs = dicht; je
+  kiest elk gehaald level en het eerstvolgende), vak 5 ster «Server kiezen» (Survival · KitPvP · Parkour · De brink;
+  tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
+  `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
+  level; `/terug` brengt je terug.
 - **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.1, eigen code; ontwerp in `plugins/kitpvp/MODI.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
@@ -406,9 +424,10 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   met een online speler: poorten, deuren, kits, `/arena`, gevecht-tag; niet bij spelers die aan het spelen zijn);
   `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor Zelda: x 1024…2047,
   z −512…511.
-- **Lobby-poorten** (Survival links, KitPvP rechts van de fontein): label boven de poort, lichtblokken (froglights) in
-  de kroon en vlak in de grond langs het pad, en zachte gekleurde deeltjes in de doorgang (elke seconde). Gezet bij
-  elke start (`poortenOplichten`), zonder herbouw van de tuin.
+- **Lobby-poorten** (Survival links, KitPvP rechts, aan de noordkant van de brink, ±16 blokken recht vooruit vanaf de
+  spawn): zwevend label boven de poort, een lichtblok (froglight) in de kroon, onzichtbaar licht in de doorgang en
+  een paar zachte gekleurde deeltjes (elke seconde, alleen als er iemand in de lobby is). Erdoorheen = `Connect` via
+  het BungeeCord-kanaal naar die server, actiebalk «Naar Survival…».
 - `mc apply` met spelers online altijd los starten (`setsid nohup mc apply > data/state/apply-laatste.out &`): wordt een
   apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan. Velocity herstart pas
   als er niemand online is, tenzij `--nu`.
