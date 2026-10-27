@@ -507,6 +507,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         rotswand();
         wachterspost();
         bergpoort();
+        stal();
         if (bouwen) versiering();
         if (bouwen) {
             b.daarna(() -> chunks.forEach(c -> w.removePluginChunkTicket((int) c[0], (int) c[1], plugin)));
@@ -750,7 +751,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Sven", "Met mijn ogen dicht. Dat telt ook.")), null)
                 .eenmalig("sven-vos", s -> s.heeft("dier:sneeuwvos"), List.of(
                         r("Sven", "Een sneeuwvosje! Die zie je bijna nooit.")), null);
-        // wie thuis is, staat in de stal (alleen voor wie hem vond)
+    }
+
+    /** Wie thuis is, staat in de stal (alleen te zien voor wie hem vond). Na de zoekgeraakte geiten (/zelda ga bles = de zoekgeraakte). */
+    private void stal() {
         String[] namen = {"Bles", "Mekker", "Sokje"};
         for (int i = 0; i < namen.length; i++) {
             String n = namen[i];

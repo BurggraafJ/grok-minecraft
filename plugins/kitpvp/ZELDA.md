@@ -5,8 +5,9 @@ is"). Zelda 2.0 maakt er een groter avontuur van: **vijf eilanden** in de Glazen
 erop, verbonden door het schip de Zilvermeeuw. Dit document is het plan voor de bouwsessies: verhaal, eilanden,
 mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De motor»), eiland 1 ook (sessie
 `zelda-eiland-1`, kitpvp 2.4; en opnieuw als **open eiland** in sessie `zelda-lindewoud-v2`, kitpvp 2.6) en heel eiland 2
-(de westhelft in sessie `zelda-eiland-2a`, kitpvp 2.5; de Getijdentempel in sessie `zelda-eiland-2b`, kitpvp 2.7); de
-andere eilanden bouwen latere sessies, één per (half) eiland,
+(de westhelft in sessie `zelda-eiland-2a`, kitpvp 2.5; de Getijdentempel in sessie `zelda-eiland-2b`, kitpvp 2.7) en het
+dal van de Witte Toppen (sessie `zelda-eiland-3a`, kitpvp 2.8); de andere eilanden bouwen latere sessies, één per (half)
+eiland,
 in de volgorde onderaan. **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
@@ -30,7 +31,7 @@ Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*
 | extra hartjes | **hartcontainer** na elke baas, **hartstukjes** (vier = een hart) verstopt en als beloning | motor |
 | harnas als progressie | vijf trappen, zichtbaar aan je lijf: tuniek → maliënhemd → wachtersharnas → gloedharnas → lichtharnas | motor (`ZeldaRegels.harnas`) |
 | zichtbare fee die praat en meeloopt | **Wiske** vliegt als kleine fee naast je schouder, komt voor je zweven als ze praat, wijst de weg | motor (`ZeldaMetgezel`) |
-| later je eigen huisdier | op de Witte Toppen vind je een sneeuwvosje; je kiest zijn naam; hij loopt mee en **snuffelt verstopte dingen op** | motor (`ZeldaDier`) + eiland 3 |
+| later je eigen huisdier | geen vrij huisdier (Jelle: afleidend; `ZeldaDier.AAN` blijft uit), wel het **sneeuwvosje** uit het verhaal: je redt hem op de Witte Toppen en kiest zijn naam; hij loopt rustig mee, vecht niet, zegt niets, **snuffelt verstopte dingen op** en graaft (graafplekken) | motor (`ZeldaDier`) + eiland 3a |
 | NPC's, zijmissies, dialoog | personen met gesprekken die van je voortgang afhangen; zijmissies met stappen en beloning | motor (`Persoon.gesprek`, `Missie`) |
 | helper als je vastzit | `/hint` of klik op Wiske: eerst een duwtje, nog eens vragen = wat je moet doen en ze vliegt die kant op; na zes minuten zonder voortgang biedt ze één keer hulp aan | motor |
 | een stuk opnieuw spelen | kaart: **rechtsklik op een zielvuur = opnieuw vanaf hier** (uitleg en puzzels erna komen terug, spullen blijven); **Uitleg: aan/uit** | motor |
@@ -73,7 +74,7 @@ versie. Zee om elk eiland tot de rand van zijn vak (zichtafstand op kitpvp is 6 
 |---|---|---|---|---|---|
 | 1 Het Lindewoud | `h1` · `zelda` | 1024 … 1639 · −179 … 179 (bouwvak, vooral zee); land 1045 … 1492 · −105 … 105 | rust `haven` | — | `h1` |
 | 2 Het Zilverstrand | `e2a` · `zelda-e2a`, `e2b` · `zelda-e2b` | 1060 … 1360 · −480 … −180 (2a tot x 1229, 2b vanaf 1230) | rust `steiger` (e2a) | `h1` | `baken2` |
-| 3 De Witte Toppen | `e3a`, `e3b` | 1400 … 1720 · −480 … −180 | `steiger` (e3a) | `baken2` | `baken3` |
+| 3 De Witte Toppen | `e3a` · `zelda-e3a`, `e3b` | 1400 … 1720 · −480 … −180 (3a tot x 1579, 3b vanaf 1580) | rust `steiger` (e3a) | `baken2` | `baken3` |
 | 4 De Gloedberg | `e4a`, `e4b` | 1060 … 1400 · 180 … 480 | `steiger` (e4a) | `baken3` | `baken4` |
 | 5 Nachtrots | `e5a`, `e5b` | 1640 … 2000 · −150 … 150 | `steiger` (e5a) | `baken4` | `zelda` |
 | de zee (overtocht) | `zee` · `zelda-zee` | 1840 … 2040 · −510 … −330 | — | — | — |
@@ -126,7 +127,7 @@ de buren (z −179 / 179, x 1639): daar bouwt het alleen zee, zodat de zeeën va
 |---|---|---|---|---|---|
 | 1 Lindewoud | zwaard, schild, boog (bestaan) | groene tuniek | `hart1` (Grauwmoer) | `fles1` (zijmissie Hanne), `fles2` (Tijmen, meteen) | `lichtwoord` (Tijmen), `sterkwater` (Hanne, met zeekraal van het Zilverstrand) |
 | 2 Zilverstrand | **bommen** (vak 4, vlag `bommen`): gooien, gebarsten muren, baas verdoven | `harnas1` maliënhemd (smid Hendrik) | `hart2` (Zoutbaard) | `fles3` (Lotje, boodschap over zee) | `maanparel` (Tijmen: het getij), `ankersleutel` (Teun) |
-| 3 Witte Toppen | **klauwhaak** (vak 5, vlag `klauwhaak`): naar een haakpunt trekken | `harnas2` wachtersharnas (bergwachters) | `hart3` | `fles4` | **sneeuwvos** (`dier:sneeuwvos`) |
+| 3 Witte Toppen | **klauwhaak** (vak 5, vlag `klauwhaak`): naar een haakpunt trekken (gebouwd in 3a) | `harnas2` wachtersharnas (bergwachters, 3b) | `hart3` (3b) | `fles4` (Teun, de brief van Ys) | **sneeuwvos** (`dier:sneeuwvos`), `lantaarn` (Tijmen) |
 | 4 Gloedberg | **vuurstaf** (vak 6, vlag `vuurstaf`): vuur op afstand, ijs smelten | `harnas3` gloedharnas (smeden; hitte in de mijn) | `hart4` | — | — |
 | 5 Nachtrots | **lichtpijlen** (boog, vak 2, vlag `lichtpijlen`): nevel en Morgal | `harnas4` lichtharnas (Zelda's wachters) | — | — | het einde |
 
@@ -239,8 +240,8 @@ Het pad (de test loopt het in deze volgorde af; rustplaatsen 0 … 3, nooit tuss
   Zijmissies: *Zilverschelpen* (Hendrik: vijf `schelp:` langs het strand, op het wrak, op een rotsje in de branding en
   bij het dijkhuisje → `harnas1`, het maliënhemd) en *De vlieger* (Pim: de duinbaan halen → `hs:zilverstrand-1`).
 - **Hartstukjes**: 1 (Pim), 2 (smokkelgrot, bommen), 3 (Meeuwenrots, klauwhaak). `hs:zilverstrand-4` is voor 2b.
-  Het haakpunt `rots` zit aan de zuidrand van de top (1198, G+21, −391), ±21 blokken van het pleintje ervoor: geef de
-  klauwhaak (3a) genoeg bereik, of zet halverwege een tweede haakpunt (dan de versie van `zelda-e2a` ophogen).
+  Het haakpunt `rots` steekt aan de zuidrand van de top een blok uit over de rand (1198, G+21, −390; `zelda-e2a`
+  versie 2, sessie 3a: op de rand zelf was het van onderaf niet te raken), ±21 blokken van het pleintje ervoor.
 - **Muziek**: *Zoutkom* (steiger, dorp, strand, dijk; xylofoon en gitaar), *Duinen* (fluit, wind) en *Vuurtoren*
   (kaap, toren, kelder; klokken). Hemel: ochtend bij de steiger, middag in dorp en duinen, avondzon op de kaap.
 - **Afwijkingen van het plan, en waarom**: de puzzel voor de bommenzak is een **spiegelpuzzel** (draaien, geen tijd)
@@ -308,8 +309,10 @@ het baken (1348, −330), het wrak (1316, −404), de poelen (1288 … 1322, −
   (een kern van licht en een bundel omhoog, ook vanuit Zoutkom), en Wiske wordt feller (iets groter, meer glans).
 - **De Witte Toppen gaan open**: `baken2` is de `klaar`-vlag van het Zilverstrand. Omdat eiland 3 er nog niet is, staat
   het als **aangekondigd** in `Zelda.KOMT` (`ZeldaEiland.Komt`): grijs op de zeekaart en in Brechts menu («nog even
-  geduld»), en `/hint` en Tijmen zeggen «Straks varen we naar de Witte Toppen». Sessie 3a haalt het daar weg en zet
-  het echte eiland in `Zelda.EILANDEN` (open na `baken2`); de zelftest meldt het als het op beide plekken staat.
+  geduld»), en `/hint` en Tijmen zeggen «Straks varen we naar de Witte Toppen». Sessie 3a heeft het daar weggehaald en
+  het echte eiland in `Zelda.EILANDEN` gezet (open na `baken2`); de zelftest meldt het als een eiland op beide plekken
+  staat. Sinds 3a leidt ook een ladder met een luik uit het raderwerk naar het terras (het luik gaat alleen van
+  binnenuit open): wie daar samen met een ander zonder de Spoelkamer kwam, kan eruit (`zelda-e2b` versie 5).
 - **Afwijkingen van het plan, en waarom**: de Getijdentempel heeft **één** verplichte kamer plus de baas (niet twee
   kamers: Jelle wil weinig vechten). Het getij gaat met **hendels** (zoals het plan zei), maar de eerste hendel zit
   diep in de tempel en vraagt de maanparel van Tijmen: zo is Tijmen nodig en is de zaal een echte puzzel (eerst droog
@@ -324,24 +327,82 @@ het baken (1348, −330), het wrak (1316, −404), de poelen (1288 … 1322, −
 Sneeuw, sparren, een bevroren meer, het bergdorp **IJshoeve**, en hoog op de berg het **IJspaleis** van de oude
 bergwachters.
 
-- **3a (dal en dorp)**: steiger in een fjord, dorp met **Saar en Sven** (herders, zijmissie *Zoekgeraakte geiten*),
-  **Grootvader Ys** (verhalen, uitleg over het paleis), de **smid van de wachters**. Het **sneeuwvosje**: in een
-  sneeuwstorm hoor je gepiep; pootafdrukken (deeltjes) leiden naar een kuil onder een spar waar twee wolven het
-  vosje opjagen (het enige gevecht, kort). Daarna kies je zijn naam (motor: menu) en loopt hij mee; Wiske legt uit dat
-  hij verstopte dingen ruikt. Voorwerp: de **klauwhaak** (bij de bergwachters, na een klim met haakpunten als les).
+#### 3a · het dal en het dorp (gebouwd: sessie `zelda-eiland-3a`, deel `zelda-e3a` versie 1, klasse `ZeldaEiland3a`)
+
+Een half eiland met een eigen hub. Vak **x 1400 … 1579, z −480 … −180** (zee tot de rand; de berg in het oosten loopt tot
+x 1579, daar sluit 3b aan). Coördinaten: IJshoeve (1480, −294), het meer (1432, −300, eilandje 1430, −300), de kuil
+(1436, −380), de deur in de rotswand (1455, −425), de Wachterspost (1504, −443), de Bergpoort (1551, −294).
+
+| plek | wat | soort |
+|---|---|---|
+| 1460 … 1476, −236 … −204 | **de fjord**: een steiger op palen, de Zilvermeeuw (boeg naar het noorden), **Brecht** | rust 0 `steiger` (aanleg) |
+| 1480, −294 | **IJshoeve** (de hub): een plein met een sneeuwvlok, zielvuur, bron, lantaarns, bordjes (Het meer, Het Sparrenbos, De Uitkijk, De Bergpoort, De fjord); **Tijmen** onder zijn luifel; de geitenhoeve van **Saar en Sven** (stal, weide); de smidse van **Hagen**; een blok betoverd ijs | rust 1 `hoeve`, bron, personen |
+| 1412 … 1452, −314 … −286 | **het bevroren meer**: **Grootvader Ys** aan zijn wak, **Noor** en **de ijsbaan** (blauw ijs om het eilandje, 20 s, alleen geldig met de bocht aan de overkant: `Uitdaging.via`); op het eilandje onder de spar een verstopt hartstukje | uitdaging `ijsbaan`, vondst (verborgen) |
+| 1404 … 1476, −402 … −342 | **het Sparrenbos**: een sneeuwstorm (veel sneeuw en as om je heen; zonder de lantaarn sta je na een paar stappen weer aan de bosrand); met de lantaarn zie je **pootjes** in de sneeuw; een feeënkring halverwege | rust 2 `bosrand`, bron `bron-bos` |
+| 1432 … 1440, −384 … −376 | **de kuil** onder de grote spar: twee **nevelwolven** (de bel = nog eens, met drie) — het enige gevecht; het **sneeuwvosje** zit in een holletje onder de wortels | kamer `kuil`, persoon `Vosje` |
+| 1455, −422 | **de rotswand**: het vosje graaft een oude deur van de bergwachters op (graafplek `deur`, vlag `wachtersdeur`) | graafplek, poort `wachtersdeur` |
+| 1454 … 1483, −433 … −425 | **de Wachtersgang** onder de rots door, omlaag naar de kloof | — |
+| 1484 … 1530, −446 … −430 | **de kloof met de Wachterspost** (hal met torentje): de **klauwhaak**; drie haakpunten met plankieren in de zuidwand (de les) naar de rand | rust 3 `wachterspost`, vondst `klauwhaak`, haakpunten `kloof1` … `kloof3` |
+| 1490 … 1549, −429 … −345 | **de Uitkijk**: een vlakte boven de kloof (met een hek langs de rand), een helling terug naar het dorp; geit **Mekker** | — |
+| 1541 … 1562, −305 … −288 | **de Bergpoort**: een ingestorte wachterstrap; in de poortboog een haakpunt; het plateau en het begin van het bergpad (een lawine bij x 1575) | haakpunt `bergpoort`, rust 4 `bergpoort`, verhaal: einde (`e3a`) |
+
+- **Hoofdlijn** (acht doelen voor `/hint` en Tijmen): Tijmen (de sterrenlantaarn) → de storm in, de pootjes volgen →
+  de kuil (de wolven) → het vosje (naam kiezen) → het vosje graaft de deur op → door de gang naar de Wachterspost (de
+  klauwhaak) → met drie haakpunten de kloof uit → de Bergpoort (haakpunt in de boog). `wacht()`: «Het bergpad is nog
+  dicht gesneeuwd. Nog even geduld.»
+- **Rondjes**: dorp → Sparrenbos → kuil → rotswand → gang → kloof → Uitkijk → dorp; dorp → meer → (langs de oever)
+  bosrand → dorp. De kloof is dicht: zonder de opgegraven deur kom je niet in de gang, en zonder klauwhaak niet uit de
+  kloof (behalve terug door de gang) en niet op de Bergpoort (`kitpvp zelda lopen witte-toppen dicht wachtersdeur
+  zonder klauwhaak`).
+- **Personen** (twaalf): Brecht, Tijmen (de **sterrenlantaarn**: «In het Sparrenbos raast een storm»; na de klauwhaak:
+  het Vorstbaken), Saar en Sven (*Zoekgeraakte geiten*: Bles bij het meer, Sokje langs de weg naar de fjord, Mekker op
+  de Uitkijk; wie gevonden is staat in de stal → `hs:witte-toppen-1`), Grootvader **Ys** (oude bergwachter, vist aan
+  zijn wak; *De brief van Ys* voor zijn jeugdvriend Teun), **Noor** (zijn kleindochter, de ijsbaan), **Hagen** de smid
+  (smeedde klauwhaken voor de wachters; het ijsblok), het vosje, en drie geiten.
+- **Het sneeuwvosje**: na de kuil praat je met hem → `spel.dier(p, "sneeuwvos")` → een klein menu «Hoe heet het
+  vosje?» (Vlok, Pluis, Sneeuw, Vonk, Kiek). Daarna loopt hij mee op elk eiland, zit als je stilstaat, gaat in een
+  gevecht opzij zitten, snuffelt verborgen vondsten op (ook de holle Oude Eik op het Lindewoud: terugkomen loont) en
+  graaft graafplekken op. Het survival-huisdier blijft uit (`kitpvp-stand` `geen`), vrije Zelda-dieren ook.
+- **De klauwhaak** (vak 5): rechtsklik; grijpt een haakpunt binnen 24 blokken waar je op mikt (6° ernaast mag: kinderen
+  mikken niet precies), de ketting vliegt uit, dan word je erheen getrokken en sta je op de landing. Mis = de haak
+  tikt tegen de rots en komt terug (de eerste keer legt Wiske het uit). Werkt ook op de oude haakpunten: de richel in
+  de Kloof van het Lindewoud (`hs:lindewoud-3`) en de Meeuwenrots (`hs:zilverstrand-3`; dat haakpunt steekt sinds
+  `zelda-e2a` versie 2 een blok uit over de rand, anders was het van onderaf niet te raken).
+- **Boodschap over zee / terugkeer-opdracht**: *De brief van Ys* begint op de Witte Toppen en stuurt je terug naar
+  Zoutkom: **Teun** leest hem («Je speelt nog steeds vals met kaarten.») en geeft `fles4` (een fles van de Kraai). De
+  missie staat bij 2a (daar is de beloning). Daarnaast lonen de oude haakpunten en het snuffelende vosje.
+- **Genezen**: vijf rustplaatsen, bronnen op het plein en in het bos (vlak bij de kuil), de flesjes, op adem komen.
+- **Hartstukjes** (3 van de 4 van het eiland; 4 is voor 3b): `hs:witte-toppen-1` (de geiten), `-2` (verstopt op het
+  eilandje, het vosje snuffelt hem op), `-3` (in betoverd ijs bij de smidse: pas met de **vuurstaf**, eiland 4a).
+- **Muziek**: *IJshoeve* (klokjes en harp, in D), *Sneeuwstorm* (didgeridoo, fluit, in e) en *Wachterspost* (ijzeren
+  xylofoon, in a; ook bij de Bergpoort). **Hemel** schuift op met wat je deed (een open eiland): vroeg licht bij
+  aankomst, later op de dag na de lantaarn, het vosje en de klauwhaak, een gouden middag na de Bergpoort.
+- **Afwijkingen van het plan, en waarom**: de pootjes zie je alleen met Tijmens **sterrenlantaarn** (zo heeft Tijmen
+  weer een gave die je nodig hebt, en de storm een puzzel); het vosje is geen huisdier maar een verhaal-metgezel die
+  ook op de hoofdlijn nodig is (hij graaft de deur op: snuffelen is meteen spel); de klauwhaak ligt in de verlaten
+  Wachterspost (geen bergwachter die hem geeft: Ys en Hagen vertellen erover), met de les **ná** het vinden (je moet
+  de kloof uit); de smid van de wachters heet Hagen en geeft (nog) niets: het wachtersharnas is voor 3b. De terugkeer-
+  opdracht is een brief aan Teun in plaats van Hanne's sneeuwbloem (Teun en Ys knopen 2 en 3 aan elkaar; Hanne kan
+  later nog).
+
+#### 3b · berg en paleis (nog te bouwen)
+
 - **3b (berg en paleis)**: het bergpad met haakpunten, het **IJspaleis**: glijpuzzels op ijs (je glijdt tot je
   ergens tegenaan komt), bevroren hendels, een spiegelzaal. Baas **Grimmel**, een reuzenijsbeer in de ban van de
   nevel: hij stormt op je af; trek je weg met de klauwhaak, laat hem tegen de ijspilaren lopen. Bevrijd = hij sjokt
-  weg naar zijn holen. `hart3`, `harnas2` (wachtersharnas), **Vorstbaken** (`baken3`).
+  weg naar zijn holen. `hart3`, `harnas2` (wachtersharnas), **Vorstbaken** (`baken3`), `hs:witte-toppen-4`.
 
-Muziek: *IJshoeve* (klokjes), *Sneeuwstorm* (zacht, didgeridoo), *IJspaleis* (ijzeren xylofoon), baas *Grimmel*.
+Muziek: *IJshoeve*, *Sneeuwstorm*, *Wachterspost* (3a); nog: *IJspaleis* (ijzeren xylofoon), baas *Grimmel*.
 
-**Hoe 3a aanhaakt** (sessie `zelda-eiland-3a`): de Witte Toppen staan nu als aangekondigd eiland in `Zelda.KOMT` (grijs
-op de kaart na `baken2`). Haal die regel weg en zet het eiland in `Zelda.EILANDEN` met `openNa = "baken2"`
-(vak x 1400 … 1720, z −480 … −180; zee tot de rand). Brecht (2a) en Mira zeggen na het baken al «naar het noorden»;
-Tijmen op het Getijdenplein «Op de Witte Toppen zien we elkaar weer». Het getij (`ZeldaHoofdstuk.Getij`) is herbruikbaar
-voor bevroren hendels (bv. een bak met ijswater). De baas kan een eigen subklasse van `ZeldaBaas` zijn, zoals
-`Zoutbaard` (`soort`, `helper`, `beweeg`, `schade`, `boem`, `weg`).
+**Hoe 3b aanhaakt** (sessie `zelda-eiland-3b`): voeg een deel toe aan de regel van de Witte Toppen in `Zelda.EILANDEN`
+(`List.of(new ZeldaEiland3a(plugin), new ZeldaEiland3b(plugin))`), in het vak **x 1580 … 1720** (elke kolom zelf). Het
+bergpad van 3a eindigt op het plateau achter de Bergpoort (x 1563 … 1579, z −296 … −292, vloer G+10 … G+14) tegen een
+**lawine** (sneeuwblokken op x 1575 … 1579): die is van 3a; haal hem weg met een nieuwe versie van `zelda-e3a` (of maak
+er een `Poort` van). `wacht()` van 3a vervalt vanzelf zodra 3b het laatste deel is. Personen die 3b kan gebruiken: Ys
+(oude bergwachter), Hagen (smid: het wachtersharnas?), Tijmen (een derde Tijmen bij het paleis, of hij zegt
+«boven zien we elkaar»), Noor. De klauwhaak (`ZeldaSpel.Klauwhaak`) en `haak(…)` in de volgorde (de test schiet echt)
+zijn er; Grimmel kan een `ZeldaBaas`-subklasse zijn zoals `Zoutbaard`. Het getij (`Getij`) kan een bak met ijswater
+worden. Kondig de Gloedberg aan in `Zelda.KOMT` (open na `baken3`).
 
 ### 4 · De Gloedberg
 
@@ -381,12 +442,13 @@ moet regelen; een vaste wegwijzer bij wie je steeds terugkomt. Zo knopen we de e
 
 | wie | wat | Lindewoud | Zilverstrand | later |
 |---|---|---|---|---|
-| **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al»; het Getijdenplein (2b): de **maanparel** (het getij) | op elk eiland bij de hub of steiger (IJshoeve, Sintelgat, de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hoe komt hij hier nou weer?»); op Nachtrots helpt hij Wolf |
-| **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira; na het baken: «naar het noorden» | op elke steiger; na Morgal vaart hij iedereen naar huis |
+| **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al»; het Getijdenplein (2b): de **maanparel** (het getij) | IJshoeve (3a): de **sterrenlantaarn** (de storm); verder op elk eiland bij de hub of steiger (Sintelgat, de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hij is er alwéér!»); op Nachtrots helpt hij Wolf |
+| **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira; na het baken: «naar het noorden» | de fjord van de Witte Toppen («hier vriest zelfs mijn baard»); op elke steiger; na Morgal vaart hij iedereen naar huis |
 | **Hanne**, kruidenvrouw | brouwt met wat je van andere eilanden meebrengt | *Moeraskruid* → `fles1` | *Zeekraal* (aan de dijk) → `sterkwater` | *Sneeuwbloem* van de Witte Toppen (een brouwsel tegen de kou in de mijn, of nog sterker bronwater) |
 | **Kees**, houthakker | heeft altijd iets nodig van ver weg | *De verloren bijl* | — | 4a: ijzerhout of een nieuw bijlblad van de smeden van de Gloedberg → iets voor de Kloof (een brug?) |
 | **Lotje**, kind op de pier | telt meeuwen, wil weten hoe het elders is | praatje | (vraagt naar de meeuwen); *De zingende schelp* uit de getijdenpoelen (2b) → `fles3` | kan een kleine boodschap krijgen (een veer van de Meeuwenrots, een sneeuwbal die niet smelt) |
-| **Teun**, oude visser (Zoutkom) | weet van vroeger | — | de bakens (2a); voer met Zoutbaard: de **ankersleutel** en de ton buskruit (2b) | (kan meer van vroeger weten) |
+| **Teun**, oude visser (Zoutkom) | weet van vroeger | — | de bakens (2a); voer met Zoutbaard: de **ankersleutel** en de ton buskruit (2b) | jeugdvriend van **Ys** op de Witte Toppen: *De brief van Ys* → `fles4` (3a) |
+| **Ys**, oude bergwachter (IJshoeve) | vist aan zijn wak, weet van het IJspaleis | — | — | 3a: de brief voor Teun; 3b: kan het paleis kennen |
 | **Wiske**, de fee | hint, uitleg, wijst | overal | overal | wordt feller bij elk baken (`ZeldaMetgezel.licht`: iets groter, meer glans) |
 
 **Bouwregel voor elk volgend eiland:** zet Tijmen bij de hub (met `wegwijzer` als laatste gesprek), en maak minstens
@@ -407,7 +469,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | regels | `ZeldaRegels` | harten, hartstukjes, harnas, flesjes, welk doel, «opnieuw vanaf hier» (unit-tests) |
 | muziek | `ZeldaMuziek` | drie lagen: achtergrond (altijd, wisselt op een maatstreep), lus (gevecht/baas), deuntjes; nieuwe liedjes *Thuis, Woud, Tempel, Veen, Haven, Zee, Bron, Hint, Opdracht* |
 | Wiske | `ZeldaMetgezel` | kleine allay, alleen voor jou zichtbaar, vliegt naast je schouder, komt voor je zweven als ze praat, wijst bij een tweede hint |
-| huisdier | `ZeldaDier` | vlag `dier:<soort>` (vos, sneeuwvos, kat, konijn), naam kiezen, loopt mee (eigen pad, geen eigen wil), snuffelt verborgen vondsten op |
+| dier | `ZeldaDier` | vlag `dier:<soort>`; alleen het **sneeuwvosje** (`VERHAAL`) loopt mee, vrije huisdieren staan uit (`AAN = false`); naam kiezen (menu), loopt mee (eigen pad, geen eigen wil), gaat in een gevecht opzij, snuffelt verborgen vondsten op, graaft graafplekken op |
 | bronnen | `ZeldaHoofdstuk.Bron` | feeënkring (licht, geen blokken): geneest snel, vult flesjes; ook zielvuren vullen flesjes |
 | flesjes | `ZeldaSpel.Flesje` | vak 3, rechtsklik = vijf harten; `fles1` … `fles4` (elk flesje telt, `ZeldaVoorwerp.heeft`: Tijmens `fles2` staat er ook zonder `fles1`) |
 | harnas | `ZeldaSpel.harnas` | vlaggen `harnas1` … `harnas4`, zichtbaar, met versiering vanaf trap 3 |
@@ -454,6 +516,14 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | drietanden | `ZeldaSpel.DRIETAND`, `onWorp` | een drietand van een vijand doet hoogstens twee harten en verdwijnt na het neerkomen; nieuwe vijanden `MATROOS` (zombie), `HARPOENIER` en `KAPITEIN` (drowned met drietand) |
 | een eiland dat eraan komt | `ZeldaEiland.Komt`, `Zelda.KOMT`, `spel.komt` | na `openNa` grijs op de kaart en bij Brecht («nog even geduld»); `/hint` en Tijmen zeggen dat je er straks heen vaart |
 | uiterlijk van een persoon | `Persoon.uiterlijk` | na het verschijnen (de kleur van Lorre de papegaai, zittend) |
+| **de Witte Toppen** (eiland 3a) | | |
+| klauwhaak | `ZeldaSpel.Klauwhaak`, `spel.haak`, `ZeldaRegels.mik`, `HAAK_BEREIK` | vak 5; rechtsklik = de haak naar het haakpunt waar je op mikt (24 blokken, 6° ernaast mag, niets ertussen: `spel.zicht`); de ketting vliegt uit, dan word je erheen getrokken (geen val- of stikschade onderweg) en sta je op de landing; mis = hij komt terug |
+| haken op het pad | `haak(haakpunt, van)`, `ZeldaHoofdstuk.Haak` | in de volgorde: hier haak je je omhoog (de test schiet de klauwhaak echt, vanaf `van`); `zelda lopen` volgt haakpunten die je ergens vandaan kunt raken |
+| graafplek | `ZeldaHoofdstuk.Graaf`, `graaf(…)`, `spel.gegraven` | iets onder de sneeuw dat alleen een dierenneus vindt: je dier loopt erheen, graaft, en wie erbij staat krijgt de vlag (bv. voor een `Poort`) |
+| persoon voor sommigen | `Persoon.zichtbaar` | alleen te zien (en te praten) voor wie dit klopt: een geit in het veld tot je hem vond, daarna in de stal |
+| een dier krijgen | `spel.dier(p, soort)` | vlag, nog geen naam, deuntje, en meteen het naammenu |
+| nevelwolven | `Soort.NEVELWOLF` | betoverde sneeuwwolven (rode ogen, snel, niet taai) |
+| wat ligt erachter? | `kitpvp zelda lopen <eiland> zonder <voorwerp> dicht <poort>` | de loopcontrole met een poort dicht of zonder een voorwerp: zo zie je of je ergens omheen kunt |
 
 ### Hoe een eilandsessie aanhaakt
 
@@ -482,8 +552,10 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    <speler> motor`, en `kitpvp kaart` voor plaatjes. Een nieuw eiland komt dus vanzelf in de route, als het open gaat
    met de vlag van het eiland ervoor.
 7. Bommen (gebouwd in 2a): `spel.ontplof` breekt de gebarsten muur bij de knal open (`spel.barstBij`, `spel.breek`) en
-   roept `boem()` van het deel aan. Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en zet de speler op `landing()`;
-   er zijn er twee: boven de richel in de Kloof (`hs:lindewoud-3`) en boven op de Meeuwenrots (`hs:zilverstrand-3`).
+   roept `boem()` van het deel aan. Klauwhaak (gebouwd in 3a): een `Haakpunt` (blok `HAAKPUNT` + landing) is vanzelf te
+   gebruiken; zet het zo dat het van een plek om te staan te raken is (het blok mag niet weggestopt zitten achter een
+   rand: `zelda lopen` meldt «nergens vandaan te raken»), en zet een `haak(…)` in de volgorde als je er op het pad
+   langs moet. Graafplekken (`Graaf`) voor het vosje.
 8. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
    test teleporteert, dus deze controle volgt vanaf de steiger elke plek waar een speler kan staan en noemt wat je
    zonder teleporteren niet haalt. Deuren, poorten en bruggen tellen als open (een brug als planken).
@@ -520,9 +592,11 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
    met alleen wat 2a geeft, de baas te verslaan is, `baken2` het Witte Toppen opent, er een opdracht terug naar een
    ander eiland is, een stand van 2.6.0 zonder verlies werkt, en zelftest, `test … alles`, `motor` en `zelda lopen`
    OK zijn.
-4. **`zelda-eiland-3a`** — Witte Toppen dal en dorp: IJshoeve, personen, het sneeuwvosje (motor `ZeldaDier`, naam
-   kiezen), de klauwhaak (voorwerp). **Klaar als** het vosje meeloopt en snuffelt, de klauwhaak werkt op haakpunten
-   (ook het oude punt op het Lindewoud), en zelftest en test OK zijn.
+4. **`zelda-eiland-3a`** (gebouwd, kitpvp 2.8) — Witte Toppen dal en dorp: de fjord, IJshoeve, het meer, de storm,
+   de kuil, het sneeuwvosje (verhaal-metgezel, naam kiezen, snuffelt en graaft), de Wachterspost met de klauwhaak, de
+   Bergpoort; Tijmen (sterrenlantaarn), Saar en Sven, Ys (de brief voor Teun → `fles4`), Hagen, Noor. **Klaar als**
+   het vosje meeloopt en snuffelt, de klauwhaak werkt op haakpunten (ook het oude punt op het Lindewoud), en zelftest
+   en test OK zijn.
 5. **`zelda-eiland-3b`** — Het IJspaleis: glijpuzzels, Grimmel, `hart3`, wachtersharnas, Vorstbaken (`baken3`).
    **Klaar als** het paleis met klauwhaak en bommen te halen is, `baken3` de Gloedberg opent, zelftest en test OK.
 6. **`zelda-eiland-4a`** — Gloedberg: Sintelgat, mijnen met hitte, personen, de vuurstaf, het gloedharnas. **Klaar als**
