@@ -60,7 +60,9 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
     private byte[][] soort;
     private boolean[][] pad, vrij;                      // een pad (ander oppervlak), vrij van bomen
 
-    private static final byte ZEE = 0, STRAND = 1, SNEEUW = 2, ROTS = 3, PLEIN = 4, MEER = 5, KLOOF = 6;
+    private static final byte ZEE = 0, STRAND = 1, SNEEUW = 2, ROTS = 3, PLEIN = 4, MEER = 5, KLOOF = 6, BEEK = 7;
+    /** De bevroren beek: van de voet van de berg naar de kop van de fjord (x, z). */
+    private static final int[][] BEEKLIJN = {{1549, -266}, {1536, -262}, {1522, -255}, {1509, -251}, {1497, -244}, {1487, -238}, {1479, -231}, {1476, -227}};
 
     /** De storm in het Sparrenbos: hier sneeuwt het hard; dieper erin verdwaal je zonder licht. */
     private Box storm, diep;
@@ -297,6 +299,18 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         return Math.hypot((x - MX) / 20.0, (z - MZ) / 14.0) < 1;
     }
 
+    /** Ligt dit in de bevroren beek (twee breed)? */
+    private static boolean beek(int x, int z) {
+        for (int i = 0; i + 1 < BEEKLIJN.length; i++) {
+            int[] a = BEEKLIJN[i], c = BEEKLIJN[i + 1];
+            double dx = c[0] - a[0], dz = c[1] - a[1], len2 = dx * dx + dz * dz;
+            double t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / len2));
+            double kx = a[0] + dx * t + (zacht(x, z, 6) - 0.5) * 1.5, kz = a[1] + dz * t;
+            if (Math.hypot(x - kx, z - kz) <= 1.1) return true;
+        }
+        return false;
+    }
+
     private static boolean kloof(int x, int z) {
         return x >= 1484 && x <= 1530 && z >= -446 && z <= -430;
     }
@@ -310,6 +324,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         int bg = berg(x, z);
         if (bg > 0) return new int[]{G + bg, ROTS};
         if (meer(x, z)) return new int[]{G, MEER};
+        if (beek(x, z)) return new int[]{G - 1, BEEK};
         if (Math.hypot(x - PX, z - PZ) <= 10.4) return new int[]{G, PLEIN};
         int hv = heuvel(x, z);
         if (hv > 0) return new int[]{G + hv, SNEEUW};
@@ -380,10 +395,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         for (int x = X1 + 3; x <= X2 - 3; x++)
             for (int z = Z1 + 3; z <= Z2 - 3; z++) {
                 if (soort[x - X1][z - Z1] != SNEEUW || vrij[x - X1][z - Z1] || pad[x - X1][z - Z1] || vast(x, z) || heuvel(x, z) > 0) continue;
-                boolean bos = x <= 1476 && z <= -322 && z >= -424;
-                int raster = bos ? 4 : 9;
+                boolean bos = x <= 1476 && z <= -322 && z >= -424, bosje = !bos && zacht(x + 70, z - 30, 22) > 0.62;
+                int raster = bos ? 4 : bosje ? 5 : 8;
                 if (Math.floorMod(x + kans(z, x, 2), raster) != 0 || Math.floorMod(z + kans(x, z, 2), raster) != 0) continue;
-                if (!bos && kans(x, z, 3) != 0) continue;
+                if (!bos && !bosje && kans(x, z, 3) != 0) continue;
                 boolean ruimte = true;
                 for (int dx = -2; dx <= 2 && ruimte; dx++)
                     for (int dz = -2; dz <= 2 && ruimte; dz++) {
@@ -391,7 +406,9 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         ruimte = ax >= 0 && az >= 0 && ax < top.length && az < top[0].length && !vrij[ax][az] && soort[ax][az] == SNEEUW
                                 && Math.abs(top[ax][az] - top[x - X1][z - Z1]) <= 1;
                     }
-                if (ruimte) spar(x, top[x - X1][z - Z1] + 1, z, 7 + kans(x + 1, z, bos ? 6 : 4));
+                if (!ruimte) continue;
+                spar(x, top[x - X1][z - Z1] + 1, z, 7 + kans(x + 1, z, bos ? 6 : 4));
+                for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) vrij[x + dx - X1][z + dz - Z1] = true;   // geen varen of stam in de stam
             }
         // keien in de sneeuw
         for (int x = X1 + 2; x <= X2 - 2; x += 7)
@@ -402,6 +419,15 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 zet(kx, y, kz, steen(kx, y, kz));
                 if (kans(kx + 3, kz, 2) == 0) zet(kx + 1, y, kz, Material.COBBLESTONE);
                 zet(kx, y + 1, kz, Material.SNOW);
+            }
+        // varens onder de sparren, hier en daar een omgevallen stam
+        for (int x = 1406; x <= 1476; x++)
+            for (int z = -424; z <= -322; z++) {
+                if (soort[x - X1][z - Z1] != SNEEUW || pad[x - X1][z - Z1] || vast(x, z) || vrij[x - X1][z - Z1]) continue;
+                int y = top[x - X1][z - Z1] + 1, k = kans(x + 5, z - 9, 40);
+                if (k == 0) zet(x, y, z, Material.FERN);
+                else if (k == 1 && kans(x, z + 3, 3) == 0) for (int i = 0; i < 4 && x + i <= 1476 && soort[x + i - X1][z - Z1] == SNEEUW
+                        && top[x + i - X1][z - Z1] == y - 1 && !vrij[x + i - X1][z - Z1]; i++) zet(x + i, y, z, stam(Material.SPRUCE_LOG, org.bukkit.Axis.X));
             }
     }
 
@@ -421,6 +447,12 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
             double r = Math.hypot(x - EX, z - EZ);
             zet(x, G, z, r >= 5.5 && r <= 8.5 ? Material.BLUE_ICE : Material.PACKED_ICE);
             vul(x, G + 1, z, x, ymax, z, Material.AIR);
+            return;
+        }
+        if (s == BEEK) {
+            vul(x, g + 1, z, x, hg - 1, z, Material.STONE);
+            zet(x, hg, z, kans(x, z, 5) == 0 ? Material.BLUE_ICE : Material.PACKED_ICE);
+            vul(x, hg + 1, z, x, ymax, z, Material.AIR);
             return;
         }
         if (s == ROTS) {
@@ -475,6 +507,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         rotswand();
         wachterspost();
         bergpoort();
+        if (bouwen) versiering();
         if (bouwen) {
             b.daarna(() -> chunks.forEach(c -> w.removePluginChunkTicket((int) c[0], (int) c[1], plugin)));
             top = null;
@@ -1150,6 +1183,58 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         einde.einde = true;
         verhaal(new Verhaal("lawine", Box.van(1568, vlak + 1, PZ - 2, 1574, vlak + 8, PZ + 2), List.of(
                 r("Wiske", "Een lawine! Hier kunnen we nog niet door."))));
+    }
+
+    // ── versiering: sneeuwpoppen, een geitenweide, houtstapels, lantaarns langs de wegen ──
+
+    private void sneeuwpop(int x, int z, BlockFace kijk) {
+        int y = top[x - X1][z - Z1] + 1;
+        zet(x, y, z, Material.SNOW_BLOCK);
+        zet(x, y + 1, z, Material.SNOW_BLOCK);
+        zet(x, y + 2, z, Bouwer.gericht(Material.CARVED_PUMPKIN, kijk));
+        zet(x + 1, y + 1, z, Bouwer.gericht(Material.SPRUCE_FENCE, kijk));
+    }
+
+    private void versiering() {
+        sneeuwpop(1468, -281, BlockFace.EAST);                              // bij de stal (Sven bouwde hem)
+        sneeuwpop(1451, -306, BlockFace.WEST);                              // aan het meer, bij Noor
+        sneeuwpop(1492, -309, BlockFace.SOUTH);
+        // de geitenweide onder de stal (met een opening naar het dorp)
+        for (int x = 1452; x <= 1466; x++)
+            for (int z = -279; z <= -270; z++) {
+                boolean rand = x == 1452 || x == 1466 || z == -279 || z == -270;
+                int y = top[x - X1][z - Z1] + 1;
+                if (soort[x - X1][z - Z1] != SNEEUW || pad[x - X1][z - Z1]) continue;
+                if (rand && !(z == -279 && (x == 1459 || x == 1460))) zet(x, y, z, x == 1452 || x == 1466 ? hek(Material.SPRUCE_FENCE, true) : hek(Material.SPRUCE_FENCE, false));
+                else if (!rand && kans(x, z, 7) == 0) zet(x, y, z, Material.SHORT_GRASS);
+            }
+        zet(1455, top[1455 - X1][-273 - Z1] + 1, -273, Material.HAY_BLOCK);
+        // houtstapels bij de huizen (naast de deur)
+        for (int[] st : new int[][]{{1473, -312}, {1490, -312}, {1455, -306}})
+            for (int i = 0; i < 3; i++) {
+                zet(st[0] + i, G + 1, st[1], stam(Material.SPRUCE_LOG, org.bukkit.Axis.Z));
+                if (i < 2) zet(st[0] + i, G + 2, st[1], stam(Material.SPRUCE_LOG, org.bukkit.Axis.Z));
+            }
+        // een slee bij Noor
+        zet(1449, G + 1, -303, Bouwer.trap(Material.SPRUCE_STAIRS, BlockFace.WEST));
+        zet(1448, G + 1, -303, Bouwer.plaat(Material.SPRUCE_SLAB, false));
+        // lantaarns langs de wegen (niet op het pad, niet bij het ijs van de beek)
+        int[][][] wegen = {{{1466, -229}, {1468, -240}, {1474, -255}, {1478, -270}}, {{1546, -294}, {1510, -294}},
+                {{1482, -320}, {1488, -340}, {1496, -365}, {1500, -398}}};
+        for (int[][] weg : wegen)
+            for (int i = 0; i + 1 < weg.length; i++) {
+                int[] a = weg[i], c = weg[i + 1];
+                double len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+                for (double t = 6; t < len; t += 13) {
+                    int x = (int) Math.round(a[0] + (c[0] - a[0]) * t / len + (c[1] - a[1]) / len * 3.2);
+                    int z = (int) Math.round(a[1] + (c[1] - a[1]) * t / len - (c[0] - a[0]) / len * 3.2);
+                    boolean dorp = x >= VLAK[0][0] && x <= VLAK[0][2] && z >= VLAK[0][1] && z <= VLAK[0][3];
+                    if (x < X1 || x > X2 || z < Z1 || z > Z2 || pad[x - X1][z - Z1] || soort[x - X1][z - Z1] != SNEEUW || dorp) continue;
+                    boolean ijs = false;
+                    for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++) ijs |= beek(x + dx, z + dz);
+                    if (!ijs) lantaarnpaal(x, top[x - X1][z - Z1] + 1, z);
+                }
+            }
     }
 
     /**
