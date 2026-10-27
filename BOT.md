@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.4.1, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.5, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -406,7 +406,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   gezondheid + gouden appel.
   **Story of Zelda** (`Zelda*.java`; plan en bouwsessies in `ZELDA.md`, techniek in `MODI.md`): avontuur over de
   eilanden van de Glazen Zee, alleen of samen. Door de poort = naar je **laatste rustplaats** (voortgang per speler in
-  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu één eiland: «Het Lindewoud» (hoofdstuk 1,
+  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu anderhalf eiland. Eiland 1, «Het Lindewoud» (hoofdstuk 1,
   x 1092…1592, z −64…64): Morgal heeft prinses Zelda naar Nachtrots gebracht; met de fee Wiske loop je naar het oosten
   langs 6 rustplaatsen (zielvuur: bewaren, genezen, flesjes vullen, respawn), 2 feeënkringen (bronnen), 3 kamers die
   dichtgaan tot alle golven verslagen zijn, de baas Grauwmoer, een tijdrace over de Kloof, twee puzzels, vondsten en
@@ -426,7 +426,15 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   (vak 3, vijf harten), eigen huisdier (vlag `dier:<soort>`, loopt mee en snuffelt verborgen dingen op), personen met
   gesprekken en zijmissies, **kaart** (vak 9): reizen, **rechtsklik = opnieuw vanaf hier**, varen naar een ander
   eiland (overtocht aan dek van de Zilvermeeuw, bouwdeel `zelda-zee` op x 1840…2040, z −510…−330), uitleg aan/uit,
-  hub. Volgende eilanden (Zilverstrand, Witte Toppen, Gloedberg, Nachtrots) komen in losse sessies (lijst in
+  hub. **Eiland 2a, het Zilverstrand west** (sessie zelda-eiland-2a, kitpvp 2.5, deel `zelda-e2a`, x 1060…1229,
+  z −480…−180; open na `h1`, varen met Brecht of de kaart): steiger, vissersdorp Zoutkom (Ouwe **Teun** vertelt over de
+  bakens; smid **Hendrik**: *Zilverschelpen*, vijf schelpen → maliënhemd `harnas1`), de vuurtoren op de kaap
+  (meeuwenrovers op het bordes = het enige gevecht; **Mira** zat opgesloten; in de kelder een **spiegelpuzzel**:
+  draaispiegels leiden het licht naar een lamp), daar de **bommenzak** (vlag `bommen`, vak 4: rechtsklik = gooien,
+  breekt gebarsten muren, ook de tempelmuur op het Lindewoud), de duinen (**Pim** met zijn vlieger: tijdrace →
+  hartstukje), de Meeuwenrots (achter een gebarsten muur het Zeelicht; boven op de rots een hartstukje voor later, met
+  de klauwhaak) en terug bij Mira: de vuurtoren brandt (einde `e2a`). De dijk naar de Getijdentempel (2b) staat nog
+  onder water. Volgende delen (Getijdentempel, Witte Toppen, Gloedberg, Nachtrots) komen in losse sessies (lijst in
   ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; het eigen Zelda-dier staat uit met `ZeldaDier.AAN = false` tot een later eiland het in het
@@ -440,8 +448,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   (`kees`, `hanne`, `brecht`, `lotje`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. Console:
   `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
   (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor]` (loopt met een
-  echte speler; wist eerst diens voortgang), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp bouw zelda`.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 3, `zelda-zee` 1;
+  echte speler; wist eerst diens voortgang), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp bouw zelda`,
+  `kitpvp bouw zelda-e2a`.
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 3, `zelda-e2a` 1, `zelda-zee` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
   eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,

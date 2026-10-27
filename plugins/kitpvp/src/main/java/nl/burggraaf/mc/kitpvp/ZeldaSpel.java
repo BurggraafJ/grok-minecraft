@@ -1725,6 +1725,11 @@ final class ZeldaSpel implements Listener {
                 vertel(p, ZeldaHoofdstuk.r("Wiske", pe.naam + " wil je iets vertellen."));
                 return;
             }
+        ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
+        if (!s.heeft(e.klaar()) && laatste.wacht() != null) {             // het eiland is nog niet af, maar hier is niets meer
+            vertel(p, ZeldaHoofdstuk.r("Wiske", laatste.wacht()));
+            return;
+        }
         vertel(p, ZeldaHoofdstuk.r("Wiske", "Ik weet het ook niet. Kijk eens rond, praat met wie je ziet."));
     }
 

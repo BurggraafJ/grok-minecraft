@@ -505,6 +505,14 @@ abstract class ZeldaHoofdstuk {
     }
 
     /**
+     * Wat Wiske bij {@code /hint} zegt als er op het eiland niets meer te doen is maar het nog niet af is (het laatste
+     * deel telt; bv. «het volgende deel komt nog»). Null = het gewone «kijk eens rond».
+     */
+    String wacht() {
+        return null;
+    }
+
+    /**
      * Elke seconde (zolang er iemand in Zelda is): wat dit deel zelf laat bewegen of oplichten (een vlieger, een
      * lichtbundel; op eiland 2b eb en vloed). {@code wie} = de spelers op dit deel.
      */

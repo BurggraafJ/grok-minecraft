@@ -4,7 +4,8 @@ Ontwerpdocument (oktober 2026). Hoofdstuk 1 «Het Lindewoud» staat live en viel
 is"). Zelda 2.0 maakt er een groter avontuur van: **vijf eilanden** in de Glazen Zee, elk een hub met meerdere dingen
 erop, verbonden door het schip de Zilvermeeuw. Dit document is het plan voor de bouwsessies: verhaal, eilanden,
 mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De motor»), eiland 1 ook (sessie
-`zelda-eiland-1`, kitpvp 2.4); de andere eilanden bouwen latere sessies, één per (half) eiland, in de volgorde onderaan.
+`zelda-eiland-1`, kitpvp 2.4) en de westhelft van eiland 2 (sessie `zelda-eiland-2a`, kitpvp 2.5); de andere
+eilanden bouwen latere sessies, één per (half) eiland, in de volgorde onderaan.
 
 Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*.java`.
 
@@ -62,7 +63,7 @@ versie. Zee om elk eiland tot de rand van zijn vak (zichtafstand op kitpvp is 6 
 | eiland | delen (id · bouwdeel) | vak (x · z) | aanleg | open na | klaar |
 |---|---|---|---|---|---|
 | 1 Het Lindewoud | `h1` · `zelda` | 1092 … 1592 · −64 … 64 | rust `haven` | — | `h1` |
-| 2 Het Zilverstrand | `e2a` · `zelda-e2a`, `e2b` · `zelda-e2b` | 1060 … 1360 · −480 … −180 | rust `steiger` (e2a) | `h1` | `baken2` |
+| 2 Het Zilverstrand | `e2a` · `zelda-e2a`, `e2b` · `zelda-e2b` | 1060 … 1360 · −480 … −180 (2a tot x 1229, 2b vanaf 1230) | rust `steiger` (e2a) | `h1` | `baken2` |
 | 3 De Witte Toppen | `e3a`, `e3b` | 1400 … 1720 · −480 … −180 | `steiger` (e3a) | `baken2` | `baken3` |
 | 4 De Gloedberg | `e4a`, `e4b` | 1060 … 1400 · 180 … 480 | `steiger` (e4a) | `baken3` | `baken4` |
 | 5 Nachtrots | `e5a`, `e5b` | 1640 … 2000 · −150 … 150 | `steiger` (e5a) | `baken4` | `zelda` |
@@ -133,7 +134,8 @@ toevoegde, en de keuzes:
 - **Hanne** onder haar moerashut (ketel, brouwsel): zijmissie *Moeraskruid*: veenbes, zonnedauw en moerasmunt in het
   Veen (pas te zien als ze erom vroeg) → het eerste **flesje** (`fles1`), en Wiske legt uit hoe je het vult.
 - **Lotje** (een kind) telt meeuwen aan het eind van de pier; een praatje, en een vraag als je op het Zilverstrand
-  was (`e:zilverstrand`). Een missie met de bommen kan eiland 2a erbij zetten.
+  was (`e:zilverstrand`). (Een bommenmissie voor Lotje is in 2a niet gemaakt: het Lindewoud heeft al vier
+  hartstukjes en het tempelkamertje is de bommenbeloning daar.)
 - **Brecht** op de pier: het eindverhaal (zonder «wordt vervolgd»: «Op het Zilverstrand weten ze meer. Zeg maar
   wanneer.»), daarna praten = `spel.varen`: een klein menu «Waarheen?» met elk eiland dat open is; is er nog maar één,
   dan «Nog even geduld. Zodra de wind draait, varen we.» Komt hij je weer tegen na een ander eiland, dan één
@@ -150,24 +152,70 @@ toevoegde, en de keuzes:
 
 ### 2 · Het Zilverstrand
 
-Zon, duinen, helmgras, een vissersdorp **Zoutkom** met netten en rokerijen, een vuurtoren zonder licht, en voor de kust
-de **Getijdentempel** die bij eb boven water komt.
+Zon, duinen, helmgras, een vissersdorp **Zoutkom** met netten en een rokerij, een vuurtoren zonder licht, en voor de
+kust de **Getijdentempel** die bij eb boven water komt.
 
-- **2a (west, het dorp)**: steiger en zielvuur, het dorpsplein (bron), de vuurtoren, de duinen. Personen: **Mira** de
-  vuurtorenwachter (hoofdlijn: haar lamp is gestolen door Morgals meeuwen, de vuurtoren wijst de weg naar de tempel);
-  **Hendrik** de smid (zijmissie *Zilverschelpen*: vijf schelpen langs het strand → maliënhemd `harnas1`); **Pim** met
-  zijn vlieger in de duinen (vrijwillige tijdrace: de vlieger achterna over de duinen); **Ouwe Teun** op het bankje
-  (vertelt over de bakens; uitleg). Voorwerp: de **bommenzak** (Mira's oude mijnwerkersbommen, in de kelder van de
-  vuurtoren, achter een puzzel met spiegels: licht met de boog op drie doelen). Eén gevecht: de meeuwenrovers op het
-  vuurtorenbordes (vrijwillig te herhalen). Later terug: de gebarsten muur in de tempel van het Lindewoud
-  (`barst tempelmuur`, hartstukje erachter).
-- **2b (oost, de tempel)**: de dijk naar de Getijdentempel; puzzels met **eb en vloed** (hendels die water laten
-  zakken en stijgen: deuren van water), gebarsten muren (bommen), een tijdrace onder water door. Kerker met twee
-  kamers en de baas **Kapitein Zoutbaard**, een verdronken zeerover die door Morgals nevel ronddoolt: hij gooit
-  drietanden; gooi een bom in zijn ton, dan staat hij versuft. Bevrijd = hij bedankt je en vergaat tot zeeschuim.
-  `hart2`, het **Getijdenbaken** ontsteekt (`baken2`), Wiske wordt feller. Het Witte Toppen gaat open.
+#### 2a · west, het dorp (gebouwd: sessie `zelda-eiland-2a`, deel `zelda-e2a` versie 1, klasse `ZeldaEiland2a`)
 
-Muziek: *Zoutkom* (vrolijk, gitaar), *Duinen* (wind, fluit), *Getijdentempel* (druppels, ijzer), baas *Zoutbaard*.
+Het pad (de test loopt het in deze volgorde af; rustplaatsen 0 … 3, nooit tussenvoegen):
+
+| plek (x, z) | wat | soort |
+|---|---|---|
+| 1125 … 1137, −223 … −213 | **de steiger**: een lange houten pier met een stenen kop, de Zilvermeeuw ligt ernaast, **Brecht** (varen) | rust 0 `steiger` (aanleg), verhaal |
+| 1148, −296 | **Zoutkom**: plein met een put, vier witte huisjes met blauwgroene daken, een rokerij, netten en bootjes op het strand; **Ouwe Teun** op het bankje (de bakens; wat er met Mira is); **Hendrik** in zijn open smidse (zijmissie *Zilverschelpen*) | rust 1 `plein`, personen |
+| 1095, −304 | **de smokkelgrot** onder de kaap: een gebarsten muur aan het strand, `hs:zilverstrand-2` erachter (pas met bommen) | barst, vondst |
+| 1120, −322 | voet van de trap naar de kaap | rust 2 `kaap` |
+| 1095 … 1106, −327 … −317 | **het bordes** voor de vuurtoren: meeuwenrovers (twee rovers en een schutter, één golf; de bel = nog eens, met vier) — het enige gevecht | kamer `bordes` |
+| 1089, −322 | **de vuurtoren** (rood-wit, 24 hoog, omloop en lantaarnkamer, ladder naar boven): **Mira** zat opgesloten | verhaal, persoon |
+| 1081 … 1097, −331 … −313 | **de kelder** (ladder omlaag): licht valt door een glazen tegel in het bordes en een gat in de oostwand; vier **draaispiegels** (één lokspiegel) leiden het naar een lamp boven de tralies | spiegels `spiegels` |
+| 1089, −308 | het kamertje achter de tralies: Mira's **bommenzak** | vondst `bommen` |
+| 1088, −332 | **gebarsten kelderwand** (noord): de eerste bom; een gang naar het noordstrand | barst `kelder` (op het pad) |
+| 1117, −355 | het noordstrand met een wrak | (schelp) |
+| 1150, −372 | **de duinpan**: **Pim** (kind) met zijn vlieger; de **duinbaan** (startplaat, hekje, vlaggetjes, 22 s, de vlieger vliegt voor je uit) | rust 3 `duinpan`, uitdaging `vlieger` |
+| 1198, −398 | **de Meeuwenrots**: een rots van 20 hoog vol meeuwennesten; een gebarsten muur aan de zuidkant, erachter het nest met **het Zeelicht** (Mira's lamp); een bron ervoor; boven op de rots `hs:zilverstrand-3` en een haakpunt (pas met de klauwhaak) | barst `rots` (op het pad), vondst, haakpunt, bron |
+| 1206 … 1229, −332 … −328 | **de dijk** naar de tempel, vanaf x 1221 onder water, met een dijkhuisje en een peilschaal | verhaal |
+| 1089, −322 | terug bij Mira met het Zeelicht: de vuurtoren brandt (lamp en een lichtbundel naar de tempel, alleen voor wie hem terugbracht) | verhaal: einde (`e2a`) |
+
+- **Hoofdlijn**: Teun → de vuurtoren → het bordes → Mira → de spiegels → de bommen → de kelderwand → de
+  Meeuwenrots → het Zeelicht terug. Acht doelen voor `/hint`. Is alles op 2a gedaan en is 2b er nog niet, dan zegt
+  Wiske «De tempel komt pas bij eb boven. Nog even geduld.» (`wacht()`).
+- **Personen** (vijf): Brecht, Teun, Mira (de zus van Brecht, zegt Brecht tijdens de eerste overtocht), Hendrik, Pim.
+  Zijmissies: *Zilverschelpen* (Hendrik: vijf `schelp:` langs het strand, op het wrak, op een rotsje in de branding en
+  bij het dijkhuisje → `harnas1`, het maliënhemd) en *De vlieger* (Pim: de duinbaan halen → `hs:zilverstrand-1`).
+- **Hartstukjes**: 1 (Pim), 2 (smokkelgrot, bommen), 3 (Meeuwenrots, klauwhaak). `hs:zilverstrand-4` is voor 2b.
+- **Muziek**: *Zoutkom* (steiger, dorp, strand, dijk; xylofoon en gitaar), *Duinen* (fluit, wind) en *Vuurtoren*
+  (kaap, toren, kelder; klokken). Hemel: ochtend bij de steiger, middag in dorp en duinen, avondzon op de kaap.
+- **Afwijkingen van het plan, en waarom**: de puzzel voor de bommenzak is een **spiegelpuzzel** (draaien, geen tijd)
+  in plaats van drie doelen met de boog: dat hadden we al op het Lindewoud, en spiegels zijn een nieuwe vaardigheid
+  die het IJspaleis (3b, «een spiegelzaal») kan hergebruiken. Het gevecht is óp het bordes vóór de deur van de toren,
+  niet bovenop (vallen is geen leuk gevecht). Mira's lamp ligt niet in de vuurtoren maar in het nest op de
+  Meeuwenrots: zo krijgen de duinen een doel en wordt de bom meteen twee keer gebruikt. Het einde van 2a is het licht
+  van de vuurtoren; het baken (`baken2`) is voor 2b.
+
+#### Hoe 2b aanhaakt (sessie `zelda-eiland-2b`)
+
+- Een klasse `ZeldaEiland2b` (`e2b`, deel `zelda-e2b`) met vak **x 1230 … 1360, z −480 … −180**, als tweede deel in de
+  regel van het Zilverstrand: `List.of(new ZeldaEiland2a(plugin), new ZeldaEiland2b(plugin))`. Zolang 2b er niet is,
+  bouwt 2a daar alleen zee (`ZeldaEiland2a.OOST`); met 2b erbij bouwt 2a dat niet meer, dus 2b moet elke kolom van
+  zijn vak zelf zetten. Speelgebied van 2a: x 1062 … 1228 (2b begint op 1229).
+- **De dijk** (`ZeldaEiland2a.DIJK_X` = 1229, z −332 … −328): bovenkant op G tot x 1220, daarna G − 2 onder water.
+  2b gaat verder vanaf x 1230; eb en vloed kan 2b in `tik()` doen (blokken omzetten met een `Deur`, ook de stukjes van
+  2a op x 1221 … 1229: dat is spel, geen bouwen). De lichtbundel van de vuurtoren wijst naar x 1300, z −330: zet de
+  tempel daar in de buurt.
+- **Bommen** zijn er: `ZeldaHoofdstuk.boem(spel, speler, plek)` wordt aangeroepen als er een bom op dit deel ontploft
+  (na de gebarsten muren en de klap voor vijanden): daar kan de ton van Zoutbaard springen. Een muur die je óp het pad
+  moet openbreken: `barstOpPad(...)` met `voor` (de plek waar je staat; de test gooit daar een echte bom).
+- 2b mag `hs:zilverstrand-4` gebruiken; de zelftest eist hoogstens vier per eiland. Ook `fles2` en `hart2` zijn voor 2b. `wacht()` van 2a vervalt vanzelf
+  (het laatste deel telt). Teun heeft al een regel over eb (`teun-licht`).
+
+#### 2b · oost, de tempel (plan)
+
+De dijk naar de Getijdentempel; puzzels met **eb en vloed** (hendels die water laten zakken en stijgen: deuren van
+water), gebarsten muren (bommen), een tijdrace onder water door. Kerker met twee kamers en de baas **Kapitein
+Zoutbaard**, een verdronken zeerover die door Morgals nevel ronddoolt: hij gooit drietanden; gooi een bom in zijn ton,
+dan staat hij versuft. Bevrijd = hij bedankt je en vergaat tot zeeschuim. `hart2`, het **Getijdenbaken** ontsteekt
+(`baken2`), Wiske wordt feller. Het Witte Toppen gaat open. Muziek: *Getijdentempel* (druppels, ijzer), baas
+*Zoutbaard*.
 
 ### 3 · De Witte Toppen
 
@@ -250,6 +298,11 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | varen met Brecht | `spel.varen` | menu «Waarheen?» met de open eilanden, of «nog even geduld» |
 | hartstukjes per eiland | `ZeldaHoofdstuk.stukjes`, `stukje(vlag)` | de kaart toont «Het Lindewoud: 2 van 4 gevonden» |
 | oude standen | `ZeldaHoofdstuk.aanvullen(Stand)` | bij binnenkomen: vlaggen van wat je zeker al deed (bv. `k:`) |
+| bommen (eiland 2) | `ZeldaSpel.Bommen`, `spel.ontplof` | vak 4, rechtsklik = gooien (een tel ertussen, raken nooit op); sist even, dan knal: gebarsten muur open, vijanden een klap, `boem()` van het deel |
+| spiegels | `ZeldaHoofdstuk.Spiegels`, `spel.draai`, `ZeldaRegels.straal` | licht uit een bron, draaispiegels (rechtsklik = kwartslag), het doel raken = deur open; geen tijd; `r:<id>`; de zelftest volgt het licht met de oplossing |
+| muur op het pad | `barstOpPad`, `Barst.voor` | een gebarsten muur waar je door moet (de test gooit er een echte bom tegen) |
+| haken voor een deel | `tik(spel, spelers, nu)`, `boem(spel, p, plek)`, `wacht()` | elke seconde iets laten bewegen (vlieger, lichtbundel, eb en vloed); een bom op dit deel; wat Wiske zegt als het eiland nog niet af is |
+| na een uitdaging | `Uitdaging.daarna` | een `Actie` na het halen (missiestap) |
 | beheer | `kitpvp zelda vaar|vlag|hint <speler> …`, `kitpvp zelda test <speler> motor` | zie MODI.md |
 
 ### Hoe een eilandsessie aanhaakt
@@ -274,9 +327,12 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    door te praten met wie iets nieuws heeft; vondsten met `voorwerp` moeten blijven liggen), `kitpvp zelda test
    <speler> motor`, en `kitpvp kaart` voor plaatjes. Een nieuw eiland komt dus vanzelf in de route, als het open gaat
    met de vlag van het eiland ervoor.
-7. Bommen (2a): roep `spel.breek(p, b)` aan als een bom ontploft bij `spel.barstBij(plek)`; het Lindewoud heeft er een
-   in de tempel (`barst tempelmuur`, met `hs:lindewoud-4` erachter). Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en
-   zet de speler op `landing()`; het Lindewoud heeft er een boven de richel in de Kloof (`hs:lindewoud-3`).
+7. Bommen (gebouwd in 2a): `spel.ontplof` breekt de gebarsten muur bij de knal open (`spel.barstBij`, `spel.breek`) en
+   roept `boem()` van het deel aan. Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en zet de speler op `landing()`;
+   er zijn er twee: boven de richel in de Kloof (`hs:lindewoud-3`) en boven op de Meeuwenrots (`hs:zilverstrand-3`).
+8. De test vaart van eiland naar eiland met een klik in het menu van Brecht, haalt na elk eiland wat met de voorwerpen
+   van nu te halen is (een echte bom tegen de muur ervoor, dan pakken), en vaart aan het eind via de kaart terug naar
+   eerdere eilanden om daar hetzelfde te doen (het Lindewoud: `hs:lindewoud-4` achter de tempelmuur).
 
 ## De bouwsessies (in volgorde)
 
@@ -288,10 +344,10 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
    overstap naar eiland 2 (alleen als het bestaat), vier hartstukjes (twee nu te halen). **Klaar als** het hoofdstuk
    van begin tot eind speelt met hoogstens twee verplichte kamers vóór de baas, er twee zijmissies werken, `kitpvp
    zelftest` OK is en `kitpvp zelda test <speler> alles` en `motor` OK zijn, en bestaande voortgang blijft werken.
-2. **`zelda-eiland-2a`** — Zilverstrand west: steiger, Zoutkom, vuurtoren, duinen, Mira/Hendrik/Pim/Teun, de
-   bommenzak (voorwerp + puzzel, vlag `bommen`), maliënhemd, één gevecht, eiland in `Zelda.EILANDEN` (open na `h1`).
-   **Klaar als** je van het Lindewoud kunt varen (Brecht of kaart), alles op 2a te doen is, bommen gebarsten muren
-   openen (ook die in de tempel van het Lindewoud), en zelftest en test OK zijn.
+2. **`zelda-eiland-2a`** (gebouwd, kitpvp 2.5) — Zilverstrand west: steiger, Zoutkom, vuurtoren, duinen,
+   Mira/Hendrik/Pim/Teun, de bommenzak (voorwerp + spiegelpuzzel, vlag `bommen`), maliënhemd, één gevecht, eiland in
+   `Zelda.EILANDEN` (open na `h1`). **Klaar als** je van het Lindewoud kunt varen (Brecht of kaart), alles op 2a te
+   doen is, bommen gebarsten muren openen (ook die in de tempel van het Lindewoud), en zelftest en test OK zijn.
 3. **`zelda-eiland-2b`** — De Getijdentempel: eb-en-vloedpuzzels, kerker, Kapitein Zoutbaard, `hart2`, Getijdenbaken
    (`baken2`). **Klaar als** de kerker te halen is met alleen wat 2a geeft, de baas te verslaan is, `baken2` het Witte
    Toppen opent, en zelftest en test OK zijn.

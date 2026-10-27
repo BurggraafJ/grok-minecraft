@@ -67,6 +67,12 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
     @Override int versie() { return VERSIE; }
     @Override String deelId() { return "zelda-e2a"; }
 
+    /** Zolang de Getijdentempel (eiland 2b) er nog niet is: wie alles deed, hoort dat de tempel nog komt. */
+    @Override
+    String wacht() {
+        return "De tempel komt pas bij eb boven. Nog even geduld.";
+    }
+
     // ── tijd, naam en muziek per plek ───────────────────────────────────────────────────────
 
     /** Ochtend bij de steiger, middag in het dorp en de duinen, avondzon bij de vuurtoren. */
