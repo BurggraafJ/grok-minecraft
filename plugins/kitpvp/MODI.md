@@ -75,9 +75,9 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 |---|---|
 | `Zelda` | de modus: poort, `EILANDEN`, `delen()` (één bouwdeel per eilanddeel + de zee), join/leave/respawn/stand/plek, zelftest, `kitpvp zelda …` |
 | `ZeldaEiland` | een eiland: id, naam, icoon, delen, aanleg-rustplaats (steiger), `openNa`-vlag, `klaar`-vlag, overtochtregels |
-| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Barst` (gebarsten muur), `Haakpunt`, `Spiegels` (draaispiegels), `Box`; haken per deel: `tik`, `boem`, `wacht` |
-| `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1): de wereld en zijn onderdelen, in de volgorde van het pad, met Kees, Hanne, Lotje en Brecht; `motor()` = bronnen, uitleg, tips, doelen; `aanvullen` = oude standen |
-| `ZeldaEiland2a` | «Het Zilverstrand» west (eiland 2a, deel `zelda-e2a`): steiger, Zoutkom, de vuurtoren met de spiegelkelder, de duinen, de Meeuwenrots, de dijk; Brecht, Teun, Mira, Hendrik, Pim; de vlieger en het licht van de vuurtoren in `tik()` |
+| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Barst` (gebarsten muur), `Haakpunt`, `Spiegels` (draaispiegels), `Poort` (opent voor wie iets heeft), `Praten` (praten op het pad), `Box`; haken per deel: `tik`, `boem`, `wacht`, `hemel(plek, stand)` |
+| `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1, versie 4: een open eiland): Thuis, Lindedorp in het midden, drie wegen (noord, oost, zuid), de Heksenkring en de haven; Tijmen, Kees, Fien, Sem, Bram, Wout, Gerrit, Hanne, Brecht, Lotje; de oude stukken staan verschoven (`op(dx, dz)`); `motor()` = tips en doelen; `aanvullen` = oude standen (één keer omzetten) |
+| `ZeldaEiland2a` | «Het Zilverstrand» west (eiland 2a, deel `zelda-e2a`): steiger, Zoutkom, de vuurtoren met de spiegelkelder, de duinen, de Meeuwenrots, de dijk; Brecht, Teun, Mira, Hendrik, Pim en Tijmen; zeekraal voor Hanne; de vlieger en het licht van de vuurtoren in `tik()` |
 | `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
 | `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
 | `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
@@ -104,7 +104,17 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   je van de uitgangskant terugkomt (zijmissies). Stapt er iemand binnen die hem nog niet won, dan begint het gevecht
   gewoon (ook voor wie erbij is). Wie nog eens wil, rechtsklikt de **bel** in de kamer (`k.bel`): dan het gevecht met
   de extra golven erachter (`k.extra`).
-  De zelftest eist hoogstens twee verplichte kamers (niet `vrijwillig`) vóór de eerste baas per deel.
+  De zelftest eist hoogstens twee verplichte kamers (niet `vrijwillig`) vóór de eerste baas per deel, en hoogstens
+  één verplichte kamer per half eiland (plus de baas).
+- **Oefenplek** (`k.alleenBel`): de deuren staan open; wie erdoor loopt, loopt er gewoon door. Pas als je de bel luidt
+  gaan ze dicht en wordt er gevochten (de eerste keer de gewone golven, daarna met de extra). Telt niet als verplichte
+  kamer. Op het Lindewoud: het oefenveld en het Veen.
+- **Poort** (`Poort`): een deur die opengaat als er iemand in het gebied staat voor wie hij mag (`mag`, bv. de vlag
+  `lichtwoord` van Tijmen), en dan voor iedereen open is; een minuut niemand in de buurt = weer dicht. Op het
+  Lindewoud: de doornen voor de Heksenkring.
+- **Wegwijzer** (`spel.wegwijzer(p, naam)`): een persoon (Tijmen) zegt je volgende opdracht, zoals de tweede hint maar
+  in zijn stem, en Wiske vliegt die kant op. Doelen in dezelfde `groep` mag je in elke volgorde doen: de hint en de
+  wegwijzer noemen dan het dichtstbijzijnde.
 - **Uitdaging op tijd**: stap op de startplaat, de poort gaat open, de tijd loopt in de **XP-balk** (getal = seconden,
   tikjes, de laatste vijf hoger). Haal je de finish: tijd en (bij verbetering) «record», bewaard per speler. Bij de
   start hangt een bord met de vijf beste tijden (alleen als er iemand in de buurt is).
@@ -114,7 +124,8 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 - **Vondst**: loop over de sokkel = je hebt het (vlag); de uitrusting volgt altijd uit de vlaggen: zwaard, schild,
   boog met oneindig pijlen, voorwerpen (vak 3 … 7), **harten** (8 + hartcontainers `hart…` + een hart per vier
   **hartstukjes** `hs:…`), **harnas** (`harnas1` … `harnas4`, zichtbaar), **flesjes** (`fles1` … `fles4`, vak 3,
-  rechtsklik = vijf harten). Rustplaatsen geven de vlaggen van ervoor ook (`geeft`). Een vondst met `verborgen` wordt
+  rechtsklik = vijf harten; met `sterkwater` zeven). Rustplaatsen kunnen de vlaggen van ervoor ook geven (`geeft`; op
+  een open eiland niet, daar kun je elke rustplaats zonder bereiken). Een vondst met `verborgen` wordt
   door je huisdier opgesnuffeld; met `vereist` alleen te zien als je die vlag hebt; met `voorwerp` wel te zien, maar
   pas te pakken met dat voorwerp (vlag `bommen`, `klauwhaak`, …). `daarna` = een actie na het vinden (missiestap).
   Hartstukjes heten `hs:<eiland>-<n>`; de kaart toont hoeveel je er op dit eiland hebt.
@@ -149,10 +160,12 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 - **Tekst**: alles op **één plek**, de actiebalk, één grijze regel tegelijk (spreker in groen), elke regel 2,5–6 s.
   Geen titels, geen chat. 
 - **Muziek, altijd**: een achtergrondlied per streek (`muziek(Location)`: Thuis, Woud, Tempel, Veen, Haven, Zee,
-  Zoutkom, Duinen, Vuurtoren),
+  Zoutkom, Duinen, Vuurtoren, Lindedorp),
   daarboven de gevechts- of baaslus en losse deuntjes. Zachter met de schuif «Nootblokken».
-- **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen vanzelf genezen;
-  wel bij rustplaatsen, bronnen, flesjes, gewonnen kamers en soms een hartje van een vijand). **Samen**: geen schade
+- **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen gewoon
+  bijkomen door eten); genezen bij rustplaatsen, bronnen, flesjes, gewonnen kamers, de bakker in Lindedorp, de helft
+  van de keren een hartje van een vijand, en **op adem komen**: buiten een gevecht, na 6 s zonder klap, elke 2 s een
+  half hart. **Samen**: geen schade
   aan elkaar; de wolf (Huisdieren) vecht mee tegen monsters (`stand` = `bots`).
 - **Kaart** (vak 9): de zielvuren van dit eiland (klik = reizen, **rechtsklik = opnieuw vanaf hier**: verhaal, uitleg
   en puzzels erna komen terug, spullen blijven), de eilanden die open zijn (klik = **varen**), opdrachten, harten en
@@ -161,40 +174,33 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   het roer, een regel van Wiske of Brecht; de eerste keer de overtochtregels van het eiland), dan aan land bij de
   aanleg van het eiland (vlag `e:<eiland>`).
 - **Hemel**: per speler; de dag schuift op van ochtend tot zonsondergang naarmate je verder komt (de baaskamer is nacht).
+  Op het Lindewoud volgt hij wat je deed (een open eiland: je loopt ook terug); op het Zilverstrand de plek.
 - **Grenzen**: wie buiten de delen van zijn eiland komt, gaat terug naar zijn rustplaats.
 - **Entiteiten**: vijanden alleen tijdens een gevecht (tag `zelda`, niet opgeslagen, geen drops, branden niet);
   zwevende vondsten en personen alleen als er iemand in de buurt is; één Wiske (en eventueel één huisdier) per
   speler in Zelda. Geen vaste chunk-tickets in het Zelda-gebied.
 
-### Eiland 1: «Het Lindewoud» (`h1`, deel `zelda`, x 1092 … 1592, z −64 … 64)
+### Eiland 1: «Het Lindewoud» (`h1`, deel `zelda` versie 4, bouwvak x 1024 … 1639, z −179 … 179)
 
-Morgal, de Nachtvorst, heeft prinses Zelda meegenomen naar zijn kasteel Nachtrots, over de zee. Wiske, een
-fee, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
+Morgal, de Nachtvorst, heeft prinses Zelda meegenomen naar zijn kasteel Nachtrots, over de zee. Wiske, een fee, gaat
+met je mee. Een **open eiland** (land x 1045 … 1492, z −105 … 105; de rest van het vak is zee tot aan de buren). Kaart
+in `ZELDA.md` («1 · Het Lindewoud»); kort, met rx = x − 1100:
 
-| rx (x = 1100 + rx) | wat | soort |
+| rx, z | wat | rust |
 |---|---|---|
-| 0 … 30 | huisje aan de bosrand, moestuin, put; begin; **Kees** bij zijn houtstapel (zijmissie *De verloren bijl*) | rust 0 «Thuis», verhaal, persoon |
-| 30 … 90 | bospad, **de open plek** (palissade, 1 golf van 2 veenlopers; bel = nog eens met spinnen) | kamer |
-| 47 | feeënkring (bron, alleen licht) | bron |
-| 91 | Eikenschild | vondst |
-| 100 | de Oude Eik (stam 4 × 4, **hol**: aan de noordkant een gat, hartstukje `hs:lindewoud-1`, verborgen) | rust 1, vondst |
-| 87 … 98, z −25 … −15 | **de houtkap** (pad vanaf de Oude Eik naar het noorden): stronken, stammen, hakblok met de bijl van Kees | vondst (na Kees) |
-| 114 … 152 | **tempelruïne**: drie vuurschalen (grond, torenvoet via puin, zuil in een vijver), 25 s | puzzel |
-| 147 | Wachterszwaard in het heiligdom; in de zuidmuur een **gebarsten muur** met een kamertje (`hs:lindewoud-4`, pas met bommen) | vondst, barst |
-| 157 | | rust 2 «Tempelruïne» |
-| 164 … 205 | **de Kloof**: startplaat, pilaren en een stam boven het water, poort aan de overkant, 25 s; in de oostwand (z −8 … −6) een **richel** met `hs:lindewoud-3` en een haakpunt erboven (klauwhaak), verderop een waterval | uitdaging, haakpunt |
-| 208 | | rust 3 «Kloofrand» |
-| 215 … 251 | **het Veen** (wortelpoorten, 2 golven: mosschutters, veenloper en spin; veenreus; bel = nog eens); drie kruiden voor Hanne | kamer, vondsten (na Hanne) |
-| 253 | Jagersboog | vondst |
-| 258 | moerashut; eronder **Hanne** met haar ketel (zijmissie *Moeraskruid* → `fles1`) | rust 4 «Moerashut», persoon |
-| 262 … 276 | **drie doelen** over een kanaal, 15 s, dan komt de brug | puzzel |
-| 279 | feeënkring voor de Heksenkring | bron |
-| 282 … 310 | **de Heksenkring**: baas Grauwmoer (nacht, baasmuziek, levensbalk) | kamer + baas |
-| 313 | Hartcontainer (+1 hart) | vondst |
-| 319 | | rust 5 «Haventrap» |
-| 324 … 346 | **de kade**: Morgals soldaten (vindicators, een kruisboogschutter), 1 golf; bel = nog eens | kamer |
-| 347 … 381 | pier, visser **Brecht** (varen: menu met de open eilanden), **Lotje** telt meeuwen, het schip de Zilvermeeuw (je kunt aan boord) | verhaal: einde (`h1`), personen |
-| 420 … 472 | Nachtrots op een eiland aan de horizon | versiering |
+| 16, 0 | Thuis (huisje, Kees) | 0 `thuis` |
+| 112, 2 | **Lindedorp**: linde, plein, put met bron; Tijmen (sterrentoren), Fien (bakker), Sem | 6 `dorp` |
+| 98, −50 | de Oude Eik (hol), de houtkap (89, −70) | 1 `eik` |
+| 140, −60 | het oefenveld: Bram (schild), oefenplek met bel | — |
+| 168 … 206, 0 | de tempelruïne: vuurschalen, zwaard, tempelmuur (bommen) | 2 `ruine` |
+| 220 … 253, 0 | de Kloof: race over de pilaren of ladders en beek; richel (klauwhaak) | 3 `kloofrand` |
+| 268 … 325, 0 | de havenweg, de weide van Gerrit | — |
+| 150, 62 | het Veen: Wout, de boog op het eilandje, kruiden; oefenplek met bel | — |
+| 174, 62 | de moerashut van Hanne | 4 `moerashut` |
+| 183 … 197, 62 | de drie doelen (brug), de doornen (poort: lichtwoord) | — |
+| 213, 62 | de Heksenkring: Grauwmoer (baas), hartcontainer | — |
+| 319 … 381, 0 | de haven: kade (twee soldaten), pier met Brecht en Lotje, de Zilvermeeuw | 5 `haven` |
+| 432 … 472, 0 | Nachtrots aan de horizon | — |
 
 ### Eiland 2a: «Het Zilverstrand» west (`e2a`, deel `zelda-e2a`, x 1060 … 1229, z −480 … −180)
 
@@ -246,13 +252,17 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   na afloop de voortgang van die speler (alleen voor tests).
 - `kitpvp zelda lopen <eiland>` — is alles te belopen? Volgt vanaf de aanleg elke plek waar je kunt staan (stap ≤ 1
   omhoog, ≤ 3 omlaag, een gat van één blok, ladders, zwemmen; deuren en gebarsten muren open) en noemt wat je niet
-  haalt (rustplaats, persoon, vondst, kamer, uitdaging, verhaal, bron, spiegel, bel). Laadt de chunks van het eiland;
-  doet ook mee in `test … alles` (vanaf eiland 2; de Kloof van het Lindewoud vraagt schuine sprongen).
+  haalt (rustplaats, persoon, vondst, kamer, uitdaging, verhaal, bron, spiegel, bel). Deuren, poorten en bruggen tellen
+  als open. Laadt de chunks van het eiland; doet ook mee in `test … alles` (voor elk eiland; over de Kloof van het
+  Lindewoud kom je ook via de ladders en de beek).
 - `kitpvp zelda vaar <speler> <eiland>` — de overtocht naar een eiland. `kitpvp zelda vlag <speler> <vlag>` — een
   vlag aan (nog eens = uit), bv. `fles1`, `hs:test`, `harnas2`, `dier:vos`, `o:uitleg-uit` (helpen en testen).
   `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.
-- `kitpvp bouw zelda` — hoofdstuk 1 opnieuw bouwen, `kitpvp bouw zelda-e2a` het Zilverstrand west, `kitpvp bouw
-  zelda-zee` de zee. `kitpvp kaart` maakt ook `zelda-*.png` (met `zelda-e2a-*`: boven, dorp, kelder, kaap, duinen, rots).
+- `kitpvp bouw zelda` — het Lindewoud opnieuw bouwen, `kitpvp bouw zelda-e2a` het Zilverstrand west, `kitpvp bouw
+  zelda-zee` de zee. `kitpvp kaart` maakt ook `zelda-*.png` (het Lindewoud: boven, thuis, dorp, noord, tempel, veen,
+  haven en zijaanzichten; `zelda-e2a-*`: boven, dorp, kelder, kaap, duinen, rots).
+- `/zelda ga <plek>` kent ook puzzels, uitdagingen en poorten (`vuren`, `kloof`, `doelen`, `spiegels`, `doornen`) en
+  zoekt daar een plek om te staan.
 
 ## Ruimte in de wereld
 
@@ -262,7 +272,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 | colosseum + kitruimte | −50 … 50 | −60 … 50 | midden 0/0, kitruimte boven de noordmuur (z −57 … −35) |
 | oefenarena + kitruimte | −24 … 24 | 51 … 134 | midden 0/110, kitruimte z 63 … 87 |
 | kasteel + kitruimte | −42 … 42 | −188 … −94 | midden 0/−150, gracht rondom, kitruimte z −119 … −95 |
-| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); hoofdstuk 1 gebruikt x 1092 … 1592, z −64 … 64; het Zilverstrand x 1060 … 1360, z −480 … −180 (2a tot 1229); de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
+| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); het Lindewoud bouwt x 1024 … 1639, z −179 … 179 (land x 1045 … 1492, z −105 … 105, de rest zee); het Zilverstrand x 1060 … 1360, z −480 … −180 (2a tot 1229); de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
 
 Alle huidige gebieden liggen in de chunks die de plugin geladen houdt (`onEnable`). Het Zelda-gebied niet: alleen
 tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze zien (de server heeft 1–2 GB).
@@ -289,6 +299,8 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
   op het eiland, genezen bij elke kamer, bronnen met vloer, personen binnen het speelgebied, de zee gebouwd met vrije
   dekplekken, niet meer feeën dan spelers; eiland 1: hoogstens twee verplichte kamers vóór de baas, bellen op hun
   plek, gebarsten muren dicht, haakpunten met een vrije landing, personen niet vast, hoogstens vier hartstukjes per
-  eiland, geen dubbele vondsten of missies; eiland 2: hoogstens één verplichte kamer per half eiland, spiegels in de
+  eiland, geen dubbele vondsten of missies; het open eiland: rustnummers 0 … n−1, oefenplekken open en met een bel,
+  poorten dicht in rust en niet voor iedereen open; eiland 2: hoogstens één verplichte kamer per half eiland (nu voor
+  elk eiland), spiegels in de
   begintoestand en met de oplossing komt het licht bij het doel (maar niet al aan het begin), een vrije plek vóór elke
   gebarsten muur, elk voorwerp in een eigen vak).
