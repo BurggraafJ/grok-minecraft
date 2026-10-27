@@ -22,8 +22,8 @@ import org.bukkit.scheduler.BukkitTask;
  * puzzel). Zonder {@code alles} stopt hij bij de eerste rustplaats na de eerste kamer. Wist eerst de voortgang van die
  * speler (alleen voor tests). Het resultaat komt na een paar seconden (ook in de serverlog).
  *
- * <p>{@code kitpvp zelda verder <speler>}: door de poort naar binnen, en kijk of je op je verste rustplaats staat
- * (na uitloggen en weer inloggen).
+ * <p>{@code kitpvp zelda verder <speler>}: door de poort naar binnen, en kijk of je op je laatste rustplaats staat
+ * (na uitloggen en weer inloggen; een oude stand zonder laatste: de verste).
  */
 final class ZeldaTest {
 
@@ -137,6 +137,7 @@ final class ZeldaTest {
             }
         }
         if (alles) stap("einde", () -> { }, 2, () -> stand().heeft(h.id()), 20);
+        stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
             ZeldaVoortgang.Stand s = stand();
             ZeldaVoortgang schijf = new ZeldaVoortgang(new File(pl.getDataFolder(), "zelda.yml"));
@@ -348,8 +349,13 @@ final class ZeldaTest {
         stap("verder", () -> {
             ZeldaHoofdstuk h = z.spel.hoofdstuk(stand().hoofdstuk);
             int r = stand().rust(h.id());
+            String[] pl = ZeldaRegels.plek(stand().laatste);                // laatste rustplaats gaat voor (oude stand: de verste)
+            if (pl != null && z.spel.deel(pl[0]) != null) {
+                h = z.spel.deel(pl[0]);
+                r = Integer.parseInt(pl[1]);
+            }
             Location l = h.rust.get(r).plek;
-            moet(p.getLocation().distanceSquared(l) < 4, "niet op de verste rustplaats " + h.rust.get(r).naam + " (" + xyz(l) + ") maar op " + xyz(p.getLocation()));
+            moet(p.getLocation().distanceSquared(l) < 4, "niet op de laatste rustplaats " + h.rust.get(r).naam + " (" + xyz(l) + ") maar op " + xyz(p.getLocation()));
             gedaan.add("rustplaats " + r + " " + h.rust.get(r).naam);
         }, 2, () -> true, 1);
         start("kitpvp zelda verder " + p.getName());

@@ -93,7 +93,7 @@ final class ZeldaZee extends ZeldaHoofdstuk {
             romp(dekY);
             b.daarna(() -> chunks.forEach(c -> w.removePluginChunkTicket((int) c[0], (int) c[1], plugin)));
         }
-        for (int[] d : new int[][]{{9, -1}, {11, 1}, {14, -2}, {17, 2}, {20, 0}, {12, -2}})
+        for (int[] d : new int[][]{{9, -1}, {11, 1}, {14, -2}, {17, 2}, {23, 0}, {12, -2}})
             dek.add(new Location(w, X0 + d[0] + 0.5, dekY + 1, MZ + d[1] + 0.5, -90f, 0f));
         persoon(new Persoon("Brecht", new Location(w, X0 + 2.5, dekY + 1, MZ + 0.5, -90f, 0f),
                 Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("fisherman")), List.of(
