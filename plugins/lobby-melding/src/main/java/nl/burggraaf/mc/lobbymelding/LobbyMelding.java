@@ -1163,6 +1163,27 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                     + ", levels " + (banen == null ? 0 : banen.length) + ", netwerk " + (netwerkGezien ? "ja" : "nee") + ", modus " + modus.size());
             return true;
         }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("kaart") && veilig != null) {
+            World w = veilig.getWorld();
+            int r = Tuin.RAND + 4, g = grondY;
+            Kaart.Stuk alles = new Kaart.Stuk(w, -r, g - 2, -r, r, g + 26, r);
+            Kaart.Stuk midden = new Kaart.Stuk(w, -40, g - 2, -40, 40, g + 20, 40);
+            java.io.File map = new java.io.File(getDataFolder(), "kaart");
+            Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+                try {
+                    Kaart.boven(alles, map, "boven", 3);
+                    Kaart.vogel(alles, map, "vogel", 0, 3);
+                    Kaart.vogel(midden, map, "midden-vogel", 0, 8);
+                    Kaart.boven(midden, map, "midden-boven", 8);
+                    Kaart.zij(midden, map, "midden-noord", 0, -1, 8);
+                    getLogger().info("kaart klaar: " + map);
+                } catch (IOException e) {
+                    getLogger().warning("kaart: " + e.getMessage());
+                }
+            });
+            sender.sendMessage("kaart wordt getekend naar " + map);
+            return true;
+        }
         sender.sendMessage("Gebruik: /lobbymelding terug | wie-terug");
         return true;
     }
