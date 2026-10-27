@@ -15,21 +15,21 @@ import org.bukkit.World;
 /**
  * Kun je er lopen? Volgt vanaf de aanleg van een eiland alle plekken waar een speler kan staan: een stap omhoog van
  * hoogstens één blok (springen), omlaag hoogstens drie, over een gat van één blok springen, ladders en water op en neer.
- * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel) tellen als open: in het
- * spel gaan ze open. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
+ * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel, een poort voor wie iets
+ * heeft, een brug die komt) tellen als open: in het spel gaan ze open. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
  * kan dat er nog niet is, zoals de klauwhaak), kamers, uitdagingen, verhalen, bronnen, spiegels, bellen en de plek vóór
  * een gebarsten muur. Zo valt een plek op die de test alleen met teleporteren haalt.
  *
- * <p>Voor nieuwe eilanden ({@code kitpvp zelda lopen <eiland>}, en in {@code kitpvp zelda test <speler> alles}). Het
- * Lindewoud doet niet mee: de Kloof vraagt schuine sprongen tussen pilaren. Laadt de chunks van het eiland (alleen voor
- * tests en beheer).
+ * <p>Voor elk eiland ({@code kitpvp zelda lopen <eiland>}, en in {@code kitpvp zelda test <speler> alles}). Op het
+ * Lindewoud kom je ook zonder de pilaren over de Kloof: via de ladders en de beek. Laadt de chunks van het eiland
+ * (alleen voor tests en beheer).
  */
 final class ZeldaLopen {
 
     private final World w;
     private final int x1, x2, y1, y2, z1, z2;
     private final Map<Long, ChunkSnapshot> chunks = new HashMap<>();
-    private final Set<Long> open = new HashSet<>();
+    private final Map<Long, Material> open = new HashMap<>();
     private final Set<Long> bereikt = new HashSet<>();
 
     private ZeldaLopen(World w, int x1, int y1, int z1, int x2, int y2, int z2) {
@@ -48,7 +48,8 @@ final class ZeldaLopen {
 
     private Material soort(int x, int y, int z) {
         if (x < x1 || x > x2 || z < z1 || z > z2 || y < y1 || y > y2) return Material.BEDROCK;
-        if (open.contains(sleutel(x, y, z))) return Material.AIR;
+        Material d = open.get(sleutel(x, y, z));
+        if (d != null) return d;
         long c = ((long) (x >> 4) << 32) ^ ((z >> 4) & 0xFFFFFFFFL);
         ChunkSnapshot s = chunks.computeIfAbsent(c, k -> w.getChunkAt(x >> 4, z >> 4).getChunkSnapshot(false, false, false));
         return s.getBlockType(x & 15, y, z & 15);
@@ -133,8 +134,9 @@ final class ZeldaLopen {
         return in(ZeldaHoofdstuk.Box.van(c[0] - r, c[1] - r, c[2] - r, c[0] + r, c[1] + r, c[2] + r));
     }
 
+    /** Een deur zoals hij open is (meestal lucht; een brug die komt: planken). */
     private void opening(ZeldaHoofdstuk.Deur d) {
-        if (d != null) for (int[] c : d.blokken) open.add(sleutel(c[0], c[1], c[2]));
+        if (d != null) for (int[] c : d.blokken) open.put(sleutel(c[0], c[1], c[2]), d.open.getMaterial());
     }
 
     /**
@@ -164,6 +166,7 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Reeks r : h.reeksen) l.opening(r.deur);
             for (ZeldaHoofdstuk.Barst b : h.barsten) l.opening(b.muur);
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels) l.opening(s.deur);
+            for (ZeldaHoofdstuk.Poort p : h.poorten) l.opening(p.deur);
         }
         Location start = e.aanlegPlek();
         l.loop(start.getBlockX(), start.getBlockY(), start.getBlockZ());

@@ -137,6 +137,7 @@ abstract class ZeldaHoofdstuk {
         long hemel = -1;                                    // eigen hemeltijd binnen (-1 = die van de plek)
         int[] bel;                                          // een bel in de kamer: luiden = nog eens vechten (null = geen)
         boolean vrijwillig;                                 // niet op het hoofdpad (telt niet mee als verplichte kamer)
+        boolean alleenBel;                                  // een oefenplek: deuren open, gevochten wordt alleen als je de bel luidt
         // tijdens het spel
         Fase fase = Fase.RUST;
         boolean terug;                                      // dit gevecht begon met de bel: de extra golven doen mee
@@ -327,6 +328,7 @@ abstract class ZeldaHoofdstuk {
         final Box zone;
         final List<Regel> regels;
         String vereist;                                     // alleen als je deze vlag hebt
+        Predicate<ZeldaVoortgang.Stand> als;                // en alleen als dit klopt (null = altijd)
         boolean einde;                                      // hoofdstuk voltooid
         boolean uitleg;                                     // uitleg (hoe iets werkt): overgeslagen met «Uitleg: uit»
 
@@ -411,7 +413,7 @@ abstract class ZeldaHoofdstuk {
      * je heen moet. {@code tekst} = de eerste hint (een duwtje), {@code verder} = als je het nog eens vraagt (wat je
      * moet doen); Wiske vliegt dan ook even die kant op ({@code plek}).
      */
-    record Doel(String id, String tekst, String verder, Location plek, Predicate<ZeldaVoortgang.Stand> klaar) {}
+    record Doel(String id, String tekst, String verder, Location plek, Predicate<ZeldaVoortgang.Stand> klaar, String groep) {}
 
     /** Een zijmissie: per stap een korte zin voor de hint en het opdrachtenlijstje (stap 1 = {@code stappen.get(0)}). */
     record Missie(String id, String naam, List<String> stappen) {}
@@ -445,6 +447,29 @@ abstract class ZeldaHoofdstuk {
      */
     record Haakpunt(String id, int x, int y, int z, Location landing) {}
 
+    /**
+     * Een poort die opengaat voor wie iets heeft of weet ({@code mag}, bv. het lichtwoord van Tijmen): staat er iemand in
+     * het {@code gebied} voor wie hij open mag, dan gaat hij open (voor iedereen); een minuut niemand in de buurt = weer
+     * dicht. Zo kan een persoon een stuk van het eiland openen ({@code kitpvp zelda lopen} telt hem als open).
+     */
+    static final class Poort {
+        final String id;
+        final Deur deur;
+        final Box gebied;
+        final Predicate<ZeldaVoortgang.Stand> mag;
+        long leegSinds;
+
+        Poort(String id, Deur deur, Box gebied, Predicate<ZeldaVoortgang.Stand> mag) {
+            this.id = id;
+            this.deur = deur;
+            this.gebied = gebied;
+            this.mag = mag;
+        }
+    }
+
+    /** In de volgorde van het pad: hier praat je met {@code wie} (de test praat tot hij niets nieuws meer heeft). */
+    record Praten(Persoon wie) {}
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -460,6 +485,7 @@ abstract class ZeldaHoofdstuk {
     final List<Barst> barsten = new ArrayList<>();
     final List<Haakpunt> haakpunten = new ArrayList<>();
     final List<Spiegels> spiegels = new ArrayList<>();
+    final List<Poort> poorten = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -484,6 +510,11 @@ abstract class ZeldaHoofdstuk {
     /** Hemeltijd voor een speler op deze plek (per speler: de dag schuift op terwijl je verder komt). */
     long hemel(Location l) {
         return 6000;
+    }
+
+    /** Hemeltijd voor deze speler: standaard per plek; een open eiland kan de dag laten opschuiven met je voortgang. */
+    long hemel(Location l, ZeldaVoortgang.Stand s) {
+        return hemel(l);
     }
 
     /** Naam van de plek voor de sidebar. */
@@ -528,7 +559,7 @@ abstract class ZeldaHoofdstuk {
         for (Object o : volgorde) {
             String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
-                    : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : null;
+                    : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
@@ -550,6 +581,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Bron b) return b.midden;
         if (o instanceof Persoon p) return p.plek;
         if (o instanceof Barst b) return b.muur.omvang().midden(w);
+        if (o instanceof Poort po) return po.gebied.midden(w);
         return null;
     }
 
@@ -583,6 +615,7 @@ abstract class ZeldaHoofdstuk {
         barsten.clear();
         haakpunten.clear();
         spiegels.clear();
+        poorten.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -592,6 +625,33 @@ abstract class ZeldaHoofdstuk {
         rust.add(r);
         volgorde.add(r);
         return r;
+    }
+
+    /**
+     * Een rustplaats met een vast nummer (het nummer is de opslag: {@code h1:3}), op zijn plek in de volgorde van het pad.
+     * Voor een eiland dat opnieuw is ingedeeld: de oude rustplaatsen houden hun nummer, een nieuwe krijgt het volgende.
+     * De nummers moeten aan het eind 0 … n−1 zijn (de zelftest controleert het).
+     */
+    protected Rust rust(int index, Rust r) {
+        r.index = index;
+        int i = 0;
+        while (i < rust.size() && rust.get(i).index < index) i++;
+        rust.add(i, r);
+        volgorde.add(r);
+        return r;
+    }
+
+    /** Een poort op het pad (de test loopt erheen, met wat ervoor nodig is). */
+    protected Poort poort(Poort p) {
+        poorten.add(p);
+        volgorde.add(p);
+        return p;
+    }
+
+    /** Op dit punt van het pad praat je met {@code p} (bv. de wegwijzer die je verder stuurt). */
+    protected Persoon praten(Persoon p) {
+        volgorde.add(new Praten(p));
+        return p;
     }
 
     protected Kamer kamer(Kamer k) {
@@ -679,7 +739,15 @@ abstract class ZeldaHoofdstuk {
     }
 
     protected Doel doel(String id, String tekst, String verder, Location plek, Predicate<ZeldaVoortgang.Stand> klaar) {
-        Doel d = new Doel(id, tekst, verder, plek, klaar);
+        return doel(null, id, tekst, verder, plek, klaar);
+    }
+
+    /**
+     * Een doel in een {@code groep}: doelen in dezelfde groep (na elkaar in de lijst) mag je in elke volgorde doen; de hint
+     * noemt het dichtstbijzijnde dat nog niet klaar is.
+     */
+    protected Doel doel(String groep, String id, String tekst, String verder, Location plek, Predicate<ZeldaVoortgang.Stand> klaar) {
+        Doel d = new Doel(id, tekst, verder, plek, klaar, groep);
         doelen.add(d);
         return d;
     }

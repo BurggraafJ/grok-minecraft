@@ -25,6 +25,10 @@ final class ZeldaBaas {
     final String naam;
     final List<Location> toppen, grond;
     final List<ZeldaHoofdstuk.Regel> bijHelft, bijWinst;
+    /** Leven (halve harten) voor één speler, en erbij voor elke speler meer. */
+    double leven = 80, levenPerSpeler = 40;
+    /** Hoeveel mosschutters ze oproept bij twee derde en bij een derde van haar leven (0 = geen). */
+    int[] oproepen = {2, 2};
     private final Random rnd = new Random();
 
     LivingEntity ent;
@@ -75,10 +79,10 @@ final class ZeldaBaas {
         int oproep = 0;
         if (!oproep1 && d < 0.67f) {
             oproep1 = true;
-            oproep = 2;
+            oproep = oproepen[0];
         } else if (!oproep2 && d < 0.34f) {
             oproep2 = true;
-            oproep = 2;
+            oproep = oproepen[1];
         }
         if (!helftGezegd && d < 0.5f) {
             helftGezegd = true;

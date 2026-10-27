@@ -196,6 +196,25 @@ final class ZeldaMuziek {
                     + "| g3 . . . . . . . | d4 . . . . . . . | a3 . . . . . . . | b3 . . . . . . . "
                     + "| g3 . . . . . . . | d4 . . . . . . . | e4 . . . f#3 . . . | b3 . . . . . . ."));
 
+    /** Lindedorp, het dorp onder de grote linde: vrolijk, banjo en gitaar, in G. */
+    static final Lied DORP = lied("dorp", 4, true,
+            spoor(Instr.BANJO, 0.22f, "g4 . b4 . d5 . b4 . | c5 . . . a4 . . . | b4 . g4 . a4 . b4 . | a4 . . . d4 . . . "
+                    + "| g4 . b4 . d5 . e5 . | d5 . . . b4 . g4 . | a4 . c5 . b4 . a4 . | g4 . . . . . . . "
+                    + "| b4 . d5 . . . b4 . | c5 . e5 . . . c5 . | b4 . d5 . g4 . b4 . | a4 . . . . . d4 . "
+                    + "| e4 . g4 . c5 . e5 . | d5 . b4 . g4 . b4 . | a4 . f#4 . a4 . c5 . | b4 . . . g4 . . ."),
+            spoor(Instr.GUITAR, 0.13f, ". . g3+b3+d4 . . . g3+b3+d4 . | . . c4+e4+g4 . . . c4+e4+g4 . | . . g3+b3+d4 . . . g3+b3+d4 . | . . a3+d4+f#4 . . . a3+d4+f#4 . "
+                    + "| . . g3+b3+d4 . . . g3+b3+d4 . | . . g3+b3+d4 . . . g3+b3+d4 . | . . a3+d4+f#4 . . . a3+d4+f#4 . | . . g3+b3+d4 . . . g3+b3+d4 . "
+                    + "| . . g3+b3+d4 . . . g3+b3+d4 . | . . c4+e4+g4 . . . c4+e4+g4 . | . . g3+b3+d4 . . . g3+b3+d4 . | . . a3+d4+f#4 . . . a3+d4+f#4 . "
+                    + "| . . c4+e4+g4 . . . c4+e4+g4 . | . . g3+b3+d4 . . . g3+b3+d4 . | . . a3+d4+f#4 . . . a3+d4+f#4 . | . . g3+b3+d4 . . . g3+b3+d4 ."),
+            spoor(Instr.BASS, 0.18f, "g3 . . . d4 . . . | c4 . . . g3 . . . | g3 . . . d4 . . . | d4 . . . a3 . . . "
+                    + "| g3 . . . d4 . . . | g3 . . . d4 . . . | d4 . . . a3 . . . | g3 . . . d4 . . . "
+                    + "| g3 . . . d4 . . . | c4 . . . g3 . . . | g3 . . . d4 . . . | d4 . . . a3 . . . "
+                    + "| c4 . . . g3 . . . | g3 . . . d4 . . . | d4 . . . a3 . . . | g3 . . . d4 . . ."),
+            spoor(Instr.HAT, 0.06f, "x . . . x . . . | x . . . x . . . | x . . . x . . . | x . . . x . . . "
+                    + "| x . . . x . . . | x . . . x . . . | x . . . x . . . | x . . . x . . . "
+                    + "| x . . . x . . . | x . . . x . . . | x . . . x . . . | x . . . x . . . "
+                    + "| x . . . x . . . | x . . . x . . . | x . . . x . . . | x . . . x . . ."));
+
     /** De tempelruïne: klokjes en ijzer, oud en stil, in a-klein. */
     static final Lied TEMPEL = lied("tempel", 5, true,
             spoor(Instr.BELL, 0.16f, "a3+c4+e4 . . . . . . . | a3+c4+f4 . . . . . . . | b3+d4+g4 . . . . . . . | b3+e4+g4 . . . . . . . "
@@ -315,7 +334,7 @@ final class ZeldaMuziek {
 
     static List<Lied> alle() {
         return List.of(GEVECHT, BAAS, DICHT, GEWONNEN, VONDST, RUST, OPGELOST, MISLUKT, BEGIN, KLAAR,
-                THUIS, WOUD, TEMPEL, VEEN, HAVEN, ZEE, BRON, HINT, OPDRACHT, ZOUTKOM, DUINEN, VUURTOREN);
+                THUIS, WOUD, TEMPEL, VEEN, HAVEN, ZEE, BRON, HINT, OPDRACHT, ZOUTKOM, DUINEN, VUURTOREN, DORP);
     }
 
     // ── afspelen ────────────────────────────────────────────────────────────────────────────

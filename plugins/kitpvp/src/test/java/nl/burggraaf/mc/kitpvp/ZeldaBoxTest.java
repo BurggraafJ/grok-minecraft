@@ -28,8 +28,12 @@ class ZeldaBoxTest {
 
     @Test
     void gebiedVanHoofdstuk1() {
-        // het pad (rx -8 … 492) ligt helemaal in het gereserveerde gebied
-        assertTrue(ZeldaHoofdstuk1.X0 - 8 >= Zelda.GEBIED[0]);
-        assertTrue(ZeldaHoofdstuk1.X0 + 492 <= Zelda.GEBIED[2]);
+        // het bouwvak van het eiland ligt helemaal in het gereserveerde gebied, en raakt de vakken van de buren niet
+        assertTrue(ZeldaHoofdstuk1.X0 + ZeldaHoofdstuk1.RX1 >= Zelda.GEBIED[0]);
+        assertTrue(ZeldaHoofdstuk1.X0 + ZeldaHoofdstuk1.RX2 <= Zelda.GEBIED[2]);
+        assertTrue(ZeldaHoofdstuk1.Z1 >= Zelda.GEBIED[1] && ZeldaHoofdstuk1.Z2 <= Zelda.GEBIED[3]);
+        assertTrue(ZeldaHoofdstuk1.Z1 > ZeldaEiland2a.Z2, "het Zilverstrand begint bij z " + ZeldaEiland2a.Z2);
+        assertTrue(ZeldaHoofdstuk1.Z2 < 180, "de Gloedberg begint bij z 180");
+        assertTrue(ZeldaHoofdstuk1.X0 + ZeldaHoofdstuk1.RX2 < 1640, "Nachtrots begint bij x 1640");
     }
 }

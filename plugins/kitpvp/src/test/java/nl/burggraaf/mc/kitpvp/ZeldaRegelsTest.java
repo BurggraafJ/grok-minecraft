@@ -59,8 +59,8 @@ class ZeldaRegelsTest {
 
     @Test
     void doelEnMissies() {
-        var a = new ZeldaHoofdstuk.Doel("a", "naar a", "precies a", null, s -> s.heeft("a"));
-        var b = new ZeldaHoofdstuk.Doel("b", "naar b", null, null, s -> s.heeft("b"));
+        var a = new ZeldaHoofdstuk.Doel("a", "naar a", "precies a", null, s -> s.heeft("a"), null);
+        var b = new ZeldaHoofdstuk.Doel("b", "naar b", null, null, s -> s.heeft("b"), null);
         assertEquals(a, ZeldaRegels.doel(List.of(a, b), stand()));
         assertEquals(b, ZeldaRegels.doel(List.of(a, b), stand("a")));
         assertNull(ZeldaRegels.doel(List.of(a, b), stand("a", "b")));
@@ -131,6 +131,52 @@ class ZeldaRegelsTest {
     }
 
     @Test
+    void doelenInElkeVolgordeDichtstbijEerst() {
+        org.bukkit.Location noord = new org.bukkit.Location(null, 0, 0, -50), oost = new org.bukkit.Location(null, 60, 0, 0), zuid = new org.bukkit.Location(null, 0, 0, 60);
+        var tijmen = new ZeldaHoofdstuk.Doel("tijmen", "naar Tijmen", null, null, s -> s.heeft("g:tijmen-1"), null);
+        var schild = new ZeldaHoofdstuk.Doel("schild", "schild", null, noord, s -> s.heeft("schild"), "drie");
+        var zwaard = new ZeldaHoofdstuk.Doel("zwaard", "zwaard", null, oost, s -> s.heeft("zwaard"), "drie");
+        var boog = new ZeldaHoofdstuk.Doel("boog", "boog", null, zuid, s -> s.heeft("boog"), "drie");
+        var terug = new ZeldaHoofdstuk.Doel("lichtwoord", "terug", null, null, s -> s.heeft("lichtwoord"), null);
+        List<ZeldaHoofdstuk.Doel> l = List.of(tijmen, schild, zwaard, boog, terug);
+        assertEquals(tijmen, ZeldaRegels.doel(l, stand(), 50, 0), "eerst het doel zonder groep");
+        assertEquals(zwaard, ZeldaRegels.doel(l, stand("g:tijmen-1"), 50, 0), "vanaf het oosten: het zwaard");
+        assertEquals(boog, ZeldaRegels.doel(l, stand("g:tijmen-1"), 0, 40), "vanaf het zuiden: de boog");
+        assertEquals(schild, ZeldaRegels.doel(l, stand("g:tijmen-1", "boog", "zwaard"), 0, 40), "wat over is, ook al is het ver");
+        assertEquals(terug, ZeldaRegels.doel(l, stand("g:tijmen-1", "boog", "zwaard", "schild"), 0, 40));
+    }
+
+    @Test
+    void sterkBronwater() {
+        assertEquals(ZeldaRegels.FLES_HP, ZeldaRegels.flesHp(stand("fles1")));
+        assertTrue(ZeldaRegels.flesHp(stand("fles1", "sterkwater")) > ZeldaRegels.FLES_HP, "Hannes zeekraal: flesjes genezen meer");
+        assertEquals(1, ZeldaRegels.flessen(stand("fles1", "sterkwater")), "sterk bronwater is geen extra flesje");
+    }
+
+    @Test
+    void oefenplekTeltNietAlsVerplicht() {
+        Proef h = new Proef();
+        var oefen = h.kamer(kamer("open-plek"));
+        oefen.alleenBel = true;
+        h.kamer(kamer("kade"));
+        var baas = h.kamer(kamer("heksenkring"));
+        baas.baas = new ZeldaBaas("Grauwmoer", List.of(), List.of(), List.of(), List.of());
+        assertEquals(1, ZeldaRegels.verplichtVoorBaas(h.volgorde), "een kamer die alleen met de bel begint, telt niet");
+    }
+
+    @Test
+    void rustplaatsenMetVasteNummers() {
+        Proef h = new Proef();
+        ZeldaHoofdstuk.Box z = ZeldaHoofdstuk.Box.van(0, 0, 0, 1, 1, 1);
+        h.rust(0, new ZeldaHoofdstuk.Rust("thuis", "Thuis", null, z, List.of()));
+        h.rust(6, new ZeldaHoofdstuk.Rust("dorp", "Lindedorp", null, z, List.of()));
+        h.rust(1, new ZeldaHoofdstuk.Rust("eik", "Oude Eik", null, z, List.of()));
+        h.rust(2, new ZeldaHoofdstuk.Rust("ruine", "Tempelruïne", null, z, List.of()));
+        assertEquals(List.of("thuis", "eik", "ruine", "dorp"), h.rust.stream().map(r -> r.id).toList(), "op nummer (het nummer is de opslag)");
+        assertEquals(List.of("thuis", "dorp", "eik", "ruine"), h.volgorde.stream().map(o -> ((ZeldaHoofdstuk.Rust) o).id).toList(), "het pad blijft in volgorde");
+    }
+
+    @Test
     void hoogstensTweeVerplichteKamersVoorDeBaas() {
         Proef h = new Proef();
         h.kamer(kamer("open-plek"));
@@ -194,7 +240,7 @@ class ZeldaRegelsTest {
         ZeldaVoortgang.Stand s = stand("schild", "zwaard", "boog", "hart1", "h1");
         s.bereik("h1", 5);
         assertTrue(ZeldaHoofdstuk1.aanvullen(s, "h1"));
-        for (String k : new String[]{"k:open-plek", "k:veen", "k:heksenkring", "k:kade"}) assertTrue(s.heeft(k), k);
+        for (String k : new String[]{"k:open-plek", "k:veen", "k:heksenkring", "k:kade", ZeldaHoofdstuk1.OMGEZET}) assertTrue(s.heeft(k), k);
         assertFalse(ZeldaHoofdstuk1.aanvullen(s, "h1"), "twee keer = niets nieuws");
         ZeldaVoortgang.Stand jong = stand("schild");
         jong.bereik("h1", 1);
@@ -202,6 +248,22 @@ class ZeldaRegelsTest {
         assertTrue(jong.heeft("k:open-plek"));
         assertFalse(jong.heeft("k:veen"), "het Veen nog niet voorbij");
         assertFalse(ZeldaHoofdstuk1.aanvullen(stand(), "h1"), "nieuwe speler: niets");
+    }
+
+    @Test
+    void oudeStandZonderVlaggenKrijgtWatErVoorLag() {
+        // een heel oude stand (alleen de verste rustplaats op het rechte pad): na de omzetting heeft hij wat ervoor lag
+        ZeldaVoortgang.Stand moeras = stand();
+        moeras.bereik("h1", 4);
+        assertTrue(ZeldaHoofdstuk1.aanvullen(moeras, "h1"));
+        for (String v : new String[]{"schild", "zwaard", "boog", "k:veen"}) assertTrue(moeras.heeft(v), v);
+        assertFalse(moeras.heeft("hart1"), "Grauwmoer nog niet verslagen");
+        // na de omzetting telt een nieuwe rustplaats (het dorp is nummer 6) niet meer als «verder op het oude pad»
+        ZeldaVoortgang.Stand nieuw = stand();
+        ZeldaHoofdstuk1.aanvullen(nieuw, "h1");
+        nieuw.bereik("h1", 6);
+        ZeldaHoofdstuk1.aanvullen(nieuw, "h1");
+        assertFalse(nieuw.heeft("hart1") || nieuw.heeft("schild"), "een nieuwe speler in het dorp krijgt niets cadeau");
     }
 
     @Test

@@ -98,6 +98,8 @@ final class ZeldaSpel implements Listener {
     static final TextColor GROEN = TextColor.color(0x8fcf6a);
     /** Na zo lang zonder voortgang biedt Wiske één keer hulp aan (en dan pas weer na {@link #AANBOD_OPNIEUW}). */
     static final long VAST_MS = 6 * 60_000L, AANBOD_OPNIEUW = 10 * 60_000L;
+    /** Op adem komen: zo lang na de laatste klap (en niet in een gevecht) geneest elke {@link #BIJKOMEN_ELK} ms een half hart. */
+    static final long BIJKOMEN_NA = 6_000L, BIJKOMEN_ELK = 2_000L;
 
     /** Een overtocht naar een ander eiland. */
     record Vaart(ZeldaEiland naar, long tot, boolean eerste) {}
@@ -112,6 +114,7 @@ final class ZeldaSpel implements Listener {
         Component nu;
         long tot, gestuurd, laatsteHemel = -1;
         long hintTijd, hintWacht, laatsteVoortgang, aangeboden, bronDeuntje;
+        long geraakt, bijkomen;                              // laatste klap; volgende keer op adem komen
         String hintDoel, tip;
         int voortgangStand;
         boolean inBron, naamGevraagd;
@@ -511,6 +514,7 @@ final class ZeldaSpel implements Listener {
                 for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) uitdaging(u, nu);
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) reeks(r, nu);
                 for (ZeldaHoofdstuk.Barst b : h.barsten) barst(b, nu);
+                for (ZeldaHoofdstuk.Poort po : h.poorten) poort(po, nu);
             }
         }
         if (tikken % 10 == 5) for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) veilig("spiegels", () -> spiegels(sp, nu));
@@ -590,6 +594,9 @@ final class ZeldaSpel implements Listener {
                 vernieuw(p, s, voorwerp("fles"));
                 if (ZeldaRegels.flessen(s) > 0) zeg(p, Component.text("Flesjes vol", NamedTextColor.GRAY));
             }
+        } else if (nu - ss.geraakt > BIJKOMEN_NA && nu >= ss.bijkomen && !inGevecht(p)) {   // buiten een gevecht kom je vanzelf op adem
+            ss.bijkomen = nu + BIJKOMEN_ELK;
+            geneesBij(p, 1);
         }
         if (bron && !ss.inBron && nu > ss.bronDeuntje) {
             ss.bronDeuntje = nu + 30_000L;
@@ -623,7 +630,7 @@ final class ZeldaSpel implements Listener {
     }
 
     private void hemel(Player p, Sessie ss, Location l) {
-        long t = ss.vaart != null ? zee.hemel(l) : ss.h.hemel(l);
+        long t = ss.vaart != null ? zee.hemel(l) : ss.h.hemel(l, voortgang.van(p.getUniqueId()));
         if (ss.vaart == null) for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.hemel >= 0 && k.binnen.in(l)) t = k.hemel;
         if (Math.abs(t - ss.laatsteHemel) > 40) {
             ss.laatsteHemel = t;
@@ -640,7 +647,7 @@ final class ZeldaSpel implements Listener {
         for (ZeldaHoofdstuk h : ss.h.eiland.delen()) {
             for (ZeldaHoofdstuk.Rust r : h.rust) if (r.zone.in(l)) rust(p, ss, s, h, r);
             for (ZeldaHoofdstuk.Verhaal v : h.verhalen)
-                if (v.zone.in(l) && !s.heeft("v:" + v.id) && (v.vereist == null || s.heeft(v.vereist))) verhaal(p, h, s, v);
+                if (v.zone.in(l) && !s.heeft("v:" + v.id) && (v.vereist == null || s.heeft(v.vereist)) && (v.als == null || v.als.test(s))) verhaal(p, h, s, v);
             for (ZeldaHoofdstuk.Vondst v : h.vondsten)
                 if (v.zone.in(l) && !s.heeft(v.vlag) && (v.vereist == null || s.heeft(v.vereist)) && (v.voorwerp == null || s.heeft(v.voorwerp))) vind(p, s, v);
             for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) {
@@ -650,6 +657,7 @@ final class ZeldaSpel implements Listener {
                 } else if (start != null && u.finish.in(l)) gehaald(p, s, u, nu - start);
             }
             for (ZeldaHoofdstuk.Kamer k : h.kamers) {
+                if (k.alleenBel) continue;                              // een oefenplek: alleen de bel begint het gevecht
                 boolean won = s.heeft("k:" + k.id);
                 if (k.fase == ZeldaHoofdstuk.Fase.RUST && k.start.in(l)) binnenKamer(k, nu);
                 else if (k.fase == ZeldaHoofdstuk.Fase.RUST && won && k.uit.omvang().groter(2).in(l)) doorgang(k, List.of(p));   // van de andere kant terug
@@ -790,11 +798,20 @@ final class ZeldaSpel implements Listener {
             }
     }
 
-    /** De bel in een kamer: nog eens vechten, nu met de extra golven. */
+    /**
+     * De bel in een kamer: nog eens vechten, nu met de extra golven. In een oefenplek ({@code alleenBel}) begint de bel het
+     * gevecht; de extra golven komen pas als iedereen binnen hem al eens won.
+     */
     void luid(Player p, ZeldaHoofdstuk.Kamer k) {
         if (k.fase == ZeldaHoofdstuk.Fase.BEZIG || k.bel == null || !k.binnen.in(p.getLocation())) return;
         p.getWorld().playSound(new Location(p.getWorld(), k.bel[0] + 0.5, k.bel[1] + 0.5, k.bel[2] + 0.5), Sound.BLOCK_BELL_USE, 1f, 0.9f);
-        begin(k, System.currentTimeMillis(), true);
+        boolean terug = true;
+        if (k.alleenBel) {
+            List<ZeldaVoortgang.Stand> wie = new ArrayList<>();
+            for (Player q : in(k.binnen)) wie.add(voortgang.van(q.getUniqueId()));
+            terug = ZeldaRegels.doorgang(wie, k.id);
+        }
+        begin(k, System.currentTimeMillis(), terug);
     }
 
     private void begin(ZeldaHoofdstuk.Kamer k, long nu, boolean terug) {
@@ -829,6 +846,9 @@ final class ZeldaSpel implements Listener {
             LivingEntity e = spawn(s, l, spelers);
             k.vijanden.add(e);
             if (s == ZeldaHoofdstuk.Soort.HEKS && k.baas != null) {
+                double hp = k.baas.leven + k.baas.levenPerSpeler * (spelers - 1);
+                zetAttr(e, Attribute.MAX_HEALTH, hp);
+                e.setHealth(hp);
                 k.baas.start(e);
                 for (Player p : in(k.binnen)) p.showBossBar(k.baas.balk);
             }
@@ -939,7 +959,7 @@ final class ZeldaSpel implements Listener {
         k.terug = false;
         Location buiten = k.in.omvang().midden(plugin.w).add(-2, 0, 0);
         deur(k.in, true, buiten);
-        deur(k.uit, false, k.start.midden(plugin.w).add(0, 1, 0));
+        deur(k.uit, k.alleenBel, k.start.midden(plugin.w).add(0, 1, 0));
     }
 
     // ── vijanden ────────────────────────────────────────────────────────────────────────────
@@ -1323,6 +1343,31 @@ final class ZeldaSpel implements Listener {
             }
     }
 
+    /** Een poort voor wie iets heeft (bv. het lichtwoord): open als er iemand voor wie hij mag in het gebied staat. */
+    private void poort(ZeldaHoofdstuk.Poort po, long nu) {
+        if (po.deur.isOpen) {                                // een minuut niemand in de buurt: weer dicht
+            if (!in(po.gebied.groter(6)).isEmpty()) po.leegSinds = 0;
+            else if (po.leegSinds == 0) po.leegSinds = nu;
+            else if (nu - po.leegSinds > 60_000L) herstel(po);
+            return;
+        }
+        for (Player p : in(po.gebied))
+            if (po.mag.test(voortgang.van(p.getUniqueId()))) {
+                po.leegSinds = 0;
+                Location m = po.deur.omvang().midden(plugin.w).add(0, 1, 0);
+                deur(po.deur, true, m);
+                m.getWorld().spawnParticle(Particle.END_ROD, m, 30, 0.6, 1.0, 1.5, 0.03);
+                m.getWorld().playSound(m, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1f, 1.2f);
+                return;
+            }
+    }
+
+    /** Poort weer dicht. */
+    void herstel(ZeldaHoofdstuk.Poort po) {
+        po.leegSinds = 0;
+        deur(po.deur, false, po.gebied.midden(plugin.w).add(0, 1, 0));
+    }
+
     /** Het haakpunt in dit blok (voor de klauwhaak van eiland 3), of null. */
     ZeldaHoofdstuk.Haakpunt haakpunt(Block b) {
         for (ZeldaHoofdstuk h : hoofdstukken)
@@ -1694,7 +1739,7 @@ final class ZeldaSpel implements Listener {
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         ZeldaEiland e = ss.h.eiland;
         String vorige = ss.hintDoel;
-        ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(alle(e, h -> h.doelen), s);
+        ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(alle(e, h -> h.doelen), s, p.getLocation().getX(), p.getLocation().getZ());
         if (d != null) {
             boolean nogEens = d.id().equals(vorige) && nu - ss.hintTijd < 120_000L;
             ss.hintDoel = d.id();
@@ -1706,7 +1751,7 @@ final class ZeldaSpel implements Listener {
             return;
         }
         ss.hintDoel = null;
-        List<ZeldaHoofdstuk.Missie> bezig = ZeldaRegels.bezig(alle(e, h -> h.missies), s);
+        List<ZeldaHoofdstuk.Missie> bezig = bezig(e, s);
         if (!bezig.isEmpty()) {
             ZeldaHoofdstuk.Missie m = bezig.get(rnd.nextInt(bezig.size()));
             vertel(p, ZeldaHoofdstuk.r("Wiske", m.naam() + ": " + ZeldaRegels.stap(m, s)));
@@ -1744,6 +1789,65 @@ final class ZeldaSpel implements Listener {
             return;
         }
         vertel(p, ZeldaHoofdstuk.r("Wiske", "Ik weet het ook niet. Kijk eens rond, praat met wie je ziet."));
+    }
+
+    /** Zijmissies waar je mee bezig bent: die van dit eiland, en anders die van alle eilanden (een boodschap over zee). */
+    private List<ZeldaHoofdstuk.Missie> bezig(ZeldaEiland e, ZeldaVoortgang.Stand s) {
+        List<ZeldaHoofdstuk.Missie> hier = ZeldaRegels.bezig(alle(e, h -> h.missies), s);
+        if (!hier.isEmpty()) return hier;
+        List<ZeldaHoofdstuk.Missie> overal = new ArrayList<>();
+        for (ZeldaEiland o : eilanden) overal.addAll(alle(o, h -> h.missies));
+        return ZeldaRegels.bezig(overal, s);
+    }
+
+    /**
+     * Een wegwijzer (Tijmen, de tovenaar): hij weet altijd waar je volgende opdracht is. Praten = hij zegt het (zoals de
+     * tweede hint), en Wiske vliegt die kant op. Geen doel meer op dit eiland: een eiland waar je nog niet was, je
+     * zijmissies, wat je met een nieuw voorwerp kunt halen, of wat het eiland nog laat wachten.
+     */
+    void wegwijzer(Player p, String naam) {
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null || ss.h.eiland == null) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        ZeldaEiland e = ss.h.eiland;
+        ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(alle(e, h -> h.doelen), s, p.getLocation().getX(), p.getLocation().getZ());
+        if (d != null) {
+            vertel(p, ZeldaHoofdstuk.r(naam, d.verder() != null ? d.verder() : d.tekst()));
+            if (d.plek() != null) metgezel.wijs(p, d.plek());
+            return;
+        }
+        for (ZeldaEiland o : eilanden)
+            if (o != e && o.open(s) && o.aanlegRust() != null && !s.heeft("e:" + o.id())) {
+                vertel(p, ZeldaHoofdstuk.r(naam, "De sterren wijzen naar " + ZeldaRegels.inZin(o.naam()) + ". Brecht vaart je."));
+                return;
+            }
+        List<ZeldaHoofdstuk.Missie> bezig = bezig(e, s);
+        if (!bezig.isEmpty()) {
+            ZeldaHoofdstuk.Missie m = bezig.get(0);
+            vertel(p, ZeldaHoofdstuk.r(naam, m.naam() + "? " + ZeldaRegels.stap(m, s)));
+            return;
+        }
+        for (ZeldaHoofdstuk.Vondst v : alle(e, h -> h.vondsten))
+            if (later(v, s)) {
+                vertel(p, ZeldaHoofdstuk.r(naam, "Met je nieuwe spullen ligt hier nog iets voor je."));
+                metgezel.wijs(p, v.plek);
+                return;
+            }
+        ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
+        if (!s.heeft(e.klaar()) && laatste.wacht() != null) {
+            vertel(p, ZeldaHoofdstuk.r(naam, laatste.wacht()));
+            return;
+        }
+        vertel(p, ZeldaHoofdstuk.r(naam, "Rust maar even uit. We zien elkaar verderop."));
+    }
+
+    /** Helemaal beter (bv. een warm broodje bij de bakker). */
+    void genees(Player p) {
+        var max = p.getAttribute(Attribute.MAX_HEALTH);
+        if (max == null || p.isDead() || p.getHealth() >= max.getValue()) return;
+        p.setHealth(max.getValue());
+        p.playSound(p, Sound.ENTITY_GENERIC_EAT, 0.6f, 1.1f);
+        p.spawnParticle(Particle.HEART, p.getLocation().add(0, 1.4, 0), 4, 0.4, 0.3, 0.4, 0);
     }
 
     /** Een vondst die je pas met een voorwerp kon pakken, en dat voorwerp heb je nu. */
@@ -1918,7 +2022,7 @@ final class ZeldaSpel implements Listener {
                 return;
             }
             voortgang.vuil();
-            geneesBij(p, ZeldaRegels.FLES_HP);
+            geneesBij(p, ZeldaRegels.flesHp(s));
             p.playSound(p, Sound.ENTITY_GENERIC_DRINK, 0.7f, 1.1f);
             p.spawnParticle(Particle.HEART, p.getLocation().add(0, 1.4, 0), 5, 0.4, 0.3, 0.4, 0);
             vernieuw(p, s, this);
@@ -2159,6 +2263,15 @@ final class ZeldaSpel implements Listener {
         if (beheer.is(e.getEntity())) e.setCancelled(true);
     }
 
+    /** Een klap (van wat ook): even niet vanzelf op adem komen. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGeraakt(EntityDamageEvent e) {
+        if (e.getEntity() instanceof Player p && e.getFinalDamage() > 0) {
+            Sessie ss = sessie(p);
+            if (ss != null) ss.geraakt = System.currentTimeMillis();
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onNpcSchade(EntityDamageEvent e) {
         if (e.getEntity().getScoreboardTags().contains(NPC)) e.setCancelled(true);
@@ -2218,7 +2331,7 @@ final class ZeldaSpel implements Listener {
         e.getDrops().clear();
         e.setDroppedExp(0);
         Player k = e.getEntity().getKiller();
-        if (k != null && speelt(k) && rnd.nextInt(10) < 3) {
+        if (k != null && speelt(k) && rnd.nextInt(10) < 5) {
             geneesBij(k, 2);
             e.getEntity().getWorld().spawnParticle(Particle.HEART, e.getEntity().getLocation().add(0, 1, 0), 3, 0.3, 0.3, 0.3, 0);
             k.playSound(k, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.4f, 1.6f);

@@ -137,7 +137,7 @@ final class Zelda implements Modus {
         YamlConfiguration gebouwd = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gebouwd.yml"));
         Bouwer b = plugin.bouwer();
         boolean klaar = b == null || !b.bezig();
-        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0;
+        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0;
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
             String hid = "zelda " + h.id();
             if (klaar && gebouwd.getInt("delen." + h.deelId(), -1) != h.versie())
@@ -148,6 +148,8 @@ final class Zelda implements Modus {
             }
             if (!inGebied(h.speelgebied)) fouten.add(hid + ": speelgebied buiten het Zelda-gebied");
             if (h.rust.size() < 2) fouten.add(hid + ": te weinig rustplaatsen (" + h.rust.size() + ")");
+            for (int i = 0; i < h.rust.size(); i++)
+                if (h.rust.get(i).index != i) fouten.add(hid + ": rustplaats " + h.rust.get(i).id + " heeft nummer " + h.rust.get(i).index + " op plek " + i + " (nummers 0 … n−1)");
             for (ZeldaHoofdstuk.Rust r : h.rust) {
                 if (!h.speelgebied.in(r.plek) || !r.zone.in(r.plek)) fouten.add(hid + ": rustplaats " + r.id + " ligt niet in zijn zone/speelgebied");
                 if (!klaar) continue;
@@ -167,8 +169,9 @@ final class Zelda implements Modus {
                 }
                 if (k.fase == ZeldaHoofdstuk.Fase.RUST) {
                     if (!deurKlopt(h, k.in, true)) fouten.add(hid + ": kamer " + k.id + ": ingang is dicht");
-                    if (!deurKlopt(h, k.uit, false)) fouten.add(hid + ": kamer " + k.id + ": uitgang is open");
+                    if (!deurKlopt(h, k.uit, k.alleenBel)) fouten.add(hid + ": kamer " + k.id + ": uitgang is " + (k.alleenBel ? "dicht (een oefenplek is open)" : "open"));
                 }
+                if (k.alleenBel && k.bel == null) fouten.add(hid + ": kamer " + k.id + ": alleen met de bel, maar er is geen bel");
             }
             for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) {
                 uitd++;
@@ -210,10 +213,15 @@ final class Zelda implements Modus {
                     if (h.w.getBlockAt(c[0], c[1], c[2]).getType() != ZeldaHoofdstuk.Spiegels.BLOK) fouten.add(hid + ": spiegels " + sp.id + ": geen spiegel op " + c[0] + "," + c[1] + "," + c[2]);
                 if (!deurKlopt(h, sp.deur, false)) fouten.add(hid + ": spiegels " + sp.id + ": deur staat al open");
             }
-            // bouwregel vanaf eiland 2: per half eiland hoogstens één verplichte kamer (het Lindewoud is ouder)
-            if (h.eiland != EILANDEN.get(0)) {
-                long moet = h.kamers.stream().filter(k -> !k.vrijwillig && k.baas == null).count();
-                if (moet > 1) fouten.add(hid + ": " + moet + " verplichte kamers (hoogstens 1 per half eiland)");
+            // bouwregel: per half eiland hoogstens één verplichte kamer (plus de baas); oefenplekken (alleen met de bel) tellen niet
+            long moet = h.kamers.stream().filter(k -> !k.vrijwillig && !k.alleenBel && k.baas == null).count();
+            if (moet > 1) fouten.add(hid + ": " + moet + " verplichte kamers (hoogstens 1 per half eiland)");
+            // poorten voor wie iets heeft (het lichtwoord): dicht in rust, en niet voor iedereen open
+            for (ZeldaHoofdstuk.Poort po : h.poorten) {
+                poorten++;
+                if (!inGebied(po.gebied) || !po.deur.omvang().binnen(po.gebied)) fouten.add(hid + ": poort " + po.id + " ligt niet in zijn gebied");
+                if (po.mag.test(new ZeldaVoortgang.Stand())) fouten.add(hid + ": poort " + po.id + " gaat voor iedereen open");
+                if (klaar && !po.deur.isOpen && !deurKlopt(h, po.deur, false)) fouten.add(hid + ": poort " + po.id + " staat open");
             }
             for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) {
                 haken++;
@@ -335,7 +343,7 @@ final class Zelda implements Modus {
         info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
                 + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
                 + " personen=" + personen + " missies=" + missies + " hartstukjes=" + stukjes + " barsten=" + barsten + " haakpunten=" + haken
-                + " spiegels=" + spieg + " voorwerpen=" + spel.voorwerpen.size()
+                + " spiegels=" + spieg + " poorten=" + poorten + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
     }

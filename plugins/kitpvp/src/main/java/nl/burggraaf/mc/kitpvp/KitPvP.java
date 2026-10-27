@@ -1039,20 +1039,24 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "kasteel-noord", 0, -1, kz + 30, -44, 44, g - 3, g + 22, 80, 6));
         f.add(Kaart.voor(w, map, "kasteel-veld", 0, -1, kz + 13, -26, 26, g - 1, g + 14, 30, 10));
         f.add(Kaart.voor(w, map, "kitruimte-arena", 0, 1, -58, -10, 10, g + 7, g + 17, 30, 12));
-        // Story of Zelda, hoofdstuk 1: het hele pad van boven, in stukken van dichtbij, en van opzij
+        // Story of Zelda, eiland 1 (het open Lindewoud): het hele eiland van boven, de streken van dichtbij, en van opzij
         int zx = ZeldaHoofdstuk1.X0, zg = g + 8;
-        f.add(Kaart.boven(w, map, "zelda-boven", zx - 8, -48, zx + 480, 48, g - 2, zg + 50, 2));
-        String[] stuk = {"thuis", "ruine", "kloof", "veen", "haven"};
-        for (int i = 0; i < stuk.length; i++)
-            f.add(Kaart.boven(w, map, "zelda-" + stuk[i], zx - 6 + i * 80, -26, zx + 94 + i * 80, 26, g - 2, zg + 22, 6));
-        f.add(Kaart.voor(w, map, "zelda-zij", 0, 1, -30, zx - 6, zx + 470, g, zg + 50, 60, 2));
-        f.add(Kaart.voor(w, map, "zelda-kloof-zij", 0, 1, -6, zx + 158, zx + 208, g, zg + 10, 14, 10));
-        f.add(Kaart.voor(w, map, "zelda-ruine-zij", 0, 1, -12, zx + 110, zx + 156, g + 6, zg + 12, 30, 10));
+        f.add(Kaart.boven(w, map, "zelda-boven", zx - 60, -110, zx + 400, 110, g - 2, zg + 50, 2));
+        f.add(Kaart.boven(w, map, "zelda-thuis", zx - 10, -22, zx + 90, 22, g - 2, zg + 22, 6));
+        f.add(Kaart.boven(w, map, "zelda-dorp", zx + 82, -24, zx + 142, 28, g - 2, zg + 22, 8));
+        f.add(Kaart.boven(w, map, "zelda-noord", zx + 78, -82, zx + 186, -10, g - 2, zg + 22, 5));
+        f.add(Kaart.boven(w, map, "zelda-tempel", zx + 160, -24, zx + 276, 24, g - 2, zg + 22, 5));
+        f.add(Kaart.boven(w, map, "zelda-veen", zx + 112, 32, zx + 240, 92, g - 2, zg + 22, 5));
+        f.add(Kaart.boven(w, map, "zelda-haven", zx + 250, -30, zx + 392, 66, g - 2, zg + 22, 4));
+        f.add(Kaart.voor(w, map, "zelda-zij", 0, 1, -100, zx - 50, zx + 470, g, zg + 50, 200, 2));
+        f.add(Kaart.voor(w, map, "zelda-kloof-zij", 0, 1, -6, zx + 212, zx + 262, g, zg + 10, 14, 10));
+        f.add(Kaart.voor(w, map, "zelda-ruine-zij", 0, 1, -12, zx + 164, zx + 210, g + 6, zg + 12, 30, 10));
+        f.add(Kaart.voor(w, map, "zelda-toren-zij", 0, 1, -16, zx + 88, zx + 136, g + 6, zg + 22, 30, 10));    // de sterrentoren en de linde
         f.add(Kaart.voor(w, map, "zelda-haven-zij", 0, 1, -24, zx + 320, zx + 390, g + 2, zg + 22, 40, 8));
-        f.add(Kaart.voor(w, map, "zelda-kring-zij", 0, 1, -12, zx + 278, zx + 314, g + 6, zg + 14, 34, 10));
-        f.add(Kaart.boven(w, map, "zelda-eik", zx + 82, -28, zx + 112, 4, g - 2, zg + 5, 10));                 // holle eik en houtkap (onder de kruin)
-        f.add(Kaart.voor(w, map, "zelda-richel", 1, 0, zx + 185, -20, 2, g, zg + 8, 20, 10));                   // oostwand van de Kloof
-        f.add(Kaart.voor(w, map, "zelda-barst", 0, 1, 2, zx + 140, zx + 154, zg - 1, zg + 9, 10, 12));          // gebarsten muur in het heiligdom
+        f.add(Kaart.voor(w, map, "zelda-kring-zij", 0, 1, 50, zx + 195, zx + 231, g + 6, zg + 14, 34, 10));
+        f.add(Kaart.boven(w, map, "zelda-eik", zx + 79, -78, zx + 109, -46, g - 2, zg + 5, 10));                // holle eik en houtkap (onder de kruin)
+        f.add(Kaart.voor(w, map, "zelda-richel", 1, 0, zx + 239, -20, 2, g, zg + 8, 20, 10));                   // oostwand van de Kloof
+        f.add(Kaart.voor(w, map, "zelda-barst", 0, 1, 2, zx + 194, zx + 208, zg - 1, zg + 9, 10, 12));          // gebarsten muur in het heiligdom
         // eiland 2a, het Zilverstrand west: alles van boven, het dorp, de kelder (net onder het plafond), de kaap en de duinen
         f.add(Kaart.boven(w, map, "zelda-e2a-boven", ZeldaEiland2a.X1, -440, ZeldaEiland2a.X2, -200, g - 2, zg + 45, 3));
         f.add(Kaart.boven(w, map, "zelda-e2a-dorp", 1108, -322, 1172, -210, g - 2, zg + 22, 6));

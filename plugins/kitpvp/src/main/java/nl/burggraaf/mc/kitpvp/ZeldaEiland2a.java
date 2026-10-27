@@ -32,6 +32,9 @@ import org.joml.Vector3f;
  * hartstukje), een smokkelgrot achter een gebarsten muur onder de kaap (hartstukje, met bommen) en een hartstukje boven
  * op de Meeuwenrots (haakpunt, pas met de klauwhaak van eiland 3). De dijk naar de tempel staat nog onder water: eiland
  * 2b sluit aan op {@link #DIJK_X} (zie ZELDA.md). Rustplaatsen houden hun nummer: zet een nieuwe altijd achteraan.
+ *
+ * <p>Aanhaking met het Lindewoud (sessie zelda-lindewoud-v2, zonder blokken): Tijmen de tovenaar staat op het plein
+ * (de wegwijzer, zoals in Lindedorp), en aan de voet van de dijk groeit zeekraal voor Hanne (haar zijmissie Zeekraal).
  */
 final class ZeldaEiland2a extends ZeldaHoofdstuk {
 
@@ -651,6 +654,21 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                         r("Teun", "De vuurtoren brandt weer. Dat ik dat nog zie."),
                         r("Teun", "De bundel wijst naar de tempel. Bij eb, jong.")), null);
         hendrik();
+        tijmen();
+    }
+
+    /**
+     * Tijmen, de reizende tovenaar van het Lindewoud (zie ZELDA.md: een terugkerend personage): hij was er eerder dan
+     * jij, en weet altijd waar je volgende opdracht is. Zonder blokken (geen herbouw nodig).
+     */
+    private void tijmen() {
+        Persoon tijmen = persoon(new Persoon("Tijmen", plek(1142, G + 1, -297, -90f), null, List.of(r("Tijmen", "De sterren zwijgen even."))));
+        tijmen.soort = org.bukkit.entity.EntityType.WANDERING_TRADER;
+        tijmen.eenmalig("tijmen-zout", null, List.of(
+                        r("Tijmen", "Daar ben je! Ik was er al. De sterren gaan snel."),
+                        r("Wiske", "Hoe komt hij hier nou weer?"),
+                        r("Tijmen", "Hier ligt een baken. Volg het licht, dan vind je het.")), null)
+                .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.wegwijzer(p, "Tijmen"));
     }
 
     private void rokerij() {
@@ -1095,6 +1113,13 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         }
         verhaal(new Verhaal("dijk", Box.van(1208, G, -335, 1220, G + 5, -325), List.of(
                 r("Wiske", "De dijk loopt de zee in. Nu staat hij onder water."))));
+        // zeekraal aan de voet van de dijk: een boodschap voor Hanne op het Lindewoud (zie ZeldaHoofdstuk1, zijmissie Zeekraal)
+        Vondst zeekraal = vondst(new Vondst("zeekraal", "Zeekraal", "voor Hanne", Material.SEA_PICKLE,
+                plek(1209, G + 1.3, -327, 0f), Box.van(1208, G, -328, 1210, G + 3, -326)));
+        zeekraal.vereist = "g:hanne-3";
+        zeekraal.daarna = (spel, p, s) -> {
+            if (s.missie("zeekraal") == 1) spel.missie(p, "zeekraal", 2);
+        };
     }
 
     // ── 11. terug bij Mira: het licht gaat aan (einde van 2a) ───────────────────────────────

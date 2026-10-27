@@ -22,6 +22,8 @@ final class ZeldaRegels {
     static final int MAX_HARNAS = 4;
     /** Hoeveel een vol flesje geneest (halve harten). */
     static final double FLES_HP = 10;
+    /** Met sterk bronwater (vlag {@code sterkwater}, van Hanne) geneest een flesje meer. */
+    static final double FLES_HP_STERK = 14;
 
     /** Basis + hartcontainers ({@code hart…}) + een hart per vier hartstukjes ({@code hs:…}). */
     static int harten(ZeldaVoortgang.Stand s) {
@@ -61,6 +63,11 @@ final class ZeldaRegels {
         return true;
     }
 
+    /** Hoeveel een flesje van deze speler geneest (halve harten). */
+    static double flesHp(ZeldaVoortgang.Stand s) {
+        return s.heeft("sterkwater") ? FLES_HP_STERK : FLES_HP;
+    }
+
     /** Eén flesje leegdrinken; false als je geen vol flesje hebt. */
     static boolean drink(ZeldaVoortgang.Stand s) {
         int v = vol(s);
@@ -73,6 +80,26 @@ final class ZeldaRegels {
     static ZeldaHoofdstuk.Doel doel(List<ZeldaHoofdstuk.Doel> doelen, ZeldaVoortgang.Stand s) {
         for (ZeldaHoofdstuk.Doel d : doelen) if (d.klaar() == null || !d.klaar().test(s)) return d;
         return null;
+    }
+
+    /**
+     * Het doel waar je nu heen moet, gezien vanaf {@code x, z}: het eerste dat nog niet klaar is; hoort het bij een groep
+     * (doelen die je in elke volgorde mag doen), dan het dichtstbijzijnde uit die groep dat nog niet klaar is.
+     */
+    static ZeldaHoofdstuk.Doel doel(List<ZeldaHoofdstuk.Doel> doelen, ZeldaVoortgang.Stand s, double x, double z) {
+        ZeldaHoofdstuk.Doel eerste = doel(doelen, s);
+        if (eerste == null || eerste.groep() == null) return eerste;
+        ZeldaHoofdstuk.Doel best = eerste;
+        double bd = Double.MAX_VALUE;
+        for (ZeldaHoofdstuk.Doel d : doelen) {
+            if (!eerste.groep().equals(d.groep()) || d.plek() == null || (d.klaar() != null && d.klaar().test(s))) continue;
+            double a = (d.plek().getX() - x) * (d.plek().getX() - x) + (d.plek().getZ() - z) * (d.plek().getZ() - z);
+            if (a < bd) {
+                bd = a;
+                best = d;
+            }
+        }
+        return best;
     }
 
     /** De zijmissies waar je mee bezig bent (stap 1 … n), in volgorde. */
@@ -108,7 +135,7 @@ final class ZeldaRegels {
     }
 
     /**
-     * Verplichte kamers vóór de baas: de gevechten op het hoofdpad (niet {@code vrijwillig}, geen baas) die vóór de
+     * Verplichte kamers vóór de baas: de gevechten op het hoofdpad (niet {@code vrijwillig} of {@code alleenBel}, geen baas) die vóór de
      * eerste baaskamer liggen. Bouwregel: hoogstens twee (de zelftest controleert het).
      */
     static int verplichtVoorBaas(List<Object> volgorde) {
@@ -116,7 +143,7 @@ final class ZeldaRegels {
         for (Object o : volgorde) {
             if (!(o instanceof ZeldaHoofdstuk.Kamer k)) continue;
             if (k.baas != null) return n;
-            if (!k.vrijwillig) n++;
+            if (!k.vrijwillig && !k.alleenBel) n++;
         }
         return n;
     }

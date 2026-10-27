@@ -76,7 +76,7 @@ final class ZeldaTest {
         if (r != null && !r.dicht()) pl.kiesModus(p, r.modus());
         moet(pl.spelers.van(id).plek() == Toestand.Plek.SPEL && "zelda".equals(pl.spelers.van(id).modus()), "na de poort niet in Zelda: " + pl.spelers.van(id));
         moet(z.spel.speelt(p), "geen Zelda-sessie");
-        moet(pl.stand(p).equals("bots"), "stand in Zelda is " + pl.stand(p));
+        moet(pl.stand(p).equals("geen"), "stand in Zelda is " + pl.stand(p) + " (geen huisdier in Zelda)");
     }
 
     void route(boolean alles) {
@@ -108,13 +108,14 @@ final class ZeldaTest {
                 if (!pad(d, alles, d == h)) break eilanden;
                 stap("einde " + d.id(), () -> { }, 2, () -> stand().heeft(d.id()), 20);
             }
-            if (e != h.eiland) stap("belopen " + e.id(), () -> {                    // alles te halen zonder te teleporteren?
+            stap("belopen " + e.id(), () -> {                                         // alles te halen zonder te teleporteren?
                 java.util.Set<String> vw = new java.util.HashSet<>();
                 for (ZeldaVoorwerp v : z.spel.voorwerpen) vw.add(v.vlag());
                 for (String f : ZeldaLopen.onbereikbaar(e, vw)) fouten.add("niet te belopen: " + f);
             }, 2, () -> true, 1);
             laterHalen(e);
             zijmissies(e);
+            klaar(e, false);
             for (ZeldaHoofdstuk d : e.delen())
                 for (ZeldaHoofdstuk.Persoon pe : d.personen)
                     if (pe.naam.equals("Brecht")) stap("Brecht: varen", () -> {
@@ -153,6 +154,20 @@ final class ZeldaTest {
                 for (ZeldaHoofdstuk.Vondst v : nu) if (stand().heeft(v.voorwerp)) moet(stand().heeft(v.vlag), "later terug: " + v.vlag + " niet te halen met " + v.voorwerp);
             }, 2, () -> true, 1);
         }
+        // boodschappen over zee (Hanne vraagt zeekraal van het Zilverstrand): twee rondes langs alle eilanden, dan alles klaar
+        if (alles && z.EILANDEN.size() > 1) {
+            for (int ronde = 0; ronde < 2; ronde++)
+                for (ZeldaEiland e : z.EILANDEN) {
+                    stap("boodschap: naar " + e.id(), () -> {
+                        stil();
+                        if (z.spel.sessie(p).h.eiland == e) return;
+                        z.spel.kaart(p);
+                        moet(klik("eiland:" + e.id()), "kaart: " + e.naam() + " staat er niet op");
+                    }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
+                    zijmissies(e);
+                }
+            for (ZeldaEiland e : z.EILANDEN) klaar(e, true);
+        }
         stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
             ZeldaVoortgang.Stand s = stand();
@@ -177,7 +192,7 @@ final class ZeldaTest {
                 if (!alles && kamerGehad) return false;
             } else if (o instanceof ZeldaHoofdstuk.Verhaal v) {
                 stap("verhaal " + v.id, () -> p.teleport(v.zone.midden(h.w).add(0, 1, 0)), 8,
-                        () -> stand().heeft("v:" + v.id) || (v.vereist != null && !stand().heeft(v.vereist)), 40);
+                        () -> stand().heeft("v:" + v.id) || (v.vereist != null && !stand().heeft(v.vereist)) || (v.als != null && !v.als.test(stand())), 40);
             } else if (o instanceof ZeldaHoofdstuk.Vondst v) {
                 if (v.vereist != null && v.vereist.startsWith("g:")) continue;          // na een gesprek: zie «zijmissies»
                 if (v.voorwerp != null)                                                   // pas met een later voorwerp: blijft liggen
@@ -186,6 +201,37 @@ final class ZeldaTest {
                         return true;
                     }, 1);
                 else stap("vondst " + v.vlag, () -> p.teleport(v.zone.midden(h.w).add(0, 1, 0)), 8, () -> stand().heeft(v.vlag), 40);
+            } else if (o instanceof ZeldaHoofdstuk.Praten pr) {               // praten met wie op het pad staat (Tijmen, Bram)
+                ZeldaHoofdstuk.Persoon pe = pr.wie();
+                stap("praten met " + pe.naam, () -> {
+                    p.teleport(vrij(pe.plek.clone().add(1.5, 0, 0)));
+                    moet(pe.nieuw(stand()), pe.naam + " heeft niets nieuws te zeggen");
+                }, 4, () -> {
+                    if (!pe.nieuw(stand())) return true;
+                    stil();
+                    z.spel.praat(p, pe);
+                    gedaan.add(pe.naam);
+                    return false;
+                }, 20);
+            } else if (o instanceof ZeldaHoofdstuk.Poort po) {                // een poort voor wie iets heeft: hij gaat open
+                stap("poort " + po.id, () -> {
+                    if (po.deur.isOpen) z.spel.herstel(po);
+                    p.teleport(vrij(po.gebied.midden(h.w).add(0, 1, 0)));
+                }, 8, () -> po.deur.isOpen, 40);
+            } else if (o instanceof ZeldaHoofdstuk.Kamer k && k.alleenBel) {  // een oefenplek: rustig, tot je de bel luidt
+                kamerGehad = true;
+                stap("kamer " + k.id + " rustig", () -> {
+                    if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
+                    p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                }, 20, () -> {
+                    moet(k.fase == ZeldaHoofdstuk.Fase.RUST && k.in.isOpen && k.uit.isOpen && k.vijanden.isEmpty(), "kamer " + k.id + ": begint zonder bel");
+                    return true;
+                }, 1);
+                stap("kamer " + k.id + " bel", () -> belKlik(h, k), 5, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG && !k.in.isOpen && !k.vijanden.isEmpty(), 40);
+                stap("kamer " + k.id + " verslaan", () -> moet(z.spel.muziek.lus(p) == k.muziek, "kamer " + k.id + ": geen gevechtsmuziek"),
+                        5, () -> verslaan(h, k), 900);
+                stap("kamer " + k.id + " open", () -> moet(k.in.isOpen && k.uit.isOpen && stand().heeft("k:" + k.id), "kamer " + k.id + ": niet open of niet gewonnen"),
+                        2, () -> true, 1);
             } else if (o instanceof ZeldaHoofdstuk.Kamer k) {
                 kamerGehad = true;
                 stap("kamer " + k.id + " dicht", () -> {
@@ -195,7 +241,7 @@ final class ZeldaTest {
                 if (k.baas != null) stap("baas " + k.baas.naam, () -> {
                     moet(k.baas.leeft() && k.baas.balk != null, "baas " + k.baas.naam + " is er niet");
                     if (k.baas.leeft()) k.baas.ent.setHealth(k.baas.ent.getHealth() * 0.55);
-                }, 50, () -> k.vijanden.size() >= 3 && k.baas.balk.progress() < 0.6f, 60);
+                }, 50, () -> k.vijanden.size() >= 1 + Math.max(1, k.baas.oproepen[0]) && k.baas.balk.progress() < 0.6f, 60);
                 stap("kamer " + k.id + " verslaan", () -> {
                     moet(!k.in.isOpen && !k.uit.isOpen, "kamer " + k.id + ": deuren niet dicht tijdens het gevecht");
                     moet(!k.vijanden.isEmpty(), "kamer " + k.id + ": geen vijanden");
@@ -217,14 +263,7 @@ final class ZeldaTest {
                         z.spel.herstel(k);
                         p.teleport(k.uit.omvang().midden(h.w).add(2, 0, 0));
                     }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.GEWONNEN && k.uit.isOpen, 40);
-                    stap("kamer " + k.id + " bel", () -> {                                   // rechtsklik op de bel, zoals een speler
-                        p.teleport(k.start.midden(h.w).add(0, 1, 0));
-                        var b = h.w.getBlockAt(k.bel[0], k.bel[1], k.bel[2]);
-                        var e = new org.bukkit.event.player.PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
-                                p.getInventory().getItemInMainHand(), b, org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND);
-                        z.spel.onKlik(e);
-                        moet(e.isCancelled(), "kamer " + k.id + ": de bel reageert niet op een klik");
-                    }, 5,
+                    stap("kamer " + k.id + " bel", () -> belKlik(h, k), 5,
                             () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.terug && !k.in.isOpen && !k.vijanden.isEmpty(), 40);
                     stap("kamer " + k.id + " bel verslaan", () -> { }, 5, () -> verslaan(h, k), 1200);
                     stap("kamer " + k.id + " bel gewonnen", () -> moet(k.golf == k.golven.size() + k.extra.size() - 1,
@@ -270,6 +309,16 @@ final class ZeldaTest {
             }
         }
         return alles;
+    }
+
+    /** Rechtsklik op de bel van een kamer, zoals een speler (vanuit het midden van de kamer). */
+    private void belKlik(ZeldaHoofdstuk h, ZeldaHoofdstuk.Kamer k) {
+        p.teleport(k.start.midden(h.w).add(0, 1, 0));
+        var b = h.w.getBlockAt(k.bel[0], k.bel[1], k.bel[2]);
+        var e = new org.bukkit.event.player.PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
+                p.getInventory().getItemInMainHand(), b, org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND);
+        z.spel.onKlik(e);
+        moet(e.isCancelled(), "kamer " + k.id + ": de bel reageert niet op een klik");
     }
 
     /** Een vrije plek (twee blokken lucht met een vloer) op {@code l}, vlak eronder of anders erboven (een duintop). */
@@ -359,7 +408,7 @@ final class ZeldaTest {
 
     /**
      * De zijmissies van een eiland, zoals een speler ze doet: praat met wie iets nieuws heeft, pak wat daarna te zien is,
-     * tot er niets meer is. Dan moeten alle missies klaar zijn, en alle hartstukjes die nu te halen zijn gevonden.
+     * tot er niets meer is (daarna {@link #klaar}).
      */
     private void zijmissies(ZeldaEiland e) {
         final int[] wacht = {0};
@@ -384,10 +433,18 @@ final class ZeldaTest {
                     }
             return true;
         }, 900);
-        stap("zijmissies klaar", () -> {
+    }
+
+    /**
+     * Zijn de zijmissies van dit eiland klaar, en de hartstukjes gevonden die nu te halen zijn? {@code alle}: ook de
+     * missies die nog niet begonnen zijn (aan het eind; een boodschap over zee begint pas als je op het andere eiland was).
+     */
+    private void klaar(ZeldaEiland e, boolean alle) {
+        stap("zijmissies klaar " + e.id(), () -> {
             ZeldaVoortgang.Stand s = stand();
             for (ZeldaHoofdstuk d : e.delen()) {
-                for (ZeldaHoofdstuk.Missie m : d.missies) moet(s.missieKlaar(m.id()), "missie " + m.id() + " niet klaar (stap " + s.missie(m.id()) + ")");
+                for (ZeldaHoofdstuk.Missie m : d.missies)
+                    if (alle || s.missie(m.id()) > 0) moet(s.missieKlaar(m.id()), "missie " + m.id() + " niet klaar (stap " + s.missie(m.id()) + ")");
                 for (String hs : d.stukjes) {
                     ZeldaHoofdstuk.Vondst v = null;
                     for (ZeldaHoofdstuk.Vondst x : d.vondsten) if (x.vlag.equals(hs)) v = x;
@@ -407,7 +464,7 @@ final class ZeldaTest {
         pl.naarHub(p);
         z.spel.voortgang.wis(id);
         ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
-        ZeldaHoofdstuk.Kamer k = h.kamers.get(0);
+        ZeldaHoofdstuk.Kamer k = h.kamers.stream().filter(x -> !x.alleenBel).findFirst().orElseThrow();
         stap("poort", this::doorDePoort, 2, () -> true, 1);
         stap("kamer " + k.id + " dicht", () -> {
             if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
@@ -452,13 +509,13 @@ final class ZeldaTest {
         stap("hint", () -> {
             sp.sessie(p).rij.clear();
             sp.hint(p);
-            moet("schild".equals(sp.sessie(p).hintDoel), "hint: doel " + sp.sessie(p).hintDoel + " (verwacht schild)");
+            moet("tijmen".equals(sp.sessie(p).hintDoel), "hint: doel " + sp.sessie(p).hintDoel + " (verwacht tijmen)");
             moet(!sp.sessie(p).rij.isEmpty() || sp.sessie(p).nu != null, "hint: Wiske zegt niets");
         }, 60, () -> true, 1);
         stap("hint nog eens", () -> {
             sp.hint(p);
             String tekst = rij();
-            moet(tekst.contains("glanst"), "hint 2 zegt niet wat je moet doen: " + tekst);
+            moet(tekst.contains("Praat met Tijmen"), "hint 2 zegt niet wat je moet doen: " + tekst);
         }, 2, () -> true, 1);
         ZeldaHoofdstuk.Bron bron = h.bronnen.get(0);
         stap("bron", () -> {
@@ -571,7 +628,7 @@ final class ZeldaTest {
             moet(p.getLocation().distanceSquared(e.aanlegPlek()) < 4, "niet bij de aanleg: " + xyz(p.getLocation()));
             moet(stand().heeft("e:" + e.id()), "aankomst niet onthouden");
         }, 10, () -> true, 1);
-        ZeldaHoofdstuk.Kamer k = h.kamers.get(1);
+        ZeldaHoofdstuk.Kamer k = h.kamers.stream().filter(x -> !x.alleenBel && !x.tips.isEmpty()).findFirst().orElseThrow();
         stap("tip: kamer " + k.id, () -> {
             stil();
             if (k.fase != ZeldaHoofdstuk.Fase.RUST) sp.herstel(k);

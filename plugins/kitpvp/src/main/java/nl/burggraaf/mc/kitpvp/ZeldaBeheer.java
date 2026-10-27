@@ -95,7 +95,7 @@ final class ZeldaBeheer {
 
     // ── plekken ─────────────────────────────────────────────────────────────────────────────
 
-    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen. */
+    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten. */
     Map<String, Location> plekken() {
         Map<String, Location> m = new LinkedHashMap<>();
         for (ZeldaEiland e : spel.eilanden) {
@@ -106,6 +106,10 @@ final class ZeldaBeheer {
                 for (ZeldaHoofdstuk.Rust r : h.rust) zet(m, r.id, r.plek);
                 for (ZeldaHoofdstuk.Kamer k : h.kamers) zet(m, k.id, k.start.midden(h.w));
                 for (ZeldaHoofdstuk.Persoon pe : h.personen) zet(m, pe.naam, pe.plek);
+                for (ZeldaHoofdstuk.Reeks r : h.reeksen) zet(m, r.id, r.gebied.midden(h.w));
+                for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) zet(m, u.id, u.start.midden(h.w));
+                for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) zet(m, sp.id, sp.gebied.midden(h.w));
+                for (ZeldaHoofdstuk.Poort po : h.poorten) zet(m, po.id, po.gebied.midden(h.w));
             }
         }
         if (spel.zee.w != null && !spel.zee.dek.isEmpty()) zet(m, "zee", spel.zee.dek.get(0));
@@ -139,6 +143,15 @@ final class ZeldaBeheer {
         return l;
     }
 
+    /** Een plek waar je kunt staan: hier, of het eerste stuk erboven met twee blokken lucht (een puzzel ligt soms in de grond). */
+    private static Location vrij(Location l) {
+        for (int i = 0; i < 24; i++) {
+            Location t = l.clone().add(0, i, 0);
+            if (t.getBlock().isPassable() && t.clone().add(0, 1, 0).getBlock().isPassable()) return t;
+        }
+        return l;
+    }
+
     void ga(Player p, String naam) {
         Map<String, Location> m = plekken();
         String k = kies(m.keySet(), naam);
@@ -148,7 +161,7 @@ final class ZeldaBeheer {
         }
         if (!aan(p)) return;
         ZeldaSpel.Sessie ss = spel.sessie(p);
-        Location l = m.get(k).clone();
+        Location l = vrij(m.get(k).clone());
         if (ss != null && ss.vaart != null) ss.vaart = null;
         p.setFallDistance(0);
         p.teleport(l);
