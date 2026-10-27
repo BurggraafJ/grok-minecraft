@@ -1117,7 +1117,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         haak(h3, h2.landing());
         verhaal(new Verhaal("uitkijk", Box.van(1522, G + 7, -428, 1532, G + 10, -423), List.of(
                 r("Wiske", "Boven! Kijk, daar ligt IJshoeve."),
-                r("Wiske", "En in het oosten: de Bergpoort."))));
+                r("Wiske", "En in het oosten: de Bergpoort.")))).vereist = "klauwhaak";
         geit("Mekker", plek(1514, G + 7, -410, 160f));
     }
 
@@ -1152,7 +1152,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
             zet(1551, vlak + 6, PZ, Material.CHISELED_STONE_BRICKS);
             zet(1551, vlak + 4, PZ, HAAKPUNT);
             for (int z : new int[]{PZ - 2, PZ + 2}) zet(1551, vlak + 4, z, Bouwer.trap(Material.STONE_BRICK_STAIRS, BlockFace.WEST, true));
-            for (int z : new int[]{PZ - 4, PZ + 4}) zet(1550, vlak + 3, z, Bouwer.gericht(Material.LIGHT_BLUE_WALL_BANNER, BlockFace.WEST));
+            for (int z : new int[]{PZ - 3, PZ + 3}) zet(1550, vlak + 3, z, Bouwer.gericht(Material.LIGHT_BLUE_WALL_BANNER, BlockFace.WEST));
             // de oude wachterstrap langs de wand, halverwege ingestort
             for (int x = 1541; x <= 1549; x++) {
                 if (x >= 1545 && x <= 1547) {
@@ -1290,6 +1290,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                             p.spawnParticle(Particle.DUST, new Location(w, x + zij * (c[1] - a[1]) / len, G + 1.05, z - zij * (c[0] - a[0]) / len), 1, 0, 0, 0, 0, poot);
                         }
                     }
+            }
+            if (!s.heeft(DEUR) && inGang(l) && l.getX() >= 1453 && l.getZ() <= -426) {   // samen door de opgegraven deur: dan heb jij hem ook
+                s.zet(DEUR);
+                spel.voortgang.vuil();
             }
             if (diep.in(l) && !s.heeft("lantaarn") && !spel.inGevecht(p)) {   // zonder licht verdwaal je in de storm: terug naar de bosrand
                 p.setFallDistance(0);

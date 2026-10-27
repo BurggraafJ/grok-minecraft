@@ -1614,6 +1614,7 @@ final class ZeldaSpel implements Listener {
                 if (nieuw instanceof LivingEntity le) p.ent = le;
                 else nieuw.remove();
             } else if (!moet && p.ent != null) {
+                if (p.zichtbaar != null) for (Player q : Bukkit.getOnlinePlayers()) if (q.canSee(p.ent)) q.hideEntity(plugin, p.ent);   // niets laten hangen
                 p.ent.remove();
                 p.ent = null;
             }
@@ -1708,10 +1709,7 @@ final class ZeldaSpel implements Listener {
         bewaar();
         muziek.speel(p, ZeldaMuziek.VONDST);
         Sessie ss = sessie(p);
-        if (ss != null) ss.naamGevraagd = true;
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (p.isOnline() && speelt(p)) naamMenu(p);
-        }, 30L);
+        if (ss != null) ss.naamGevraagd = false;             // het menu komt (in seconde) als het gesprek uit is
     }
 
     /** Verborgen vondsten in de buurt die deze speler nog niet heeft (voor het snuffelen van zijn huisdier). */
@@ -2390,10 +2388,10 @@ final class ZeldaSpel implements Listener {
     /** Een haak onderweg: eerst vliegt hij uit ({@code uit} tikken), dan trekt hij je erheen ({@code trek}; mis = terug). */
     private static final class Trek {
         final ZeldaHoofdstuk.Haakpunt hp;                    // null = mis
-        final Location oog, naar;                            // waar de haak vandaan komt en waar hij grijpt of stopt
+        final Location naar;                                 // waar de haak grijpt of stopt
+        Location oog;                                        // waar hij vandaan komt (bij het grijpen: waar je ogen dan zijn)
         final int uit, trek;
         int tik;
-        Location voet;                                       // waar je voeten begonnen (bij trekken)
 
         Trek(ZeldaHoofdstuk.Haakpunt hp, Location oog, Location naar, int uit, int trek) {
             this.hp = hp;
@@ -2437,7 +2435,7 @@ final class ZeldaSpel implements Listener {
     /** De klauwhaak schieten: grijpt hij een haakpunt (waar je op mikt, of een paar graden ernaast), dan trekt hij je erheen. */
     void haak(Player p) {
         Sessie ss = sessie(p);
-        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM)) return;
+        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM) || inGevecht(p)) return;
         p.setCooldown(Klauwhaak.ITEM, 14);
         Location oog = p.getEyeLocation();
         org.bukkit.util.Vector kijk = oog.getDirection();
@@ -2498,7 +2496,7 @@ final class ZeldaSpel implements Listener {
             } else {                                                         // raak: trekken, je ogen langs de ketting naar het haakpunt
                 int k = t.tik - t.uit;
                 if (k == 1) {
-                    t.voet = p.getLocation();
+                    t.oog = p.getEyeLocation();                              // vanaf waar je nu bent (je kon intussen bewegen)
                     w.playSound(t.naar, Sound.ITEM_TRIDENT_HIT_GROUND, 1f, 0.8f);
                     w.spawnParticle(Particle.CRIT, t.naar, 12, 0.3, 0.3, 0.3, 0.2);
                 }

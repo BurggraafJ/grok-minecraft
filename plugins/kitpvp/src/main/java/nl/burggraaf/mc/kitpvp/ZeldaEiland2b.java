@@ -898,11 +898,12 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 r("Wiske", "Door de deur, en zwem omhoog!")))).vereist = "r:getij";
         // een uitweg: een ladder naar een luik in het terras (voor wie hier zonder de Spoelkamer kwam, bv. samen spelen
         // terwijl een ander het water liet zakken); het luik gaat alleen van binnenuit open
-        if (b.plaats) for (int y = G - 5; y <= G - 1; y++) zet(1318, y, -358, Bouwer.gericht(Material.LADDER, BlockFace.NORTH));
+        BlockData ladder = Bouwer.gericht(Material.LADDER, BlockFace.SOUTH);                  // tegen de noordwand
+        if (b.plaats) for (int y = G - 5; y <= G - 1; y++) zet(1318, y, -358, ladder);
         org.bukkit.block.data.type.TrapDoor luik = (org.bukkit.block.data.type.TrapDoor) Material.IRON_TRAPDOOR.createBlockData();
         luik.setHalf(org.bukkit.block.data.Bisected.Half.TOP);
         luik.setFacing(BlockFace.NORTH);
-        poort(new Poort("luik", new Deur(luik, Material.AIR.createBlockData()).blok(1318, G, -358),
+        poort(new Poort("luik", new Deur(luik, ladder).blok(1318, G, -358),                    // open: de ladder loopt door tot het terras
                 Box.van(1316, G - 5, -358, 1319, G, -355), s -> s.heeft("e:zilverstrand")));
     }
 

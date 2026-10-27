@@ -228,7 +228,7 @@ final class ZeldaTest {
                     if (!ZeldaDier.actief(ZeldaDier.soort(stand())) || stand().dier != null) return true;
                     if (menuHeeft("naam:1")) klik("naam:1");
                     return stand().dier != null;
-                }, 120);
+                }, 400);
             } else if (o instanceof ZeldaHoofdstuk.Haak hk) {                 // de klauwhaak: een echte haak vanaf de plek ervoor
                 stap("haak " + hk.hp().id(), () -> haak(hk.hp(), hk.van()), 4,
                         () -> !z.spel.aanHetHaken(p) && p.getLocation().distanceSquared(hk.hp().landing()) < 2, 80);
