@@ -61,7 +61,7 @@ abstract class ZeldaHoofdstuk {
     }
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
-    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN }
+    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -365,6 +365,7 @@ abstract class ZeldaHoofdstuk {
         Villager.Type streek;                               // kleding van een dorpeling (null = vlakte)
         boolean kind;                                       // klein (een kind)
         java.util.function.Consumer<org.bukkit.entity.Entity> uiterlijk;   // na het verschijnen (bv. de kleur van een papegaai)
+        Predicate<ZeldaVoortgang.Stand> zichtbaar;          // alleen te zien voor wie dit klopt (een geit die thuis is; null = voor iedereen)
         LivingEntity ent;
 
         Persoon(String naam, Location plek, Villager.Profession beroep, List<Regel> praat) {
@@ -446,9 +447,20 @@ abstract class ZeldaHoofdstuk {
 
     /**
      * Een haakpunt voor de klauwhaak (eiland 3): een blok ({@link #HAAKPUNT}) waar de haak in grijpt, en de plek waar je
-     * dan staat. Alleen gegevens: het voorwerp dat je erheen trekt, bouwt de sessie van eiland 3.
+     * dan staat ({@code landing}). Richt de klauwhaak ({@link ZeldaSpel.Klauwhaak}) erop, binnen
+     * {@link ZeldaRegels#HAAK_BEREIK} blokken, en hij trekt je erheen.
      */
     record Haakpunt(String id, int x, int y, int z, Location landing) {}
+
+    /** In de volgorde van het pad: hier haak je je naar {@code hp} (de test schiet de klauwhaak vanaf {@code van}). */
+    record Haak(Haakpunt hp, Location van) {}
+
+    /**
+     * Een graafplek: hier ligt iets onder de sneeuw dat alleen een dierenneus vindt. Wie een dier heeft en in de buurt
+     * komt, ziet het erheen lopen en graven; daarna heb je {@code vlag} (bv. voor een poort die dan opengaat). {@code zegt}
+     * = wat Wiske dan zegt (mag null).
+     */
+    record Graaf(String id, Location plek, String vlag, Regel zegt) {}
 
     /**
      * Een poort die opengaat voor wie iets heeft of weet ({@code mag}, bv. het lichtwoord van Tijmen): staat er iemand in
@@ -538,6 +550,7 @@ abstract class ZeldaHoofdstuk {
     final List<Spiegels> spiegels = new ArrayList<>();
     final List<Poort> poorten = new ArrayList<>();
     final List<Getij> getijden = new ArrayList<>();
+    final List<Graaf> graven = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -620,7 +633,7 @@ abstract class ZeldaHoofdstuk {
             String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
                     : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id
-                    : o instanceof Getij g ? g.id : null;
+                    : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
@@ -645,6 +658,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Barst b) return b.muur.omvang().midden(w);
         if (o instanceof Poort po) return po.gebied.midden(w);
         if (o instanceof Getij g) return g.gebied.midden(w);
+        if (o instanceof Graaf gr) return gr.plek();
         return null;
     }
 
@@ -680,6 +694,7 @@ abstract class ZeldaHoofdstuk {
         spiegels.clear();
         poorten.clear();
         getijden.clear();
+        graven.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -783,6 +798,20 @@ abstract class ZeldaHoofdstuk {
     protected Haakpunt haakpunt(Haakpunt h) {
         haakpunten.add(h);
         return h;
+    }
+
+    /** Op dit punt van het pad haak je je naar {@code h} (vanaf {@code van}: daar staat de test als hij de haak schiet). */
+    protected Haak haak(Haakpunt h, Location van) {
+        Haak k = new Haak(h, van);
+        volgorde.add(k);
+        return k;
+    }
+
+    /** Een graafplek op het pad (je dier graaft hier iets op; de test wacht tot het gebeurd is). */
+    protected Graaf graaf(Graaf g) {
+        graven.add(g);
+        volgorde.add(g);
+        return g;
     }
 
     protected Verhaal verhaal(Verhaal v) {

@@ -178,6 +178,7 @@ final class ZeldaSpel implements Listener {
         this.hartKey = new NamespacedKey(plugin, "zelda-harten");
         voorwerpen.add(new Flesje());
         voorwerpen.add(new Bommen());
+        voorwerpen.add(new Klauwhaak());
     }
 
     void aan() {
@@ -304,6 +305,7 @@ final class ZeldaSpel implements Listener {
         muziek.vergeet(p.getUniqueId());
         metgezel.weg(p.getUniqueId());
         dier.weg(p.getUniqueId());
+        trekken.remove(p.getUniqueId());
         if (ss != null) for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.baas != null && k.baas.balk != null) p.hideBossBar(k.baas.balk);
         for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) u.loopt.remove(p.getUniqueId());
         p.resetPlayerTime();
@@ -525,9 +527,10 @@ final class ZeldaSpel implements Listener {
             for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) kamer(k, nu);
             Map<Player, ZeldaVoortgang.Stand> wie = new HashMap<>();
             for (Player p : spelers) wie.put(p, voortgang.van(p.getUniqueId()));
-            veilig("huisdier", () -> dier.tik(wie, this::verborgen));
+            veilig("huisdier", () -> dier.tik(wie, neus));
             veilig("bronnen", this::bronnen);
         }
+        if (!trekken.isEmpty()) veilig("klauwhaak", this::trekken);
         if (tikken % 20 == 0) {
             for (Player p : spelers) veilig("seconde", () -> seconde(p, sessie(p), nu));
             for (ZeldaHoofdstuk h : delen()) veilig("decor", () -> decor(h));
@@ -607,8 +610,8 @@ final class ZeldaSpel implements Listener {
         }
         ss.inBron = bron;
         muziek.achter(p, ss.h.muziek(l));
-        // huisdier gevonden maar nog naamloos: even vragen hoe hij heet
-        if (ZeldaDier.AAN && ZeldaDier.soort(s) != null && s.dier == null && !ss.naamGevraagd && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
+        // een dier dat meeloopt maar nog naamloos is: even vragen hoe hij heet
+        if (ZeldaDier.actief(ZeldaDier.soort(s)) && s.dier == null && !ss.naamGevraagd && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
             ss.naamGevraagd = true;
             naamMenu(p);
         }
@@ -988,6 +991,7 @@ final class ZeldaSpel implements Listener {
             case ROVER, MATROOS -> org.bukkit.entity.Zombie.class;     // geen drowned: die valt overdag niemand op het droge aan
             case ROVERSCHUTTER -> org.bukkit.entity.Skeleton.class;
             case HARPOENIER, KAPITEIN -> org.bukkit.entity.Drowned.class;   // met een drietand: gooien doet hij altijd
+            case NEVELWOLF -> org.bukkit.entity.Wolf.class;
         };
         w.spawnParticle(Particle.SOUL, l.clone().add(0, 0.5, 0), 20, 0.4, 0.2, 0.4, 0.03);
         w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.8, 0), 10, 0.3, 0.5, 0.3, 0.01);
@@ -1054,6 +1058,14 @@ final class ZeldaSpel implements Listener {
                     hp = 14;
                     eq.setHelmet(gekleurd(Material.LEATHER_HELMET, 0x2f6f6a));
                     eq.setItemInMainHand(new ItemStack(Material.TRIDENT));
+                }
+                case NEVELWOLF -> {                                  // een wolf in de ban van de nevel (Witte Toppen): rode ogen, snel, niet taai
+                    hp = 12;
+                    dmg = 3;
+                    if (m instanceof org.bukkit.entity.Wolf wo) {
+                        wo.setVariant(org.bukkit.entity.Wolf.Variant.SNOWY);
+                        wo.setAngry(true);
+                    }
                 }
                 case KAPITEIN -> {                                   // Kapitein Zoutbaard: groot, staat bij zijn ton, gooit drietanden
                     hp = 60;
@@ -1582,6 +1594,7 @@ final class ZeldaSpel implements Listener {
                     e.customName(Component.text(p.naam, GROEN));
                     e.setCustomNameVisible(false);
                     e.setRotation(p.plek.getYaw(), 0);
+                    if (p.zichtbaar != null) e.setVisibleByDefault(false);     // alleen voor wie hem mag zien (zie hieronder)
                     if (e instanceof LivingEntity le) {
                         le.setAI(false);
                         le.setCollidable(false);
@@ -1604,6 +1617,14 @@ final class ZeldaSpel implements Listener {
                 p.ent.remove();
                 p.ent = null;
             }
+            if (p.ent != null && p.zichtbaar != null)                  // een persoon die niet iedereen ziet (een geit die al thuis is)
+                for (UUID id : sessies.keySet()) {
+                    Player q = Bukkit.getPlayer(id);
+                    if (q == null || !q.getWorld().equals(p.plek.getWorld())) continue;
+                    boolean zien = p.zichtbaar.test(voortgang.van(id));
+                    if (zien && !q.canSee(p.ent)) q.showEntity(plugin, p.ent);
+                    else if (!zien && q.canSee(p.ent)) q.hideEntity(plugin, p.ent);
+                }
         }
         // wie iets nieuws te zeggen heeft (een gesprek dat je nog niet hoorde), glinstert zacht: alleen voor jou
         if (tikken % 40 == 0) for (ZeldaHoofdstuk.Persoon pe : h.personen) {
@@ -1611,7 +1632,7 @@ final class ZeldaSpel implements Listener {
             for (UUID id : sessies.keySet()) {
                 Player p = Bukkit.getPlayer(id);
                 if (p == null || !p.getWorld().equals(pe.plek.getWorld()) || p.getLocation().distanceSquared(pe.plek) > 24 * 24) continue;
-                if (pe.nieuw(voortgang.van(id)))
+                if (pe.nieuw(voortgang.van(id)) && (pe.zichtbaar == null || pe.zichtbaar.test(voortgang.van(id))))
                     p.spawnParticle(Particle.WAX_OFF, pe.ent.getLocation().add(0, pe.ent.getHeight() + 0.4, 0), 3, 0.15, 0.1, 0.15, 0.3);
             }
         }
@@ -1630,6 +1651,67 @@ final class ZeldaSpel implements Listener {
                 }
                 if (tikken % 40 == 0) b.midden.getWorld().spawnParticle(Particle.END_ROD, b.midden.clone().add(0, 0.8, 0), 2, 0.4, 0.4, 0.4, 0.01);
             }
+    }
+
+    /** Wat het dier van een speler zoekt: verborgen vondsten en graafplekken; in een gevecht gaat het uit de weg. */
+    private final ZeldaDier.Neus neus = new ZeldaDier.Neus() {
+        public List<Location> verborgen(Player p) {
+            return ZeldaSpel.this.verborgen(p);
+        }
+
+        public List<ZeldaHoofdstuk.Graaf> graven(Player p) {
+            return ZeldaSpel.this.graven(p);
+        }
+
+        public boolean gevecht(Player p) {
+            return inGevecht(p);
+        }
+
+        public void gegraven(Player p, ZeldaHoofdstuk.Graaf g) {
+            ZeldaSpel.this.gegraven(p, g);
+        }
+    };
+
+    /** Graafplekken op het eiland van deze speler die hij nog niet heeft. */
+    private List<ZeldaHoofdstuk.Graaf> graven(Player p) {
+        List<ZeldaHoofdstuk.Graaf> l = new ArrayList<>();
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null || ss.h.eiland == null || beheer.is(p.getUniqueId())) return l;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        for (ZeldaHoofdstuk h : ss.h.eiland.delen())
+            for (ZeldaHoofdstuk.Graaf g : h.graven) if (!s.heeft(g.vlag())) l.add(g);
+        return l;
+    }
+
+    /** Het dier heeft iets opgegraven: wie erbij staat, heeft het nu (de vlag), met een deuntje en een regel van Wiske. */
+    void gegraven(Player p, ZeldaHoofdstuk.Graaf g) {
+        List<Player> wie = in(ZeldaHoofdstuk.Box.van(g.plek().getBlockX() - 8, g.plek().getBlockY() - 4, g.plek().getBlockZ() - 8,
+                g.plek().getBlockX() + 8, g.plek().getBlockY() + 6, g.plek().getBlockZ() + 8));
+        if (!wie.contains(p)) wie.add(p);
+        g.plek().getWorld().playSound(g.plek(), Sound.BLOCK_SNOW_BREAK, 1f, 0.8f);
+        g.plek().getWorld().spawnParticle(Particle.END_ROD, g.plek().clone().add(0, 0.6, 0), 20, 0.4, 0.4, 0.4, 0.03);
+        for (Player q : wie) {
+            if (!voortgang.van(q.getUniqueId()).zet(g.vlag())) continue;
+            voortgang.vuil();
+            muziek.speel(q, ZeldaMuziek.OPGELOST);
+            if (g.zegt() != null) vertel(q, g.zegt());
+        }
+        bewaar();
+    }
+
+    /** Je krijgt een dier (het sneeuwvosje): vlag, nog geen naam, een deuntje, en meteen het menu om hem een naam te geven. */
+    void dier(Player p, String soort) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        s.zet("dier:" + soort);
+        s.dier = null;
+        voortgang.vuil();
+        bewaar();
+        muziek.speel(p, ZeldaMuziek.VONDST);
+        Sessie ss = sessie(p);
+        if (ss != null) ss.naamGevraagd = true;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline() && speelt(p)) naamMenu(p);
+        }, 30L);
     }
 
     /** Verborgen vondsten in de buurt die deze speler nog niet heeft (voor het snuffelen van zijn huisdier). */
@@ -2050,7 +2132,7 @@ final class ZeldaSpel implements Listener {
     void naamMenu(Player p) {
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         Menu m = new Menu(true);
-        m.inv = Bukkit.createInventory(m, 9, Component.text("Hoe heet hij?", NamedTextColor.DARK_GRAY));
+        m.inv = Bukkit.createInventory(m, 9, Component.text("sneeuwvos".equals(ZeldaDier.soort(s)) ? "Hoe heet het vosje?" : "Hoe heet hij?", NamedTextColor.DARK_GRAY));
         for (int i = 0; i < ZeldaDier.NAMEN.size(); i++) m.inv.setItem(2 + i, ding(Material.NAME_TAG, ZeldaDier.NAMEN.get(i), "naam:" + i));
         if (ZeldaDier.soort(s) != null) p.openInventory(m.inv);
     }
@@ -2063,6 +2145,10 @@ final class ZeldaSpel implements Listener {
         bewaar();
         p.playSound(p, Sound.ENTITY_FOX_AMBIENT, 0.6f, 1.4f);
         zeg(p, Component.text(naam, GROEN).append(Component.text(" · loopt met je mee", NamedTextColor.GRAY)));
+        if (s.zet("v:neus")) {
+            voortgang.vuil();
+            uitleg(p, ZeldaHoofdstuk.r("Wiske", naam + " ruikt wat verstopt ligt. Volg hem maar!"));
+        }
     }
 
     @EventHandler
@@ -2273,6 +2359,186 @@ final class ZeldaSpel implements Listener {
                 if (k.baas != null && k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.baas.leeft() && k.binnen.in(l)) k.baas.boem(this, p, l);
             if (h.speelgebied != null && h.speelgebied.in(l)) h.boem(this, p, l);
         }
+    }
+
+    // ── de klauwhaak (voorwerp in vak 5, eiland 3) ──────────────────────────────────────────
+
+    /**
+     * De klauwhaak van de bergwachters: rechtsklik = de haak schieten. Mik je op een haakpunt (een blok
+     * {@link ZeldaHoofdstuk#HAAKPUNT}, binnen {@link ZeldaRegels#HAAK_BEREIK}; een paar graden ernaast mag), dan grijpt hij
+     * en trekt hij je erheen: je staat daarna op de landing van dat haakpunt. Mis = de haak tikt ergens tegen en komt
+     * terug. Werkt op elk eiland (ook de oude haakpunten van het Lindewoud en het Zilverstrand).
+     */
+    final class Klauwhaak implements ZeldaVoorwerp {
+        static final Material ITEM = Material.TRIPWIRE_HOOK;
+
+        public String id() { return "klauwhaak"; }
+        public String vlag() { return "klauwhaak"; }
+        public int vak() { return 4; }
+
+        public ItemStack item(ZeldaSpel spel, Player p, ZeldaVoortgang.Stand s) {
+            ItemStack it = ding(ITEM, "Klauwhaak", "klauwhaak");
+            lore(it, "rechtsklik: richt op een haakpunt", "trekt je erheen");
+            return it;
+        }
+
+        public void gebruik(ZeldaSpel spel, Player p, PlayerInteractEvent e) {
+            haak(p);
+        }
+    }
+
+    /** Een haak onderweg: eerst vliegt hij uit ({@code uit} tikken), dan trekt hij je erheen ({@code trek}; mis = terug). */
+    private static final class Trek {
+        final ZeldaHoofdstuk.Haakpunt hp;                    // null = mis
+        final Location oog, naar;                            // waar de haak vandaan komt en waar hij grijpt of stopt
+        final int uit, trek;
+        int tik;
+        Location voet;                                       // waar je voeten begonnen (bij trekken)
+
+        Trek(ZeldaHoofdstuk.Haakpunt hp, Location oog, Location naar, int uit, int trek) {
+            this.hp = hp;
+            this.oog = oog;
+            this.naar = naar;
+            this.uit = uit;
+            this.trek = trek;
+        }
+    }
+
+    final Map<UUID, Trek> trekken = new HashMap<>();
+
+    /** Het haakpunt waar de klauwhaak van deze speler nu naartoe gaat (null = geen haak onderweg, of mis). */
+    ZeldaHoofdstuk.Haakpunt haaktNaar(Player p) {
+        Trek t = trekken.get(p.getUniqueId());
+        return t == null ? null : t.hp;
+    }
+
+    /** Wordt deze speler nu door de klauwhaak getrokken (of is de haak onderweg)? */
+    boolean aanHetHaken(Player p) {
+        return trekken.containsKey(p.getUniqueId());
+    }
+
+    /** De haakpunten waar deze speler bij kan: die van zijn eiland. */
+    private List<ZeldaHoofdstuk.Haakpunt> haakpunten(Sessie ss) {
+        List<ZeldaHoofdstuk.Haakpunt> l = new ArrayList<>();
+        for (ZeldaHoofdstuk h : ss.h.eiland != null ? ss.h.eiland.delen() : hoofdstukken) l.addAll(h.haakpunten);
+        return l;
+    }
+
+    /** Ziet je oog dit haakpunt (zit er niets tussen)? */
+    boolean zicht(Location oog, ZeldaHoofdstuk.Haakpunt hp) {
+        Location m = new Location(oog.getWorld(), hp.x() + 0.5, hp.y() + 0.5, hp.z() + 0.5);
+        org.bukkit.util.Vector v = m.toVector().subtract(oog.toVector());
+        double d = v.length();
+        if (d < 0.1 || d > ZeldaRegels.HAAK_BEREIK + 1) return false;
+        var r = oog.getWorld().rayTraceBlocks(oog, v.normalize(), d + 0.6, org.bukkit.FluidCollisionMode.NEVER, true);
+        return r != null && r.getHitBlock() != null && r.getHitBlock().getX() == hp.x() && r.getHitBlock().getY() == hp.y() && r.getHitBlock().getZ() == hp.z();
+    }
+
+    /** De klauwhaak schieten: grijpt hij een haakpunt (waar je op mikt, of een paar graden ernaast), dan trekt hij je erheen. */
+    void haak(Player p) {
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM)) return;
+        p.setCooldown(Klauwhaak.ITEM, 14);
+        Location oog = p.getEyeLocation();
+        org.bukkit.util.Vector kijk = oog.getDirection();
+        ZeldaHoofdstuk.Haakpunt doel = null;
+        var raak = p.getWorld().rayTraceBlocks(oog, kijk, ZeldaRegels.HAAK_BEREIK, org.bukkit.FluidCollisionMode.NEVER, true);
+        if (raak != null && raak.getHitBlock() != null) doel = haakpunt(raak.getHitBlock());
+        if (doel == null) {                                                 // net ernaast gemikt: het dichtstbijzijnde haakpunt in die richting
+            List<ZeldaHoofdstuk.Haakpunt> hps = haakpunten(ss);
+            List<double[]> punten = new ArrayList<>();
+            for (ZeldaHoofdstuk.Haakpunt h : hps) punten.add(new double[]{h.x() + 0.5, h.y() + 0.5, h.z() + 0.5});
+            int i = ZeldaRegels.mik(new double[]{oog.getX(), oog.getY(), oog.getZ()}, new double[]{kijk.getX(), kijk.getY(), kijk.getZ()},
+                    punten, ZeldaRegels.HAAK_BEREIK, ZeldaRegels.HAAK_HOEK);
+            if (i >= 0 && zicht(oog, hps.get(i))) doel = hps.get(i);
+        }
+        Location naar = doel != null ? new Location(p.getWorld(), doel.x() + 0.5, doel.y() + 0.5, doel.z() + 0.5)
+                : raak != null ? raak.getHitPosition().toLocation(p.getWorld()) : oog.clone().add(kijk.clone().multiply(ZeldaRegels.HAAK_BEREIK));
+        double d = naar.distance(oog);
+        int uit = Math.max(2, (int) Math.ceil(d / 2.6));
+        Trek t = new Trek(doel, oog.clone(), naar, uit, doel == null ? 0 : Math.max(3, (int) Math.ceil(d / 1.5)));
+        trekken.put(p.getUniqueId(), t);
+        p.getWorld().playSound(oog, Sound.ENTITY_FISHING_BOBBER_THROW, 0.8f, 0.6f);
+        p.getWorld().playSound(oog, Sound.ITEM_CROSSBOW_SHOOT, 0.4f, 1.4f);
+        if (doel == null) {
+            ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+            if (s.zet("v:haak-mis")) {
+                voortgang.vuil();
+                uitleg(p, ZeldaHoofdstuk.r("Wiske", "Richt op een haakpunt: een donker blok met een ring."));
+            }
+        }
+    }
+
+    /** Elke tik: de haken die onderweg zijn (de ketting, het grijpen, het trekken). */
+    private void trekken() {
+        Particle.DustOptions ketting = new Particle.DustOptions(Color.fromRGB(0x8a8f96), 0.7f);
+        for (var it = trekken.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            Player p = Bukkit.getPlayer(e.getKey());
+            Trek t = e.getValue();
+            Sessie ss = p == null ? null : sessie(p);
+            if (p == null || p.isDead() || ss == null || ss.vaart != null) {
+                it.remove();
+                continue;
+            }
+            t.tik++;
+            var w = p.getWorld();
+            Location oog = p.getEyeLocation();
+            Location kop;
+            if (t.tik <= t.uit) kop = t.oog.clone().add(t.naar.toVector().subtract(t.oog.toVector()).multiply(t.tik / (double) t.uit));
+            else if (t.hp == null) {                                         // mis: de haak komt terug
+                int terug = t.tik - t.uit;
+                if (terug == 1) w.playSound(t.naar, Sound.BLOCK_STONE_HIT, 0.8f, 1.6f);
+                if (terug >= t.uit) {
+                    w.playSound(oog, Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 0.6f, 1.2f);
+                    it.remove();
+                    continue;
+                }
+                kop = t.naar.clone().add(oog.toVector().subtract(t.naar.toVector()).multiply(terug / (double) t.uit));
+            } else {                                                         // raak: trekken, je ogen langs de ketting naar het haakpunt
+                int k = t.tik - t.uit;
+                if (k == 1) {
+                    t.voet = p.getLocation();
+                    w.playSound(t.naar, Sound.ITEM_TRIDENT_HIT_GROUND, 1f, 0.8f);
+                    w.spawnParticle(Particle.CRIT, t.naar, 12, 0.3, 0.3, 0.3, 0.2);
+                }
+                kop = t.naar;
+                if (k >= t.trek) {
+                    Location l = t.hp.landing().clone();
+                    p.setVelocity(new org.bukkit.util.Vector());
+                    p.setFallDistance(0);
+                    p.teleport(l);
+                    w.playSound(l, Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 0.7f, 0.9f);
+                    w.playSound(l, Sound.BLOCK_WOOL_STEP, 0.8f, 0.8f);
+                    it.remove();
+                    continue;
+                }
+                double f = k / (double) t.trek;
+                org.bukkit.util.Vector naarOog = t.naar.toVector().subtract(t.oog.toVector());
+                double lang = naarOog.length();
+                Location nieuwOog = t.oog.clone().add(naarOog.multiply(f * Math.max(0, lang - 1.0) / Math.max(0.01, lang)));
+                Location voet = nieuwOog.clone().subtract(0, p.getEyeHeight(), 0);
+                voet.setYaw(p.getLocation().getYaw());
+                voet.setPitch(p.getLocation().getPitch());
+                p.setVelocity(new org.bukkit.util.Vector());
+                p.setFallDistance(0);
+                p.teleport(voet);
+                oog = p.getEyeLocation();
+            }
+            org.bukkit.util.Vector lijn = kop.toVector().subtract(oog.toVector().add(new org.bukkit.util.Vector(0, -0.4, 0)));
+            double lang = lijn.length();
+            Location van = oog.clone().add(0, -0.4, 0);
+            for (double a = 0.6; a < lang; a += 0.45)
+                w.spawnParticle(Particle.DUST, van.clone().add(lijn.clone().multiply(a / lang)), 1, 0, 0, 0, 0, ketting);
+            w.spawnParticle(Particle.CRIT, kop, 1, 0.05, 0.05, 0.05, 0);
+        }
+    }
+
+    /** Wie aan de klauwhaak hangt, valt niet en stikt niet (hij wordt even langs de rots getrokken). */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onHaakSchade(EntityDamageEvent e) {
+        if (e.getEntity() instanceof Player p && trekken.containsKey(p.getUniqueId())
+                && (e.getCause() == EntityDamageEvent.DamageCause.FALL || e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION)) e.setCancelled(true);
     }
 
     // ── gebeurtenissen ──────────────────────────────────────────────────────────────────────

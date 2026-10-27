@@ -16,7 +16,9 @@ import org.bukkit.World;
  * Kun je er lopen? Volgt vanaf de aanleg van een eiland alle plekken waar een speler kan staan: een stap omhoog van
  * hoogstens één blok (springen), omlaag hoogstens drie, over een gat van één blok springen, ladders en water op en neer.
  * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel, een poort voor wie iets
- * heeft, een brug die komt, de sluizen van eb en vloed) tellen als open en het water van een getij als water: in het spel gaan ze open. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
+ * heeft, een brug die komt, de sluizen van eb en vloed) tellen als open en het water van een getij als water: in het spel gaan ze open.
+ * Met de klauwhaak: een haakpunt dat je ergens vandaan kunt raken (binnen bereik, niets ertussen) brengt je naar zijn
+ * landing, en daar loop je verder. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
  * kan dat er nog niet is, zoals de klauwhaak), kamers, uitdagingen, verhalen, bronnen, spiegels, bellen en de plek vóór
  * een gebarsten muur. Zo valt een plek op die de test alleen met teleporteren haalt.
  *
@@ -118,6 +120,36 @@ final class ZeldaLopen {
         }
     }
 
+    /**
+     * Kun je dit haakpunt raken vanaf een plek waar je kunt staan (binnen het bereik van de klauwhaak, met niets
+     * ertussen)?
+     */
+    private boolean raakbaar(ZeldaHoofdstuk.Haakpunt hp) {
+        int r = (int) ZeldaRegels.HAAK_BEREIK;
+        double hx = hp.x() + 0.5, hy = hp.y() + 0.5, hz = hp.z() + 0.5;
+        for (int x = hp.x() - r; x <= hp.x() + r; x++)
+            for (int z = hp.z() - r; z <= hp.z() + r; z++)
+                for (int y = hp.y() - r; y <= hp.y() + r; y++) {
+                    if (!bereikt.contains(sleutel(x, y, z))) continue;
+                    double ox = x + 0.5, oy = y + 1.62, oz = z + 0.5;
+                    double d = Math.sqrt((hx - ox) * (hx - ox) + (hy - oy) * (hy - oy) + (hz - oz) * (hz - oz));
+                    if (d > ZeldaRegels.HAAK_BEREIK || d < 0.5) continue;
+                    if (zicht(ox, oy, oz, hp, d)) return true;
+                }
+        return false;
+    }
+
+    /** Een lijn van het oog naar het haakpunt: alleen vrije blokken ertussen. */
+    private boolean zicht(double ox, double oy, double oz, ZeldaHoofdstuk.Haakpunt hp, double d) {
+        double dx = (hp.x() + 0.5 - ox) / d, dy = (hp.y() + 0.5 - oy) / d, dz = (hp.z() + 0.5 - oz) / d;
+        for (double a = 0.2; a <= d + 0.3; a += 0.2) {
+            int bx = (int) Math.floor(ox + dx * a), by = (int) Math.floor(oy + dy * a), bz = (int) Math.floor(oz + dz * a);
+            if (bx == hp.x() && by == hp.y() && bz == hp.z()) return true;
+            if (!vrij(bx, by, bz)) return false;
+        }
+        return false;
+    }
+
     private boolean in(ZeldaHoofdstuk.Box b) {
         for (int x = b.x1(); x <= b.x2(); x++)
             for (int z = b.z1(); z <= b.z2(); z++)
@@ -175,6 +207,21 @@ final class ZeldaLopen {
         }
         Location start = e.aanlegPlek();
         l.loop(start.getBlockX(), start.getBlockY(), start.getBlockZ());
+        // de klauwhaak: van elk haakpunt dat je kunt raken, verder lopen vanaf zijn landing (tot er niets meer bij komt)
+        List<ZeldaHoofdstuk.Haakpunt> haken = new ArrayList<>();
+        for (ZeldaHoofdstuk h : e.delen()) haken.addAll(h.haakpunten);
+        Set<String> gehaakt = new HashSet<>();
+        boolean klauw = voorwerpen.contains("klauwhaak"), meer = klauw;
+        while (meer) {
+            meer = false;
+            for (ZeldaHoofdstuk.Haakpunt hp : haken) {
+                if (gehaakt.contains(hp.id()) || !l.raakbaar(hp)) continue;
+                gehaakt.add(hp.id());
+                meer = true;
+                Location land = hp.landing();
+                l.loop(land.getBlockX(), land.getBlockY(), land.getBlockZ());
+            }
+        }
         List<String> niet = new ArrayList<>();
         for (ZeldaHoofdstuk h : e.delen()) {
             String d = h.id() + ": ";
@@ -197,6 +244,9 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Barst b : h.barsten) if (b.voor != null && !l.bij(b.voor, 1)) niet.add(d + "voor de gebarsten muur " + b.id);
             for (ZeldaHoofdstuk.Getij g : h.getijden)
                 for (ZeldaHoofdstuk.Getij.Hendel hd : g.hendels) if (!l.bij(new int[]{hd.x(), hd.y(), hd.z()}, 2)) niet.add(d + "getij " + g.id + ": hendel op " + hd.x() + "," + hd.y() + "," + hd.z());
+            for (ZeldaHoofdstuk.Graaf g : h.graven) if (!l.bij(g.plek(), 1)) niet.add(d + "graafplek " + g.id() + " " + xyz(g.plek()));
+            if (klauw) for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten)
+                if (!gehaakt.contains(hp.id())) niet.add(d + "haakpunt " + hp.id() + " " + hp.x() + "," + hp.y() + "," + hp.z() + ": nergens vandaan te raken");
         }
         return niet;
     }

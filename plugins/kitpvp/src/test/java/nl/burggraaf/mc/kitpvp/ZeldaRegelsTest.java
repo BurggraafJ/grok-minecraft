@@ -372,4 +372,39 @@ class ZeldaRegelsTest {
         assertFalse(g.bezig());
         assertFalse(g.vloed, "een getij begint in rust");
     }
+
+    @Test
+    void deKlauwhaakVindtHetHaakpuntWaarJeOpMikt() {
+        double[] oog = {0, 0, 0};
+        List<double[]> punten = List.of(new double[]{0, 0, 10}, new double[]{3, 0, 10}, new double[]{0, 0, 30});
+        assertEquals(0, ZeldaRegels.mik(oog, new double[]{0, 0, 1}, punten, 24, 6), "recht vooruit");
+        assertEquals(0, ZeldaRegels.mik(oog, new double[]{0.05, 0, 1}, punten, 24, 6), "net ernaast: toch dat haakpunt");
+        assertEquals(1, ZeldaRegels.mik(oog, new double[]{0.3, 0, 1}, punten, 24, 6), "de dichtstbijzijnde richting telt");
+        assertEquals(-1, ZeldaRegels.mik(oog, new double[]{1, 0, 0}, punten, 24, 6), "de andere kant op: niets");
+        assertEquals(-1, ZeldaRegels.mik(oog, new double[]{0, 0, 1}, List.of(new double[]{0, 0, 30}), 24, 6), "te ver weg");
+        assertEquals(-1, ZeldaRegels.mik(oog, new double[]{0, 0, 0}, punten, 24, 6), "geen richting");
+        assertEquals(-1, ZeldaRegels.mik(oog, new double[]{0, 0, -1}, punten, 24, 6), "achter je");
+    }
+
+    @Test
+    void alleenHetSneeuwvosjeLooptMee() {
+        assertFalse(ZeldaDier.AAN, "vrije huisdieren blijven uit in Zelda (Jelle)");
+        assertTrue(ZeldaDier.actief("sneeuwvos"), "het vosje van de Witte Toppen loopt mee");
+        assertFalse(ZeldaDier.actief("vos"));
+        assertFalse(ZeldaDier.actief("kat"));
+        assertFalse(ZeldaDier.actief(null));
+        assertEquals("sneeuwvos", ZeldaDier.soort(stand("dier:vos", "dier:sneeuwvos")), "het dier dat meeloopt gaat voor");
+        assertEquals("vos", ZeldaDier.soort(stand("dier:vos")));
+        assertNull(ZeldaDier.soort(stand("dier:draak")));
+        ZeldaVoortgang.Stand s = stand("dier:sneeuwvos");
+        assertEquals(ZeldaDier.NAMEN.get(0), ZeldaDier.naam(s), "nog geen naam: de eerste");
+        s.dier = "Pluis";
+        assertEquals("Pluis", ZeldaDier.naam(s));
+    }
+
+    @Test
+    void deKlauwhaakReiktTotDeOudeHaakpunten() {
+        assertTrue(ZeldaRegels.HAAK_BEREIK >= 22, "de Meeuwenrots (2a): het haakpunt zit ±21 blokken boven het pleintje");
+        assertTrue(ZeldaVoorwerp.LATER.contains("klauwhaak"));
+    }
 }

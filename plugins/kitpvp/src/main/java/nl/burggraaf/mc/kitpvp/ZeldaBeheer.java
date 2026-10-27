@@ -95,7 +95,7 @@ final class ZeldaBeheer {
 
     // ── plekken ─────────────────────────────────────────────────────────────────────────────
 
-    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren. */
+    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren, haakpunten, graafplekken. */
     Map<String, Location> plekken() {
         Map<String, Location> m = new LinkedHashMap<>();
         for (ZeldaEiland e : spel.eilanden) {
@@ -120,6 +120,8 @@ final class ZeldaBeheer {
                     }
                 }
                 for (ZeldaHoofdstuk.Barst br : h.barsten) zet(m, "muur-" + br.id, br.voor != null ? br.voor : br.muur.omvang().midden(h.w));
+                for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) zet(m, "haak-" + hp.id(), hp.landing());   // boven, bij de landing
+                for (ZeldaHoofdstuk.Graaf gr : h.graven) zet(m, "graaf-" + gr.id(), gr.plek());
             }
         }
         if (spel.zee.w != null && !spel.zee.dek.isEmpty()) zet(m, "zee", spel.zee.dek.get(0));

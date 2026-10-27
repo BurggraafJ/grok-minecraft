@@ -32,8 +32,11 @@ final class Zelda implements Modus {
     private final KitPvP plugin;
     /** De eilanden in de volgorde van het verhaal (zie ZELDA.md). Een nieuw eiland = één regel erbij. */
     final List<ZeldaEiland> EILANDEN;
-    /** Eilanden die eraan komen (nog niet gebouwd): de Witte Toppen gaan open met het Getijdenbaken (zie ZELDA.md). */
-    final List<ZeldaEiland.Komt> KOMT = List.of(new ZeldaEiland.Komt("witte-toppen", "De Witte Toppen", Material.SNOW_BLOCK, "baken2"));
+    /**
+     * Eilanden die eraan komen (nog niet gebouwd): grijs op de kaart zodra hun {@code openNa} er is. Nu leeg: de Witte
+     * Toppen zijn er (sessie 3a); de Gloedberg komt hier als het Vorstbaken ({@code baken3}, sessie 3b) brandt.
+     */
+    final List<ZeldaEiland.Komt> KOMT = List.of();
     /** Alle delen van alle eilanden. */
     final List<ZeldaHoofdstuk> HOOFDSTUKKEN;
     final ZeldaZee zee;
@@ -46,7 +49,11 @@ final class Zelda implements Modus {
                 new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(new ZeldaEiland2a(plugin), new ZeldaEiland2b(plugin)), "steiger", "h1", "baken2", List.of(
                         ZeldaHoofdstuk.r("Brecht", "Op het Zilverstrand woont mijn zus Mira."),
                         ZeldaHoofdstuk.r("Brecht", "Zij past op de vuurtoren. Al twintig jaar."),
-                        ZeldaHoofdstuk.r("Wiske", "Een vuurtoren wijst de weg. Precies wat we zoeken!"))));
+                        ZeldaHoofdstuk.r("Wiske", "Een vuurtoren wijst de weg. Precies wat we zoeken!"))),
+                new ZeldaEiland("witte-toppen", "De Witte Toppen", Material.SNOW_BLOCK, List.of(new ZeldaEiland3a(plugin)), "steiger", "baken2", "baken3", List.of(
+                        ZeldaHoofdstuk.r("Brecht", "Het wordt kouder. Kijk, ijsschotsen."),
+                        ZeldaHoofdstuk.r("Brecht", "Op de Witte Toppen woont een oude vriend van Teun."),
+                        ZeldaHoofdstuk.r("Wiske", "Bergen met sneeuw erop! Zo hoog!"))));
         List<ZeldaHoofdstuk> alle = new ArrayList<>();
         for (ZeldaEiland e : EILANDEN) alle.addAll(e.delen());
         HOOFDSTUKKEN = List.copyOf(alle);
@@ -139,7 +146,7 @@ final class Zelda implements Modus {
         YamlConfiguration gebouwd = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gebouwd.yml"));
         Bouwer b = plugin.bouwer();
         boolean klaar = b == null || !b.bezig();
-        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0;
+        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0, graven = 0;
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
             String hid = "zelda " + h.id();
             if (klaar && gebouwd.getInt("delen." + h.deelId(), -1) != h.versie())
@@ -249,6 +256,12 @@ final class Zelda implements Modus {
                     if (klaar && k.fase == ZeldaHoofdstuk.Fase.RUST && h.w.getBlockAt(t[0], t[1], t[2]).getType() != Material.BARREL) fouten.add(hid + ": kamer " + k.id + ": ton " + i + " is weg");
                     if (klaar && (!vrij(zb.grond.get(i)) || !zb.grond.get(i).clone().add(0, -1, 0).getBlock().getType().isSolid())) fouten.add(hid + ": kamer " + k.id + ": plek bij ton " + i + " niet vrij");
                 }
+            }
+            for (ZeldaHoofdstuk.Graaf gr : h.graven) {                    // graafplekken (een dier graaft er iets op)
+                graven++;
+                if (!h.speelgebied.in(gr.plek())) fouten.add(hid + ": graafplek " + gr.id() + " buiten het speelgebied");
+                if (klaar && (!vrij(gr.plek()) || !gr.plek().clone().add(0, -1, 0).getBlock().getType().isSolid()))
+                    fouten.add(hid + ": graafplek " + gr.id() + " niet vrij of zonder vloer op " + xyz(gr.plek()));
             }
             for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) {
                 haken++;
@@ -364,6 +377,8 @@ final class Zelda implements Modus {
         }
         if (ents > 60) fouten.add("zelda: " + ents + " entiteiten (te veel)");
         if (feeen > spel.sessies.size()) fouten.add("zelda: " + feeen + " feeën voor " + spel.sessies.size() + " spelers");
+        if (spel.dier.aantal() > spel.sessies.size()) fouten.add("zelda: " + spel.dier.aantal() + " dieren voor " + spel.sessies.size() + " spelers");
+        if (ZeldaDier.AAN) fouten.add("zelda: vrije huisdieren staan aan (ZeldaDier.AAN; Jelle wil ze uit)");
         for (var e : spel.sessies.entrySet()) {
             Player p = Bukkit.getPlayer(e.getKey());
             if (p != null && !p.isDead() && spel.metgezel.van(p) == null)
@@ -372,7 +387,7 @@ final class Zelda implements Modus {
         info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
                 + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
                 + " personen=" + personen + " missies=" + missies + " hartstukjes=" + stukjes + " barsten=" + barsten + " haakpunten=" + haken
-                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " voorwerpen=" + spel.voorwerpen.size()
+                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " graafplekken=" + graven + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
     }

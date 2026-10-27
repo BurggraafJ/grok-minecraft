@@ -1076,6 +1076,19 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.boven(w, map, "zelda-e2b-wrak", 1296, -416, 1338, -392, g - 2, zg + 14, 10));
         f.add(Kaart.boven(w, map, "zelda-e2b-poelen", 1270, -300, 1330, -268, g - 2, zg + 8, 8));
         f.add(Kaart.voor(w, map, "zelda-e2b-duik-zij", 0, 1, -284, 1276, 1326, g, zg + 4, 6, 10));
+        // eiland 3a, de Witte Toppen (dal en dorp): alles van boven, IJshoeve, het meer, het Sparrenbos met de kuil, de
+        // Wachtersgang (net onder het plafond), de kloof van opzij (beide wanden), en de Bergpoort van opzij
+        f.add(Kaart.boven(w, map, "zelda-e3a-boven", ZeldaEiland3a.X1, ZeldaEiland3a.Z1, ZeldaEiland3a.X2, ZeldaEiland3a.Z2, g - 2, zg + 34, 2));
+        f.add(Kaart.boven(w, map, "zelda-e3a-dorp", 1440, -326, 1510, -276, g - 2, zg + 16, 7));
+        f.add(Kaart.boven(w, map, "zelda-e3a-meer", 1408, -320, 1456, -280, g - 2, zg + 14, 8));
+        f.add(Kaart.boven(w, map, "zelda-e3a-bos", 1404, -428, 1478, -322, g - 2, zg + 26, 5));
+        f.add(Kaart.boven(w, map, "zelda-e3a-kuil", 1424, -394, 1448, -364, g, zg + 1, 12));
+        f.add(Kaart.boven(w, map, "zelda-e3a-gang", 1448, -440, 1490, -418, g, zg + 3, 10));
+        f.add(Kaart.boven(w, map, "zelda-e3a-kloof", 1480, -450, 1536, -400, g - 2, zg + 12, 8));
+        f.add(Kaart.voor(w, map, "zelda-e3a-kloof-noord", 0, -1, -430, 1480, 1536, g, zg + 14, 20, 8));
+        f.add(Kaart.voor(w, map, "zelda-e3a-kloof-zuid", 0, 1, -446, 1480, 1536, g, zg + 14, 20, 8));
+        f.add(Kaart.boven(w, map, "zelda-e3a-bergpoort", 1530, -312, 1579, -276, g - 2, zg + 30, 8));
+        f.add(Kaart.voor(w, map, "zelda-e3a-bergpoort-zij", 0, -1, -294, 1530, 1579, g, zg + 30, 40, 8));
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;

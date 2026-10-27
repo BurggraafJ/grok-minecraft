@@ -235,6 +235,36 @@ final class ZeldaRegels {
         return v;
     }
 
+    /** Hoe ver de klauwhaak reikt (blokken, van je ogen tot het haakpunt). */
+    static final double HAAK_BEREIK = 24;
+    /** Hoeveel graden je ernaast mag mikken: de klauwhaak vindt het haakpunt dan toch (kinderen mikken niet zo precies). */
+    static final double HAAK_HOEK = 6;
+
+    /**
+     * Op welk haakpunt mik je? Vanaf {@code oog} in richting {@code kijk} (hoeft niet genormaliseerd): het punt uit
+     * {@code punten} (middens van de blokken) binnen {@code bereik} met de kleinste hoek, als die hoogstens {@code hoek}
+     * graden is. -1 = geen. (Of er iets tussen zit, kijkt de wereld daarna.)
+     */
+    static int mik(double[] oog, double[] kijk, List<double[]> punten, double bereik, double hoek) {
+        double kl = Math.sqrt(kijk[0] * kijk[0] + kijk[1] * kijk[1] + kijk[2] * kijk[2]);
+        if (kl < 1e-9) return -1;
+        int best = -1;
+        double bh = Math.toRadians(hoek);
+        for (int i = 0; i < punten.size(); i++) {
+            double[] q = punten.get(i);
+            double vx = q[0] - oog[0], vy = q[1] - oog[1], vz = q[2] - oog[2];
+            double d = Math.sqrt(vx * vx + vy * vy + vz * vz);
+            if (d < 0.5 || d > bereik) continue;
+            double cos = (vx * kijk[0] + vy * kijk[1] + vz * kijk[2]) / (d * kl);
+            double a = Math.acos(Math.max(-1, Math.min(1, cos)));
+            if (a <= bh) {
+                bh = a;
+                best = i;
+            }
+        }
+        return best;
+    }
+
     /** Een eilandnaam midden in een zin: «Het Lindewoud» → «het Lindewoud». */
     static String inZin(String naam) {
         return naam.startsWith("Het ") ? "het " + naam.substring(4) : naam.startsWith("De ") ? "de " + naam.substring(3) : naam;

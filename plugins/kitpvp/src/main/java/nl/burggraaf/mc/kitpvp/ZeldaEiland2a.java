@@ -549,7 +549,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 r("Brecht", "Zeg maar waarheen. De Zilvermeeuw ligt klaar."))));
         brecht.eenmalig("brecht-toppen", s -> s.heeft("baken2"), List.of(
                         r("Brecht", "Het baken brandt! Nu durf ik het noorden in."),
-                        r("Brecht", "Naar de Witte Toppen. Zodra het ijs breekt.")), null)
+                        r("Brecht", "Naar de Witte Toppen? Zeg het maar.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
     }
 
@@ -660,12 +660,21 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                         r("Teun", "Hij had altijd een ton buskruit bij zich."),
                         r("Teun", "Eén vonk erin, en hij lag plat. Pas goed op, jong.")),
                         (spel, p, s) -> spel.beloon(p, "ankersleutel", "Ankersleutel", "opent de Ankerpoort"))
+                // de Witte Toppen (eiland 3a): Grootvader Ys stuurt hem een brief → het vierde flesje
+                .gesprek("teun-brief", s -> s.missie("brief") == 1, List.of(
+                        r("Teun", "Een brief? Van Ys! Leeft die ouwe bok nog?"),
+                        r("Teun", "«Je speelt nog steeds vals met kaarten.» Ha!"),
+                        r("Teun", "Hier, een fles van de Kraai. Voor onderweg.")), (spel, p, s) -> {
+                    spel.missie(p, "brief", ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "fles4", "Flesje", "nog een flesje bronwater");
+                })
                 .eenmalig("teun-licht", s -> s.heeft(id()), List.of(
                         r("Teun", "De vuurtoren brandt weer. Dat ik dat nog zie."),
                         r("Teun", "De bundel wijst naar de tempel. Bij eb, jong.")), null)
                 .eenmalig("teun-vrij", s -> s.heeft("k:draaikolk"), List.of(
                         r("Teun", "Je hebt Zoutbaard bevrijd? Dan heeft hij nu rust."),
                         r("Teun", "Dank je, jong. Dat had hij verdiend.")), null);
+        missie("brief", "De brief van Ys", "Breng de brief van Ys naar Teun, in Zoutkom.");   // begint op de Witte Toppen (Ys)
         hendrik();
         tijmen();
     }

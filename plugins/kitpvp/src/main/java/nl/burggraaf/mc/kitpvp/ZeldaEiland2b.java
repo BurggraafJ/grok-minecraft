@@ -41,7 +41,7 @@ import org.bukkit.plugin.Plugin;
  */
 final class ZeldaEiland2b extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 4;
+    static final int VERSIE = 5;
     /** Het vak van dit halve eiland (oost van {@link ZeldaEiland2a#DIJK_X}); elke kolom zet dit deel zelf. */
     static final int X1 = 1230, X2 = 1360, Z1 = -480, Z2 = -180;
     /** Het hartstukje van 2b (de parelduik van Roos). */
@@ -896,6 +896,14 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         verhaal(new Verhaal("stijgt", Box.van(1309, G - 5, -358, 1319, G - 1, -346), List.of(
                 r("Wiske", "Hoor je dat? Het water stijgt!"),
                 r("Wiske", "Door de deur, en zwem omhoog!")))).vereist = "r:getij";
+        // een uitweg: een ladder naar een luik in het terras (voor wie hier zonder de Spoelkamer kwam, bv. samen spelen
+        // terwijl een ander het water liet zakken); het luik gaat alleen van binnenuit open
+        if (b.plaats) for (int y = G - 5; y <= G - 1; y++) zet(1318, y, -358, Bouwer.gericht(Material.LADDER, BlockFace.NORTH));
+        org.bukkit.block.data.type.TrapDoor luik = (org.bukkit.block.data.type.TrapDoor) Material.IRON_TRAPDOOR.createBlockData();
+        luik.setHalf(org.bukkit.block.data.Bisected.Half.TOP);
+        luik.setFacing(BlockFace.NORTH);
+        poort(new Poort("luik", new Deur(luik, Material.AIR.createBlockData()).blok(1318, G, -358),
+                Box.van(1316, G - 5, -358, 1319, G - 1, -355), s -> s.heeft("e:zilverstrand")));
     }
 
     // ── 8. de drempel, de Ankerpoort, de Draaikolk (Kapitein Zoutbaard) ─────────────────────

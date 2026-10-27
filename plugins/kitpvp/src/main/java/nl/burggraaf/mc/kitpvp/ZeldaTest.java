@@ -141,7 +141,21 @@ final class ZeldaTest {
             moet(!stand().heeft(k.openNa()) || z.spel.komt(stand()) != null, "Wiske weet niet dat " + k.naam() + " eraan komt");
             stil();
         }, 2, () -> true, 1);
-        // later terug: met een nieuw voorwerp (bommen) naar een eerder eiland varen (via de kaart) en daar halen wat nu kan
+        // boodschappen over zee (Hanne vraagt zeekraal van het Zilverstrand): twee rondes langs alle eilanden, dan alles klaar
+        if (alles && z.EILANDEN.size() > 1) {
+            for (int ronde = 0; ronde < 2; ronde++)
+                for (ZeldaEiland e : z.EILANDEN) {
+                    stap("boodschap: naar " + e.id(), () -> {
+                        stil();
+                        if (z.spel.sessie(p).h.eiland == e) return;
+                        z.spel.kaart(p);
+                        moet(klik("eiland:" + e.id()), "kaart: " + e.naam() + " staat er niet op");
+                    }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
+                    zijmissies(e);
+                }
+        }
+        // later terug: met een nieuw voorwerp (bommen, de klauwhaak) naar een eerder eiland varen (via de kaart) en daar halen
+        // wat nu kan (na de boodschappen over zee: anders noemt de hint eerst een opdracht die nog loopt)
         if (alles) for (ZeldaEiland e : z.EILANDEN) {
             List<ZeldaHoofdstuk.Vondst> nu = new ArrayList<>();
             for (ZeldaHoofdstuk d : e.delen())
@@ -164,20 +178,7 @@ final class ZeldaTest {
                 for (ZeldaHoofdstuk.Vondst v : nu) if (stand().heeft(v.voorwerp)) moet(stand().heeft(v.vlag), "later terug: " + v.vlag + " niet te halen met " + v.voorwerp);
             }, 2, () -> true, 1);
         }
-        // boodschappen over zee (Hanne vraagt zeekraal van het Zilverstrand): twee rondes langs alle eilanden, dan alles klaar
-        if (alles && z.EILANDEN.size() > 1) {
-            for (int ronde = 0; ronde < 2; ronde++)
-                for (ZeldaEiland e : z.EILANDEN) {
-                    stap("boodschap: naar " + e.id(), () -> {
-                        stil();
-                        if (z.spel.sessie(p).h.eiland == e) return;
-                        z.spel.kaart(p);
-                        moet(klik("eiland:" + e.id()), "kaart: " + e.naam() + " staat er niet op");
-                    }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
-                    zijmissies(e);
-                }
-            for (ZeldaEiland e : z.EILANDEN) klaar(e, true);
-        }
+        if (alles && z.EILANDEN.size() > 1) for (ZeldaEiland e : z.EILANDEN) klaar(e, true);
         stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
             ZeldaVoortgang.Stand s = stand();
@@ -223,6 +224,19 @@ final class ZeldaTest {
                     gedaan.add(pe.naam);
                     return false;
                 }, 20);
+                stap("naam? (" + pe.naam + ")", () -> { }, 2, () -> {                     // kreeg je een dier: kies zijn naam in het menu
+                    if (!ZeldaDier.actief(ZeldaDier.soort(stand())) || stand().dier != null) return true;
+                    if (menuHeeft("naam:1")) klik("naam:1");
+                    return stand().dier != null;
+                }, 120);
+            } else if (o instanceof ZeldaHoofdstuk.Haak hk) {                 // de klauwhaak: een echte haak vanaf de plek ervoor
+                stap("haak " + hk.hp().id(), () -> haak(hk.hp(), hk.van()), 4,
+                        () -> !z.spel.aanHetHaken(p) && p.getLocation().distanceSquared(hk.hp().landing()) < 2, 80);
+            } else if (o instanceof ZeldaHoofdstuk.Graaf gr) {                // je dier graaft iets op (het moet meelopen)
+                stap("graaf " + gr.id(), () -> {
+                    moet(z.spel.dier.van(p) != null, "graafplek " + gr.id() + ": geen dier dat meeloopt");
+                    p.teleport(vrij(gr.plek().clone().add(0, 0, 4)));
+                }, 10, () -> stand().heeft(gr.vlag()), 400);
             } else if (o instanceof ZeldaHoofdstuk.Poort po) {                // een poort voor wie iets heeft: hij gaat open
                 stap("poort " + po.id, () -> {
                     if (po.deur.isOpen) z.spel.herstel(po);
@@ -369,6 +383,41 @@ final class ZeldaTest {
         return alles;
     }
 
+    /** Schiet de klauwhaak (het voorwerp, zoals rechtsklik) vanaf {@code van} naar haakpunt {@code hp}. */
+    private void haak(ZeldaHoofdstuk.Haakpunt hp, Location van) {
+        moet(stand().heeft("klauwhaak"), "geen klauwhaak voor haakpunt " + hp.id());
+        if (van == null) {
+            fouten.add("haakpunt " + hp.id() + ": nergens een plek om hem te raken");
+            return;
+        }
+        Location l = van.clone();
+        l.setDirection(new org.bukkit.util.Vector(hp.x() + 0.5, hp.y() + 0.5, hp.z() + 0.5).subtract(l.toVector().add(new org.bukkit.util.Vector(0, p.getEyeHeight(), 0))));
+        p.setVelocity(new org.bukkit.util.Vector());
+        p.teleport(l);
+        p.setCooldown(ZeldaSpel.Klauwhaak.ITEM, 0);
+        z.spel.voorwerp("klauwhaak").gebruik(z.spel, p, null);
+        moet(z.spel.haaktNaar(p) == hp, "haakpunt " + hp.id() + ": de klauwhaak grijpt " + (z.spel.haaktNaar(p) == null ? "niets" : z.spel.haaktNaar(p).id()));
+    }
+
+    /** Een plek om te staan van waaruit je oog dit haakpunt ziet, binnen het bereik van de klauwhaak (zo dichtbij mogelijk, niet op de landing). */
+    private Location vanwaar(ZeldaHoofdstuk.Haakpunt hp) {
+        var w = hp.landing().getWorld();
+        Location best = null;
+        double bd = Double.MAX_VALUE;
+        int r = (int) ZeldaRegels.HAAK_BEREIK - 2;
+        for (int x = hp.x() - r; x <= hp.x() + r; x++)
+            for (int y = hp.y() - r; y <= hp.y() + 2; y++)
+                for (int zz = hp.z() - r; zz <= hp.z() + r; zz++) {
+                    Location l = new Location(w, x + 0.5, y, zz + 0.5);
+                    double d = l.distanceSquared(new Location(w, hp.x() + 0.5, hp.y() + 0.5, hp.z() + 0.5));
+                    if (d >= bd || d < 9 || l.distanceSquared(hp.landing()) < 9 || !staan(l)) continue;
+                    if (!z.spel.zicht(l.clone().add(0, p.getEyeHeight(), 0), hp)) continue;
+                    bd = d;
+                    best = l;
+                }
+        return best;
+    }
+
     /** Rechtsklik op een hendel van het getij, zoals een speler (vanaf de kant waar je staat). */
     private void hendelKlik(ZeldaHoofdstuk h, ZeldaHoofdstuk.Getij g, ZeldaHoofdstuk.Getij.Hendel hd) {
         p.teleport(vrij(new Location(h.w, hd.x() - 0.5, hd.y(), hd.z() + 0.5)));
@@ -462,6 +511,7 @@ final class ZeldaTest {
             for (ZeldaHoofdstuk.Vondst v : d.vondsten) {
                 if (v.voorwerp == null) continue;
                 final ZeldaHoofdstuk.Barst[] muur = {null};
+                final ZeldaHoofdstuk.Haakpunt[] hp = {null};
                 final boolean[] kan = {false};
                 stap("later " + v.vlag, () -> {
                     ZeldaVoortgang.Stand s = stand();
@@ -470,7 +520,19 @@ final class ZeldaTest {
                     for (ZeldaHoofdstuk x : e.delen())
                         for (ZeldaHoofdstuk.Barst b : x.barsten) if (b.gebied.in(v.plek) && !b.muur.isOpen) muur[0] = b;
                     if (muur[0] != null) gooi(d, muur[0]);
-                }, 50, () -> !kan[0] || muur[0] == null || muur[0].muur.isOpen, 60);
+                    if (v.voorwerp.equals("klauwhaak")) {                            // een echte haak naar het haakpunt bij de vondst
+                        double bd = 10 * 10;
+                        for (ZeldaHoofdstuk x : e.delen())
+                            for (ZeldaHoofdstuk.Haakpunt h : x.haakpunten)
+                                if (h.landing().distanceSquared(v.plek) < bd) {
+                                    bd = h.landing().distanceSquared(v.plek);
+                                    hp[0] = h;
+                                }
+                        if (hp[0] == null) fouten.add("later " + v.vlag + ": geen haakpunt in de buurt");
+                        else haak(hp[0], vanwaar(hp[0]));
+                    }
+                }, 50, () -> !kan[0] || (muur[0] == null || muur[0].muur.isOpen)
+                        && (hp[0] == null || !z.spel.aanHetHaken(p) && p.getLocation().distanceSquared(hp[0].landing()) < 2), 80);
                 stap("pak " + v.vlag, () -> {
                     if (kan[0]) p.teleport(vrij(v.zone.midden(d.w).add(0, 1, 0)));
                 }, 8, () -> !kan[0] || stand().heeft(v.vlag), 40);
@@ -631,12 +693,24 @@ final class ZeldaTest {
             sp.uitrusten(p, stand());
             moet(p.getInventory().getChestplate() != null && p.getInventory().getChestplate().getType() == Material.IRON_CHESTPLATE, "harnas 2 is geen ijzer");
         }, 2, () -> true, 1);
-        if (ZeldaDier.AAN) stap("huisdier", () -> {
+        stap("geen vrij huisdier", () -> {                                        // een vos (vrij huisdier) loopt niet mee: Jelle wil dat niet
             stand().zet("dier:vos");
             stand().dier = "Pluis";
-        }, 30, () -> sp.dier.van(p) != null, 60);
-        if (ZeldaDier.AAN) stap("huisdier loopt mee", () -> p.teleport(new Location(h.w, ZeldaHoofdstuk1.X0 + 30.5, bron.midden.getY(), 2.5)), 100,
+        }, 30, () -> {
+            moet(sp.dier.van(p) == null, "een vrij huisdier loopt mee");
+            stand().wis("dier:vos");
+            return true;
+        }, 1);
+        stap("sneeuwvosje", () -> stand().zet("dier:sneeuwvos"), 30, () -> sp.dier.van(p) != null, 60);   // het vosje van de Witte Toppen wel
+        stap("sneeuwvosje loopt mee", () -> p.teleport(new Location(h.w, ZeldaHoofdstuk1.X0 + 30.5, bron.midden.getY(), 2.5)), 100,
                 () -> sp.dier.van(p) != null && sp.dier.van(p).getLocation().distance(p.getLocation()) < 6, 100);
+        ZeldaHoofdstuk.Vondst verstopt = h.vondsten.stream().filter(v -> v.verborgen && v.vereist == null && v.voorwerp == null).findFirst().orElse(null);
+        if (verstopt != null) stap("sneeuwvosje snuffelt", () -> p.teleport(vrij(verstopt.plek.clone().add(6, 0, 0))), 20,
+                () -> verstopt.plek.equals(sp.dier.snuffelt(p)), 100);
+        stap("sneeuwvosje weg", () -> {
+            stand().wis("dier:sneeuwvos");
+            stand().dier = null;
+        }, 20, () -> sp.dier.van(p) == null, 40);
         ZeldaHoofdstuk.Persoon proef = new ZeldaHoofdstuk.Persoon("Proef", p.getLocation(), null, List.of(ZeldaHoofdstuk.r("Proef", "Hallo.")));
         proef.gesprek("proef-1", s -> s.missie("proef") == 0, List.of(ZeldaHoofdstuk.r("Proef", "Help je mij?")), (spel, q, s) -> spel.missie(q, "proef", 1));
         proef.gesprek("proef-2", s -> s.missie("proef") == 1, List.of(ZeldaHoofdstuk.r("Proef", "Dank je!")), (spel, q, s) -> {
@@ -728,6 +802,30 @@ final class ZeldaTest {
                 moet(m == (g.vloed ? Material.WATER : Material.AIR), "getij: bovenste laag is " + m);
                 z.spel.zetGetij(g, g.rustVloed, true);
                 for (String v : new String[]{"maanparel", "r:getij"}) stand().wis(v);
+            }, 2, () -> true, 1);
+        }
+        ZeldaHoofdstuk.Haakpunt haakpunt = h.haakpunten.isEmpty() ? null : h.haakpunten.get(0);
+        if (haakpunt != null) {                                                    // de klauwhaak (vak 5): een echte haak naar het oude haakpunt
+            stap("klauwhaak", () -> {
+                stand().zet("klauwhaak");
+                sp.uitrusten(p, stand());
+                moet(item(4) == ZeldaSpel.Klauwhaak.ITEM, "klauwhaak niet in vak 5 maar " + item(4));
+                haak(haakpunt, vanwaar(haakpunt));
+            }, 4, () -> !sp.aanHetHaken(p) && p.getLocation().distanceSquared(haakpunt.landing()) < 2, 80);
+            stap("klauwhaak mis", () -> {                                          // de kloof in, waar geen haakpunt is: je blijft staan
+                Location l = p.getLocation().clone();
+                l.setYaw(90f);
+                l.setPitch(-10f);
+                p.teleport(l);
+                p.setCooldown(ZeldaSpel.Klauwhaak.ITEM, 0);
+                sp.voorwerp("klauwhaak").gebruik(sp, p, null);
+                moet(sp.aanHetHaken(p) && sp.haaktNaar(p) == null, "klauwhaak mis: " + (sp.haaktNaar(p) == null ? "geen haak" : "grijpt " + sp.haaktNaar(p).id()));
+            }, 4, () -> !sp.aanHetHaken(p), 60);
+            stap("klauwhaak weg", () -> {
+                moet(p.getLocation().distanceSquared(haakpunt.landing()) < 4, "klauwhaak mis: toch verplaatst naar " + xyz(p.getLocation()));
+                stand().wis("klauwhaak");
+                stand().wis("v:haak-mis");
+                sp.uitrusten(p, stand());
             }, 2, () -> true, 1);
         }
         ZeldaEiland e = h.eiland;
