@@ -382,55 +382,107 @@ final class Tuin {
     // ── de brink ────────────────────────────────────────────────────────────────────────────
 
     void brink() {
-        // plein van kinderkopjes rond de spawn, met een waterput erachter
-        for (int x = -4; x <= 4; x++)
-            for (int z = 5; z <= 15; z++) {
-                double d = Math.hypot(x / 4.6, (z - 10) / 5.2);
-                if (d <= 1.0) padBlok(x, z, "steen");
+        // plein rond de spawn: kinderkopjes in een ovaal met een rand van stenen
+        for (int x = -6; x <= 6; x++)
+            for (int z = 3; z <= 17; z++) {
+                double d = Math.hypot(x / 5.2, (z - 10) / 5.8);
+                if (d > 1.0) continue;
+                padBlok(x, z, "steen");
+                if (d > 0.84) zet(x, 0, z, kans(x, z, 3) == 0 ? "mossy_stone_bricks" : "stone_bricks");
             }
-        put(0, 13);
+        put(0, 14);
         // paden naar de poorten (een V) en naar de straat
-        pad(new int[][]{{0, 6}, {-3, 1}, {-6, -3}, {-6, -5}}, 2.6, "zand");
-        pad(new int[][]{{0, 6}, {3, 1}, {6, -3}, {6, -5}}, 2.6, "zand");
-        pad(new int[][]{{0, 15}, {0, 21}}, 2.6, "zand");
-        pad(new int[][]{{-4, 10}, {-17, 10}}, 2.2, "zand");
-        pad(new int[][]{{4, 10}, {17, 10}}, 2.2, "zand");
-        // de linde: groot en rond, links van de spawn, met een rond bankje
+        pad(new int[][]{{-1, 5}, {-3, 1}, {-6, -3}, {-6, -5}}, 2.6, "zand");
+        pad(new int[][]{{1, 5}, {3, 1}, {6, -3}, {6, -5}}, 2.6, "zand");
+        pad(new int[][]{{0, 16}, {0, 21}}, 2.4, "zand");
+        pad(new int[][]{{-5, 10}, {-17, 10}}, 2.2, "zand");
+        pad(new int[][]{{5, 10}, {17, 10}}, 2.2, "zand");
+        // bloemranden langs de poortpaden
+        for (int z = -4; z <= 3; z++)
+            for (int s : new int[]{-1, 1}) {
+                double t = (3 - z) / 7.0;
+                int x = (int) Math.round(s * (2 + 4 * t)) + s * 2;
+                plant(x, z, (z & 1) == 0 ? "allium" : "white_tulip");
+                plant(x + s, z, "pink_tulip");
+            }
+        // bloemperk tussen de poortpaden: tulpen in banen, een bolletje buxus in de punt
+        for (int x = -4; x <= 4; x++)
+            for (int z = -6; z <= 1; z++) {
+                if (Math.abs(x) > (z + 6) * 0.5 + 0.2) continue;
+                if (!naam(x, 0, z).equals("grass_block")) continue;
+                zet(x, 1, z, new String[]{"red_tulip", "white_tulip", "pink_tulip", "orange_tulip"}[Math.floorMod(z, 4)]);
+            }
+        zet(0, 1, -5, blad("azalea"));
+        // de linde: groot en rond, links achter de spawn, met een rond bankje
         boom(-11, 15, 5, 5.2, "oak_log", "oak", null, 0);
         for (String r : RICHTING) {
             int bx = r.equals("east") ? 2 : r.equals("west") ? -2 : 0, bz = r.equals("south") ? 2 : r.equals("north") ? -2 : 0;
             zet(-11 + bx, 1, 15 + bz, trap("spruce", r, false));
         }
-        // bloemperk tussen de poortpaden: een driehoek met tulpen en lavendel (allium)
-        for (int x = -4; x <= 4; x++)
-            for (int z = -6; z <= 1; z++) {
-                if (Math.abs(x) > (z + 6) * 0.55 + 0.4) continue;
-                if (!naam(x, 0, z).equals("grass_block")) continue;
-                int ring = (int) Math.round(Math.abs(x) + (1 - z) * 0.3);
-                zet(x, 1, z, new String[]{"white_tulip", "pink_tulip", "allium", "red_tulip"}[Math.floorMod(ring, 4)]);
-            }
-        zet(0, 1, -5, blad("flowering_azalea"));
-        // banken langs de brink
-        bank(-8, 4, "west", "spruce");
-        bank(8, 4, "east", "spruce");
-        bank(-3, 17, "south", "spruce");
-        bank(2, 17, "south", "spruce");
-        // prikbord met de records (rechts van de spawn) en een wegwijzer (links)
-        prikbord(6, 9);
-        wegwijzer(-5, 7);
-        // lantaarns op de hoeken van het plein
-        lantaarn(-5, 13, "dark_oak");
-        lantaarn(5, 13, "dark_oak");
-        // kersenbomen en berken aan de randen van de brink
-        kers(12, 16);
-        kers(-14, 3);
-        berk(13, 2);
-        fruitboom(10, -2);
-        fruitboom(-10, -2);
-        // bloemen in groepjes over de brink
+        // theehuis (noordwest) met terras, bakker (noordoost) met luifel
+        theehuis(-18, -11);
+        bakker(12, -11);
+        // banken, prikbord met de records (rechts) en een wegwijzer (links)
+        bank(-9, 6, "west", "spruce");
+        bank(9, 6, "east", "spruce");
+        bank(-3, 19, "south", "spruce");
+        bank(2, 19, "south", "spruce");
+        p.dieren.add(new Plan.Dier("CAT", 2.5, g + 1.5, 19.5, 0f, true));
+        prikbord(8, 14);
+        wegwijzer(-6, 7);
+        // lantaarns aan het plein
+        lantaarn(-5, 15, "dark_oak");
+        lantaarn(5, 15, "dark_oak");
+        lantaarn(-4, 2, "dark_oak");
+        lantaarn(4, 2, "dark_oak");
+        // bomen aan de randen van de brink
+        kers(13, 17);
+        kers(-14, 4);
+        berk(14, 2);
+        fruitboom(11, 13);
+        // struiken en bloemen in groepjes over het gras
+        for (int[] c : new int[][]{{-16, 0}, {16, 6}, {-7, 20}, {8, 20}, {-16, 8}})
+            if (grasVrij(c[0], c[1])) zet(c[0], 1, c[1], blad(kans(c[0], c[1], 2) == 0 ? "flowering_azalea" : "azalea"));
         for (int x = -16; x <= 16; x++)
             for (int z = -12; z <= 21; z++)
                 if (kans(x / 3, z / 3, 4) == 0 && kans(x, z, 3) == 0) plant(x, z, bloem(x / 3, z / 3));
+    }
+
+    /** Theehuis: klein huisje met een terras ervoor (tafeltjes onder parasols). x0, z0 = noordwesthoek. */
+    void theehuis(int x0, int z0) {
+        huisje(x0, z0, x0 + 6, z0 + 5, STIJLEN[3], "south", true, true);
+        for (int x = x0; x <= x0 + 6; x++)
+            for (int z = z0 + 6; z <= z0 + 10; z++) zet(x, 0, z, (x + z) % 2 == 0 ? "bricks" : "packed_mud");
+        for (int[] t : new int[][]{{x0 + 1, z0 + 8}, {x0 + 5, z0 + 8}}) {
+            int tx = t[0], tz = t[1];
+            vul(tx, 1, tz, tx, 2, tz, "spruce_fence");
+            zet(tx, 1, tz, "spruce_fence");
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dz = -1; dz <= 1; dz++) zet(tx + dx, 3, tz + dz, ((dx + dz) & 1) == 0 ? "white_carpet" : "red_carpet");
+            zet(tx - 1, 1, tz, trap("oak", "west", false));
+            zet(tx + 1, 1, tz, trap("oak", "east", false));
+            zet(tx, 1, tz + 1, trap("oak", "south", false));
+        }
+        zet(x0 + 3, 2, z0 + 6, "spruce_wall_sign[facing=south]");
+        p.bord(x0 + 3, g + 2, z0 + 6, "", "Theehuis", "De Linde", "");
+        for (int x = x0; x <= x0 + 6; x += 6) zet(x, 1, z0 + 10, "potted_red_tulip");
+    }
+
+    /** Bakker: huisje met een gestreepte luifel, een toonbank van tonnen met brood (hooi) en een bord. */
+    void bakker(int x0, int z0) {
+        huisje(x0, z0, x0 + 6, z0 + 5, STIJLEN[0], "south", true, true);
+        int z = z0 + 6;
+        for (int x = x0; x <= x0 + 6; x++) zet(x, 3, z, (x & 1) == 0 ? "red_wool" : "white_wool");
+        vul(x0, 1, z, x0, 2, z, "spruce_fence");
+        vul(x0 + 6, 1, z, x0 + 6, 2, z, "spruce_fence");
+        for (int x : new int[]{x0 + 1, x0 + 2, x0 + 4, x0 + 5}) {
+            zet(x, 1, z, "barrel[facing=up]");
+            zet(x, 2, z, x == x0 + 2 ? "cake" : "hay_block[axis=x]");
+        }
+        zet(x0 + 3, 1, z, "air");
+        zet(x0 + 3, 2, z, "spruce_hanging_sign[rotation=0,attached=true]");
+        p.bord(x0 + 3, g + 2, z, "", "Bakker", "vers brood", "");
+        for (int x = x0; x <= x0 + 6; x++) padBlok(x, z + 1, "steen");
     }
 
     /** Waterput: rand van keien, water erin, twee paaltjes en een dakje. */
@@ -496,12 +548,8 @@ final class Tuin {
         pad(new int[][]{{-21, -12}, {-27, -20}}, 2.4, "zand");              // noordwest: bos
         // een paar lantaarns langs de straat (niet te veel)
         for (int[] l : new int[][]{{-17, -16}, {17, -16}, {23, 8}, {-23, 8}, {12, 25}, {-12, 25}}) lantaarn(l[0], l[1], "spruce");
-        // hagen aan de binnenkant van de noordkant, achter de poorten
-        haag(-15, -11, -10, -11, 2, "oak");
-        haag(10, -11, 15, -11, 2, "oak");
-        haag(-2, -11, 2, -11, 2, "oak");
-        berk(-17, -9);
-        berk(17, -9);
+        // achter de poorten: een haag met een spar in het midden als achtergrond
+        haag(-10, -11, 10, -11, 2, "oak");
         spar(0, -9, 7);
     }
 

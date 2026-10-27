@@ -151,17 +151,23 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         return new File(getDataFolder(), "gebouwd.txt");
     }
 
-    /** gebouwd.txt: "versie:grondY[:straal]" (versie 1..7 schreven alleen "versie:grondY"). */
+    /**
+     * gebouwd.txt: "versie:grondY:straal:vingerafdruk" (versie 1..7 schreven alleen "versie:grondY"). Geeft
+     * {versie, grondY, straal}; de vingerafdruk staat in {@link #gebouwdeAfdruk}.
+     */
     private int[] leesMarker() {
         try {
             String[] d = Files.readString(marker().toPath()).trim().split(":");
             int v = Integer.parseInt(d[0]), g = Integer.parseInt(d[1]);
             int r = d.length > 2 ? Integer.parseInt(d[2]) : OUDE_STRAAL;
+            gebouwdeAfdruk = d.length > 3 ? d[3] : "";
             return new int[]{v, g, r};
         } catch (IOException | RuntimeException e) {
             return null;
         }
     }
+
+    private String gebouwdeAfdruk = "";
 
     private void tuinKlaarzetten() {
         wereld = Bukkit.getWorlds().get(0);
@@ -176,18 +182,20 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         wereld.setGameRule(GameRules.MOB_GRIEFING, false);        // schapen eten het gras niet
         for (int cx = -4; cx <= 3; cx++)                         // de tuin blijft geladen (labels, dieren, borden)
             for (int cz = -4; cz <= 3; cz++) wereld.addPluginChunkTicket(cx, cz, this);
-        boolean bouwen = m == null || m[0] != BOUW_VERSIE || m[1] != grondY;
+        boolean nieuweVersie = m == null || m[0] != BOUW_VERSIE || m[1] != grondY;
         int opruim = m == null ? 0 : m[0] != BOUW_VERSIE ? Math.max(m[2], Tuin.STRAAL) : 0;
         final int g = grondY;
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             long t0 = System.currentTimeMillis();
             Tuin t = new Tuin(g);
             t.bouw();
+            String afdruk = t.p.vingerafdruk();
             long ms = System.currentTimeMillis() - t0;
             Bukkit.getScheduler().runTask(this, () -> {
                 tuin = t;
                 getLogger().info("tuin getekend in " + ms + " ms (" + t.banen.size() + " levels)");
-                if (bouwen) bouw(opruim);
+                // nieuwe versie, of dezelfde versie met een andere tekening: (bij)bouwen
+                if (nieuweVersie || !afdruk.equals(gebouwdeAfdruk)) bouw(opruim);
                 else tuinInGebruik();
             });
         });
@@ -201,7 +209,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         bouwer = new Bouwer(this, wereld, tuin.p, opruimStraal, () -> {
             borden();
             try {
-                Files.writeString(marker().toPath(), BOUW_VERSIE + ":" + grondY + ":" + Tuin.STRAAL);
+                Files.writeString(marker().toPath(), BOUW_VERSIE + ":" + grondY + ":" + Tuin.STRAAL + ":" + tuin.p.vingerafdruk());
             } catch (IOException e) {
                 getLogger().warning("gebouwd.txt: " + e.getMessage());
             }

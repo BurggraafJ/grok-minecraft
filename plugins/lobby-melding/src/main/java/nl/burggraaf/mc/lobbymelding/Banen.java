@@ -114,21 +114,29 @@ final class Banen {
 
     static void buxustuin(Tuin t) {
         int x0 = 26, x1 = 57, z0 = 26, z1 = 43;
-        // grindpaden en perken in een strak patroon, lage haagjes ver van de baan
+        // een strakke tuin: grindpaden, perken met een mosrandje (plat, je kunt erover lopen), alles op de grond
         for (int x = x0; x <= x1; x++)
             for (int z = z0; z <= z1; z++) {
-                boolean baan = z >= 31 && z <= 37;
-                if (baan) {
-                    if (t.naam(x, 0, z).equals("grass_block")) t.zet(x, 0, z, (x + z) % 7 == 0 ? "moss_block" : "grass_block");
+                if (z >= 31 && z <= 37) {                               // de baan: een lange grasstrook
+                    if ((x + z) % 9 == 0 && t.grasVrij(x, z)) t.zet(x, 1, z, "lily_of_the_valley");
                     continue;
                 }
-                boolean pad = (x - x0) % 8 == 0 || z == z0 || z == z1 || z == 29 || z == 39;
-                if (pad) t.padBlok(x, z, "grind");
-                else if ((x - x0) % 8 == 1 || (x - x0) % 8 == 7 || z == z0 + 1 || z == z1 - 1 || z == 28 || z == 30 || z == 38 || z == 40)
-                    t.zet(x, 1, z, Tuin.blad("oak"));
+                int kx = Math.floorMod(x - x0, 8), kz = z < 31 ? z - z0 : z - 38;   // perken van 7 × 4
+                boolean pad = kx == 0 || z == z0 || z == z1 || z == 30 || z == 38;
+                if (pad) {
+                    t.padBlok(x, z, "grind");
+                    continue;
+                }
+                boolean rand = kx == 1 || kx == 7 || kz == 1 || kz == 4 || z == 29 || z == 42;
+                if (rand) t.zet(x, 1, z, "moss_carpet");
                 else t.zet(x, 1, z, new String[]{"red_tulip", "white_tulip", "pink_tulip", "allium"}[Math.floorMod((x - x0) / 8 + (z > 34 ? 1 : 0), 4)]);
             }
-        // vier bolletjes van buxus op de hoeken en een zonnewijzer
+        // omheining: hoge haag aan noord-, oost- en zuidkant, met een opening naar de speeltuin
+        t.haag(x0, z0 - 1, x1 + 1, z0 - 1, 2, "oak");
+        t.haag(x1 + 1, z0 - 1, x1 + 1, z1 + 1, 2, "oak");
+        t.haag(x0, z1 + 1, x1 + 1, z1 + 1, 2, "oak");
+        for (int x = 40; x <= 42; x++) t.vul(x, 1, z1 + 1, x, 2, z1 + 1, "air");
+        // vier buxusbollen in potten op de hoeken van de perken, ver van de baan
         for (int[] c : new int[][]{{x0 + 4, 27}, {x0 + 20, 27}, {x0 + 4, 41}, {x0 + 20, 41}}) {
             t.zet(c[0], 1, c[1], "stone_bricks");
             t.zet(c[0], 2, c[1], Tuin.blad("azalea"));
@@ -136,7 +144,7 @@ final class Banen {
         BaanTekening b = nieuw(t, 2, "Buxushagen", "★", 29, 34, 1);
         b.baan.minMarge = 1.0;
         b.start(1, "chiseled_stone_bricks", START, null);
-        String haag = Tuin.blad("oak"), bol = Tuin.blad("azalea");
+        String haag = Tuin.blad("flowering_azalea"), bol = Tuin.blad("azalea");
         b.vlak(3, 0, 5, 0, 1, haag, null);
         b.blok(7, -2, 1, bol, null);
         b.vlak(9, -2, 11, -2, 1, haag, null);
@@ -147,7 +155,7 @@ final class Banen {
         b.finish(26, 2, 1, "chiseled_stone_bricks", FINISH, null);
         startBord(t, b, -2, -2);
         t.lantaarn(27, 31, "spruce");
-        t.lantaarn(57, 31, "spruce");
+        t.lantaarn(56, 31, "spruce");
     }
 
     // ── 3 Boomstronken: de boomgaard ────────────────────────────────────────────────────────
@@ -390,7 +398,6 @@ final class Banen {
         t.vul(-6, 1, 39, -6, 2, 39, "oak_fence");
         for (int x = -11; x <= -7; x++) t.zet(x, 2, 39, x % 2 == 0 ? "white_banner[rotation=0]" : "air");
         t.bank(4, 39, "south", "oak");
-        t.p.dieren.add(new Plan.Dier("CAT", 4.5, t.g + 1.6, 39.5, 0f, true));
     }
 
     // ── 8 Speeltuin: trampolines van slijm ─────────────────────────────────────────────────
@@ -425,8 +432,22 @@ final class Banen {
         }
         t.zet(52, 1, 46, "spruce_fence");
         t.vul(50, 2, 46, 54, 2, 46, plaatS("spruce"));
-        // glijbaan van de finish naar beneden
-        for (int i = 1; i <= 4; i++) t.zet(b.wx(26 + i, 1), 4 - i + 1, b.wz(26 + i, 1), "smooth_quartz_slab[type=bottom]");
+        // glijbaan van de finish naar beneden (naar het zuiden)
+        for (int i = 1; i <= 4; i++) t.zet(b.wx(25, 2 + i), 4 - i + 1, b.wz(25, 2 + i), "smooth_quartz_slab[type=bottom]");
+        // hekje rondom (wit, met openingen bij het pad en naar de buxustuin), bankjes voor wie kijkt
+        for (int x = 24; x <= 59; x++) {
+            if (!(x >= 26 && x <= 28) && !(x >= 40 && x <= 42)) t.zet(x, 1, 45, "birch_fence");
+            t.zet(x, 1, 60, "birch_fence");
+        }
+        for (int z = 45; z <= 60; z++) {
+            t.zet(24, 1, z, "birch_fence");
+            t.zet(59, 1, z, "birch_fence");
+        }
+        t.bank(32, 58, "south", "birch");
+        t.bank(47, 58, "south", "birch");
+        t.berk(25, 57);
+        t.kers(57, 47);
+        for (int x = 25; x <= 58; x++) for (int z = 46; z <= 59; z++) if (t.grasVrij(x, z) && Tuin.kans(x, z, 6) == 0) t.zet(x, 1, z, "dandelion");
     }
 
     static String plaatS(String hout) {

@@ -115,6 +115,17 @@ final class Plan {
                 || n.equals("red_mushroom") || n.equals("brown_mushroom") || n.equals("pitcher_plant") || n.equals("seagrass") || n.equals("glow_lichen") || n.equals("sugar_cane");
     }
 
+    /** Vingerafdruk van de hele tekening (blokken en borden): verandert er iets, dan bouwt de plugin bij. */
+    String vingerafdruk() {
+        java.util.zip.CRC32 c = new java.util.zip.CRC32();
+        java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(cel.length * 2);
+        for (short s : cel) b.putShort(s);
+        c.update(b.array());
+        for (String s : palet) c.update(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        for (Bord bd : borden) c.update((bd.x() + "," + bd.y() + "," + bd.z() + String.join("|", bd.regels())).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return Long.toHexString(c.getValue());
+    }
+
     List<String> palet() {
         return palet;
     }
