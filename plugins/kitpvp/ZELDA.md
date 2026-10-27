@@ -183,6 +183,8 @@ Het pad (de test loopt het in deze volgorde af; rustplaatsen 0 … 3, nooit tuss
   Zijmissies: *Zilverschelpen* (Hendrik: vijf `schelp:` langs het strand, op het wrak, op een rotsje in de branding en
   bij het dijkhuisje → `harnas1`, het maliënhemd) en *De vlieger* (Pim: de duinbaan halen → `hs:zilverstrand-1`).
 - **Hartstukjes**: 1 (Pim), 2 (smokkelgrot, bommen), 3 (Meeuwenrots, klauwhaak). `hs:zilverstrand-4` is voor 2b.
+  Het haakpunt `rots` zit aan de zuidrand van de top (1198, G+21, −391), ±21 blokken van het pleintje ervoor: geef de
+  klauwhaak (3a) genoeg bereik, of zet halverwege een tweede haakpunt (dan de versie van `zelda-e2a` ophogen).
 - **Muziek**: *Zoutkom* (steiger, dorp, strand, dijk; xylofoon en gitaar), *Duinen* (fluit, wind) en *Vuurtoren*
   (kaap, toren, kelder; klokken). Hemel: ochtend bij de steiger, middag in dorp en duinen, avondzon op de kaap.
 - **Afwijkingen van het plan, en waarom**: de puzzel voor de bommenzak is een **spiegelpuzzel** (draaien, geen tijd)
