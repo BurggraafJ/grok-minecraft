@@ -247,7 +247,8 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   bommen te halen wat kon (`hs:lindewoud-4`); `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
   voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
-- `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), bron,
+- `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), de wegwijzer
+  (Tijmen noemt het dichtstbijzijnde doel van een groep), bron (met alleen Tijmens flesje),
   flesje, hartstukjes, harnas, huisdier (verschijnt, loopt mee), gesprek en zijmissie met beloning, opnieuw vanaf een
   rustplaats, uitleg uit, de bommenzak (vak 4) en een echte bom tegen de tempelmuur, varen en aankomen, tip na
   doodgaan in een kamer, de kaart, en weg = alles weg. Wist eerst en

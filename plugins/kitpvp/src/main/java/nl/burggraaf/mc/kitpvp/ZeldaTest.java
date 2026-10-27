@@ -569,7 +569,7 @@ final class ZeldaTest {
         proef.gesprek("proef-1", s -> s.missie("proef") == 0, List.of(ZeldaHoofdstuk.r("Proef", "Help je mij?")), (spel, q, s) -> spel.missie(q, "proef", 1));
         proef.gesprek("proef-2", s -> s.missie("proef") == 1, List.of(ZeldaHoofdstuk.r("Proef", "Dank je!")), (spel, q, s) -> {
             spel.missie(q, "proef", ZeldaVoortgang.KLAAR);
-            spel.beloon(q, "fles2", "Flesje", "nog een");
+            spel.beloon(q, "fles3", "Flesje", "nog een");
         });
         stap("gesprek", () -> {
             stil();
