@@ -256,4 +256,11 @@ class ZeldaRegelsTest {
         assertSame(b, h.onderdeel("kelder"), "een gebarsten muur op het pad hoort bij de volgorde");
         assertTrue(h.volgorde.contains(b));
     }
+
+    @Test
+    void eilandnaamInEenZin() {
+        assertEquals("het Lindewoud", ZeldaRegels.inZin("Het Lindewoud"));
+        assertEquals("de Gloedberg", ZeldaRegels.inZin("De Gloedberg"));
+        assertEquals("Nachtrots", ZeldaRegels.inZin("Nachtrots"));
+    }
 }

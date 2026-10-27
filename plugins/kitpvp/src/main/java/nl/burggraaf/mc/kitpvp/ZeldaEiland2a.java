@@ -462,8 +462,12 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             b.daarna(() -> chunks.forEach(c -> w.addPluginChunkTicket((int) c[0], (int) c[1], plugin)));
             top = new int[X2 - X1 + 1][Z2 - Z1 + 1];
             terrein();
-            if (oost) for (int x = X2 + 1; x <= OOST; x++)
-                for (int z = Z1; z <= Z2; z++) zee(x, z, G - 8 + (int) (zacht(x, z, 9) * 2));
+            if (oost) {                                                     // vlakke zee, in een paar grote stukken (weinig stappen)
+                vul(X2 + 1, g + 1, Z1, OOST, G - 9, Z2, Material.STONE);
+                vul(X2 + 1, G - 8, Z1, OOST, G - 8, Z2, Material.SAND);
+                vul(X2 + 1, G - 7, Z1, OOST, G - 1, Z2, Material.WATER);
+                vul(X2 + 1, G, Z1, OOST, G + 44, Z2, Material.AIR);
+            }
         }
         steiger();
         zoutkom();
@@ -691,7 +695,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         hendrik.streek = Villager.Type.DESERT;
         missie("schelpen", "Zilverschelpen", "Zoek vijf zilverschelpen langs het strand.", "Breng de schelpen naar Hendrik.");
         hendrik.gesprek("hendrik-1", s -> s.missie("schelpen") == 0, List.of(
-                        r("Hendrik", "Jij gaat naar die rovers? Zo, in een tuniek?"),
+                        r("Hendrik", "Zo, in een tuniek? Daar komt een rover zo doorheen."),
                         r("Hendrik", "Ik smeed je een maliënhemd. Maar ik mis zilver."),
                         r("Hendrik", "Vijf zilverschelpen, langs het strand. Breng je ze?")), (spel, p, s) -> spel.missie(p, "schelpen", 1))
                 .gesprek(null, s -> s.missie("schelpen") == 1, List.of(r("Hendrik", "Vijf schelpen. Ze glanzen in het zand.")), null)
@@ -919,6 +923,8 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 r("Wiske", "Een gebarsten muur? Daar helpt een bom."))));
         bom.vereist = "bommen";
         bom.uitleg = true;
+        verhaal(new Verhaal("thuis", Box.van(1086, G + 4, -331, 1091, G + 7, -328), List.of(
+                r("Wiske", "Zo'n muur zat ook in de oude tempel, thuis…")))).vereist = "bommen";
         Barst wand = barstOpPad(new Barst("kelder", deur(BARST.createBlockData(), 1088, G + 4, -332, 1089, G + 5, -332), Box.van(1080, G + 2, -343, 1098, G + 9, -311)));
         wand.voor = plek(1088, G + 4, -329, 180f);
     }
@@ -1047,8 +1053,11 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         vondst(new Vondst("zeelicht", "Het Zeelicht", "breng hem naar Mira", Material.SEA_LANTERN, plek(1198, G + 2.4, -400, 0f),
                 Box.van(1196, G + 1, -402, 1200, G + 4, -397)));
         verhaal(new Verhaal("nest", Box.van(1194, G + 1, -402, 1202, G + 5, -391), List.of(
-                r("Wiske", "Mira's lamp! Snel terug naar de vuurtoren."),
-                r("Wiske", "Met je kaart reis je zo naar een zielvuur.")))).vereist = "zeelicht";
+                r("Wiske", "Mira's lamp! Snel terug naar de vuurtoren.")))).vereist = "zeelicht";
+        Verhaal reizen = verhaal(new Verhaal("uitleg-reizen", Box.van(1194, G + 1, -402, 1202, G + 5, -391), List.of(
+                r("Wiske", "Met je kaart reis je zo naar een zielvuur."))));
+        reizen.vereist = "zeelicht";
+        reizen.uitleg = true;
         verhaal(new Verhaal("top", Box.van(1191, G, -388, 1204, G + 6, -379), List.of(
                 r("Wiske", "Boven op de rots glinstert nog iets. Te hoog…")))).vereist = "zeelicht";
         haakpunt(new Haakpunt("rots", RX, G + 21, -391, plek(RX, G + 21, -396, 180f)));

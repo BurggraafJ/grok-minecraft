@@ -184,6 +184,11 @@ final class ZeldaRegels {
         return new Straal(punten, false);
     }
 
+    /** Een eilandnaam midden in een zin: «Het Lindewoud» → «het Lindewoud». */
+    static String inZin(String naam) {
+        return naam.startsWith("Het ") ? "het " + naam.substring(4) : naam.startsWith("De ") ? "de " + naam.substring(3) : naam;
+    }
+
     /** {@code "h1:3"} → {@code {"h1", "3"}}; null bij onzin. */
     static String[] plek(String laatste) {
         if (laatste == null) return null;

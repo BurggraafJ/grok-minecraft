@@ -1714,7 +1714,7 @@ final class ZeldaSpel implements Listener {
         }
         for (ZeldaEiland o : eilanden)
             if (o != e && o.open(s) && o.aanlegRust() != null && !s.heeft("e:" + o.id())) {
-                vertel(p, ZeldaHoofdstuk.r("Wiske", "Hier zijn we klaar. Op je kaart (vak 9) kun je naar " + o.naam() + " varen."));
+                vertel(p, ZeldaHoofdstuk.r("Wiske", "Hier zijn we klaar. Op je kaart (vak 9) kun je naar " + ZeldaRegels.inZin(o.naam()) + " varen."));
                 return;
             }
         for (ZeldaHoofdstuk.Persoon pe : alle(e, h -> h.personen))     // iemand met iets nieuws (nog eens vragen = ze wijst)
@@ -1725,12 +1725,30 @@ final class ZeldaSpel implements Listener {
                 vertel(p, ZeldaHoofdstuk.r("Wiske", pe.naam + " wil je iets vertellen."));
                 return;
             }
+        for (ZeldaHoofdstuk.Vondst v : alle(e, h -> h.vondsten))                // met een nieuw voorwerp kan hier nog iets
+            if (later(v, s)) {
+                ss.hintDoel = "v:" + v.vlag;
+                if (ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, v.plek);
+                ss.hintTijd = nu;
+                vertel(p, ZeldaHoofdstuk.r("Wiske", "Met je nieuwe spullen kun je hier nog iets halen."));
+                return;
+            }
+        for (ZeldaEiland o : eilanden)                                          // … of op een ander eiland
+            if (o != e && o.open(s) && o.aanlegRust() != null && alle(o, h -> h.vondsten).stream().anyMatch(v -> later(v, s))) {
+                vertel(p, ZeldaHoofdstuk.r("Wiske", "Op " + ZeldaRegels.inZin(o.naam()) + " kun je nu iets halen. Vaar er eens heen."));
+                return;
+            }
         ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
         if (!s.heeft(e.klaar()) && laatste.wacht() != null) {             // het eiland is nog niet af, maar hier is niets meer
             vertel(p, ZeldaHoofdstuk.r("Wiske", laatste.wacht()));
             return;
         }
         vertel(p, ZeldaHoofdstuk.r("Wiske", "Ik weet het ook niet. Kijk eens rond, praat met wie je ziet."));
+    }
+
+    /** Een vondst die je pas met een voorwerp kon pakken, en dat voorwerp heb je nu. */
+    private static boolean later(ZeldaHoofdstuk.Vondst v, ZeldaVoortgang.Stand s) {
+        return v.voorwerp != null && s.heeft(v.voorwerp) && !s.heeft(v.vlag) && (v.vereist == null || s.heeft(v.vereist));
     }
 
     // ── personen, gesprekken en zijmissies ──────────────────────────────────────────────────
