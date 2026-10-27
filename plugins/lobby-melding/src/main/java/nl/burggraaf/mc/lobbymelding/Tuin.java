@@ -7,12 +7,12 @@ import java.util.List;
  * De tuin van Burggraaf Craft (bouwversie 8): een klein tuindorp van ±116 × 116 blokken, procedureel getekend in een
  * {@link Plan} (geen wereld nodig, altijd hetzelfde resultaat).
  * <pre>
- *            boomhut (9)        molen (10)          boerderij, hooiberg (4)
+ *            boomhut (9)        molen (10)   pluktuin    boerderij, hooiberg (4)
  *   tuinmuur (5)      ┌──── dorpsstraat (ring) ────┐      boomgaard (3)
  *   moestuin          │  Survival  ◇  KitPvP        │
  *                     │       brink + linde         │
  *   vijver (1)        └──── huisjes, daken (7) ────┘      buxustuin (2)
- *   pergola (6)                                           speeltuin (8)
+ *   pergola (6)              kruidenwiel                  speeltuin (8)
  * </pre>
  * Midden: de brink met de spawn (kijkt naar het noorden, recht op de twee poorten), een linde, een waterput, een
  * prikbord met de records en een wegwijzer. Daaromheen een straatje van kinderkopjes; daarbuiten de erven met elk
@@ -372,6 +372,8 @@ final class Tuin {
         brink();
         dorpsstraat();
         poorten();
+        pluktuin();
+        kruidenwiel(4, 51);
         Banen.teken(this);
         randBomen();
         begroei();
@@ -553,6 +555,104 @@ final class Tuin {
         spar(0, -9, 7);
     }
 
+    // ── de pluktuin (noordoost) en het kruidenwiel (zuid) ──────────────────────────────────
+
+    /**
+     * Pluktuin: een lage haag rondom met een rozenboog als ingang, bedden met hoge bloemen achterin (noord) en lage
+     * vooraan, grindpaadjes ertussen, achterin een schuurtje met potten, een ton water en twee bijenkasten.
+     */
+    void pluktuin() {
+        int x0 = 8, x1 = 26, z0 = -45, z1 = -25, mx = 17;
+        huisje(14, -44, 20, -41, STIJLEN[4], "south", true, false);
+        haag(x0, z0, x1, z0, 1, "oak");
+        haag(x0, z1, x1, z1, 1, "oak");
+        haag(x0, z0, x0, z1, 1, "oak");
+        haag(x1, z0, x1, z1, 1, "oak");
+        // bedden in rijen van oost naar west (2 diep, 1 paadje ertussen), links en rechts van het middenpad
+        String[][] rij = {{"sunflower", "sunflower"}, {"lilac", "peony"}, {"rose_bush", "lilac"}, {"cornflower", "allium"}, {"oxeye_daisy", "pink_tulip"}};
+        for (int z = -39; z <= -26; z++) {
+            int k = Math.floorMod(z + 39, 3), r = (z + 39) / 3;
+            for (int x = x0 + 1; x <= x1 - 1; x++) {
+                if (Math.abs(x - mx) <= 1) continue;
+                if (k == 2) {
+                    padBlok(x, z, "grind");
+                    continue;
+                }
+                String b = rij[r][x < mx ? 0 : 1];
+                boolean hoog = b.equals("sunflower") || b.equals("lilac") || b.equals("peony") || b.equals("rose_bush");
+                zet(x, 0, z, "podzol");
+                zet(x, 1, z, hoog ? b + "[half=lower]" : b);
+                if (hoog) zet(x, 2, z, b + "[half=upper]");
+            }
+        }
+        for (int z = -40; z <= z1; z++) for (int x = mx - 1; x <= mx + 1; x++) padBlok(x, z, "grind");
+        for (int x = x0 + 1; x <= x1 - 1; x++) if (Math.abs(x - mx) > 1) padBlok(x, -40, "grind");
+        // ingang: rozenboog met een bordje
+        for (int x = mx - 1; x <= mx + 1; x++) zet(x, 1, z1, "air");
+        for (int s : new int[]{-2, 2}) vul(mx + s, 1, z1, mx + s, 3, z1, "oak_fence");
+        for (int dx = -2; dx <= 2; dx++) zet(mx + dx, 4, z1, blad(Math.abs(dx) == 1 ? "azalea" : "flowering_azalea"));
+        zet(mx, 3, z1, "spruce_hanging_sign[rotation=0,attached=true]");
+        p.bord(mx, g + 3, z1, "", "Pluktuin", "", "");
+        // voor het schuurtje: potten op tonnen, water, compost; bijenkasten op palen in de hoeken
+        zet(14, 1, -40, "barrel[facing=up]");
+        zet(14, 2, -40, "potted_cornflower");
+        zet(15, 1, -40, "barrel[facing=up]");
+        zet(15, 2, -40, "potted_allium");
+        zet(19, 1, -40, "water_cauldron[level=3]");
+        zet(20, 1, -40, "composter[level=4]");
+        for (int x : new int[]{10, 24}) {
+            vul(x, 1, -43, x, 2, -43, "oak_fence");
+            zet(x, 3, -43, "bee_nest[facing=south,honey_level=0]");
+        }
+        // pad vanaf de dorpsstraat, lantaarns naast de boog
+        pad(new int[][]{{14, -15}, {15, -20}, {17, -24}}, 2.2, "zand");
+        lantaarn(mx - 3, z1 + 1, "spruce");
+        lantaarn(mx + 3, z1 + 1, "spruce");
+    }
+
+    /**
+     * Kruidenwiel: een rond perk met acht taartpunten (elk één plant), grindpaadjes in een kruis, in het midden een
+     * vaas op een sokkel; ernaast een grote boom met een picknickkleed en een bankje dat naar het wiel kijkt.
+     */
+    void kruidenwiel(int cx, int cz) {
+        String[] punt = {"fern", "azure_bluet", "cornflower", "lily_of_the_valley", "allium", "oxeye_daisy", "blue_orchid", "wildflowers[flower_amount=4,facing=north]"};
+        for (int x = cx - 7; x <= cx + 7; x++)
+            for (int z = cz - 7; z <= cz + 7; z++) {
+                double d = Math.hypot(x - cx, z - cz);
+                if (d > 6.6) continue;
+                boolean kruis = (x == cx || z == cz) && d > 1.5;
+                if (d > 5.6) {
+                    if (kruis && z <= cz) padBlok(x, z, "grind");     // openingen naar noord, oost en west
+                    else zet(x, 0, z, "bricks");
+                    if (!kruis || z > cz) zet(x, 1, z, "air");
+                    continue;
+                }
+                if (d <= 1.5) {
+                    zet(x, 0, z, "polished_andesite");
+                    zet(x, 1, z, "air");
+                    continue;
+                }
+                if (kruis) {
+                    padBlok(x, z, "grind");
+                    continue;
+                }
+                int w = (int) Math.floor((Math.atan2(z - cz, x - cx) + Math.PI) / (Math.PI / 4)) & 7;
+                zet(x, 0, z, "podzol");
+                zet(x, 1, z, punt[w]);
+            }
+        zet(cx, 1, cz, "chiseled_stone_bricks");
+        zet(cx, 2, cz, "decorated_pot[facing=south]");
+        // pad tussen de huisjes door naar het wiel
+        pad(new int[][]{{5, 24}, {5, 38}, {cx, cz - 7}}, 1.9, "zand");
+        bank(cx - 1, cz + 8, "south", "oak");
+        // de picknickboom met een kleed eronder
+        boom(cx - 14, cz + 1, 4, 4.4, "oak_log", "oak", null, 0);
+        for (int x = cx - 11; x <= cx - 9; x++)
+            for (int z = cz - 1; z <= cz + 2; z++) zet(x, 1, z, ((x + z) & 1) == 0 ? "red_carpet" : "white_carpet");
+        zet(cx - 10, 1, cz, "cake");
+        lantaarn(cx + 8, cz - 7, "spruce");
+    }
+
     // ── de poorten: Survival links (rozenboog), KitPvP rechts (smidspoort) ────────────────
 
     void poorten() {
@@ -623,7 +723,7 @@ final class Tuin {
         for (int t = -RAND; t <= RAND; t += 5) {
             for (int[] c : new int[][]{{t, -RAND - 2}, {t, RAND + 2}, {-RAND - 2, t}, {RAND + 2, t}}) {
                 int x = c[0] + kans(c[0], c[1], 3) - 1, z = c[1] + kans(c[1], c[0], 3) - 1;
-                if (!grasVrij(x, z) || !vrijRond(x, z, 2)) continue;
+                if (!grasVrij(x, z) || !vrijRond(x, z, 2) || !grasRond(x, z, 3)) continue;
                 int k = kans(x, z, 7);
                 if (k < 2) spar(x, z, 8 + kans(z, x, 3));
                 else if (k < 4) berk(x, z);
@@ -631,6 +731,14 @@ final class Tuin {
                 else boom(x, z, 4, 2.8, "oak_log", "oak", null, 0);
             }
         }
+    }
+
+    /** Overal gras in de grond binnen r (geen pad, perk of water): daar mag een randboom staan. */
+    boolean grasRond(int x, int z, int r) {
+        for (int dx = -r; dx <= r; dx++)
+            for (int dz = -r; dz <= r; dz++)
+                if (!naam(x + dx, 0, z + dz).equals("grass_block")) return false;
+        return true;
     }
 
     boolean vrijRond(int x, int z, int r) {

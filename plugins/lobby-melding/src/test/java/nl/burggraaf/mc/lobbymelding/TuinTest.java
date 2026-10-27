@@ -35,6 +35,34 @@ class TuinTest {
         for (int i = 1; i < 10; i++) assertTrue(t.banen.get(i).moeite() >= t.banen.get(i - 1).moeite());
     }
 
+    /** Kleinste marge van een level (sprongen naar of van een ladder tellen niet: die zijn vast). */
+    static double krapste(Baan b, double[] tweede) {
+        double min = 99, min2 = 99;
+        for (int i = 0; i + 1 < b.stappen.size(); i++) {
+            if (b.stappen.get(i).soort() == Baan.Soort.LADDER || b.stappen.get(i + 1).soort() == Baan.Soort.LADDER) continue;
+            double m = b.marge(i);
+            if (m < min) {
+                min2 = min;
+                min = m;
+            } else if (m < min2) min2 = m;
+        }
+        if (tweede != null) tweede[0] = min2;
+        return min;
+    }
+
+    @Test
+    void moeilijkheidLooptOp() {
+        // de eerste twee levels zijn om te wennen: elke sprong heeft bijna twee blokken speling
+        for (int i = 0; i < 2; i++) assertTrue(krapste(t.banen.get(i), null) >= 1.9, t.banen.get(i).naam);
+        // de laatste twee hebben echte uitdagingen: een krappe sprong (< 0,8) en nog een tweede (≤ 1,2)
+        for (int i = 8; i < 10; i++) {
+            double[] tweede = new double[1];
+            double min = krapste(t.banen.get(i), tweede);
+            assertTrue(min < 0.8, t.banen.get(i).naam + ": krapste " + min);
+            assertTrue(tweede[0] <= 1.2, t.banen.get(i).naam + ": op één na krapste " + tweede[0]);
+        }
+    }
+
     @Test
     void elkeSprongHaalbaarEnVrij() {
         List<String> fout = new ArrayList<>();

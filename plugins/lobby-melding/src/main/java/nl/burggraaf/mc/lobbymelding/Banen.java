@@ -397,7 +397,7 @@ final class Banen {
         t.vul(-12, 1, 39, -12, 2, 39, "oak_fence");
         t.vul(-6, 1, 39, -6, 2, 39, "oak_fence");
         for (int x = -11; x <= -7; x++) t.zet(x, 2, 39, x % 2 == 0 ? "white_banner[rotation=0]" : "air");
-        t.bank(4, 39, "south", "oak");
+        t.bank(8, 40, "south", "oak");
     }
 
     // ── 8 Speeltuin: trampolines van slijm ─────────────────────────────────────────────────
@@ -472,10 +472,9 @@ final class Banen {
         b.blok(8, 1, 4, "oak_log[axis=y]", "oak_log[axis=y]");
         b.ladder(10, 1, 4, 7, "oak_log[axis=y]", "voor", "ladder");
         b.vlak(13, 1, 15, 1, 7, tak, null);
-        b.blok(17, -1, 8, Tuin.blad("azalea"), null);
-        b.vlak(19, -1, 21, -1, 8, tak, null);
-        b.blok(24, 0, 8, Tuin.blad("flowering_azalea"), null);
-        b.blok(26, 0, 9, tak, null);
+        b.blok(18, -2, 8, Tuin.blad("azalea"), null);                 // schuin omhoog de kruin in
+        b.vlak(20, -2, 22, -2, 8, tak, null);
+        b.blok(25, 0, 8, Tuin.blad("flowering_azalea"), null);
         b.finish(29, 0, 9, "spruce_planks", FINISH, null);
         // de boomhut zelf: wandjes en een dakje om de finish, open naar de baan
         for (int f = 27; f <= 31; f++)
@@ -504,15 +503,15 @@ final class Banen {
 
     static void molen(Tuin t) {
         BaanTekening b = nieuw(t, 10, "Molen", "★★★★★", -4, -24, 0);
+        // zakken en tonnen (los, één blok), een lange sprong omlaag, de mast op, over de balken naar de stelling
         b.start(1, "stone_bricks", START, null);
         b.blok(3, 0, 2, "barrel[facing=up]", "barrel[facing=up]");
         b.blok(6, 1, 3, "white_wool", "barrel[facing=up]");
         b.blok(10, 1, 3, "barrel[facing=up]", "spruce_log[axis=y]");
-        b.blok(12, -1, 3, "white_wool", "spruce_log[axis=y]");
-        b.ladder(14, -1, 3, 6, "spruce_log[axis=y]", "voor", "ladder");
-        b.blok(18, -1, 6, "spruce_planks", "spruce_log[axis=y]");
-        b.blok(20, 1, 7, "spruce_planks", "spruce_log[axis=y]");
-        b.blok(23, 1, 7, "spruce_planks", "spruce_log[axis=y]");
+        b.blok(15, 1, 2, "white_wool", "barrel[facing=up]");          // vier ver, één omlaag
+        b.ladder(17, 1, 2, 6, "spruce_log[axis=y]", "voor", "ladder");
+        b.blok(22, 1, 6, "spruce_planks", "spruce_log[axis=y]");      // drie ver vanaf de mast
+        b.blok(24, -2, 7, "spruce_planks", "spruce_log[axis=y]");     // schuin omhoog
         b.finish(26, 1, 8, "spruce_planks", FINISH, null);
         startBord(t, b, -2, 2);
         // de molen: ronde stenen voet, houten romp, kap, wieken naar het oosten; stelling (omloop) op h8
@@ -532,13 +531,16 @@ final class Banen {
             int r = top + 3 - h + 1;
             for (int dx = -r; dx <= r; dx++) for (int dz = -r - 1; dz <= r; dz++) t.zet(mx + dx, h, mz + dz, "dark_oak_planks");
         }
-        // stelling: ring van planken op h8 met een hekje, sluit aan op de finish
+        // stelling: ring van planken op h8 met een hekje, sluit aan op de finish (niet in de weg van een sprong)
+        java.util.Set<Long> strook = new java.util.HashSet<>();
+        for (int i = 0; i + 1 < b.baan.stappen.size(); i++)
+            for (Baan.Cel c : b.baan.strook(i)) strook.add(((long) c.x() << 32) ^ (c.z() & 0xffffffffL));
         for (int dx = -8; dx <= 8; dx++)
             for (int dz = -8; dz <= 8; dz++) {
                 double d = Math.hypot(dx, dz);
                 if (d < 4.4 || d > 7.4) continue;
                 int x = mx + dx, z = mz + dz;
-                if (b.baan.stapOp(x, t.g + 8, z) >= 0) continue;
+                if (b.baan.stapOp(x, t.g + 8, z) >= 0 || strook.contains(((long) x << 32) ^ (z & 0xffffffffL))) continue;
                 t.zet(x, 8, z, "spruce_planks");
                 if (d > 6.5 && t.vrij(x, 9, z)) t.zet(x, 9, z, "spruce_fence");
                 if (d > 6.5 && (dx + dz) % 4 == 0) t.vul(x, 1, z, x, 7, z, "spruce_log[axis=y]");
