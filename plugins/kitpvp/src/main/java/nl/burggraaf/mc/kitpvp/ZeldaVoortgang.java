@@ -176,6 +176,22 @@ final class ZeldaVoortgang {
         return l.subList(0, Math.min(n, l.size()));
     }
 
+    /** De speler met deze naam (hoofdletters maken niet uit), of null. */
+    UUID zoek(String naam) {
+        if (naam == null) return null;
+        for (Map.Entry<UUID, Stand> e : standen.entrySet())
+            if (naam.equalsIgnoreCase(e.getValue().naam)) return e.getKey();
+        return null;
+    }
+
+    /** Alle bekende spelersnamen (voor tab). */
+    List<String> namen() {
+        List<String> l = new java.util.ArrayList<>();
+        for (Stand s : standen.values()) if (s.naam != null && !s.naam.isEmpty()) l.add(s.naam);
+        l.sort(String.CASE_INSENSITIVE_ORDER);
+        return l;
+    }
+
     boolean bekend(UUID id) {
         return standen.containsKey(id);
     }

@@ -204,4 +204,26 @@ class ZeldaVoortgangTest {
         assertEquals(1, v.besteTijden("kloof", 1).size());
         assertTrue(v.besteTijden("anders", 5).isEmpty());
     }
+
+    @Test
+    void resetOpNaamWistAlleenDieSpeler() throws Exception {
+        File f = new File(map, "zelda.yml");
+        ZeldaVoortgang v = new ZeldaVoortgang(f);
+        v.van(a).naam = "IqmTrash";
+        v.van(a).zet("h1");
+        v.van(a).bereik("h1", 5);
+        v.van(b).naam = "Ander";
+        v.van(b).zet("zwaard");
+        v.bewaar();
+        ZeldaVoortgang w = new ZeldaVoortgang(f);
+        assertEquals(a, w.zoek("iqmtrash"), "naam zoeken zonder op hoofdletters te letten");
+        assertNull(w.zoek("Onbekend"));
+        assertEquals(java.util.List.of("Ander", "IqmTrash"), w.namen());
+        w.wis(w.zoek("IqmTrash"));
+        w.bewaar();
+        ZeldaVoortgang terug = new ZeldaVoortgang(f);
+        assertFalse(terug.bekend(a), "gewist blijft gewist na opnieuw lezen");
+        assertTrue(terug.van(b).heeft("zwaard"), "de ander blijft staan");
+        assertEquals(0, terug.van(a).rust("h1"), "na reset weer bij het begin");
+    }
 }

@@ -204,13 +204,25 @@ final class ZeldaBeheer {
                 if (args.length < 2) regel(p, "/zelda ga <plek> · /zelda plekken");
                 else ga(p, args[1]);
             }
+            case "reset" -> {
+                if (args.length < 2) regel(p, "/zelda reset <speler>");
+                else regel(p, "Zelda: " + spel.modus.reset(args[1]));
+            }
             case "plekken" -> p.sendMessage(Component.text("Plekken: " + String.join(", ", plekken().keySet()), NamedTextColor.GRAY));
-            default -> regel(p, "/zelda beheer [aan|uit] · /zelda ga <plek> · /zelda plekken");
+            default -> regel(p, "/zelda beheer [aan|uit] · /zelda ga <plek> · /zelda plekken · /zelda reset <speler>");
         }
     }
 
     List<String> tab(String[] args) {
-        if (args.length <= 1) return passend(List.of("beheer", "ga", "plekken"), args.length == 1 ? args[0] : "");
+        if (args.length <= 1) return passend(List.of("beheer", "ga", "plekken", "reset"), args.length == 1 ? args[0] : "");
+        if (args.length == 2 && args[0].equalsIgnoreCase("reset")) {
+            java.util.Set<String> namen = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            for (Player q : org.bukkit.Bukkit.getOnlinePlayers()) namen.add(q.getName());
+            namen.addAll(spel.voortgang.namen());
+            List<String> l = new ArrayList<>();
+            for (String n : namen) if (n.toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) l.add(n);
+            return l;
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("beheer")) return passend(List.of("aan", "uit"), args[1]);
         if (args.length == 2 && args[0].equalsIgnoreCase("ga")) return passend(plekken().keySet(), args[1]);
         return List.of();

@@ -384,20 +384,38 @@ final class Zelda implements Modus {
 
     // ── beheer: kitpvp zelda … ──────────────────────────────────────────────────────────────
 
+    /**
+     * Zet de Zelda-voortgang van een speler terug naar het begin (online of niet). Zit hij in Zelda, dan eerst naar de hub
+     * (Zelda-spullen weg, beheer uit) en daarna opnieuw naar binnen: bij het begin. Geeft één korte regel terug.
+     */
+    String reset(String wie) {
+        Player p = Bukkit.getPlayerExact(wie);
+        java.util.UUID id = p != null ? p.getUniqueId() : spel.voortgang.zoek(wie);
+        if (id == null) {
+            org.bukkit.OfflinePlayer o = Bukkit.getOfflinePlayerIfCached(wie);
+            if (o != null) id = o.getUniqueId();
+        }
+        if (id == null || !spel.voortgang.bekend(id)) return "geen Zelda-voortgang van " + wie;
+        String naam = p != null ? p.getName() : spel.voortgang.van(id).naam == null || spel.voortgang.van(id).naam.isEmpty() ? wie : spel.voortgang.van(id).naam;
+        boolean in = p != null && spel.speelt(p);
+        if (in) plugin.naarHub(p);                           // weg(): beheer uit, spullen weg, voortgang bewaard
+        spel.voortgang.wis(id);
+        spel.voortgang.vuil();
+        spel.bewaar();
+        if (in) plugin.kiesModus(p, this);                   // opnieuw binnen: bij het begin
+        return "voortgang van " + naam + " gewist" + (in ? ", terug bij het begin" : "");
+    }
+
     void beheer(CommandSender s, String[] args) {
         String sub = args.length >= 2 ? args[1].toLowerCase() : "status";
         Player p = args.length >= 3 ? Bukkit.getPlayerExact(args[2]) : null;
         switch (sub) {
             case "reset" -> {
-                if (p == null) {
-                    s.sendMessage("kitpvp zelda reset <speler>: speler niet online");
+                if (args.length < 3) {
+                    s.sendMessage("kitpvp zelda reset <speler> (ook als hij niet online is)");
                     return;
                 }
-                boolean in = spel.speelt(p);
-                if (in) plugin.naarHub(p);
-                spel.voortgang.wis(p.getUniqueId());
-                spel.bewaar();
-                s.sendMessage("zelda: voortgang van " + p.getName() + " gewist" + (in ? " (naar de hub)" : ""));
+                s.sendMessage("zelda: " + reset(args[2]));
             }
             case "rust" -> {
                 if (p == null || args.length < 4) {
