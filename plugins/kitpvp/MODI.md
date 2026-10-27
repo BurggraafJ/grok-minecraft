@@ -167,8 +167,9 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   van de keren een hartje van een vijand, en **op adem komen**: buiten een gevecht, na 6 s zonder klap, elke 2 s een
   half hart. **Samen**: geen schade
   aan elkaar; de wolf (Huisdieren) vecht mee tegen monsters (`stand` = `bots`).
-- **Kaart** (vak 9): de zielvuren van dit eiland (klik = reizen, **rechtsklik = opnieuw vanaf hier**: verhaal, uitleg
-  en puzzels erna komen terug, spullen blijven), de eilanden die open zijn (klik = **varen**), opdrachten, harten en
+- **Kaart** (vak 9): de zielvuren van dit eiland, in de volgorde van het eiland (klik = reizen, **rechtsklik = opnieuw
+  vanaf hier**: verhaal, uitleg en puzzels erna komen terug, spullen blijven; op een open eiland alleen tot de volgende
+  rustplaats), de eilanden die open zijn (klik = **varen**), opdrachten, harten en
   hartstukjes, harnas, flesjes, **Uitleg: aan/uit**, terug naar de hub.
 - **Overtocht**: varen = een paar tellen aan dek van de Zilvermeeuw op open zee (zeemansmuziek, schuim, Brecht aan
   het roer, een regel van Wiske of Brecht; de eerste keer de overtochtregels van het eiland), dan aan land bij de
@@ -236,7 +237,8 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 ### Beheer (console of OP)
 
 - `kitpvp zelda` — status (spelers, voortgang, vijanden, fase van elke kamer). `kitpvp zelda in <speler>` — naar binnen (zoals door de poort).
-- `kitpvp zelda reset <speler>` — voortgang wissen. `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen).
+- `kitpvp zelda reset <speler>` — voortgang wissen. `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen;
+  op het open Lindewoud geeft een rustplaats geen spullen meer: die geef je met `kitpvp zelda vlag`).
 - `kitpvp zelda test <speler> [alles]` — loopt met een echte speler door de poort en het hoofdstuk (kamers verslaan,
   puzzels, uitdaging, vondsten, rustplaatsen, opslag op schijf); zonder `alles` tot de eerste rustplaats na de eerste
   kamer; met `alles` ook vrije doorgang en de bel, vondsten voor later (blijven liggen), spiegels (echte klikken),

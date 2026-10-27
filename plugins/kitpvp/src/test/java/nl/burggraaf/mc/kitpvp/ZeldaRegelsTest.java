@@ -154,6 +154,19 @@ class ZeldaRegelsTest {
     }
 
     @Test
+    void opnieuwOpEenOpenEiland() {
+        Proef h = new Proef();
+        ZeldaHoofdstuk.Box z = ZeldaHoofdstuk.Box.van(0, 0, 0, 1, 1, 1);
+        var dorp = h.rust(new ZeldaHoofdstuk.Rust("dorp", "Dorp", null, z, List.of()));
+        h.verhaal(new ZeldaHoofdstuk.Verhaal("plein", z, List.of()));
+        var eik = h.rust(new ZeldaHoofdstuk.Rust("eik", "Eik", null, z, List.of()));
+        h.verhaal(new ZeldaHoofdstuk.Verhaal("tempel", z, List.of()));
+        assertEquals(List.of("v:plein", "v:tempel"), ZeldaRegels.opnieuw(h.volgorde, dorp), "recht pad: alles erna");
+        assertEquals(List.of("v:plein"), ZeldaRegels.opnieuw(h.volgorde, dorp, true), "open eiland: alleen tot de volgende rustplaats");
+        assertEquals(List.of("v:tempel"), ZeldaRegels.opnieuw(h.volgorde, eik, true));
+    }
+
+    @Test
     void oefenplekTeltNietAlsVerplicht() {
         Proef h = new Proef();
         var oefen = h.kamer(kamer("open-plek"));

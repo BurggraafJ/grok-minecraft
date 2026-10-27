@@ -234,6 +234,12 @@ final class ZeldaTest {
                         2, () -> true, 1);
             } else if (o instanceof ZeldaHoofdstuk.Kamer k) {
                 kamerGehad = true;
+                if (alles) for (ZeldaHoofdstuk.Vondst v : h.vondsten)                // wat pas na deze kamer mag (het hart van de baas): nog niet te pakken
+                    if (("k:" + k.id).equals(v.vereist))
+                        stap("vondst " + v.vlag + " (pas na " + k.id + ")", () -> p.teleport(v.zone.midden(h.w).add(0, 1, 0)), 10, () -> {
+                            moet(!stand().heeft(v.vlag), "vondst " + v.vlag + " te pakken zonder " + k.id + " te winnen");
+                            return true;
+                        }, 1);
                 stap("kamer " + k.id + " dicht", () -> {
                     if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
                     p.teleport(k.start.midden(h.w).add(0, 1, 0));
@@ -517,9 +523,18 @@ final class ZeldaTest {
             String tekst = rij();
             moet(tekst.contains("Praat met Tijmen"), "hint 2 zegt niet wat je moet doen: " + tekst);
         }, 2, () -> true, 1);
+        stap("wegwijzer", () -> {                                                // een persoon zegt je volgende opdracht (doelen in elke volgorde: de dichtstbijzijnde)
+            stil();
+            stand().zet("g:tijmen-1");
+            ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(h.doelen, stand(), p.getLocation().getX(), p.getLocation().getZ());
+            sp.wegwijzer(p, "Tijmen");
+            moet(d != null && d.groep() != null && rij().contains("Tijmen · " + d.verder()), "wegwijzer: " + rij() + " (verwacht " + (d == null ? "?" : d.verder()) + ")");
+            stand().wis("g:tijmen-1");
+            stil();
+        }, 2, () -> true, 1);
         ZeldaHoofdstuk.Bron bron = h.bronnen.get(0);
         stap("bron", () -> {
-            stand().zet("fles1");
+            stand().zet("fles2");                                                    // alleen het flesje van Tijmen (nog niet dat van Hanne)
             stand().teller("fles-vol", 0);
             sp.uitrusten(p, stand());
             moet(item(2) == Material.GLASS_BOTTLE, "leeg flesje niet in vak 3 maar " + item(2));

@@ -384,7 +384,7 @@ final class ZeldaSpel implements Listener {
             inv.setItem(17, ding(Material.ARROW, "Pijl", "pijl"));
         }
         if (s.heeft("schild")) inv.setItemInOffHand(ding(Material.SHIELD, "Eikenschild", "schild"));
-        for (ZeldaVoorwerp v : voorwerpen) if (s.heeft(v.vlag())) vernieuw(p, s, v);
+        for (ZeldaVoorwerp v : voorwerpen) if (v.heeft(s)) vernieuw(p, s, v);
         inv.setItem(8, ding(Material.MAP, "Kaart", "kaart"));
         inv.setItem(Menus.HUB_VAK, plugin.hubItem());
         harnas(p, ZeldaRegels.harnas(s));
@@ -393,7 +393,7 @@ final class ZeldaSpel implements Listener {
 
     /** Zet één voorwerp opnieuw in zijn vak (bv. na drinken). */
     void vernieuw(Player p, ZeldaVoortgang.Stand s, ZeldaVoorwerp v) {
-        ItemStack it = s.heeft(v.vlag()) ? v.item(this, p, s) : null;
+        ItemStack it = v.heeft(s) ? v.item(this, p, s) : null;
         if (it != null) {
             ItemMeta meta = it.getItemMeta();
             meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "v:" + v.id());
@@ -1539,7 +1539,8 @@ final class ZeldaSpel implements Listener {
         m.inv = Bukkit.createInventory(m, 36, Component.text(eiland.naam(), NamedTextColor.DARK_GRAY));
         int slot = 0;
         for (ZeldaHoofdstuk h : eiland.delen())
-            for (ZeldaHoofdstuk.Rust r : h.rust) {
+            for (Object o : h.volgorde) {                           // in de volgorde van het eiland (niet op nummer)
+                if (!(o instanceof ZeldaHoofdstuk.Rust r)) continue;
                 if (slot > 17) break;
                 ItemStack it;
                 boolean hier = h == ss.rh && r.index == ss.rust;
@@ -1615,7 +1616,7 @@ final class ZeldaSpel implements Listener {
         Sessie ss = sessie(p);
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         if (ss == null || ss.vaart != null || i < 0 || i >= h.rust.size() || !s.bezocht(h.id(), i)) return;
-        for (String v : ZeldaRegels.opnieuw(h.volgorde, h.rust.get(i))) s.wis(v);
+        for (String v : ZeldaRegels.opnieuw(h.volgorde, h.rust.get(i), h.open())) s.wis(v);
         voortgang.vuil();
         reis(p, h, i);
         zeg(p, Component.text("Opnieuw vanaf " + h.rust.get(i).naam, NamedTextColor.GRAY));
@@ -1991,6 +1992,11 @@ final class ZeldaSpel implements Listener {
         public String id() { return "fles"; }
         public String vlag() { return "fles1"; }
         public int vak() { return 2; }
+
+        /** Elk flesje telt (Tijmen geeft {@code fles2} al voordat Hanne {@code fles1} geeft). */
+        public boolean heeft(ZeldaVoortgang.Stand s) {
+            return ZeldaRegels.flessen(s) > 0;
+        }
 
         public ItemStack item(ZeldaSpel spel, Player p, ZeldaVoortgang.Stand s) {
             int n = ZeldaRegels.flessen(s), v = ZeldaRegels.vol(s);

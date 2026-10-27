@@ -161,14 +161,15 @@ Kaart (rx, z; x = 1100 + rx; eiland ongeveer rx −45 … 348, z −98 … 100; 
 | 174, 62 | **de moerashut** van **Hanne** (*Moeraskruid* → `fles1`; later *Zeekraal* → `sterkwater`) | rust 4 `moerashut`, persoon |
 | 183 … 193, 62 | **de drie doelen** aan het kanaal → de brug | puzzel `doelen` |
 | 197, 62 | **de doornen**: wijken alleen voor wie het **lichtwoord** van Tijmen kent (of Grauwmoer al versloeg) | poort `doornen`, bron `bron-kring` |
-| 213, 62 | **de Heksenkring**: baas **Grauwmoer** (60 leven + 30 per extra speler, één mosschutter bij twee derde en bij een derde) | kamer + baas, vondst `hart1` |
+| 213, 62 | **de Heksenkring**: baas **Grauwmoer** (60 leven + 30 per extra speler, één mosschutter bij twee derde en bij een derde); de hartcontainer ligt net buiten de oostpoort, aan het kringpad, en is pas te zien en te pakken als je haar versloeg (`vereist = "k:heksenkring"`) | kamer + baas, vondst `hart1` |
 | 225 … 303 | **het kringpad** van de Heksenkring naar de havenweg | — |
 | 319 … 381, 0 (oost) | **de haven**: de kade (twee soldaten), de pier met **Brecht** en **Lotje**, de Zilvermeeuw; boven zee hangt Grauwmoers **nevel** (rook, alleen voor wie haar nog niet versloeg) | rust 5 `haven`, kamer `kade`, verhaal: einde (`h1`, vereist `hart1`) |
 
 - **Hoofdlijn** (doelen voor `/hint` en Tijmen): naar het dorp en praat met Tijmen → **in elke volgorde** het schild,
   het zwaard en de boog (doelgroep `drie`: de hint noemt wat het dichtst bij is) → terug naar Tijmen (het lichtwoord) →
-  de doelen (de brug) → de doornen → Grauwmoer (`hart1`) → de kade → Brecht. Wie de haven eerder haalt (langs de
-  Kloof), hoort van Brecht dat er niemand vaart zolang Grauwmoers nevel er hangt.
+  de doelen (de brug) → de doornen → Grauwmoer → het hart van licht (`hart1`) → de kade → Brecht. Wie de haven eerder
+  haalt (langs de Kloof), hoort van Brecht dat er niemand vaart zolang Grauwmoers nevel er hangt. Het einde (`h1`)
+  vraagt `hart1` én de gewonnen kade (`k:kade`): wie om de kademuur heen zwemt, moet toch eerst de soldaten wegjagen.
 - **Rondjes**: dorp → Oude Eik → oefenveld → bospad → tempel → dorp; tempel → Kloof → havenweg → kringpad →
   Heksenkring → doelen → moerashut → Veen → dorp. De Heksenkring kun je alleen van de westkant in (de uitgang aan de
   oostkant gaat pas open als je hem won), zo blijft Grauwmoer nodig.
@@ -193,7 +194,10 @@ Kaart (rx, z; x = 1100 + rx; eiland ongeveer rx −45 … 348, z −98 … 100; 
   `haven` 5; nieuw: `dorp` 6), dus `laatste` blijft kloppen. Eén keer (vlag `o:lindewoud2`) krijgt een stand van het
   rechte pad wat er vóór zijn verste rustplaats lag (`schild` vanaf 1, `zwaard` vanaf 2, `boog` en `k:veen` vanaf 4,
   `hart1` vanaf 5) en de `k:`-vlaggen; daarna telt het nummer niet meer als «verder op het pad». Wie Grauwmoer al
-  versloeg, hoort Tijmen anders (`tijmen-oud`: alleen het flesje) en kan door de doornen.
+  versloeg, hoort Tijmen anders (`tijmen-oud`: alleen het flesje) en kan door de doornen; wie zwaard, schild en boog
+  al heeft (oude stand, of eerst rondgelopen), hoort `tijmen-ver` (geen «je hebt een zwaard nodig») en daarna meteen
+  het lichtwoord. **Opnieuw vanaf hier** (rechtsklik op een zielvuur) vergeet op een open eiland alleen het stuk tot
+  de volgende rustplaats in de volgorde (`ZeldaHoofdstuk.open()`), niet het hele eiland.
 - **Afwijkingen van het oude plan, en waarom**: het schild komt van Bram (praten, geen gevecht: het eerste uur is
   rustig); de open plek en het Veen zijn oefenplekken; de rustplaatsen hebben geen `geeft` meer (op een open eiland
   kun je elke rustplaats bereiken zonder wat ervoor lag); Grauwmoer is lichter; de Kloof is ook zonder race over te

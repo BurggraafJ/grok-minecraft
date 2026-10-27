@@ -143,13 +143,18 @@ final class ZeldaBeheer {
         return l;
     }
 
-    /** Een plek waar je kunt staan: hier, of het eerste stuk erboven met twee blokken lucht (een puzzel ligt soms in de grond). */
+    /**
+     * Een plek waar je kunt staan (twee blokken lucht met een vloer): hier, eronder (een poort zit in de lucht van zijn
+     * gebied) of erboven (een puzzel ligt soms in de grond). Anders gewoon hier: in beheer vlieg je.
+     */
     private static Location vrij(Location l) {
-        for (int i = 0; i < 24; i++) {
-            Location t = l.clone().add(0, i, 0);
-            if (t.getBlock().isPassable() && t.clone().add(0, 1, 0).getBlock().isPassable()) return t;
-        }
+        for (int i = 0; i < 24; i++) if (staan(l.clone().add(0, -i, 0))) return l.clone().add(0, -i, 0);
+        for (int i = 1; i < 24; i++) if (staan(l.clone().add(0, i, 0))) return l.clone().add(0, i, 0);
         return l;
+    }
+
+    private static boolean staan(Location t) {
+        return t.getBlock().isPassable() && t.clone().add(0, 1, 0).getBlock().isPassable() && t.clone().add(0, -1, 0).getBlock().getType().isSolid();
     }
 
     void ga(Player p, String naam) {

@@ -391,7 +391,8 @@ final class Zelda implements Modus {
                 st.vlaggen.addAll(h.rust.get(n).geeft);
                 spel.voortgang.vuil();
                 spel.bewaar();
-                s.sendMessage("zelda: " + p.getName() + " staat nu op rustplaats " + n + " (" + h.rust.get(n).naam + ")");
+                s.sendMessage("zelda: " + p.getName() + " staat nu op rustplaats " + n + " (" + h.rust.get(n).naam + ")"
+                        + (h.rust.get(n).geeft.isEmpty() ? "; spullen geef je met kitpvp zelda vlag" : ""));
             }
             case "test" -> {
                 if (p == null) {

@@ -20,8 +20,13 @@ interface ZeldaVoorwerp {
     /** Kort en vast (ook de sleutel op het item). */
     String id();
 
-    /** Je hebt het als je deze vlag hebt. */
+    /** Je hebt het als je deze vlag hebt (zie {@link #heeft}). */
     String vlag();
+
+    /** Heb je het? Standaard: de {@link #vlag}; het flesje: een van de flesjes ({@code fles1}, {@code fles2}, …). */
+    default boolean heeft(ZeldaVoortgang.Stand s) {
+        return s.heeft(vlag());
+    }
 
     /** Vak in de hotbar: 2 … 6 (0 zwaard, 1 boog, 7 hub, 8 kaart). */
     int vak();

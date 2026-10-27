@@ -123,10 +123,16 @@ final class ZeldaRegels {
      * verhalen ({@code v:}) en puzzels ({@code r:}) die erna komen. Vondsten, harten, missies en tijden blijven.
      */
     static List<String> opnieuw(List<Object> volgorde, ZeldaHoofdstuk.Rust r) {
+        return opnieuw(volgorde, r, false);
+    }
+
+    /** Idem; {@code totVolgende} (een open eiland): alleen het stuk tot de volgende rustplaats in de volgorde. */
+    static List<String> opnieuw(List<Object> volgorde, ZeldaHoofdstuk.Rust r, boolean totVolgende) {
         List<String> weg = new ArrayList<>();
         boolean na = false;
         for (Object o : volgorde) {
             if (o == r) na = true;
+            else if (na && totVolgende && o instanceof ZeldaHoofdstuk.Rust) break;
             else if (na && o instanceof ZeldaHoofdstuk.Verhaal v && !v.einde) weg.add("v:" + v.id);
             else if (na && o instanceof ZeldaHoofdstuk.Reeks rk) weg.add("r:" + rk.id);
             else if (na && o instanceof ZeldaHoofdstuk.Spiegels sp) weg.add("r:" + sp.id);

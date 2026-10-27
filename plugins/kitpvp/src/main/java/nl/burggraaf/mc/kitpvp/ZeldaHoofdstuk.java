@@ -504,6 +504,14 @@ abstract class ZeldaHoofdstuk {
     /** Id van het bouwdeel (gebouwd.yml, {@code kitpvp bouw <id>}). */
     abstract String deelId();
 
+    /**
+     * Een open deel (wegen in elke volgorde, geen recht pad): «opnieuw vanaf hier» vergeet dan alleen het stuk tot de
+     * volgende rustplaats in de volgorde, niet alles wat daarna gebouwd is.
+     */
+    boolean open() {
+        return false;
+    }
+
     /** Zet de wereld neer (alleen als {@code b.plaats}) en maak de onderdelen aan (altijd). */
     abstract void bouw(Bouwer b);
 

@@ -156,12 +156,15 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     @Override int versie() { return VERSIE; }
     @Override String deelId() { return "zelda"; }
 
+    /** Een open eiland: «opnieuw vanaf hier» vergeet alleen het stuk tot de volgende rustplaats (zie {@link ZeldaRegels#opnieuw}). */
+    @Override boolean open() { return true; }
+
     /** De dag schuift op met wat je gedaan hebt (niet met waar je staat: op een open eiland loop je ook terug). */
     @Override
     long hemel(Location l, ZeldaVoortgang.Stand s) {
         if (s.heeft(id())) return 12600;
         int n = 0;
-        for (String v : new String[]{"g:tijmen-1", "schild", "zwaard", "boog", "lichtwoord", "hart1", "k:kade"}) if (s.heeft(v)) n++;
+        for (String v : new String[]{"fles2", "schild", "zwaard", "boog", "lichtwoord", "hart1", "k:kade"}) if (s.heeft(v)) n++;
         return new long[]{500, 1800, 3200, 4600, 6000, 8000, 10500, 12000}[n];
     }
 
@@ -708,7 +711,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         // de doelen van het eiland, voor /hint en Tijmen (eerst een duwtje, nog eens vragen = wat je moet doen);
         // zwaard, schild en boog in elke volgorde: de hint noemt wat het dichtstbij is
         doel("tijmen", "Volg het pad naar het dorp.", "In Lindedorp, bij de toren. Praat met Tijmen.",
-                plekVan("Tijmen"), s -> s.heeft("g:tijmen-1") || s.heeft("g:tijmen-oud") || s.heeft("hart1"));
+                plekVan("Tijmen"), s -> s.heeft("g:tijmen-1") || s.heeft("g:tijmen-oud") || s.heeft("g:tijmen-ver") || s.heeft("hart1"));
         doel("drie", "schild", "Wachter Bram heeft een schild voor je.", "Het oefenveld ligt in het woud, voorbij de Oude Eik.",
                 plekVan("Bram"), s -> s.heeft("schild"));
         doel("drie", "zwaard", "In de oude tempel ligt een zwaard.", "Steek de drie vuurschalen snel aan, dan gaat de poort open.",
@@ -720,7 +723,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         doel("doelen", "Bij het kanaal achter de moerashut: drie doelen.", "Raak ze alle drie snel na elkaar, dan komt de brug.",
                 plekVan("doelen"), s -> s.heeft("r:doelen") || s.heeft("hart1"));
         doel("heks", "Achter de doornen wacht Grauwmoer.", "Staat ze op een paddenstoel? Schiet haar eraf.",
-                plekVan("heksenkring"), s -> s.heeft("hart1"));
+                plekVan("heksenkring"), s -> s.heeft("hart1") || s.heeft("k:heksenkring"));
+        doel("hart", "Grauwmoer is weg. Pak het hart van licht.", "Net buiten de oostpoort van de Heksenkring.",
+                plekVan("hart1"), s -> s.heeft("hart1"));
         doel("kade", "Naar de haven. Soldaten bezetten de kade.", "Langs de Kloof of het kringpad, naar de oostkust.",
                 plekVan("kade"), s -> s.heeft("k:kade") || s.heeft(id()));
         doel("brecht", "Brecht wacht op de pier.", "Aan het eind van de pier, bij het schip.",
@@ -1066,7 +1071,11 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         tijmen.eenmalig("tijmen-oud", s -> s.heeft("hart1") && !s.heeft("g:tijmen-1"), List.of(
                         r("Tijmen", "Jij versloeg Grauwmoer! Ik zag het in de sterren."),
                         r("Tijmen", "Neem dit flesje mee. Voor onderweg.")), (spel, p, s) -> spel.beloon(p, "fles2", "Flesje", "rechtsklik als je gewond bent"))
-                .eenmalig("tijmen-1", s -> !s.heeft("g:tijmen-oud"), List.of(
+                .eenmalig("tijmen-ver", s -> !s.heeft("hart1") && !s.heeft("g:tijmen-1") && s.heeft("zwaard") && s.heeft("schild") && s.heeft("boog"), List.of(
+                        r("Tijmen", "Daar ben je. Ik zag je al komen, in de sterren."),
+                        r("Tijmen", "Zwaard, schild en boog: je bent er bijna klaar voor."),
+                        r("Tijmen", "Neem dit flesje mee. Het geneest.")), (spel, p, s) -> spel.beloon(p, "fles2", "Flesje", "rechtsklik als je gewond bent"))
+                .eenmalig("tijmen-1", s -> !s.heeft("g:tijmen-oud") && !s.heeft("g:tijmen-ver"), List.of(
                         r("Tijmen", "Daar ben je. Ik zag je al komen, in de sterren."),
                         r("Tijmen", "Morgal nam Zelda mee, over zee naar Nachtrots."),
                         r("Tijmen", "Eerst heb je een zwaard, een schild en een boog nodig."),
@@ -1717,7 +1726,8 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         k.baas.oproepen = new int[]{1, 1};
         k.golf(Soort.HEKS);
         sokkel(313, 2);
-        vondst(new Vondst("hart1", "Hartcontainer", "een hart erbij", Material.RED_DYE, plek(313, G + 2.3, 2, 0f), box(311, G, -3, 315, G + 4, 3)));
+        Vondst hart = vondst(new Vondst("hart1", "Hartcontainer", "een hart erbij", Material.RED_DYE, plek(313, G + 2.3, 2, 0f), box(311, G, -3, 315, G + 4, 3)));
+        hart.vereist = "k:heksenkring";                         // ligt aan het kringpad: pas te zien en te pakken als je Grauwmoer versloeg
         op(0, 0);
     }
 
@@ -1820,6 +1830,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 r("Wiske", "We komen eraan, Zelda."),
                 r(null, "Het Lindewoud · voltooid"))));
         einde.vereist = "hart1";
+        einde.als = s -> s.heeft("k:kade");                     // wie om de kade heen zwemt, moet toch eerst de soldaten wegjagen
         einde.einde = true;
     }
 
