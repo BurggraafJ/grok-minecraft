@@ -112,7 +112,7 @@ final class ZeldaRegels {
         int i = laatste.lastIndexOf(':');
         if (i <= 0 || i == laatste.length() - 1) return null;
         try {
-            Integer.parseInt(laatste.substring(i + 1));
+            if (Integer.parseInt(laatste.substring(i + 1)) < 0) return null;
         } catch (NumberFormatException e) {
             return null;
         }

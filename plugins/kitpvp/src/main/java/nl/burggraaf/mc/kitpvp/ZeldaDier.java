@@ -21,12 +21,10 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Rabbit;
 import org.bukkit.entity.Sittable;
-import org.bukkit.entity.Wolf;
 
 /**
  * Je eigen huisdier in Story of Zelda (zie ZELDA.md: je vindt het later in het spel, op de Witte Toppen). Het staat in
- * je voortgang als vlag {@code dier:<soort>} ({@code vos}, {@code sneeuwvos}, {@code kat}, {@code konijn},
- * {@code wolf}) met een naam ({@code dier} in zelda.yml). Het loopt met je mee (eigen pad, zonder eigen wil: geen
+ * je voortgang als vlag {@code dier:<soort>} ({@code vos}, {@code sneeuwvos}, {@code kat}, {@code konijn}) met een naam ({@code dier} in zelda.yml). Het loopt met je mee (eigen pad, zonder eigen wil: geen
  * slapen, jagen of vechten), wordt nooit geraakt, en <b>snuffelt</b>: ligt er binnen 14 blokken een verborgen vondst
  * (hartstukje) die jij nog niet hebt, dan loopt het erheen en gaat erbij zitten. Zo helpt het zoeken, ook op eilanden
  * waar je al was. Losstaand van de plugin Huisdieren (je survival-dier loopt gewoon ook mee).
@@ -34,7 +32,7 @@ import org.bukkit.entity.Wolf;
 final class ZeldaDier {
 
     static final String TAG = "zelda-dier";
-    static final List<String> SOORTEN = List.of("vos", "sneeuwvos", "kat", "konijn", "wolf");
+    static final List<String> SOORTEN = List.of("vos", "sneeuwvos", "kat", "konijn");   // geen wolf: skeletten vluchten ervoor
     static final List<String> NAMEN = List.of("Pluis", "Vonk", "Sneeuw", "Bram", "Kiek");
 
     private static final class Maatje {
@@ -174,7 +172,6 @@ final class ZeldaDier {
         Class<? extends Mob> klasse = switch (soort) {
             case "kat" -> Cat.class;
             case "konijn" -> Rabbit.class;
-            case "wolf" -> Wolf.class;
             default -> Fox.class;
         };
         return l.getWorld().spawn(l, klasse, m -> {

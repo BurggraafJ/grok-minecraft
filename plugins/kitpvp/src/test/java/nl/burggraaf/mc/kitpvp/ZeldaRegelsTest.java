@@ -133,5 +133,6 @@ class ZeldaRegelsTest {
         assertNull(ZeldaRegels.plek("h1"));
         assertNull(ZeldaRegels.plek("h1:x"));
         assertNull(ZeldaRegels.plek(":3"));
+        assertNull(ZeldaRegels.plek("h1:-1"), "geen negatieve rustplaats");
     }
 }

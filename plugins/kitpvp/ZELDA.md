@@ -201,7 +201,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | regels | `ZeldaRegels` | harten, hartstukjes, harnas, flesjes, welk doel, «opnieuw vanaf hier» (unit-tests) |
 | muziek | `ZeldaMuziek` | drie lagen: achtergrond (altijd, wisselt op een maatstreep), lus (gevecht/baas), deuntjes; nieuwe liedjes *Thuis, Woud, Tempel, Veen, Haven, Zee, Bron, Hint, Opdracht* |
 | Wiske | `ZeldaMetgezel` | kleine allay, alleen voor jou zichtbaar, vliegt naast je schouder, komt voor je zweven als ze praat, wijst bij een tweede hint |
-| huisdier | `ZeldaDier` | vlag `dier:<soort>` (vos, sneeuwvos, kat, konijn, wolf), naam kiezen, loopt mee (eigen pad, geen eigen wil), snuffelt verborgen vondsten op |
+| huisdier | `ZeldaDier` | vlag `dier:<soort>` (vos, sneeuwvos, kat, konijn), naam kiezen, loopt mee (eigen pad, geen eigen wil), snuffelt verborgen vondsten op |
 | bronnen | `ZeldaHoofdstuk.Bron` | feeënkring (licht, geen blokken): geneest snel, vult flesjes; ook zielvuren vullen flesjes |
 | flesjes | `ZeldaSpel.Flesje` | vak 3, rechtsklik = vijf harten; `fles1` … `fles4` |
 | harnas | `ZeldaSpel.harnas` | vlaggen `harnas1` … `harnas4`, zichtbaar, met versiering vanaf trap 3 |

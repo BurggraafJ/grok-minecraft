@@ -226,8 +226,8 @@ final class ZeldaVoortgang {
             ConfigurationSection t = c.getConfigurationSection("tijden");
             if (t != null) for (String u : t.getKeys(false)) s.tijden.put(u, t.getLong(u));
             s.laatste = c.getString("laatste");
-            s.bezocht.addAll(c.getStringList("bezocht"));
-            s.vulBezocht();
+            if (c.contains("bezocht")) s.bezocht.addAll(c.getStringList("bezocht"));
+            else s.vulBezocht();                                 // oude stand: tot en met de verste telt als bezocht
             ConfigurationSection m = c.getConfigurationSection("missies");
             if (m != null) for (String u : m.getKeys(false)) s.missies.put(u, m.getInt(u));
             ConfigurationSection n = c.getConfigurationSection("tellers");

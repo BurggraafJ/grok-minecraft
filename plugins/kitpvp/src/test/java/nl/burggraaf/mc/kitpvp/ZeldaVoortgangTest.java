@@ -99,6 +99,7 @@ class ZeldaVoortgangTest {
         ZeldaVoortgang v = new ZeldaVoortgang(f);
         ZeldaVoortgang.Stand s = v.van(a);
         s.laatste = "h1:2";
+        s.bereik("h1", 2);
         assertTrue(s.bezoek("h1", 2));
         assertFalse(s.bezoek("h1", 2));
         s.missies.put("lamp", 1);
@@ -110,7 +111,7 @@ class ZeldaVoortgangTest {
         ZeldaVoortgang.Stand t = new ZeldaVoortgang(f).van(a);
         assertEquals("h1:2", t.laatste);
         assertTrue(t.bezocht("h1", 2));
-        assertFalse(t.bezocht("h1", 1));
+        assertFalse(t.bezocht("h1", 1), "een nieuwe stand vult niet aan: alleen echt bezochte rustplaatsen");
         assertEquals(1, t.missie("lamp"));
         assertTrue(t.missieKlaar("vlieger"));
         assertEquals(0, t.missie("onbekend"));

@@ -489,9 +489,9 @@ final class ZeldaSpel implements Listener {
             if (p == null) sessies.remove(e.getKey());
             else spelers.add(p);
         }
-        metgezel.tik(spelers);
+        veilig("wiske", () -> metgezel.tik(spelers));
         if (tikken % 5 == 0) {
-            for (Player p : spelers) if (!p.isDead() && sessie(p).vaart == null) zones(p, sessie(p), nu);
+            for (Player p : spelers) if (!p.isDead() && sessie(p).vaart == null) veilig("zones", () -> zones(p, sessie(p), nu));
             for (ZeldaHoofdstuk h : hoofdstukken) {
                 for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) uitdaging(u, nu);
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) reeks(r, nu);
@@ -502,13 +502,28 @@ final class ZeldaSpel implements Listener {
             for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) kamer(k, nu);
             Map<Player, ZeldaVoortgang.Stand> wie = new HashMap<>();
             for (Player p : spelers) wie.put(p, voortgang.van(p.getUniqueId()));
-            dier.tik(wie, this::verborgen);
-            bronnen();
+            veilig("huisdier", () -> dier.tik(wie, this::verborgen));
+            veilig("bronnen", this::bronnen);
         }
         if (tikken % 20 == 0) {
-            for (Player p : spelers) seconde(p, sessie(p), nu);
-            for (ZeldaHoofdstuk h : delen()) decor(h);
+            for (Player p : spelers) veilig("seconde", () -> seconde(p, sessie(p), nu));
+            for (ZeldaHoofdstuk h : delen()) veilig("decor", () -> decor(h));
             if (tikken % 200 == 0) bewaar();
+        }
+    }
+
+    private long laatsteFout;
+
+    /** Eén onderdeel van de klok: een fout stopt de rest niet (en komt hoogstens eens per minuut in de log). */
+    private void veilig(String wat, Runnable r) {
+        try {
+            r.run();
+        } catch (RuntimeException e) {
+            long nu = System.currentTimeMillis();
+            if (nu - laatsteFout > 60_000L) {
+                laatsteFout = nu;
+                plugin.getLogger().warning("zelda " + wat + ": " + e);
+            }
         }
     }
 
@@ -611,6 +626,7 @@ final class ZeldaSpel implements Listener {
         boolean nieuw = false;
         for (String v : r.geeft) nieuw |= s.zet(v);
         if (nieuw) uitrusten(p, s);
+        if (h.eiland != null && s.zet("e:" + h.eiland.id())) nieuw = true;      // hier ben je geweest (ook zonder te varen)
         String hier = h.id() + ":" + r.index;
         if (!hier.equals(s.laatste)) {
             s.laatste = hier;
@@ -1273,7 +1289,7 @@ final class ZeldaSpel implements Listener {
     /** Naar rustplaats {@code i} van deel {@code h} (alleen als je die al bereikte). */
     void reis(Player p, ZeldaHoofdstuk h, int i) {
         Sessie ss = sessie(p);
-        if (ss == null || i < 0 || i >= h.rust.size() || !voortgang.van(p.getUniqueId()).bezocht(h.id(), i)) return;
+        if (ss == null || ss.vaart != null || i < 0 || i >= h.rust.size() || !voortgang.van(p.getUniqueId()).bezocht(h.id(), i)) return;
         ss.h = h;
         ss.rh = h;
         ss.rust = i;
@@ -1284,8 +1300,9 @@ final class ZeldaSpel implements Listener {
 
     /** Opnieuw vanaf rustplaats {@code i}: de verhalen en puzzels erna vergeten (niet je spullen), en erheen. */
     void opnieuw(Player p, ZeldaHoofdstuk h, int i) {
+        Sessie ss = sessie(p);
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
-        if (i < 0 || i >= h.rust.size() || !s.bezocht(h.id(), i)) return;
+        if (ss == null || ss.vaart != null || i < 0 || i >= h.rust.size() || !s.bezocht(h.id(), i)) return;
         for (String v : ZeldaRegels.opnieuw(h.volgorde, h.rust.get(i))) s.wis(v);
         voortgang.vuil();
         reis(p, h, i);
@@ -1297,7 +1314,7 @@ final class ZeldaSpel implements Listener {
     /** Aan boord van de Zilvermeeuw; na een paar tellen leg je aan bij {@code naar}. */
     void vaar(Player p, ZeldaEiland naar) {
         Sessie ss = sessie(p);
-        if (ss == null || naar == null || naar.aanlegRust() == null || zee.dek.isEmpty()) return;
+        if (ss == null || ss.vaart != null || naar == null || naar.aanlegRust() == null || zee.dek.isEmpty()) return;
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         boolean eerste = !s.heeft("e:" + naar.id());
         long nu = System.currentTimeMillis();
