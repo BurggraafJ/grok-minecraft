@@ -23,8 +23,8 @@ final class Zoutbaard extends ZeldaBaas {
     /** Zo lang staat hij versuft na een knal (seconden), en zo lang is een ton kapot (ms). */
     static final int VERSUFT = 6;
     static final long TON_WEG = 15_000L;
-    /** Zo dicht bij een ton moet een bom ontploffen, en zo dicht moet hij erbij staan. */
-    static final double TON_RAAK = 2.6, BIJ_DE_TON = 3.5;
+    /** Zo dicht bij een ton (of bij hem) moet een bom ontploffen, en zo dicht moet hij bij zijn ton staan. */
+    static final double TON_RAAK = 2.6, BIJ_DE_TON = 3.5, BIJ_HEM = 2.6;
 
     /** De kruittonnen (blokken), in dezelfde volgorde als {@link #grond} (waar hij erbij staat). */
     final List<int[]> tonnen;
@@ -126,29 +126,36 @@ final class Zoutbaard extends ZeldaBaas {
         w().playSound(naar, Sound.ENTITY_DROWNED_AMBIENT_WATER, 1f, 0.7f);
     }
 
-    /** Een bom: knalt hij bij een hele ton, dan springt die; stond Zoutbaard erbij, dan is hij even versuft. */
+    /**
+     * Een bom. Staat hij bij een hele ton en knalt de bom bij die ton of bij hem (hij staat ervoor), dan springt de ton
+     * en is hij even versuft. Een bom bij een andere hele ton laat alleen die ton springen.
+     */
     @Override
     void boem(ZeldaSpel spel, Player p, Location l) {
-        for (int i = 0; i < tonnen.size(); i++) {
-            if (!heel[i] || l.distance(ton(i)) > TON_RAAK) continue;
-            zetTon(i, false);
-            terugOp[i] = System.currentTimeMillis() + TON_WEG;
-            Location t = ton(i);
-            w().spawnParticle(Particle.EXPLOSION, t, 4, 0.6, 0.6, 0.6, 0);
-            w().spawnParticle(Particle.FLAME, t, 30, 0.6, 0.6, 0.6, 0.05);
-            w().playSound(t, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.8f);
-            if (leeft() && versuft == 0 && i == bij && ent.getLocation().distance(t) <= BIJ_DE_TON) {
-                versuft = VERSUFT;
-                tel = 0;
-                ent.setAI(false);
-                ent.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, VERSUFT * 20, 0, false, false));
-                w().playSound(ent.getLocation(), Sound.ENTITY_DROWNED_HURT, 1f, 0.5f);
-                if (!knalGezegd) {
-                    knalGezegd = true;
-                    for (Player q : spel.in(spel.kamerVan(this).binnen)) spel.vertel(q, ZeldaHoofdstuk.r(naam, "Arrr! Mijn kruit!"));
-                }
-            }
+        boolean raak = leeft() && versuft == 0 && heel[bij] && ent.getLocation().distance(ton(bij)) <= BIJ_DE_TON
+                && (l.distance(ton(bij)) <= TON_RAAK || l.distance(ent.getLocation().add(0, 1, 0)) <= BIJ_HEM);
+        for (int i = 0; i < tonnen.size(); i++)
+            if (heel[i] && (l.distance(ton(i)) <= TON_RAAK || (raak && i == bij))) knal(i);
+        if (!raak) return;
+        versuft = VERSUFT;
+        tel = 0;
+        ent.setAI(false);
+        ent.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, VERSUFT * 20, 0, false, false));
+        w().playSound(ent.getLocation(), Sound.ENTITY_DROWNED_HURT, 1f, 0.5f);
+        if (!knalGezegd) {
+            knalGezegd = true;
+            for (Player q : spel.in(spel.kamerVan(this).binnen)) spel.vertel(q, ZeldaHoofdstuk.r(naam, "Arrr! Mijn kruit!"));
         }
+    }
+
+    /** Een ton springt (en komt na een tijdje terug). */
+    private void knal(int i) {
+        zetTon(i, false);
+        terugOp[i] = System.currentTimeMillis() + TON_WEG;
+        Location t = ton(i);
+        w().spawnParticle(Particle.EXPLOSION, t, 4, 0.6, 0.6, 0.6, 0);
+        w().spawnParticle(Particle.FLAME, t, 30, 0.6, 0.6, 0.6, 0.05);
+        w().playSound(t, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.8f);
     }
 
     /** Zijn jas vol zeepokken: weinig schade; versuft veel. */

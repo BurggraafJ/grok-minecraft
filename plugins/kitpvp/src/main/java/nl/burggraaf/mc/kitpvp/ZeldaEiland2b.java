@@ -41,7 +41,7 @@ import org.bukkit.plugin.Plugin;
  */
 final class ZeldaEiland2b extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 1;
+    static final int VERSIE = 3;
     /** Het vak van dit halve eiland (oost van {@link ZeldaEiland2a#DIJK_X}); elke kolom zet dit deel zelf. */
     static final int X1 = 1230, X2 = 1360, Z1 = -480, Z2 = -180;
     /** Het hartstukje van 2b (de parelduik van Roos). */
@@ -278,7 +278,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
     /** Vaste plekken (x, z, straal, hoogte boven G, soort): vlak (rustplaatsen, personen, de duikbaan, het wrak). */
     private static final int[][] VAST = {
             {PX, PZ, 12, 0, PLEIN},
-            {1284, -290, 3, 0, ROTS}, {1281, -284, 3, 0, ROTS}, {1288, -284, 6, 0, ROTS}, {1316, -284, 6, 0, ROTS}, {1321, -284, 3, 0, ROTS},
+            {1284, -290, 3, 0, ROTS}, {1279, -284, 5, 0, ROTS}, {1288, -284, 6, 0, ROTS}, {1316, -284, 6, 0, ROTS}, {1321, -284, 3, 0, ROTS},
             {1306, -276, 2, 0, ROTS}, {1300, -296, 3, 0, ROTS},
             {WX, WZ, 17, -1, ZAND}, {1276, -350, 4, -1, ZAND}};
 
@@ -638,7 +638,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         }
         verhaal(new Verhaal("poelen", Box.van(1276, G, -298, 1292, G + 5, -286), List.of(
                 r("Wiske", "Getijdenpoelen! Kijk, daar zit iemand."))));
-        verhaal(new Verhaal("uitleg-duik", Box.van(1279, G, -287, 1283, G + 4, -281), List.of(
+        verhaal(new Verhaal("uitleg-duik", Box.van(1276, G, -288, 1279, G + 4, -280), List.of(
                 r("Wiske", "Stap op de plaat, dan gaat het hekje open."),
                 r("Wiske", "Duik in de poel, en zwem door de gang!")))).uitleg = true;
         Uitdaging duik = uitdaging(new Uitdaging("parelduik", "De parelduik", Box.van(1280, G, pz - 1, 1282, G + 3, pz + 1),
@@ -794,6 +794,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         // het getij: de bak vol (vloed) of leeg (eb, zo staat hij als niemand er is: Morgals nevel)
         getij = getij(new Getij("getij", "De Getijdenzaal", Box.van(TX - 12, G - 7, -360, 1320, G + 12, TZ + 12), false));
         getij.onthoud = "r:getij";
+        getij.binnen = plek(TX, G - 5, TZ, 0f);                             // op de bodem van de bak (bij vloed: zwemmen)
         for (int y = G - 5; y <= G - 1; y++) {
             Deur laag = new Deur(Material.WATER.createBlockData(), Material.AIR.createBlockData());
             for (int dx = -11; dx <= 11; dx++)
@@ -941,7 +942,8 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
             zet(DX + 5, G + 1, DZ - 9, Material.GOLD_BLOCK);
             zet(DX - 6, G + 1, DZ + 8, Material.CHEST);
             for (int y = G + 3; y <= G + 6; y++) zet(DX - 11, y, DZ + 2, Material.COBWEB);
-            // de deuren: west (van de Ankerpoort) en oost (naar de toren)
+            // de deuren: west (van de Ankerpoort) en oost (naar de toren); de gang ervoor weer open (de ronde muur liep erdoor)
+            for (int x = DX - 13; x <= DX - 12; x++) vul(x, G + 1, DZ - 1, x, G + 3, DZ + 1, Material.AIR);
             for (int x : new int[]{DX - 12, DX + 12}) {
                 vul(x, G + 1, DZ - 1, x, G + 3, DZ + 1, Material.AIR);
                 zet(x, G, DZ, Material.DARK_PRISMARINE);

@@ -488,6 +488,7 @@ abstract class ZeldaHoofdstuk {
         final List<Hendel> hendels = new ArrayList<>();
         final boolean rustVloed;
         String onthoud;
+        Location binnen;                                    // wie in een deur staat die dichtgaat, komt hier (null = het midden van het gebied)
         // tijdens het spel
         boolean vloed;                                      // zo staat hij (of: daar gaat hij heen, als hij {@link #bezig} is)
         int laag = -1;                                      // de volgende laag die omgaat (-1 = stil)

@@ -1439,7 +1439,7 @@ final class ZeldaSpel implements Listener {
                 b.setBlockData(sw, false);
             }
         }
-        Location m = g.gebied.midden(w).add(0, 1, 0);
+        Location m = g.binnen != null ? g.binnen : g.gebied.midden(w).add(0, 1, 0);
         for (ZeldaHoofdstuk.Deur d : vloed ? g.sluizen : g.vloeddeuren) deur(d, false, m);
         if (direct) {
             for (ZeldaHoofdstuk.Deur l : g.lagen) laag(l, vloed);
@@ -1459,7 +1459,7 @@ final class ZeldaSpel implements Listener {
 
     private void klaar(ZeldaHoofdstuk.Getij g) {
         g.laag = -1;
-        Location m = g.gebied.midden(plugin.w).add(0, 1, 0);
+        Location m = g.binnen != null ? g.binnen : g.gebied.midden(plugin.w).add(0, 1, 0);
         for (ZeldaHoofdstuk.Deur d : g.vloed ? g.vloeddeuren : g.sluizen) deur(d, true, m);
     }
 
