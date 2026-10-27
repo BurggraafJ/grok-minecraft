@@ -106,6 +106,40 @@ final class ZeldaRegels {
         return weg;
     }
 
+    /**
+     * Verplichte kamers vóór de baas: de gevechten op het hoofdpad (niet {@code vrijwillig}, geen baas) die vóór de
+     * eerste baaskamer liggen. Bouwregel: hoogstens twee (de zelftest controleert het).
+     */
+    static int verplichtVoorBaas(List<Object> volgorde) {
+        int n = 0;
+        for (Object o : volgorde) {
+            if (!(o instanceof ZeldaHoofdstuk.Kamer k)) continue;
+            if (k.baas != null) return n;
+            if (!k.vrijwillig) n++;
+        }
+        return n;
+    }
+
+    /**
+     * Vrije doorgang: wie een kamer al won ({@code k:<id>}) hoeft er niet nog eens doorheen te vechten. Alleen als
+     * iedereen die binnen is hem al won (een nieuwe speler erbij = gewoon vechten).
+     */
+    static boolean doorgang(java.util.Collection<ZeldaVoortgang.Stand> binnen, String kamer) {
+        if (binnen.isEmpty()) return false;
+        for (ZeldaVoortgang.Stand s : binnen) if (!s.heeft("k:" + kamer)) return false;
+        return true;
+    }
+
+    /** Hoeveel golven dit gevecht heeft: de gewone, en met de bel ({@code terug}) de extra golven erachter. */
+    static int golven(ZeldaHoofdstuk.Kamer k) {
+        return k.golven.size() + (k.terug ? k.extra.size() : 0);
+    }
+
+    /** Golf {@code i} van dit gevecht (eerst de gewone, dan de extra). */
+    static List<ZeldaHoofdstuk.Soort> golf(ZeldaHoofdstuk.Kamer k, int i) {
+        return i < k.golven.size() ? k.golven.get(i) : k.extra.get(i - k.golven.size());
+    }
+
     /** {@code "h1:3"} → {@code {"h1", "3"}}; null bij onzin. */
     static String[] plek(String laatste) {
         if (laatste == null) return null;

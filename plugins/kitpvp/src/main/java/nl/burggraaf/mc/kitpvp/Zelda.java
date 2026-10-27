@@ -133,7 +133,7 @@ final class Zelda implements Modus {
         YamlConfiguration gebouwd = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gebouwd.yml"));
         Bouwer b = plugin.bouwer();
         boolean klaar = b == null || !b.bezig();
-        int kamers = 0, uitd = 0, puz = 0, vond = 0;
+        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0;
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
             String hid = "zelda " + h.id();
             if (klaar && gebouwd.getInt("delen." + h.deelId(), -1) != h.versie())
@@ -155,6 +155,8 @@ final class Zelda implements Modus {
                 if (!inGebied(k.binnen) || !k.start.binnen(k.binnen)) fouten.add(hid + ": kamer " + k.id + ": start ligt niet in de kamer");
                 if (k.golven.isEmpty() || k.spawns.isEmpty()) fouten.add(hid + ": kamer " + k.id + ": geen golven of spawns");
                 if (!klaar) continue;
+                if (k.bel != null && h.w.getBlockAt(k.bel[0], k.bel[1], k.bel[2]).getType() != Material.BELL)
+                    fouten.add(hid + ": kamer " + k.id + ": geen bel op " + k.bel[0] + "," + k.bel[1] + "," + k.bel[2]);
                 for (Location l : k.spawns) {
                     if (!vrij(l)) fouten.add(hid + ": kamer " + k.id + ": spawn zit vast op " + xyz(l));
                     else if (!l.clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add(hid + ": kamer " + k.id + ": spawn zonder vloer op " + xyz(l));
@@ -183,9 +185,27 @@ final class Zelda implements Modus {
             for (ZeldaHoofdstuk.Vondst v : h.vondsten) if (!inGebied(v.zone)) fouten.add(hid + ": vondst " + v.vlag + " buiten het gebied");
             boolean einde = h.verhalen.stream().anyMatch(v -> v.einde);
             if (!einde) fouten.add(hid + ": geen einde");
+            // Zelda 2.0, eiland 1: rustig (hoogstens twee verplichte kamers vóór de baas), gebarsten muren, haakpunten, personen
+            int verplicht = ZeldaRegels.verplichtVoorBaas(h.volgorde);
+            if (verplicht > 2) fouten.add(hid + ": " + verplicht + " verplichte kamers vóór de baas (hoogstens 2)");
+            for (ZeldaHoofdstuk.Barst br : h.barsten) {
+                barsten++;
+                if (!inGebied(br.gebied) || !br.muur.omvang().binnen(br.gebied)) fouten.add(hid + ": gebarsten muur " + br.id + " ligt niet in zijn gebied");
+                if (klaar && !br.muur.isOpen && !deurKlopt(h, br.muur, false)) fouten.add(hid + ": gebarsten muur " + br.id + " staat open");
+            }
+            for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) {
+                haken++;
+                if (!h.speelgebied.in(hp.landing())) fouten.add(hid + ": haakpunt " + hp.id() + " buiten het speelgebied");
+                if (!klaar) continue;
+                if (h.w.getBlockAt(hp.x(), hp.y(), hp.z()).getType() != ZeldaHoofdstuk.HAAKPUNT) fouten.add(hid + ": haakpunt " + hp.id() + " is " + h.w.getBlockAt(hp.x(), hp.y(), hp.z()).getType());
+                if (!vrij(hp.landing()) || !hp.landing().clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add(hid + ": haakpunt " + hp.id() + ": landing niet vrij of zonder vloer");
+            }
+            if (klaar) for (ZeldaHoofdstuk.Persoon pe : h.personen)
+                if (!vrij(pe.plek)) fouten.add(hid + ": " + pe.naam + " staat vast op " + xyz(pe.plek));
         }
         // Zelda 2.0: eilanden, genezen bij elke kamer, doelen voor /hint, personen, muziek overal, de zee
-        int bronnen = 0, doelen = 0, personen = 0, missies = 0;
+        int bronnen = 0, doelen = 0, personen = 0, missies = 0, stukjes = 0;
+        java.util.Set<String> mids = new java.util.HashSet<>();
         java.util.Set<String> ids = new java.util.HashSet<>();
         List<ZeldaHoofdstuk> allen = new ArrayList<>(HOOFDSTUKKEN);
         allen.add(zee);
@@ -207,6 +227,14 @@ final class Zelda implements Modus {
             if (ed.isEmpty()) fouten.add(eid + ": geen doelen (voor /hint)");
             for (ZeldaHoofdstuk.Doel d : ed)
                 if (d.plek() == null || e.deelBij(d.plek()) == null) fouten.add(eid + ": doel " + d.id() + " ligt niet op het eiland");
+            java.util.Set<String> hs = new java.util.HashSet<>(), vlaggen = new java.util.HashSet<>();
+            for (ZeldaHoofdstuk h : e.delen()) {
+                hs.addAll(h.stukjes);
+                for (ZeldaHoofdstuk.Vondst v : h.vondsten) if (!vlaggen.add(v.vlag)) fouten.add(eid + ": vondst " + v.vlag + " dubbel");
+                for (ZeldaHoofdstuk.Missie m : h.missies) if (!mids.add(m.id())) fouten.add(eid + ": missie " + m.id() + " dubbel");
+            }
+            if (hs.size() > 4) fouten.add(eid + ": " + hs.size() + " hartstukjes (hoogstens 4 per eiland)");
+            stukjes += hs.size();
             for (ZeldaHoofdstuk h : e.delen()) {
                 bronnen += h.bronnen.size();
                 personen += h.personen.size();
@@ -277,7 +305,8 @@ final class Zelda implements Modus {
         }
         info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
                 + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
-                + " personen=" + personen + " missies=" + missies + " liedjes=" + ZeldaMuziek.alle().size()
+                + " personen=" + personen + " missies=" + missies + " hartstukjes=" + stukjes + " barsten=" + barsten + " haakpunten=" + haken
+                + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
     }
 

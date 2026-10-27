@@ -125,6 +125,85 @@ class ZeldaRegelsTest {
         assertNull(pe.gesprek(s), "niets klopt: het gewone praatje");
     }
 
+    private static ZeldaHoofdstuk.Kamer kamer(String id) {
+        ZeldaHoofdstuk.Box z = ZeldaHoofdstuk.Box.van(0, 0, 0, 1, 1, 1);
+        return new ZeldaHoofdstuk.Kamer(id, id, z, z, new ZeldaHoofdstuk.Deur(null, null), new ZeldaHoofdstuk.Deur(null, null));
+    }
+
+    @Test
+    void hoogstensTweeVerplichteKamersVoorDeBaas() {
+        Proef h = new Proef();
+        h.kamer(kamer("open-plek"));
+        var vrij = h.kamer(kamer("uitdaging"));
+        vrij.vrijwillig = true;
+        h.kamer(kamer("veen"));
+        var baas = h.kamer(kamer("heksenkring"));
+        baas.baas = new ZeldaBaas("Grauwmoer", List.of(), List.of(), List.of(), List.of());
+        h.kamer(kamer("kade"));
+        assertEquals(2, ZeldaRegels.verplichtVoorBaas(h.volgorde), "vrijwillige kamers en wat na de baas komt tellen niet");
+        Proef zonder = new Proef();
+        zonder.kamer(kamer("a"));
+        assertEquals(1, ZeldaRegels.verplichtVoorBaas(zonder.volgorde), "geen baas: alle kamers");
+    }
+
+    @Test
+    void vrijeDoorgangAlsIedereenAlWon() {
+        ZeldaVoortgang.Stand oud = stand("k:veen"), nieuw = stand();
+        assertTrue(ZeldaRegels.doorgang(List.of(oud), "veen"));
+        assertFalse(ZeldaRegels.doorgang(List.of(oud, nieuw), "veen"), "een nieuwe speler erbij: gewoon vechten");
+        assertFalse(ZeldaRegels.doorgang(List.of(oud), "kade"));
+        assertFalse(ZeldaRegels.doorgang(List.of(), "veen"));
+    }
+
+    @Test
+    void deBelBrengtExtraGolven() {
+        var k = kamer("open-plek");
+        k.golf(ZeldaHoofdstuk.Soort.VEENLOPER, ZeldaHoofdstuk.Soort.VEENLOPER).extra(ZeldaHoofdstuk.Soort.SPIN);
+        assertEquals(1, ZeldaRegels.golven(k), "gewoon: alleen de lichte golf");
+        k.terug = true;
+        assertEquals(2, ZeldaRegels.golven(k));
+        assertEquals(List.of(ZeldaHoofdstuk.Soort.VEENLOPER, ZeldaHoofdstuk.Soort.VEENLOPER), ZeldaRegels.golf(k, 0));
+        assertEquals(List.of(ZeldaHoofdstuk.Soort.SPIN), ZeldaRegels.golf(k, 1));
+    }
+
+    @Test
+    void eenmaligGesprek() {
+        var pe = new ZeldaHoofdstuk.Persoon("Lotje", null, null, List.of(ZeldaHoofdstuk.r("Lotje", "Vijftig!")));
+        pe.eenmalig("lotje-1", null, List.of(ZeldaHoofdstuk.r("Lotje", "Ssst!")), null);
+        pe.eenmalig("lotje-zilver", s -> s.heeft("e:zilverstrand"), List.of(ZeldaHoofdstuk.r("Lotje", "Meeuwen?")), null);
+        ZeldaVoortgang.Stand s = stand();
+        assertEquals("lotje-1", pe.gesprek(s).id());
+        s.zet("g:lotje-1");
+        assertNull(pe.gesprek(s), "gehoord: daarna het gewone praatje");
+        s.zet("e:zilverstrand");
+        assertTrue(pe.nieuw(s));
+    }
+
+    @Test
+    void hartstukjesVanEenDeel() {
+        Proef h = new Proef();
+        ZeldaHoofdstuk.Box z = ZeldaHoofdstuk.Box.van(0, 0, 0, 1, 1, 1);
+        h.vondst(new ZeldaHoofdstuk.Vondst("hs:p-1", "Hartstukje", "", Material.REDSTONE, null, z));
+        h.vondst(new ZeldaHoofdstuk.Vondst("zwaard", "Zwaard", "", Material.IRON_SWORD, null, z));
+        h.stukje("hs:p-2");
+        assertEquals(java.util.Set.of("hs:p-1", "hs:p-2"), h.stukjes, "vondsten en beloningen tellen mee, gewone vondsten niet");
+    }
+
+    @Test
+    void oudeStandVanHetLindewoud() {
+        ZeldaVoortgang.Stand s = stand("schild", "zwaard", "boog", "hart1", "h1");
+        s.bereik("h1", 5);
+        assertTrue(ZeldaHoofdstuk1.aanvullen(s, "h1"));
+        for (String k : new String[]{"k:open-plek", "k:veen", "k:heksenkring", "k:kade"}) assertTrue(s.heeft(k), k);
+        assertFalse(ZeldaHoofdstuk1.aanvullen(s, "h1"), "twee keer = niets nieuws");
+        ZeldaVoortgang.Stand jong = stand("schild");
+        jong.bereik("h1", 1);
+        ZeldaHoofdstuk1.aanvullen(jong, "h1");
+        assertTrue(jong.heeft("k:open-plek"));
+        assertFalse(jong.heeft("k:veen"), "het Veen nog niet voorbij");
+        assertFalse(ZeldaHoofdstuk1.aanvullen(stand(), "h1"), "nieuwe speler: niets");
+    }
+
     @Test
     void plekLezen() {
         assertArrayEquals(new String[]{"h1", "3"}, ZeldaRegels.plek("h1:3"));

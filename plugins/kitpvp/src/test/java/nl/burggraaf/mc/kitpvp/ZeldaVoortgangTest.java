@@ -134,6 +134,30 @@ class ZeldaVoortgangTest {
     }
 
     @Test
+    void standVan230BlijftHeel() throws Exception {
+        File f = new File(map, "zelda.yml");
+        Files.writeString(f.toPath(), "spelers:\n  " + a + ":\n    naam: Twee\n    hoofdstuk: h1\n    rust: {h1: 4}\n"
+                + "    vlaggen: [schild, zwaard, boog, v:intro, v:wiske, k:open-plek, fles1, hs:test, o:uitleg-uit]\n"
+                + "    tijden: {kloof: 19000}\n    laatste: h1:2\n    bezocht: [h1:0, h1:2, h1:4]\n"
+                + "    missies: {proef: 1000}\n    tellers: {fles-vol: 1}\n    dier: Pluis\n");
+        ZeldaVoortgang v = new ZeldaVoortgang(f);
+        ZeldaVoortgang.Stand s = v.van(a);
+        assertEquals("h1:2", s.laatste);
+        assertTrue(s.bezocht("h1", 2) && !s.bezocht("h1", 1), "een stand met bezocht wordt niet aangevuld");
+        assertTrue(ZeldaHoofdstuk1.aanvullen(s, "h1"));
+        assertTrue(s.heeft("k:veen") && s.heeft("fles1") && s.heeft("hs:test") && s.heeft("o:uitleg-uit"));
+        v.vuil();
+        v.bewaar();
+        ZeldaVoortgang.Stand t = new ZeldaVoortgang(f).van(a);
+        assertTrue(t.vlaggen.containsAll(s.vlaggen) && s.vlaggen.containsAll(t.vlaggen), "niets kwijt na bewaren");
+        assertEquals(19_000L, t.beste("kloof"));
+        assertTrue(t.missieKlaar("proef"));
+        assertEquals(1, t.teller("fles-vol"));
+        assertEquals("Pluis", t.dier);
+        assertEquals("h1:2", t.laatste);
+    }
+
+    @Test
     void tellenEnVoortgang() {
         ZeldaVoortgang.Stand s = new ZeldaVoortgang.Stand();
         int v0 = s.voortgang();

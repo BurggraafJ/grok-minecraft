@@ -130,11 +130,15 @@ abstract class ZeldaHoofdstuk {
         final List<List<Soort>> golven = new ArrayList<>();
         final List<Regel> bijStart = new ArrayList<>();
         final List<Regel> tips = new ArrayList<>();         // na de 1e, 2e … keer doodgaan hier: één tip (Wiske)
+        final List<List<Soort>> extra = new ArrayList<>(); // golven erbij als je de bel luidt (nog eens, zwaarder)
         ZeldaMuziek.Lied muziek = ZeldaMuziek.GEVECHT;
         ZeldaBaas baas;                                     // alleen bij een baaskamer
         long hemel = -1;                                    // eigen hemeltijd binnen (-1 = die van de plek)
+        int[] bel;                                          // een bel in de kamer: luiden = nog eens vechten (null = geen)
+        boolean vrijwillig;                                 // niet op het hoofdpad (telt niet mee als verplichte kamer)
         // tijdens het spel
         Fase fase = Fase.RUST;
+        boolean terug;                                      // dit gevecht begon met de bel: de extra golven doen mee
         final List<LivingEntity> vijanden = new ArrayList<>();
         int golf;
         long volgendeGolf, leegSinds;
@@ -151,6 +155,12 @@ abstract class ZeldaHoofdstuk {
 
         Kamer golf(Soort... s) {
             golven.add(List.of(s));
+            return this;
+        }
+
+        /** Een golf die alleen meedoet als het gevecht met de bel begon (wie terugkomt en nog eens wil). */
+        Kamer extra(Soort... s) {
+            extra.add(List.of(s));
             return this;
         }
     }
@@ -227,6 +237,8 @@ abstract class ZeldaHoofdstuk {
         final Box zone;
         boolean verborgen;                                  // niet in het pad: je huisdier snuffelt hem op
         String vereist;                                     // alleen te zien en te pakken met deze vlag (bv. een missiestap)
+        String voorwerp;                                    // wel te zien, maar pas te pakken met dit voorwerp (vlag, bv. klauwhaak)
+        Actie daarna;                                       // na het vinden (bv. een missiestap verder)
         ItemDisplay toon;
 
         Vondst(String vlag, String naam, String uitleg, Material item, Location plek, Box zone) {
@@ -277,6 +289,7 @@ abstract class ZeldaHoofdstuk {
         final List<Gesprek> gesprekken = new ArrayList<>();
         org.bukkit.entity.EntityType soort = org.bukkit.entity.EntityType.VILLAGER;
         Villager.Type streek;                               // kleding van een dorpeling (null = vlakte)
+        boolean kind;                                       // klein (een kind)
         LivingEntity ent;
 
         Persoon(String naam, Location plek, Villager.Profession beroep, List<Regel> praat) {
@@ -290,6 +303,11 @@ abstract class ZeldaHoofdstuk {
         Persoon gesprek(String id, Predicate<ZeldaVoortgang.Stand> als, List<Regel> regels, Actie daarna) {
             gesprekken.add(new Gesprek(id, als, regels, daarna));
             return this;
+        }
+
+        /** Een gesprek dat je maar één keer hoort (daarna telt het volgende). */
+        Persoon eenmalig(String id, Predicate<ZeldaVoortgang.Stand> als, List<Regel> regels, Actie daarna) {
+            return gesprek(id, s -> !s.heeft("g:" + id) && (als == null || als.test(s)), regels, daarna);
         }
 
         /** Het gesprek dat nu klopt (null = het gewone {@link #praat}). */
@@ -328,6 +346,34 @@ abstract class ZeldaHoofdstuk {
     /** Een zijmissie: per stap een korte zin voor de hint en het opdrachtenlijstje (stap 1 = {@code stappen.get(0)}). */
     record Missie(String id, String naam, List<String> stappen) {}
 
+    /** Zo ziet een gebarsten muur eruit (op elk eiland hetzelfde, zodat spelers hem leren herkennen). */
+    static final Material BARST = Material.CRACKED_DEEPSLATE_BRICKS;
+    /** Zo ziet een haakpunt voor de klauwhaak eruit. */
+    static final Material HAAKPUNT = Material.LODESTONE;
+
+    /**
+     * Een gebarsten muur: dicht tot een bom hem openbreekt ({@link ZeldaSpel#breek}; de bommen komen op eiland 2). Wie
+     * hem openbrak ({@code b:<id>}) vindt hem open; zonder iemand in de buurt gaat hij na een minuut weer dicht.
+     */
+    static final class Barst {
+        final String id;
+        final Deur muur;
+        final Box gebied;
+        long leegSinds;
+
+        Barst(String id, Deur muur, Box gebied) {
+            this.id = id;
+            this.muur = muur;
+            this.gebied = gebied;
+        }
+    }
+
+    /**
+     * Een haakpunt voor de klauwhaak (eiland 3): een blok ({@link #HAAKPUNT}) waar de haak in grijpt, en de plek waar je
+     * dan staat. Alleen gegevens: het voorwerp dat je erheen trekt, bouwt de sessie van eiland 3.
+     */
+    record Haakpunt(String id, int x, int y, int z, Location landing) {}
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -340,6 +386,9 @@ abstract class ZeldaHoofdstuk {
     final List<Bron> bronnen = new ArrayList<>();
     final List<Doel> doelen = new ArrayList<>();
     final List<Missie> missies = new ArrayList<>();
+    final List<Barst> barsten = new ArrayList<>();
+    final List<Haakpunt> haakpunten = new ArrayList<>();
+    final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
     World w;
@@ -375,6 +424,14 @@ abstract class ZeldaHoofdstuk {
         return ZeldaMuziek.WOUD;
     }
 
+    /**
+     * Oude standen aanvullen (bij binnenkomen): wat je zeker al gedaan hebt, als vlag erbij (bv. een kamer die je won
+     * voordat er {@code k:}-vlaggen waren). True als er iets bij kwam.
+     */
+    boolean aanvullen(ZeldaVoortgang.Stand s) {
+        return false;
+    }
+
     /** Een onderdeel op id (rust, kamer, uitdaging, puzzel, verhaal; vondst op vlag; bron; persoon op naam), of null. */
     Object onderdeel(String id) {
         for (Object o : volgorde) {
@@ -384,6 +441,7 @@ abstract class ZeldaHoofdstuk {
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
         for (Persoon p : personen) if (p.naam.equals(id)) return p;
+        for (Barst b : barsten) if (b.id.equals(id)) return b;
         return null;
     }
 
@@ -398,6 +456,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Vondst v) return v.plek;
         if (o instanceof Bron b) return b.midden;
         if (o instanceof Persoon p) return p.plek;
+        if (o instanceof Barst b) return b.muur.omvang().midden(w);
         return null;
     }
 
@@ -428,6 +487,9 @@ abstract class ZeldaHoofdstuk {
         bronnen.clear();
         doelen.clear();
         missies.clear();
+        barsten.clear();
+        haakpunten.clear();
+        stukjes.clear();
         volgorde.clear();
     }
 
@@ -459,7 +521,24 @@ abstract class ZeldaHoofdstuk {
     protected Vondst vondst(Vondst v) {
         vondsten.add(v);
         volgorde.add(v);
+        if (v.vlag.startsWith("hs:")) stukjes.add(v.vlag);
         return v;
+    }
+
+    /** Een hartstukje dat je niet vindt maar krijgt (beloning van een zijmissie): telt mee op de kaart. */
+    protected String stukje(String vlag) {
+        stukjes.add(vlag);
+        return vlag;
+    }
+
+    protected Barst barst(Barst b) {
+        barsten.add(b);
+        return b;
+    }
+
+    protected Haakpunt haakpunt(Haakpunt h) {
+        haakpunten.add(h);
+        return h;
     }
 
     protected Verhaal verhaal(Verhaal v) {

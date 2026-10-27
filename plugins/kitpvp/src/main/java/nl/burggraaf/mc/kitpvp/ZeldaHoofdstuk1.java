@@ -21,11 +21,19 @@ import org.bukkit.plugin.Plugin;
  * vuren, het Wachterszwaard), de Kloof (op tijd over de pilaren), het Veen (gevecht, boog), de doelen (brug), de
  * Heksenkring (baas Grauwmoer, hartcontainer) en de haven, waar Morgals soldaten de kade bezetten en de Zilvermeeuw
  * wacht. Aan de horizon, over de zee: Nachtrots. Zes rustplaatsen; de dag schuift op van ochtend naar zonsondergang.
+ *
+ * <p>Zelda 2.0, eiland 1 (sessie zelda-eiland-1): een rustiger begin (lichtere kamers, vrije doorgang als je een kamer
+ * al won, de bel voor wie nog eens wil), de personen Kees (zijmissie De verloren bijl), Hanne (Moeraskruid), Lotje en
+ * Brecht (varen), de houtkap achter de Oude Eik en vier hartstukjes: in de holle eik, van Kees, op een richel in de
+ * Kloof (klauwhaak, eiland 3) en achter een gebarsten muur in de tempel (bommen, eiland 2). De rustplaatsen houden hun
+ * nummer (oude standen wijzen ernaar): zet een nieuwe rustplaats altijd achteraan.
  */
 final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
 
     static final int X0 = 1100;                         // begin van het pad (rx = 0)
-    static final int VERSIE = 2;
+    static final int VERSIE = 3;
+    /** De vier hartstukjes van het Lindewoud. */
+    static final String STUKJE_EIK = "hs:lindewoud-1", STUKJE_KEES = "hs:lindewoud-2", STUKJE_RICHEL = "hs:lindewoud-3", STUKJE_TEMPEL = "hs:lindewoud-4";
     private static final int RX1 = -8, RX2 = 492, Z1 = -64, Z2 = 64;
 
     private final Plugin plugin;
@@ -95,6 +103,8 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             cirkel(BOS, 76, 0, 13),
             pad(3, 87, 0, 95, 0),
             cirkel(BOS, 101, 0, 9),
+            pad(2.5, 100, -8, 98, -13, 94, -17),                 // naar de houtkap, achter de Oude Eik
+            cirkel(BOS, 92, -20, 5),
             pad(3, 108, 0, 116, 0),
             rechthoek(HOF, 114, -13, 141, 13),
             rechthoek(HOF, 142, -5, 152, 5),
@@ -135,6 +145,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     String plekNaam(Location l) {
         double rx = l.getX() - X0;
         if (rx < 60) return "Thuis";
+        if (rx >= 84 && rx < 100 && l.getZ() < -11) return "De houtkap";
         if (rx < 110) return "Lindewoud";
         if (rx < 158) return "Tempelruïne";
         if (rx < 212) return "De Kloof";
@@ -520,6 +531,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             zetDeur(k.uit, false);
         }
         for (Uitdaging u : uitdagingen) zetDeur(u.poort, false);
+        for (Barst br : barsten) zetDeur(br.muur, false);
         for (Reeks r : reeksen) {
             zetDeur(r.deur, false);
             for (int[] d : r.dingen) b.zetAltijd(d[0], d[1], d[2], r.uit);
@@ -553,7 +565,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         // tips na doodgaan in een kamer (eerste keer de eerste tip, dan de tweede)
         for (Kamer k : kamers) switch (k.id) {
             case "open-plek" -> k.tips.addAll(List.of(r("Wiske", "Niet stilstaan. Slaan, stap terug, weer slaan."),
-                    r("Wiske", "Spinnen springen. Wacht tot ze landen.")));
+                    r("Wiske", "Even op adem komen? De feeënkring vlakbij geneest.")));
             case "veen" -> k.tips.addAll(List.of(r("Wiske", "Eerst de mosschutters: die schieten van ver."),
                     r("Wiske", "Houd rechts: je schild vangt de pijlen.")));
             case "heksenkring" -> k.tips.addAll(List.of(r("Wiske", "Staat ze op een paddenstoel? Schiet haar eraf met je boog."),
@@ -581,6 +593,28 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 plekVan("kade"), s -> s.heeft("k:kade") || s.heeft(id()));
         doel("brecht", "Zoek de visser op de pier.", "Helemaal aan het eind van de pier, bij het schip.",
                 plekVan("brecht"), s -> s.heeft(id()));
+    }
+
+    /** Oude standen (van vóór de {@code k:}-vlaggen): kamers die je al voorbij bent, tellen als gewonnen. */
+    @Override
+    boolean aanvullen(ZeldaVoortgang.Stand s) {
+        return aanvullen(s, id());
+    }
+
+    static boolean aanvullen(ZeldaVoortgang.Stand s, String id) {
+        int r = s.rust(id);
+        boolean nieuw = false;
+        if (r >= 1) nieuw |= s.zet("k:open-plek");                      // de Oude Eik ligt achter de open plek
+        if (r >= 4) nieuw |= s.zet("k:veen");                           // de Moerashut achter het Veen
+        if (r >= 5 || s.heeft("hart1")) nieuw |= s.zet("k:heksenkring");
+        if (s.heeft(id)) nieuw |= s.zet("k:kade");                      // wie het eiland af heeft, joeg ze van de kade
+        return nieuw;
+    }
+
+    /** Een bel in een kamer (rx, z op de vloer): luiden = nog eens vechten. */
+    private int[] bel(int rx, int z, BlockFace kijk) {
+        zet(rx, G + 1, z, Bouwer.gericht(Material.BELL, kijk));
+        return new int[]{X0 + rx, G + 1, z};
     }
 
     private void zetDeur(Deur d, boolean open) {
@@ -667,6 +701,13 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             zet(9, G + 1, z, kies(X0 + 9, z, Material.POPPY, Material.DANDELION, Material.CORNFLOWER));
         }
         lantaarnpaal(28, 3, Material.OAK_FENCE);
+        // de houtstapel en het hakblok van buurman Kees (zijn bijl is weg)
+        for (int rx = 22; rx <= 25; rx++) {
+            zet(rx, G + 1, -10, stam(Material.OAK_LOG, org.bukkit.Axis.X));
+            if (rx > 22) zet(rx, G + 2, -10, stam(Material.OAK_LOG, org.bukkit.Axis.X));
+        }
+        zet(24, G + 3, -10, stam(Material.BIRCH_LOG, org.bukkit.Axis.X));
+        zet(23, G + 1, -7, Material.STRIPPED_OAK_LOG);
 
         rustvuur(18, 5);
         rust(new Rust("thuis", "Thuis", plek(18, G + 1, 0, -90f), box(4, G, -8, 30, G + 6, 10), List.of()));
@@ -675,6 +716,32 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 r("Wiske", "Morgal heeft prinses Zelda meegenomen, over de zee."),
                 r("Wiske", "Naar Nachtrots, zijn kasteel. Wij gaan haar halen."),
                 r("Wiske", "Volg het pad naar het oosten. Ik blijf bij je."))));
+        kees();
+    }
+
+    /** Buurman Kees, de houthakker: zijmissie «De verloren bijl» (de bijl ligt bij de houtkap), beloning een hartstukje. */
+    private void kees() {
+        Persoon kees = persoon(new Persoon("Kees", plek(26, G + 1, -7, 50f), Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("toolsmith")),
+                List.of(r("Kees", "Weer aan het hakken. Dankzij jou."))));
+        kees.streek = Villager.Type.TAIGA;
+        stukje(STUKJE_KEES);
+        missie("bijl", "De verloren bijl", "Zoek de bijl van Kees bij de houtkap, achter de Oude Eik.", "Breng de bijl terug naar Kees, bij Thuis.");
+        kees.gesprek("kees-1", s -> s.missie("bijl") == 0, List.of(
+                        r("Kees", "Ha, buurkind. Mijn bijl is weg."),
+                        r("Kees", "Hij viel bij de houtkap, achter de Oude Eik."),
+                        r("Kees", "Toen kwamen die moerasdingen. Ik rende!")), (spel, p, s) -> spel.missie(p, "bijl", 1))
+                .gesprek(null, s -> s.missie("bijl") == 1, List.of(r("Kees", "De houtkap ligt achter de Oude Eik, naar het noorden.")), null)
+                .gesprek("kees-2", s -> s.missie("bijl") == 2, List.of(
+                        r("Kees", "Mijn bijl! Jij bent een held."),
+                        r("Kees", "Hier. Dit lag al jaren in mijn schuur.")), (spel, p, s) -> {
+                    spel.missie(p, "bijl", ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, STUKJE_KEES, "Hartstukje", null);
+                })
+                .eenmalig("kees-eik", s -> s.missieKlaar("bijl") && !s.heeft(STUKJE_EIK), List.of(
+                        r("Kees", "Als kind verstopte ik dingen in de Oude Eik."),
+                        r("Kees", "Aan de achterkant zit een gat.")), null);
+        verhaal(new Verhaal("kees", box(20, G, -11, 30, G + 5, -3), List.of(
+                r("Wiske", "Buurman Kees kijkt zo zorgelijk.")))).vereist = "v:intro";
     }
 
     // ── 2. de open plek (gevecht) ───────────────────────────────────────────────────────────
@@ -716,7 +783,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             double hoek = Math.PI / 8 + a * Math.PI / 4;
             k.spawns.add(plek(cx + Math.round(Math.cos(hoek) * 7.5), G + 1, Math.round(Math.sin(hoek) * 7.5), 0f));
         }
-        k.golf(Soort.VEENLOPER, Soort.VEENLOPER, Soort.SPIN).golf(Soort.SPIN, Soort.SPIN, Soort.VEENLOPER, Soort.VEENLOPER);
+        k.golf(Soort.VEENLOPER, Soort.VEENLOPER)                                   // rustig beginnen: één golf van twee
+                .extra(Soort.SPIN, Soort.VEENLOPER, Soort.SPIN, Soort.VEENLOPER);       // met de bel: nog eens, zwaarder
+        k.bel = bel(67, -5, BlockFace.EAST);
 
         sokkel(91, 2);
         vondst(new Vondst("schild", "Eikenschild", "houd rechts om te blokkeren", Material.SHIELD, plek(91, G + 2.3, 2, 0f), box(89, G, -3, 93, G + 4, 3)));
@@ -725,29 +794,49 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     // ── 3. de Oude Eik ──────────────────────────────────────────────────────────────────────
 
     private void oudeEik() {
-        int ex = 100, ez = -6;
-        for (int y = G + 1; y <= G + 12; y++) vul(ex, y, ez, ex + 1, y, ez + 1, Material.OAK_WOOD);
-        // wortels
-        int[][] wortels = {{-1, 0, 3, 0}, {2, 1, 3, 0}, {0, -1, 0, -3}, {1, 2, 0, 2}, {-1, 2, -2, 1}, {2, -1, 2, -2}};
+        // een eeuwenoude eik (4 × 4), hol: aan de achterkant (noord) kun je erin kruipen
+        int ex = 99, ez = -8;                                   // stam: ex … ex+3, ez … ez+3
+        for (int y = G + 1; y <= G + 12; y++) vul(ex, y, ez, ex + 3, y, ez + 3, Material.OAK_WOOD);
+        vul(ex + 1, G + 1, ez + 1, ex + 2, G + 3, ez + 2, Material.AIR);          // de holte
+        vul(ex + 1, G + 1, ez, ex + 2, G + 2, ez, Material.AIR);                 // het gat aan de achterkant
+        vul(ex + 1, G, ez + 1, ex + 2, G, ez + 2, Material.ROOTED_DIRT);
+        zet(ex + 2, G + 3, ez + 2, Material.SHROOMLIGHT);
+        // wortels (niet voor het gat)
+        int[][] wortels = {{-1, 1, -2, 1}, {-1, 3, -2, 3}, {4, 0, 5, 0}, {4, 2, 5, 2}, {1, 4, 1, 5}, {3, 4, 3, 5}, {0, -1, 0, -2}};
         for (int[] wt : wortels) {
             zet(ex + wt[0], G + 1, ez + wt[1], Material.OAK_WOOD);
-            zet(ex + wt[0] + Integer.signum(wt[2]), G + 1, ez + wt[1] + Integer.signum(wt[3]), Material.ROOTED_DIRT);
+            zet(ex + wt[2], G + 1, ez + wt[3], Material.ROOTED_DIRT);
         }
         // takken en een grote kruin
         int[][] takken = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-        for (int[] t : takken) {
+        for (int[] t : takken)
             for (int n = 1; n <= 4; n++) {
-                int tx = ex + (t[0] > 0 ? 1 : 0) + t[0] * n, tz = ez + (t[1] > 0 ? 1 : 0) + t[1] * n;
+                int tx = (t[0] > 0 ? ex + 3 : t[0] < 0 ? ex : ex + 1) + t[0] * n, tz = (t[1] > 0 ? ez + 3 : t[1] < 0 ? ez : ez + 2) + t[1] * n;
                 zet(tx, G + 9 + n / 2, tz, stam(Material.OAK_LOG, t[0] != 0 ? org.bukkit.Axis.X : org.bukkit.Axis.Z));
             }
-        }
-        bladbol(ex, G + 13, ez, 6.5, Material.OAK_LEAVES);
-        bladbol(ex + 4, G + 12, ez + 3, 4, Material.OAK_LEAVES);
-        bladbol(ex - 4, G + 12, ez - 2, 4, Material.AZALEA_LEAVES);
-        for (int n = 0; n < 6; n++) zet(ex - 3 + n, G + 8, ez + 4, Bouwer.hangend(Material.LANTERN));
-        for (int y = G + 9; y >= G + 7; y--) zet(ex - 2, y, ez + 5, rank(BlockFace.SOUTH));
+        bladbol(ex + 2, G + 13, ez + 2, 6.5, Material.OAK_LEAVES);
+        bladbol(ex + 6, G + 12, ez + 5, 4, Material.OAK_LEAVES);
+        bladbol(ex - 3, G + 12, ez, 4, Material.AZALEA_LEAVES);
+        for (int n = 0; n < 6; n++) zet(ex - 2 + n, G + 8, ez + 6, Bouwer.hangend(Material.LANTERN));
+        for (int y = G + 9; y >= G + 7; y--) zet(ex - 1, y, ez + 3, rank(BlockFace.EAST));
         rustvuur(104, 4);
         rust(new Rust("eik", "Oude Eik", plek(103, G + 1, 0, -90f), box(96, G, -6, 108, G + 6, 7), List.of("schild")));
+        Vondst hol = vondst(new Vondst(STUKJE_EIK, "Hartstukje", "", Material.REDSTONE,
+                new Location(w, X0 + ex + 2, G + 1.4, ez + 2), box(ex + 1, G, ez + 1, ex + 2, G + 3, ez + 2)));
+        hol.verborgen = true;                                   // je huisdier snuffelt hem op
+
+        // de houtkap van Kees: stronken, een stapel stammen en het hakblok met zijn bijl
+        for (int[] st : new int[][]{{90, -17}, {95, -23}, {91, -24}, {88, -19}}) zet(st[0], G + 1, st[1], Material.OAK_LOG);
+        for (int rx = 88; rx <= 90; rx++) zet(rx, G + 1, -21, stam(Material.OAK_LOG, org.bukkit.Axis.X));
+        zet(89, G + 2, -21, stam(Material.OAK_LOG, org.bukkit.Axis.X));
+        zet(92, G + 1, -21, Material.STRIPPED_OAK_LOG);
+        lantaarnpaal(96, -21, Material.SPRUCE_FENCE);
+        Vondst bijl = vondst(new Vondst("bijl", "De bijl van Kees", "breng hem terug", Material.IRON_AXE,
+                plek(92, G + 2.3, -21, 0f), box(91, G, -22, 93, G + 4, -20)));
+        bijl.vereist = "g:kees-1";
+        bijl.daarna = (spel, p, s) -> {
+            if (s.missie("bijl") == 1) spel.missie(p, "bijl", 2);
+        };
     }
 
     // ── 4. de tempelruïne: drie vuren, het zwaard ───────────────────────────────────────────
@@ -848,6 +937,16 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         vuren.bijOplossen.add(r("Wiske", "De poort is open!"));
         vondst(new Vondst("zwaard", "Wachterszwaard", "het zwaard van de oude wachters", Material.IRON_SWORD,
                 plek(147, G + 2.3, 0, 0f), box(145, G, -2, 149, G + 4, 2)));
+        // achter de zuidmuur van het heiligdom: een kamertje, alleen open te breken met een bom (eiland 2)
+        vul(143, G, 6, 148, G + 4, 9, Material.STONE_BRICKS);
+        vul(144, G + 1, 6, 147, G + 3, 8, Material.AIR);
+        vul(144, G, 6, 147, G, 8, Material.MOSSY_STONE_BRICKS);
+        zet(146, G + 1, 8, Material.CHISELED_STONE_BRICKS);
+        zet(145, G + 3, 7, Bouwer.hangend(Material.SOUL_LANTERN));
+        barst(new Barst("tempel", new Deur(BARST.createBlockData(), Material.AIR.createBlockData()).vlak(X0 + 145, G + 1, 5, X0 + 146, G + 2, 5),
+                box(141, G - 1, -6, 153, G + 8, 10)));
+        vondst(new Vondst(STUKJE_TEMPEL, "Hartstukje", "", Material.REDSTONE, plek(146, G + 2.3, 8, 0f), box(144, G, 6, 147, G + 3, 8))).voorwerp = "bommen";
+        verhaal(new Verhaal("barst", box(143, G, 2, 151, G + 5, 4), List.of(r("Wiske", "Die muur is gebarsten. Met een flinke klap…"))));
         rustvuur(157, -3);
         rust(new Rust("ruine", "Tempelruïne", plek(157, G + 1, 0, -90f), box(154, G, -4, 162, G + 6, 4), List.of("schild", "zwaard")));
     }
@@ -890,10 +989,27 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             }
             zet(200, G + 4, -2, Bouwer.gericht(Material.WALL_TORCH, BlockFace.WEST));
             zet(200, G + 4, 2, Bouwer.gericht(Material.WALL_TORCH, BlockFace.WEST));
+            // een richel in de oostwand, drie blokken boven het water: alleen te halen met de klauwhaak (eiland 3)
+            vul(200, G - 3, -9, 202, G + 2, -5, Material.STONE);
+            vul(200, G - 2, -8, 201, G - 2, -6, Material.MOSSY_COBBLESTONE);
+            vul(200, G - 1, -8, 201, G + 1, -6, Material.AIR);
+            zet(201, G + 1, -6, Material.MOSS_CARPET);
+            zet(200, G + 2, -7, HAAKPUNT);
+            // een waterval verderop in dezelfde wand (te ver van de richel om erlangs omhoog te zwemmen)
+            vul(199, g + 2, -15, 201, G + 3, -13, Material.STONE);
+            BlockData val = Material.WATER.createBlockData(d -> ((org.bukkit.block.data.Levelled) d).setLevel(8));
+            for (int y = g + 2; y <= G + 2; y++) zet(200, y, -14, y <= g + 3 || y == G + 2 ? Material.WATER.createBlockData() : val);
+            for (int y = g + 2; y <= G + 1; y++) zet(199, y, -14, Material.AIR);
+            for (int y = g + 2; y <= g + 3; y++) zet(199, y, -14, Material.WATER);
+            zet(199, G + 2, -14, Material.MOSSY_COBBLESTONE);
         }
         Uitdaging kloof = uitdaging(new Uitdaging("kloof", "De Kloof", box(162, G, -5, 164, G + 3, 5), box(202, G, -4, 205, G + 5, 4),
                 box(158, g, -10, 206, G + 12, 10), deur(Bouwer.ruit(Material.IRON_BARS, BlockFace.NORTH, BlockFace.SOUTH), 201, G + 1, -1, G + 3, 1), 25));
         kloof.bord = new Location(w, X0 + 161.5, G + 3.4, -2.5);
+        haakpunt(new Haakpunt("richel", X0 + 200, G + 2, -7, plek(200, G - 1, -7, 90f)));
+        vondst(new Vondst(STUKJE_RICHEL, "Hartstukje", "", Material.REDSTONE, plek(201, G - 0.6, -7, 0f), box(200, G - 1, -8, 201, G + 1, -6))).voorwerp = "klauwhaak";
+        verhaal(new Verhaal("richel", box(158, G, -4, 162, G + 6, 4), List.of(
+                r("Wiske", "Daar, op een richel aan de overkant: een hartstukje! Nog te hoog."))));
         rustvuur(208, -3);
         rust(new Rust("kloofrand", "Kloofrand", plek(208, G + 1, 0, -90f), box(203, G, -4, 213, G + 6, 4), List.of("schild", "zwaard")));
         verhaal(new Verhaal("zout", box(203, G, -4, 213, G + 6, 4), List.of(
@@ -941,9 +1057,25 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             }
             k.spawns.add(plek(s[0], G + 1, s[1], 0f));
         }
-        k.golf(Soort.MOSSCHUTTER, Soort.MOSSCHUTTER, Soort.VEENLOPER)
-                .golf(Soort.SPIN, Soort.SPIN, Soort.MOSSCHUTTER, Soort.VEENLOPER)
-                .golf(Soort.VEENREUS, Soort.MOSSCHUTTER, Soort.MOSSCHUTTER);
+        k.golf(Soort.MOSSCHUTTER, Soort.VEENLOPER, Soort.SPIN)
+                .golf(Soort.VEENREUS, Soort.MOSSCHUTTER)
+                .extra(Soort.SPIN, Soort.SPIN, Soort.MOSSCHUTTER, Soort.VEENLOPER);
+        zet(219, G, -4, Material.MOSS_BLOCK);
+        k.bel = bel(219, -4, BlockFace.EAST);
+        // drie kruiden voor Hanne (pas te zien als ze erom vroeg)
+        Object[][] kruiden = {{"kruid:veenbes", "Veenbes", Material.SWEET_BERRIES, 234, -11}, {"kruid:zonnedauw", "Zonnedauw", Material.TORCHFLOWER, 221, 6},
+                {"kruid:moerasmunt", "Moerasmunt", Material.MANGROVE_PROPAGULE, 245, 6}};
+        for (Object[] kr : kruiden) {
+            int rx = (int) kr[3], z = (int) kr[4];
+            zet(rx, G, z, Material.MOSS_BLOCK);
+            zet(rx, G + 1, z, Material.AIR);
+            zet(rx, G + 2, z, Material.AIR);
+            Vondst v = vondst(new Vondst((String) kr[0], (String) kr[1], "voor Hanne", (Material) kr[2], plek(rx, G + 1.3, z, 0f), box(rx - 1, G, z - 1, rx + 1, G + 3, z + 1)));
+            v.vereist = "g:hanne-1";
+            v.daarna = (spel, p, s) -> {
+                if (s.aantal("kruid:") >= kruiden.length && s.missie("moeraskruid") == 1) spel.missie(p, "moeraskruid", 2);
+            };
+        }
         sokkel(253, 3);
         vondst(new Vondst("boog", "Jagersboog", "raakt wat ver weg is", Material.BOW, plek(253, G + 2.3, 3, 0f), box(251, G, -3, 255, G + 4, 4)));
     }
@@ -966,9 +1098,37 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             for (int y = G + 1; y <= G + 3; y++) zet(256, y, z2 + 1, Bouwer.gericht(Material.LADDER, BlockFace.SOUTH));
             zet(257, G + 6, z2 - 1, Bouwer.hangend(Material.LANTERN));
             zet(255, G + 4, z1 + 1, Material.CAULDRON);
+            // onder de hut: Hannes ketel, haar brouwsel en een ton
+            vul(255, G, -5, 258, G, -3, Material.COARSE_DIRT);
+            vul(255, G + 1, -5, 258, G + 2, -3, Material.AIR);
+            zet(255, G + 1, -4, Material.WATER_CAULDRON.createBlockData(d -> ((org.bukkit.block.data.Levelled) d).setLevel(3)));
+            zet(255, G + 1, -5, Material.BREWING_STAND);
+            zet(258, G + 1, -5, Material.BARREL);
+            zet(258, G + 2, -4, Bouwer.hangend(Material.LANTERN));
         }
+        hanne();
         rustvuur(260, 3);
         rust(new Rust("moerashut", "Moerashut", plek(258, G + 1, 0, -90f), box(252, G, -4, 263, G + 6, 6), List.of("schild", "zwaard", "boog")));
+    }
+
+    /** Hanne, de kruidenvrouw onder de moerashut: zijmissie «Moeraskruid» (drie kruiden in het Veen), beloning het eerste flesje. */
+    private void hanne() {
+        Persoon hanne = persoon(new Persoon("Hanne", plek(257, G + 1, -4, 0f), Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("cleric")),
+                List.of(r("Hanne", "Leeg? Het zielvuur hiernaast vult je flesje weer."))));
+        hanne.streek = Villager.Type.SWAMP;
+        missie("moeraskruid", "Moeraskruid", "Zoek drie kruiden in het Veen: veenbes, zonnedauw en moerasmunt.", "Breng de kruiden naar Hanne, onder de moerashut.");
+        hanne.gesprek("hanne-1", s -> s.missie("moeraskruid") == 0, List.of(
+                        r("Hanne", "Een bezoeker! Pas op, de ketel is heet."),
+                        r("Hanne", "Ik brouw bronwater, maar mijn kruiden zijn op."),
+                        r("Hanne", "Ze groeien in het Veen. Breng je er drie?")), (spel, p, s) -> spel.missie(p, "moeraskruid", 1))
+                .gesprek(null, s -> s.missie("moeraskruid") == 1, List.of(r("Hanne", "Veenbes, zonnedauw en moerasmunt. Ze glanzen een beetje.")), null)
+                .gesprek("hanne-2", s -> s.missie("moeraskruid") == 2, List.of(
+                        r("Hanne", "Alle drie! Even roeren…"),
+                        r("Hanne", "Hier, een flesje bronwater. Voor onderweg.")), (spel, p, s) -> {
+                    spel.missie(p, "moeraskruid", ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "fles1", "Flesje", "drink als je gewond bent");
+                    spel.uitleg(p, r("Wiske", "Leeg? Een bron of zielvuur vult het weer."));
+                });
     }
 
     // ── 8. de doelen: raak ze alle drie, dan komt de brug ───────────────────────────────────
@@ -1157,17 +1317,32 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 deur(hekDicht, 324, G + 1, -1, G + 3, 1), deur(hekDicht, 346, G + 1, -1, G + 3, 1)));
         int[][] sp = {{330, -4}, {336, -5}, {342, -3}, {342, 3}, {336, 5}, {330, 4}};
         for (int[] s : sp) k.spawns.add(plek(s[0], G + 1, s[1], 90f));
-        k.golf(Soort.SOLDAAT, Soort.KRUISBOOG, Soort.KRUISBOOG).golf(Soort.SOLDAAT, Soort.SOLDAAT, Soort.KRUISBOOG, Soort.SOLDAAT);
+        k.golf(Soort.SOLDAAT, Soort.SOLDAAT, Soort.KRUISBOOG)
+                .extra(Soort.SOLDAAT, Soort.KRUISBOOG, Soort.KRUISBOOG, Soort.SOLDAAT);
+        k.bel = bel(327, -3, BlockFace.EAST);
 
-        persoon(new Persoon("Brecht", plek(366, G + 1, -1, 90f), Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("fisherman")), List.of(
-                r("Brecht", "De Zilvermeeuw vaart bij het eerste licht."),
-                r("Brecht", "Rust nu maar uit. Nachtrots wacht niet."))));
+        // Brecht: na de kade vaart hij je naar elk eiland dat open is (een nieuw eiland verschijnt vanzelf in zijn menu)
+        Persoon brecht = persoon(new Persoon("Brecht", plek(366, G + 1, -1, 90f), Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("fisherman")), List.of(
+                r("Brecht", "De Zilvermeeuw vaart bij het eerste licht."))));
+        brecht.eenmalig("brecht-terug", s -> s.heeft(id()) && s.aantal("e:") >= 2, List.of(
+                        r("Brecht", "Weer thuis? Het Lindewoud heeft je gemist.")), null)
+                .gesprek(null, s -> s.heeft(id()), List.of(), (spel, p, s) -> spel.varen(p));
+        // Lotje telt meeuwen aan het eind van de pier
+        Persoon lotje = persoon(new Persoon("Lotje", plek(373, G + 1, 1, -90f), null, List.of(
+                r("Lotje", "Negenenveertig, vijftig… Niet storen, hoor!"))));
+        lotje.kind = true;
+        lotje.eenmalig("lotje-1", null, List.of(
+                        r("Lotje", "Ssst! Ik tel meeuwen."),
+                        r("Lotje", "Toen de soldaten kwamen, vlogen ze allemaal weg."),
+                        r("Lotje", "Nu komen ze terug. Zevenenveertig, achtenveertig…")), null)
+                .eenmalig("lotje-zilver", s -> s.heeft("e:zilverstrand"), List.of(
+                        r("Lotje", "Was je op het Zilverstrand? Zijn daar meer meeuwen?")), null);
         Verhaal einde = verhaal(new Verhaal("brecht", box(360, G, -2, 369, G + 5, 2), List.of(
-                r("Brecht", "Jij hebt ze van de kade gejaagd? Dan ben jij die van het dorp."),
-                r("Brecht", "Daar ligt Nachtrots, over de Glazen Zee."),
-                r("Brecht", "Mijn schip, de Zilvermeeuw, vaart bij het eerste licht."),
+                r("Brecht", "Jij joeg ze van de kade? Dan ben jij die van het dorp."),
+                r("Brecht", "Nachtrots ligt achter zwarte nevel. Daar komt geen schip door."),
+                r("Brecht", "Op het Zilverstrand weten ze meer. Zeg maar wanneer."),
                 r("Wiske", "We komen eraan, Zelda."),
-                r(null, "Hoofdstuk 1 voltooid · wordt vervolgd"))));
+                r(null, "Het Lindewoud · voltooid"))));
         einde.einde = true;
     }
 
