@@ -3,8 +3,8 @@
 Ontwerpdocument (oktober 2026). Hoofdstuk 1 «Het Lindewoud» staat live en viel goed ("erg leuk, verrast hoe goed het
 is"). Zelda 2.0 maakt er een groter avontuur van: **vijf eilanden** in de Glazen Zee, elk een hub met meerdere dingen
 erop, verbonden door het schip de Zilvermeeuw. Dit document is het plan voor de bouwsessies: verhaal, eilanden,
-mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De motor»); de eilanden bouwen latere
-sessies, één per (half) eiland, in de volgorde onderaan.
+mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De motor»), eiland 1 ook (sessie
+`zelda-eiland-1`, kitpvp 2.4); de andere eilanden bouwen latere sessies, één per (half) eiland, in de volgorde onderaan.
 
 Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*.java`.
 
@@ -15,7 +15,7 @@ Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*
 | poorten open/dicht, boog, muziek per situatie | blijft; elk eiland heeft eigen poorten, boogpuzzels en eigen muziek | motor + eilanden |
 | meer uitleg, ook halverwege | Wiske legt uit als je iets nieuws ziet of krijgt, bij een nieuw voorwerp, en geeft **tips na doodgaan** in een kamer | motor (`Verhaal.uitleg`, `Kamer.tips`) |
 | muziek altijd aan | elke streek heeft een eigen **achtergrondlied** dat altijd loopt; gevecht/baas eroverheen; deuntjes daarbovenop | motor (`ZeldaMuziek`) |
-| niet meteen en niet zo vaak vechten | bouwregel: per half eiland hoogstens één verplichte gevechtskamer, nooit in de eerste vijf minuten; liever puzzels, praten, zoeken | eilanden (regel hieronder) |
+| niet meteen en niet zo vaak vechten | bouwregel: per half eiland hoogstens één verplichte gevechtskamer, nooit in de eerste vijf minuten; liever puzzels, praten, zoeken. Een kamer die je al won laat je **vrij door**; wie nog eens wil, luidt de **bel** (dan met extra golven) | eilanden (regel hieronder) + motor |
 | eilanden als hub, later terug | eilanden met aanlegsteiger, kaart: **varen** naar elk eiland dat open is; alles blijft speelbaar | motor (`ZeldaEiland`, `ZeldaZee`) |
 | wel steeds vooruit | elk eiland heeft één hoofdopdracht (het baken); die opent het volgende eiland | motor + eilanden |
 | genezen bij elke arena | **bron** (feeënkring) of zielvuur bij elke kamer; de zelftest eist het | motor + zelftest |
@@ -75,15 +75,21 @@ al ziet liggen. Vrij voor later: x 1450 … 2040, z 180 … 510.
 
 1. **Eerst rondkijken, dan vechten.** Aankomst bij de steiger met een zielvuur, een dorp of plein met personen, en
    pas na een paar minuten verkennen het eerste gevecht. Per half eiland hoogstens **één verplichte kamer** (plus de
-   baas in de kerker). Extra gevechten alleen als zijmissie of uitdaging (vrijwillig).
+   baas in de kerker; de zelftest eist hoogstens twee vóór de baas per deel). Extra gevechten alleen als zijmissie of
+   uitdaging (`k.vrijwillig = true`). Wie terugkomt, gaat vrij door een gewonnen kamer; geef elke gewone kamer een
+   **bel** (`k.bel`) en een zwaardere **extra** golf (`k.extra(...)`) voor wie nog eens wil.
 2. **Genezen bij elke kamer**: een zielvuur of bron binnen 32 blokken van de ingang (zelftest controleert dit).
 3. **Hub**: vanaf de steiger zijn er minstens drie dingen te doen (hoofdopdracht, een zijmissie, iets om te
    zoeken). Een rustplaats bij elk knooppunt.
 4. **Eén nieuw voorwerp per eiland**, en de kerker draait om dat voorwerp. Op elk eiland liggen ook **één of twee
    plekken die pas met een later voorwerp opengaan** (een gebarsten muur, een haakpunt, ijs): reden om terug te komen.
-   Bouw ze er meteen in; het voorwerp komt later.
-5. **Vier hartstukjes per eiland** (`hs:<eiland>-<n>`, `verborgen = true`), waarvan één als zijmissiebeloning en één
-   pas met een later voorwerp.
+   Bouw ze er meteen in; het voorwerp komt later. Altijd dezelfde blokken, zodat spelers ze leren herkennen: een
+   **gebarsten muur** is `ZeldaHoofdstuk.BARST` (cracked deepslate bricks) en een `Barst`-onderdeel; een
+   **haakpunt** is `ZeldaHoofdstuk.HAAKPUNT` (lodestone) en een `Haakpunt`-onderdeel (met de landingsplek). Een vondst
+   erachter krijgt `voorwerp = "<vlag>"`: hij is te zien, maar pas te pakken met dat voorwerp.
+5. **Vier hartstukjes per eiland** (`hs:<eiland>-<n>`; de zelftest eist hoogstens vier), waarvan één als
+   zijmissiebeloning (`spel.beloon`, en `stukje(vlag)` bij het bouwen zodat de kaart hem meetelt) en één of twee pas
+   met een later voorwerp. Een hartstukje buiten het pad krijgt `verborgen = true` (je huisdier snuffelt hem op).
 6. **Muziek**: twee of drie eigen achtergrondliedjes (dorp, buiten, kerker) en de baasmuziek; `muziek(Location)`
    geeft er altijd één.
 7. **Doelen** (`doel(...)`) voor elke stap van de hoofdopdracht, met een duwtje en een `verder`-zin, zodat `/hint`
@@ -96,30 +102,50 @@ al ziet liggen. Vrij voor later: x 1450 … 2040, z 180 … 510.
 
 ### Voorwerpen, harnas, harten, flesjes (de hele reis)
 
-| eiland | voorwerp (vak) | harnas | hart | flesje | ook |
+| eiland | voorwerp (vak, vlag) | harnas | hart | flesje | ook |
 |---|---|---|---|---|---|
 | 1 Lindewoud | zwaard, schild, boog (bestaan) | groene tuniek | `hart1` (Grauwmoer) | `fles1` (zijmissie Hanne) | — |
-| 2 Zilverstrand | **bommen** (vak 4): gooien, gebarsten muren, baas verdoven | `harnas1` maliënhemd (smid Hendrik) | `hart2` | `fles2` | — |
-| 3 Witte Toppen | **klauwhaak** (vak 5): naar een haakpunt trekken | `harnas2` wachtersharnas (bergwachters) | `hart3` | `fles3` | **sneeuwvos** (`dier:sneeuwvos`) |
-| 4 Gloedberg | **vuurstaf** (vak 6): vuur op afstand, ijs smelten | `harnas3` gloedharnas (smeden; hitte in de mijn) | `hart4` | `fles4` | — |
-| 5 Nachtrots | **lichtpijlen** (boog, vak 2): nevel en Morgal | `harnas4` lichtharnas (Zelda's wachters) | — | — | het einde |
+| 2 Zilverstrand | **bommen** (vak 4, vlag `bommen`): gooien, gebarsten muren, baas verdoven | `harnas1` maliënhemd (smid Hendrik) | `hart2` | `fles2` | — |
+| 3 Witte Toppen | **klauwhaak** (vak 5, vlag `klauwhaak`): naar een haakpunt trekken | `harnas2` wachtersharnas (bergwachters) | `hart3` | `fles3` | **sneeuwvos** (`dier:sneeuwvos`) |
+| 4 Gloedberg | **vuurstaf** (vak 6, vlag `vuurstaf`): vuur op afstand, ijs smelten | `harnas3` gloedharnas (smeden; hitte in de mijn) | `hart4` | `fles4` | — |
+| 5 Nachtrots | **lichtpijlen** (boog, vak 2, vlag `lichtpijlen`): nevel en Morgal | `harnas4` lichtharnas (Zelda's wachters) | — | — | het einde |
+
+De vlag van een voorwerp is vast: de vondsten op eerdere eilanden die erop wachten (`voorwerp = "bommen"`, …) gebruiken
+hem al.
 
 Een voorwerp is een `ZeldaVoorwerp` (zie het flesje in `ZeldaSpel.Flesje`), geregistreerd in `Zelda`; de sessie van
 dat eiland bouwt het. Harten: 8 aan het begin, +4 containers, +5 uit twintig stukjes = hoogstens 17.
 
-### 1 · Het Lindewoud (bestaat; sessie `zelda-eiland-1` maakt er een eiland van)
+### 1 · Het Lindewoud (gebouwd: sessie `zelda-eiland-1`, deel `zelda` versie 3)
 
-Bos, tempelruïne, kloof, veen, heksenkring, haven (zie `MODI.md`). Wat er bij komt:
+Bos, tempelruïne, kloof, veen, heksenkring, haven (zie `MODI.md` voor de kaart van het pad). Wat de eilandsessie
+toevoegde, en de keuzes:
 
-- **Rustiger begin**: het eerste gevecht (de open plek) lichter: één golf van twee veenlopers; de tweede golf pas bij
-  wie terugkomt (`k:open-plek`). De kade: één golf.
-- **Personen**: **Hanne**, kruidenvrouw in de moerashut (zijmissie *Moeraskruid*: drie kruiden in het Veen → `fles1`);
-  **Kees** de houthakker bij Thuis (zijmissie *De verloren bijl* → hartstukje); **Lotje** op de kade die meeuwen telt
-  (praatje, later een missie met de bommen); **Brecht** krijgt gesprekken: vóór/na de kade, en «klaar om te varen?».
-- **Hartstukjes**: in de holle eik (verborgen), achter de waterval in de Kloof (alleen met de klauwhaak), onder de
-  paddenstoelen van de Heksenkring (na Grauwmoer), in een gebarsten muur van de tempel (bommen).
-- **De overstap**: na de kade zegt Brecht dat de Zilvermeeuw vaart; zodra eiland 2 bestaat, opent `h1` het
-  Zilverstrand op de kaart en vaart Brecht je erheen (`spel.vaar`).
+- **Rustiger**: de open plek is één golf van twee veenlopers, het Veen twee golven (was drie), de kade één golf (was
+  twee). Verplicht vóór de baas: de open plek en het Veen. Een kamer die je al won (`k:<kamer>`) laat je **vrij door**
+  (afwijking van het plan, waar de tweede golf bij terugkomst kwam: steeds opnieuw vechten past niet bij «niet zo
+  vaak»); de **bel** in de open plek, het Veen en op de kade = nog eens, nu mét de extra golven. Oude standen krijgen
+  de `k:`-vlaggen van wat ze al voorbij zijn (`ZeldaHoofdstuk1.aanvullen`).
+- **Kees** de houthakker bij Thuis (houtstapel, leeg hakblok): zijmissie *De verloren bijl*. De bijl ligt op het
+  hakblok in de nieuwe **houtkap**, een open plek achter de Oude Eik (pad naar het noorden). Beloning: een
+  hartstukje. Daarna verklapt hij dat er iets in de Oude Eik zit.
+- **Hanne** onder haar moerashut (ketel, brouwsel): zijmissie *Moeraskruid*: veenbes, zonnedauw en moerasmunt in het
+  Veen (pas te zien als ze erom vroeg) → het eerste **flesje** (`fles1`), en Wiske legt uit hoe je het vult.
+- **Lotje** (een kind) telt meeuwen aan het eind van de pier; een praatje, en een vraag als je op het Zilverstrand
+  was (`e:zilverstrand`). Een missie met de bommen kan eiland 2a erbij zetten.
+- **Brecht** op de pier: het eindverhaal (zonder «wordt vervolgd»: «Op het Zilverstrand weten ze meer. Zeg maar
+  wanneer.»), daarna praten = `spel.varen`: een klein menu «Waarheen?» met elk eiland dat open is; is er nog maar één,
+  dan «Nog even geduld. Zodra de wind draait, varen we.» Komt hij je weer tegen na een ander eiland, dan één
+  welkomstregel.
+- **Vier hartstukjes** (`hs:lindewoud-1` … `4`): in de **holle Oude Eik** (stam 4 × 4, gat aan de achterkant;
+  verborgen, het huisdier snuffelt hem op), de beloning van **Kees**, op een **richel in de Kloof** (oostwand, drie
+  blokken boven het water, haakpunt erboven; `voorwerp = "klauwhaak"`) en achter een **gebarsten muur** in het
+  heiligdom van de tempel (een kamertje in de zuidmuur; `voorwerp = "bommen"`). Nu te halen: twee. Het stukje onder de
+  paddenstoelen van de Heksenkring uit het plan is vervallen (dan waren het er vijf).
+- **Uitleg erbij**: de bel (eerste vrije doorgang), het eerste hartstukje, het flesje. Plagerijtjes van Wiske bij de
+  richel en de gebarsten muur (verhaal, geen uitleg).
+- **De overstap**: zodra eiland 2 in `Zelda.EILANDEN` staat met `openNa = "h1"`, staat het in Brechts menu en op de
+  kaart; er hoeft op het Lindewoud niets te veranderen.
 
 ### 2 · Het Zilverstrand
 
@@ -132,7 +158,8 @@ de **Getijdentempel** die bij eb boven water komt.
   zijn vlieger in de duinen (vrijwillige tijdrace: de vlieger achterna over de duinen); **Ouwe Teun** op het bankje
   (vertelt over de bakens; uitleg). Voorwerp: de **bommenzak** (Mira's oude mijnwerkersbommen, in de kelder van de
   vuurtoren, achter een puzzel met spiegels: licht met de boog op drie doelen). Eén gevecht: de meeuwenrovers op het
-  vuurtorenbordes (vrijwillig te herhalen). Later terug: een gebarsten duinmuur op het Lindewoud.
+  vuurtorenbordes (vrijwillig te herhalen). Later terug: de gebarsten muur in de tempel van het Lindewoud
+  (`barst tempel`, hartstukje erachter).
 - **2b (oost, de tempel)**: de dijk naar de Getijdentempel; puzzels met **eb en vloed** (hendels die water laten
   zakken en stijgen: deuren van water), gebarsten muren (bommen), een tijdrace onder water door. Kerker met twee
   kamers en de baas **Kapitein Zoutbaard**, een verdronken zeerover die door Morgals nevel ronddoolt: hij gooit
@@ -212,7 +239,16 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | opnieuw | kaart: rechtsklik op een zielvuur | vergeet `v:`/`r:` na die rustplaats, reist erheen |
 | kaart | `spel.kaart` | zielvuren van dit eiland, eilanden (varen), opdrachten, harten, harnas, flesjes, uitleg, hub |
 | voorwerpen | `ZeldaVoorwerp` | haak voor bommen, klauwhaak, vuurstaf, lichtpijlen: vlag, vak, item, rechtsklik, projectiel raakt |
-| gewonnen kamers | vlag `k:<kamer>` | voor missies en doelen («ben je hier al geweest») |
+| gewonnen kamers | vlag `k:<kamer>` | voor missies en doelen («ben je hier al geweest»); **vrije doorgang** als iedereen binnen hem al won |
+| bel | `Kamer.bel`, `Kamer.extra`, `spel.luid` | rechtsklik op de bel in een kamer = nog eens vechten, met de extra golven |
+| gebarsten muur | `ZeldaHoofdstuk.Barst`, `spel.breek`, `spel.barstBij` | dicht (`BARST`) tot een bom hem openbreekt; wie dat deed (`b:<id>`) vindt hem open, na een minuut leeg weer dicht |
+| haakpunt | `ZeldaHoofdstuk.Haakpunt`, `spel.haakpunt(Block)` | blok (`HAAKPUNT`) + landingsplek voor de klauwhaak (eiland 3 bouwt het trekken) |
+| later te halen | `Vondst.voorwerp` | te zien, pas te pakken met dat voorwerp (de test controleert dat hij blijft liggen) |
+| na een vondst | `Vondst.daarna` | een `Actie` (bv. missiestap verder als alle kruiden er zijn) |
+| eenmalig gesprek | `Persoon.eenmalig` | een gesprek dat je één keer hoort (welkom terug, een geheimpje); `Persoon.kind` = een kind |
+| varen met Brecht | `spel.varen` | menu «Waarheen?» met de open eilanden, of «nog even geduld» |
+| hartstukjes per eiland | `ZeldaHoofdstuk.stukjes`, `stukje(vlag)` | de kaart toont «Het Lindewoud: 2 van 4 gevonden» |
+| oude standen | `ZeldaHoofdstuk.aanvullen(Stand)` | bij binnenkomen: vlaggen van wat je zeker al deed (bv. `k:`) |
 | beheer | `kitpvp zelda vaar|vlag|hint <speler> …`, `kitpvp zelda test <speler> motor` | zie MODI.md |
 
 ### Hoe een eilandsessie aanhaakt
@@ -222,6 +258,9 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    met chunk-tickets zoals hoofdstuk 1), dan de onderdelen in de volgorde van het pad: `rust`, `bron`, `kamer`,
    `uitdaging`, `reeks`, `vondst`, `verhaal`, `persoon(...).gesprek(...)`, `missie`, en de `doel`en.
    `muziek(Location)` en `plekNaam(Location)` per streek, `hemel(Location)` voor de tijd van de dag.
+   Personen: een **Brecht** bij je steiger met `gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p))`
+   (dan kun je terugvaren). Gewone kamers: een `bel` en een `extra` golf. Plekken voor later: `Barst`/`Haakpunt` en
+   vondsten met `voorwerp`. Hartstukjes als beloning: `stukje(vlag)`.
 2. Eén regel in `Zelda.EILANDEN`:
    `new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(new ZeldaEiland2a(plugin), new ZeldaEiland2b(plugin)), "steiger", "h1", "baken2", List.of(r("Brecht", "…"), r("Wiske", "…")))`.
    Het eiland verschijnt vanzelf op de kaart van wie `h1` heeft, de overtocht werkt, de zelftest controleert het.
@@ -229,23 +268,29 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    zet.
 4. Nieuwe vijanden: `ZeldaHoofdstuk.Soort` + `ZeldaSpel.spawn`; een baas: een `ZeldaBaas` (of subklasse).
 5. Nieuwe liedjes in `ZeldaMuziek` (en in `alle()`); de unit-test controleert bereik, lengte en volume.
-6. Test: `kitpvp zelftest`, `kitpvp zelda test <speler> alles` (loopt elk onderdeel van elk deel in volgorde af; zie
-   MODI.md voor hoe de test een nieuw deel bereikt), `kitpvp zelda test <speler> motor`, en `kitpvp kaart` voor
-   plaatjes.
+6. Test: `kitpvp zelftest`, `kitpvp zelda test <speler> alles` (loopt alle eilanden af in de volgorde van
+   `EILANDEN`: varen, elk deel in de volgorde van het pad, het einde van elk deel, Brecht, de zijmissies van het eiland
+   door te praten met wie iets nieuws heeft; vondsten met `voorwerp` moeten blijven liggen), `kitpvp zelda test
+   <speler> motor`, en `kitpvp kaart` voor plaatjes. Een nieuw eiland komt dus vanzelf in de route, als het open gaat
+   met de vlag van het eiland ervoor.
+7. Bommen (2a): roep `spel.breek(p, b)` aan als een bom ontploft bij `spel.barstBij(plek)`; het Lindewoud heeft er een
+   in de tempel (`barst tempel`, met `hs:lindewoud-4` erachter). Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en
+   zet de speler op `landing()`; het Lindewoud heeft er een boven de richel in de Kloof (`hs:lindewoud-3`).
 
 ## De bouwsessies (in volgorde)
 
 Elke sessie: één (half) eiland, de regels hierboven, eigen code alleen in `plugins/kitpvp`, testen volgens de
 lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deployen.
 
-1. **`zelda-eiland-1`** — Het Lindewoud als eiland: rustiger begin (lichtere eerste kamer en kade), Hanne (*Moeraskruid*
-   → `fles1`), Kees (*De verloren bijl* → hartstukje), Lotje, Brecht met gesprekken en de overstap naar eiland 2
-   (alleen als het bestaat), vier hartstukjes (twee nu te halen). **Klaar als** het hoofdstuk van begin tot eind speelt
-   met hoogstens twee verplichte kamers vóór de baas, er twee zijmissies werken, `kitpvp zelftest` OK is en `kitpvp
-   zelda test <speler> alles` en `motor` OK zijn, en bestaande voortgang blijft werken.
+1. **`zelda-eiland-1`** (gebouwd, kitpvp 2.4) — Het Lindewoud als eiland: rustiger begin (lichtere eerste kamer en
+   kade), Hanne (*Moeraskruid* → `fles1`), Kees (*De verloren bijl* → hartstukje), Lotje, Brecht met gesprekken en de
+   overstap naar eiland 2 (alleen als het bestaat), vier hartstukjes (twee nu te halen). **Klaar als** het hoofdstuk
+   van begin tot eind speelt met hoogstens twee verplichte kamers vóór de baas, er twee zijmissies werken, `kitpvp
+   zelftest` OK is en `kitpvp zelda test <speler> alles` en `motor` OK zijn, en bestaande voortgang blijft werken.
 2. **`zelda-eiland-2a`** — Zilverstrand west: steiger, Zoutkom, vuurtoren, duinen, Mira/Hendrik/Pim/Teun, de
-   bommenzak (voorwerp + puzzel), maliënhemd, één gevecht, eiland in `Zelda.EILANDEN` (open na `h1`). **Klaar als** je
-   van het Lindewoud kunt varen, alles op 2a te doen is, bommen gebarsten muren openen, en zelftest en test OK zijn.
+   bommenzak (voorwerp + puzzel, vlag `bommen`), maliënhemd, één gevecht, eiland in `Zelda.EILANDEN` (open na `h1`).
+   **Klaar als** je van het Lindewoud kunt varen (Brecht of kaart), alles op 2a te doen is, bommen gebarsten muren
+   openen (ook die in de tempel van het Lindewoud), en zelftest en test OK zijn.
 3. **`zelda-eiland-2b`** — De Getijdentempel: eb-en-vloedpuzzels, kerker, Kapitein Zoutbaard, `hart2`, Getijdenbaken
    (`baken2`). **Klaar als** de kerker te halen is met alleen wat 2a geeft, de baas te verslaan is, `baken2` het Witte
    Toppen opent, en zelftest en test OK zijn.

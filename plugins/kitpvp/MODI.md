@@ -75,8 +75,8 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 |---|---|
 | `Zelda` | de modus: poort, `EILANDEN`, `delen()` (één bouwdeel per eilanddeel + de zee), join/leave/respawn/stand/plek, zelftest, `kitpvp zelda …` |
 | `ZeldaEiland` | een eiland: id, naam, icoon, delen, aanleg-rustplaats (steiger), `openNa`-vlag, `klaar`-vlag, overtochtregels |
-| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Box` |
-| `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1): de wereld en zijn onderdelen, in de volgorde van het pad; `motor()` = bronnen, uitleg, tips, doelen |
+| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Barst` (gebarsten muur), `Haakpunt`, `Box` |
+| `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1): de wereld en zijn onderdelen, in de volgorde van het pad, met Kees, Hanne, Lotje en Brecht; `motor()` = bronnen, uitleg, tips, doelen; `aanvullen` = oude standen |
 | `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
 | `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
 | `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
@@ -86,7 +86,7 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 | `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk) |
 | `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; drie lagen: achtergrond (altijd), lus (gevecht, baas), deuntjes; categorie «Nootblokken» |
 | `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden) |
-| `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door het hoofdstuk; `test <speler> motor`: alle motoronderdelen |
+| `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door alle eilanden (varen, elk deel, zijmissies); `test <speler> motor`: alle motoronderdelen |
 
 ### Hoe het speelt
 
@@ -99,6 +99,9 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   Golven vijanden (1 extra per extra speler); alles verslagen = deuren open, deuntje, +3 harten, vlag `k:<kamer>`.
   Iedereen binnen dood of weg = na 4 s terug naar het begin. Gewonnen kamers gaan na een minuut zonder spelers in de
   buurt weer dicht. Doodgaan in een kamer = na de respawn een **tip** van Wiske (`k.tips`, de 1e, dan de 2e).
+  **Vrije doorgang**: won iedereen die de kamer instapt hem al (`k:<kamer>`), dan gaan de deuren gewoon open. Wie nog
+  eens wil, rechtsklikt de **bel** in de kamer (`k.bel`): dan het gevecht met de extra golven erachter (`k.extra`).
+  De zelftest eist hoogstens twee verplichte kamers (niet `vrijwillig`) vóór de eerste baas per deel.
 - **Uitdaging op tijd**: stap op de startplaat, de poort gaat open, de tijd loopt in de **XP-balk** (getal = seconden,
   tikjes, de laatste vijf hoger). Haal je de finish: tijd en (bij verbetering) «record», bewaard per speler. Bij de
   start hangt een bord met de vijf beste tijden (alleen als er iemand in de buurt is).
@@ -109,16 +112,23 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   boog met oneindig pijlen, voorwerpen (vak 3 … 7), **harten** (8 + hartcontainers `hart…` + een hart per vier
   **hartstukjes** `hs:…`), **harnas** (`harnas1` … `harnas4`, zichtbaar), **flesjes** (`fles1` … `fles4`, vak 3,
   rechtsklik = vijf harten). Rustplaatsen geven de vlaggen van ervoor ook (`geeft`). Een vondst met `verborgen` wordt
-  door je huisdier opgesnuffeld; met `vereist` alleen te zien als je die vlag hebt.
+  door je huisdier opgesnuffeld; met `vereist` alleen te zien als je die vlag hebt; met `voorwerp` wel te zien, maar
+  pas te pakken met dat voorwerp (vlag `bommen`, `klauwhaak`, …). `daarna` = een actie na het vinden (missiestap).
+  Hartstukjes heten `hs:<eiland>-<n>`; de kaart toont hoeveel je er op dit eiland hebt.
+- **Gebarsten muur** (`Barst`, blok `BARST`): dicht tot een bom hem openbreekt (`spel.breek`, de bommen komen op
+  eiland 2); wie erbij was (`b:<id>`) vindt hem daarna open; een minuut niemand in de buurt = weer dicht.
+  **Haakpunt** (`Haakpunt`, blok `HAAKPUNT`): blok + landingsplek voor de klauwhaak (eiland 3).
 - **Verhaal**: de eerste keer in een zone een paar korte regels (`v:<id>`, dus nooit dubbel). Met `uitleg` = uitleg
   (hoe iets werkt), overgeslagen als je op de kaart «Uitleg: uit» kiest.
 - **Personen**: rechtsklik = praten. Het eerste `Gesprek` waarvan de voorwaarde klopt, anders het gewone praatje;
   daarna een `Actie` (zijmissie beginnen of verder: `spel.missie`, beloning: `spel.beloon`). Heeft iemand iets nieuws
-  (een gesprek met id dat je nog niet hoorde), dan glinstert hij zacht, alleen voor jou.
+  (een gesprek met id dat je nog niet hoorde), dan glinstert hij zacht, alleen voor jou. `eenmalig` = een gesprek dat
+  je één keer hoort. **Brecht** vaart je: praten = een menu «Waarheen?» met de eilanden die open zijn (`spel.varen`),
+  of «nog even geduld» als er nog geen ander eiland is.
 - **Wiske**: een kleine fee naast je schouder; ze komt voor je zweven als ze praat. **Klik op haar of `/hint`**: eerst
   een duwtje (het eerste doel van het eiland dat nog niet klaar is), binnen twee minuten nog eens = wat je moet doen en
-  ze vliegt even die kant op. Geen doel meer = je zijmissies of «verder varen». Zes minuten zonder voortgang: ze biedt
-  één keer hulp aan.
+  ze vliegt even die kant op. Geen doel meer = je zijmissies, «verder varen», of wie er iets nieuws te vertellen heeft
+  («Kees wil je iets vertellen», nog eens = ze wijst). Zes minuten zonder voortgang: ze biedt één keer hulp aan.
 - **Huisdier**: vlag `dier:<soort>`; de eerste keer kies je een naam (klein menu). Loopt mee, zit als je stilstaat,
   snuffelt verborgen vondsten op (loopt erheen en gaat erbij zitten). Onkwetsbaar, vecht niet.
 - **Tekst**: alles op **één plek**, de actiebalk, één grijze regel tegelijk (spreker in groen), elke regel 2,5–6 s.
@@ -147,26 +157,27 @@ fee, gaat met je mee. Het pad loopt naar het oosten, de dag schuift op:
 
 | rx (x = 1100 + rx) | wat | soort |
 |---|---|---|
-| 0 … 30 | huisje aan de bosrand, moestuin, put; begin | rust 0 «Thuis», verhaal |
-| 30 … 90 | bospad, **de open plek** (palissade, 2 golven veenlopers en spinnen) | kamer |
+| 0 … 30 | huisje aan de bosrand, moestuin, put; begin; **Kees** bij zijn houtstapel (zijmissie *De verloren bijl*) | rust 0 «Thuis», verhaal, persoon |
+| 30 … 90 | bospad, **de open plek** (palissade, 1 golf van 2 veenlopers; bel = nog eens met spinnen) | kamer |
 | 47 | feeënkring (bron, alleen licht) | bron |
 | 91 | Eikenschild | vondst |
-| 100 | de Oude Eik | rust 1 |
+| 100 | de Oude Eik (stam 4 × 4, **hol**: aan de noordkant een gat, hartstukje `hs:lindewoud-1`, verborgen) | rust 1, vondst |
+| 87 … 98, z −25 … −15 | **de houtkap** (pad vanaf de Oude Eik naar het noorden): stronken, stammen, hakblok met de bijl van Kees | vondst (na Kees) |
 | 114 … 152 | **tempelruïne**: drie vuurschalen (grond, torenvoet via puin, zuil in een vijver), 25 s | puzzel |
-| 147 | Wachterszwaard in het heiligdom | vondst |
+| 147 | Wachterszwaard in het heiligdom; in de zuidmuur een **gebarsten muur** met een kamertje (`hs:lindewoud-4`, pas met bommen) | vondst, barst |
 | 157 | | rust 2 «Tempelruïne» |
-| 164 … 205 | **de Kloof**: startplaat, pilaren en een stam boven het water, poort aan de overkant, 25 s | uitdaging |
+| 164 … 205 | **de Kloof**: startplaat, pilaren en een stam boven het water, poort aan de overkant, 25 s; in de oostwand (z −8 … −6) een **richel** met `hs:lindewoud-3` en een haakpunt erboven (klauwhaak), verderop een waterval | uitdaging, haakpunt |
 | 208 | | rust 3 «Kloofrand» |
-| 215 … 251 | **het Veen** (wortelpoorten, 3 golven: mosschutters, spinnen, veenreus) | kamer |
+| 215 … 251 | **het Veen** (wortelpoorten, 2 golven: mosschutters, veenloper en spin; veenreus; bel = nog eens); drie kruiden voor Hanne | kamer, vondsten (na Hanne) |
 | 253 | Jagersboog | vondst |
-| 258 | moerashut | rust 4 «Moerashut» |
+| 258 | moerashut; eronder **Hanne** met haar ketel (zijmissie *Moeraskruid* → `fles1`) | rust 4 «Moerashut», persoon |
 | 262 … 276 | **drie doelen** over een kanaal, 15 s, dan komt de brug | puzzel |
 | 279 | feeënkring voor de Heksenkring | bron |
 | 282 … 310 | **de Heksenkring**: baas Grauwmoer (nacht, baasmuziek, levensbalk) | kamer + baas |
 | 313 | Hartcontainer (+1 hart) | vondst |
 | 319 | | rust 5 «Haventrap» |
-| 324 … 346 | **de kade**: Morgals soldaten (vindicators, kruisboogschutters), 2 golven | kamer |
-| 347 … 381 | pier, visser Brecht, het schip de Zilvermeeuw (je kunt aan boord) | verhaal: einde (`h1`) |
+| 324 … 346 | **de kade**: Morgals soldaten (vindicators, een kruisboogschutter), 1 golf; bel = nog eens | kamer |
+| 347 … 381 | pier, visser **Brecht** (varen: menu met de open eilanden), **Lotje** telt meeuwen, het schip de Zilvermeeuw (je kunt aan boord) | verhaal: einde (`h1`), personen |
 | 420 … 472 | Nachtrots op een eiland aan de horizon | versiering |
 
 ### Een eiland toevoegen
@@ -189,8 +200,9 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
    (of subklasse) op de kamer. Een nieuw voorwerp: een `ZeldaVoorwerp` in `spel.voorwerpen`.
 5. Een gewijzigd deel: hoog `versie()` op, dan herbouwt alleen dat deel bij de volgende start. Teksten, doelen,
    gesprekken en bronnen zonder blokken: geen versie nodig (ze worden bij elke start opnieuw aangemaakt).
-6. `kitpvp zelda test <speler> alles` loopt het eerste deel af; voor een nieuw deel: `kitpvp zelda rust` /
-   `vlag` om de speler daar te krijgen, of breid `ZeldaTest.route` uit met dat deel.
+6. `kitpvp zelda test <speler> alles` loopt alle eilanden af in de volgorde van `EILANDEN` (varen, elk deel, het einde
+   van elk deel, Brecht, de zijmissies door te praten met wie iets nieuws heeft); een nieuw eiland doet dus vanzelf
+   mee als het opengaat met de vlag van het eiland ervoor. Vondsten met `voorwerp` moeten blijven liggen.
 
 ### Beheer (console of OP)
 
@@ -198,7 +210,8 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 - `kitpvp zelda reset <speler>` — voortgang wissen. `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen).
 - `kitpvp zelda test <speler> [alles]` — loopt met een echte speler door de poort en het hoofdstuk (kamers verslaan,
   puzzels, uitdaging, vondsten, rustplaatsen, opslag op schijf); zonder `alles` tot de eerste rustplaats na de eerste
-  kamer; `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
+  kamer; met `alles` ook vrije doorgang en de bel, vondsten voor later (blijven liggen), Brecht, de zijmissies en de
+  volgende eilanden; `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
   voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
 - `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), bron,
@@ -243,4 +256,6 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
   begintoestand, puzzels en uitdaging in rust, alles binnen het gebied, een einde, muziek, voortgang schrijven en
   teruglezen, niet te veel entiteiten; Zelda 2.0: eilanden met een aanleg, delen die elkaar niet overlappen, doelen
   op het eiland, genezen bij elke kamer, bronnen met vloer, personen binnen het speelgebied, de zee gebouwd met vrije
-  dekplekken, niet meer feeën dan spelers).
+  dekplekken, niet meer feeën dan spelers; eiland 1: hoogstens twee verplichte kamers vóór de baas, bellen op hun
+  plek, gebarsten muren dicht, haakpunten met een vrije landing, personen niet vast, hoogstens vier hartstukjes per
+  eiland, geen dubbele vondsten of missies).
