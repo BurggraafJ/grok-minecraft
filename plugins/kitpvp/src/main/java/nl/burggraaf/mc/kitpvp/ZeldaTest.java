@@ -303,6 +303,38 @@ final class ZeldaTest {
                     moet(h.w.getBlockAt(t[0], t[1], t[2]).getType() == Material.AIR, "de ton is niet gesprongen");
                     moet(zb.schade(10) > 10, zb.naam + ": versuft doet een klap niet meer pijn");
                 }, 2, () -> true, 1);
+                if (k.baas instanceof Grimmel gr) stap(gr.naam + " tegen een zuil", () -> {         // hij stormt, jij haakt je weg, hij loopt tegen een zuil
+                    moet(stand().heeft("klauwhaak"), "geen klauwhaak voor " + gr.naam);
+                    var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    if (max != null) p.setHealth(max.getValue());
+                    Location zu = gr.zuil(0), mid = k.start.midden(h.w);
+                    double y = gr.grond.get(0).getY();
+                    org.bukkit.util.Vector as = mid.toVector().subtract(zu.toVector()).setY(0);
+                    as = Math.abs(as.getX()) >= Math.abs(as.getZ()) ? new org.bukkit.util.Vector(Math.signum(as.getX()), 0, 0) : new org.bukkit.util.Vector(0, 0, Math.signum(as.getZ()));
+                    Location rand = new Location(h.w, zu.getX(), y, zu.getZ()).add(as.clone().multiply(1.0));
+                    Location staan = rand.clone().add(as.clone().multiply(2.0)), beer = rand.clone().add(as.clone().multiply(9.0));
+                    beer.setDirection(as.clone().multiply(-1));
+                    gr.ent.teleport(beer);
+                    staan.setDirection(as.clone().multiply(-1));
+                    p.teleport(staan);
+                    gr.storm(z.spel, staan.clone());
+                    ZeldaHoofdstuk.Haakpunt weg = null;                                 // een haakpunt opzij (niet waar hij heen stormt)
+                    for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) {
+                        if (!k.binnen.in(hp.landing())) continue;
+                        org.bukkit.util.Vector v = hp.landing().toVector().subtract(staan.toVector()).setY(0);
+                        double opzij = v.clone().subtract(as.clone().multiply(v.dot(as))).length();
+                        if (opzij >= 4 && z.spel.zicht(staan.clone().add(0, p.getEyeHeight(), 0), hp) && (weg == null || hp.landing().distanceSquared(staan) < weg.landing().distanceSquared(staan))) weg = hp;
+                    }
+                    if (weg == null) fouten.add(gr.naam + ": geen haakpunt opzij om je weg te trekken");
+                    else haak(weg, staan);
+                }, 60, () -> gr.versuft > 0 && !gr.heel(0), 120);
+                if (k.baas instanceof Grimmel gr) stap(gr.naam + " duizelt", () -> {
+                    moet(gr.zuilRaak >= 1, gr.naam + ": geen zuil geraakt");
+                    moet(h.w.getBlockAt(gr.zuilen.get(0)[0], gr.zuilen.get(0)[4], gr.zuilen.get(0)[1]).getType() == Material.AIR, "de zuil is niet gebroken");
+                    moet(gr.schade(10) > 10, gr.naam + ": duizelig doet een klap niet meer pijn");
+                    var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    moet(max != null && p.getHealth() >= max.getValue() - 0.01, gr.naam + ": je werd toch geraakt (" + p.getHealth() + ")");
+                }, 2, () -> true, 1);
                 if (k.baas != null) stap("baas " + k.baas.naam, () -> {
                     moet(k.baas.leeft() && k.baas.balk != null, "baas " + k.baas.naam + " is er niet");
                     if (k.baas.leeft()) k.baas.ent.setHealth(k.baas.ent.getHealth() * 0.55);
@@ -358,6 +390,23 @@ final class ZeldaTest {
                     if (b.muur.isOpen) z.spel.herstel(b);
                     gooi(h, b);
                 }, 50, () -> b.muur.isOpen && stand().heeft("b:" + b.id), 60);
+            } else if (o instanceof ZeldaHoofdstuk.Glij gl) {                      // een glijvloer: de oplossing (de eerste zet is een echte stap op het ijs)
+                final int[] zet = {0};
+                stap("glij " + gl.id, () -> {
+                    moet(gl.oplossing.size() > 0, "glij " + gl.id + ": geen oplossing");
+                    p.teleport(new Location(h.w, gl.start[0] + 0.5, gl.y + 1, gl.start[1] + 0.5, p.getLocation().getYaw(), 0f));
+                }, 6, () -> {
+                    if (z.spel.glijdt(p)) return false;
+                    if (zet[0] >= gl.oplossing.size()) return true;
+                    org.bukkit.block.BlockFace r = gl.oplossing.get(zet[0]++);
+                    if (zet[0] == 1) {                                                      // een stap het ijs op: dan glij je vanzelf
+                        Location l = p.getLocation();
+                        p.teleport(new Location(h.w, l.getBlockX() + r.getModX() + 0.5, gl.y + 1, l.getBlockZ() + r.getModZ() + 0.5, l.getYaw(), 0f));
+                    } else moet(z.spel.glij(p, gl, r), "glij " + gl.id + ": zet " + zet[0] + " (" + r + ") kan niet vanaf " + xyz(p.getLocation()));
+                    return false;
+                }, 600);
+                stap("glij " + gl.id + " aan de overkant", () -> moet(p.getLocation().getBlockX() == gl.doel[0] && p.getLocation().getBlockZ() == gl.doel[1],
+                        "glij " + gl.id + ": niet bij het doel " + gl.doel[0] + "," + gl.doel[1] + " maar op " + xyz(p.getLocation())), 4, () -> true, 1);
             } else if (o instanceof ZeldaHoofdstuk.Spiegels sp) {                  // draai de spiegels met echte klikken
                 stap("spiegels " + sp.id, () -> {
                     if (sp.opgelost) z.spel.herstel(sp);

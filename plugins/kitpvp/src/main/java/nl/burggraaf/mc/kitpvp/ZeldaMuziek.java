@@ -392,6 +392,54 @@ final class ZeldaMuziek {
             spoor(Instr.BASS, 0.15f, "a3 . . . . . . . | g3 . . . . . . . | a3 . . . . . . . | e4 . . . . . . . "
                     + "| f4 . . . . . . . | g3 . . . . . . . | a3 . . . . . . . | e4 . . . . . . ."));
 
+    // ── de Witte Toppen: het IJspaleis (eiland 3b) ─────────────────────────────────────────
+
+    /** Het bergpad, de berghut, het voorplein en de sleebaan: wind, een fluit en een harp, open en hoog, in G. */
+    static final Lied BERGPAD = lied("bergpad", 4, true,
+            spoor(Instr.FLUTE, 0.2f, "g4 . . . b4 . d5 . | e5 . . . d5 . b4 . | c5 . . . a4 . . . | d5 . . . . . . . "
+                    + "| g4 . . . b4 . d5 . | e5 . . . f#5 . e5 . | d5 . . . c5 . a4 . | b4 . . . . . . . "
+                    + "| c5 . . . e5 . . . | d5 . . . b4 . g4 . | a4 . . . c5 . f#4 . | g4 . . . . . . ."),
+            spoor(Instr.HARP, 0.12f, ". . d4 . . . g4 . | . . e4 . . . b4 . | . . e4 . . . g4 . | . . f#4 . . . a4 . "
+                    + "| . . d4 . . . g4 . | . . e4 . . . b4 . | . . f#4 . . . a4 . | . . d4 . . . g4 . "
+                    + "| . . e4 . . . g4 . | . . d4 . . . b4 . | . . f#4 . . . a4 . | . . d4 . . . b3 ."),
+            spoor(Instr.BELL, 0.1f, "g3+b3+d4 . . . . . . . | e4+g4+b4 . . . . . . . | c4+e4+g4 . . . . . . . | d4+f#4+a4 . . . . . . . "
+                    + "| g3+b3+d4 . . . . . . . | e4+g4+b4 . . . . . . . | d4+f#4+a4 . . . . . . . | g3+b3+d4 . . . . . . . "
+                    + "| c4+e4+g4 . . . . . . . | g3+b3+d4 . . . . . . . | d4+f#4+a4 . . . . . . . | g3+b3+d4 . . . . . . ."),
+            spoor(Instr.CHIME, 0.07f, ". . . . . . . . | . . . . . . . f#5 | . . . . . . . . | . . . e5 . . . . "
+                    + "| . . . . . . . . | . . . . . . . . | . . . . . d5 . . | . . . . . . . . "
+                    + "| . . . . . . . e5 | . . . . . . . . | . . . . d5 . . . | . . . . . . . ."),
+            spoor(Instr.BASS, 0.15f, "g3 . . . d4 . . . | e4 . . . b3 . . . | c4 . . . g3 . . . | d4 . . . a3 . . . "
+                    + "| g3 . . . d4 . . . | e4 . . . b3 . . . | d4 . . . a3 . . . | g3 . . . d4 . . . "
+                    + "| c4 . . . g3 . . . | g3 . . . d4 . . . | d4 . . . a3 . . . | g3 . . . . . . ."));
+
+    /** Het IJspaleis (binnen): ijzeren xylofoon en klokjes, stil en glinsterend, in b-klein. */
+    static final Lied IJSPALEIS = lied("ijspaleis", 5, true,
+            spoor(Instr.IRON, 0.18f, "b4 . . . d5 . f#5 . | e5 . . . d5 . c#5 . | b4 . . . f#4 . . . | . . . . . . . . "
+                    + "| g4 . . . b4 . d5 . | c#5 . . . a4 . . . | b4 . . . . . f#4 . | f#4 . . . . . . ."),
+            spoor(Instr.CHIME, 0.1f, ". . . . . . . f#5 | . . . . b4 . . . | . . . . . . . . | . . . d5 . . . . "
+                    + "| . . . . . . . e5 | . . . . . . . . | . . . . c#5 . . . | . . . . . . . ."),
+            spoor(Instr.BELL, 0.12f, "b3+d4+f#4 . . . . . . . | a3+c#4+e4 . . . . . . . | b3+d4+f#4 . . . . . . . | f#3+a#3+c#4 . . . . . . . "
+                    + "| g3+b3+d4 . . . . . . . | a3+c#4+e4 . . . . . . . | b3+d4+f#4 . . . . . . . | f#3+a#3+c#4 . . . . . . ."),
+            spoor(Instr.HARP, 0.09f, ". . f#4 . . . b4 . | . . e4 . . . a4 . | . . d4 . . . b4 . | . . c#4 . . . f#4 . "
+                    + "| . . d4 . . . g4 . | . . e4 . . . a4 . | . . f#4 . . . d4 . | . . c#4 . . . a#3 ."),
+            spoor(Instr.BASS, 0.15f, "b3 . . . . . . . | a3 . . . . . . . | b3 . . . . . . . | f#3 . . . . . . . "
+                    + "| g3 . . . . . . . | a3 . . . . . . . | b3 . . . . . . . | f#3 . . . . . . ."));
+
+    /** Grimmel, de reuzenijsbeer: zware stappen, een brommende grondtoon en een ijzeren melodie, in e-klein. */
+    static final Lied GRIMMEL = lied("grimmel", 2, true,
+            spoor(Instr.BASS, 0.85f, "e4 . e4 . b3 . e4 . | e4 . e4 . b3 . e4 . | c4 . c4 . g3 . c4 . | d4 . d4 . a3 . d4 . "
+                    + "| e4 . e4 . b3 . e4 . | e4 . e4 . b3 . e4 . | c4 . c4 . d4 . d4 . | b3 . c4 . d4 . d#4 ."),
+            spoor(Instr.KICK, 0.65f, "x . . . x . x . | x . . . x . x . | x . . . x . x . | x . . . x . x . "
+                    + "| x . . . x . x . | x . . . x . x . | x . . . x . x . | x . x . x x x x"),
+            spoor(Instr.SNARE, 0.4f, ". . x . . . x . | . . x . . . x . | . . x . . . x . | . . x . . . x . "
+                    + "| . . x . . . x . | . . x . . . x . | . . x . . . x . | . x . x . x x x"),
+            spoor(Instr.DIDGE, 0.5f, "e4 . . . . . . . | e4 . . . . . . . | c4 . . . . . . . | d4 . . . . . . . "
+                    + "| e4 . . . . . . . | e4 . . . . . . . | c4 . . . d4 . . . | b3 . . . . . . ."),
+            spoor(Instr.IRON, 0.45f, "b4 . e5 . d5 . b4 . | a4 . b4 . g4 . e4 . | c5 . . . b4 . a4 . | d5 . . . f#5 . e5 . "
+                    + "| b4 . e5 . d5 . b4 . | a4 . b4 . g4 . e4 . | c5 . e5 . d5 . f#5 . | e5 . . . d#5 . . ."),
+            spoor(Instr.BELL, 0.3f, "e4+g4+b4 . . . . . . . | . . . . . . . . | c4+e4+g4 . . . . . . . | d4+f#4+a4 . . . . . . . "
+                    + "| e4+g4+b4 . . . . . . . | . . . . . . . . | c4+e4+g4 . . . d4+f#4+a4 . . . | b3+d#4+f#4 . . . . . . ."));
+
     /** Een bron (feeënkring): genezen, flesjes vol. */
     static final Lied BRON = lied("bron", 2, false,
             spoor(Instr.CHIME, 0.35f, "d4 f#4 a4 d5 f#5 d5 a4 f#4 | e4 g4 b4 e5 . . . ."),
@@ -411,7 +459,7 @@ final class ZeldaMuziek {
     static List<Lied> alle() {
         return List.of(GEVECHT, BAAS, DICHT, GEWONNEN, VONDST, RUST, OPGELOST, MISLUKT, BEGIN, KLAAR,
                 THUIS, WOUD, TEMPEL, VEEN, HAVEN, ZEE, BRON, HINT, OPDRACHT, ZOUTKOM, DUINEN, VUURTOREN, DORP,
-                WAD, GETIJDENTEMPEL, ZOUTBAARD, IJSHOEVE, SNEEUWSTORM, WACHTERSPOST);
+                WAD, GETIJDENTEMPEL, ZOUTBAARD, IJSHOEVE, SNEEUWSTORM, WACHTERSPOST, BERGPAD, IJSPALEIS, GRIMMEL);
     }
 
     // ── afspelen ────────────────────────────────────────────────────────────────────────────

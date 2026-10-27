@@ -1584,7 +1584,8 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
 
     /**
      * Hanne, de kruidenvrouw onder de moerashut: zijmissie «Moeraskruid» (drie kruiden in het Veen) → het eerste flesje,
-     * en later «Zeekraal» (een boodschap op het Zilverstrand) → sterk bronwater: je flesjes genezen meer.
+     * en later «Zeekraal» (een boodschap op het Zilverstrand) → sterk bronwater: je flesjes genezen meer. Wie in de
+     * IJstuin van het IJspaleis (eiland 3b) een sneeuwbloem plukt, brengt die hier: «De sneeuwbloem» → een vijfde flesje.
      */
     private void hanne() {
         Persoon hanne = persoon(new Persoon("Hanne", plek(257, G + 1, -4, 0f), beroep("cleric"),
@@ -1592,7 +1593,15 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         hanne.streek = Villager.Type.SWAMP;
         missie("moeraskruid", "Moeraskruid", "Zoek veenbes, zonnedauw en moerasmunt in het Veen.", "Breng de kruiden naar Hanne.");
         missie("zeekraal", "Zeekraal", "Zoek zeekraal aan de dijk op het Zilverstrand.", "Breng de zeekraal naar Hanne, op het Lindewoud.");
-        hanne.gesprek("hanne-1", s -> s.missie("moeraskruid") == 0, List.of(
+        missie("sneeuwbloem", "De sneeuwbloem", "Breng de sneeuwbloem naar Hanne, op het Lindewoud.");   // begint in de IJstuin (eiland 3b)
+        hanne.gesprek("hanne-bloem", s -> s.missie("sneeuwbloem") == 1, List.of(       // eerst: wie een sneeuwbloem bij zich heeft
+                        r("Hanne", "Een sneeuwbloem! Van de Witte Toppen?"),
+                        r("Hanne", "Die bloeit in de kou. Even in de ketel…"),
+                        r("Hanne", "Zo. Een flesje van bergkristal, voor jou.")), (spel, p, s) -> {
+                    spel.missie(p, "sneeuwbloem", ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "fles5", "Flesje van bergkristal", "een flesje erbij");
+                })
+                .gesprek("hanne-1", s -> s.missie("moeraskruid") == 0, List.of(
                         r("Hanne", "Een bezoeker! Pas op, de ketel is heet."),
                         r("Hanne", "Ik brouw bronwater, maar mijn kruiden zijn op."),
                         r("Hanne", "Ze groeien in het Veen. Breng je er drie?")), (spel, p, s) -> spel.missie(p, "moeraskruid", 1))

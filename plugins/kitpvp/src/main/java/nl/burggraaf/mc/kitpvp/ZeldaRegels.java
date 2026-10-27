@@ -61,7 +61,7 @@ final class ZeldaRegels {
 
     static final String[] HARNAS_NAAM = {"Groene tuniek", "Maliënhemd", "Wachtersharnas", "Gloedharnas", "Lichtharnas"};
 
-    /** Hoeveel flesjes je hebt ({@code fles1} … {@code fles4}). */
+    /** Hoeveel flesjes je hebt ({@code fles1} … {@code fles8}; nu zijn er vijf: tot en met de sneeuwbloem van Hanne). */
     static int flessen(ZeldaVoortgang.Stand s) {
         int n = 0;
         for (int i = 1; i <= 8; i++) if (s.heeft("fles" + i)) n++;
@@ -251,6 +251,81 @@ final class ZeldaRegels {
         int[] v = new int[n];
         for (int i = 0; i < n; i++) v[i] = naarVloed ? i : n - 1 - i;
         return v;
+    }
+
+    /**
+     * Hoeveel een klap doet bij Grimmel, de reuzenijsbeer van het IJspaleis: zijn vacht is dik (een klein beetje), maar
+     * versuft (hij stormde tegen een ijszuil) anderhalf keer zoveel.
+     */
+    static double grimmelSchade(double schade, boolean versuft) {
+        return schade * (versuft ? 1.5 : 0.3);
+    }
+
+    /** Een vakje (x, z) van een glijvloer: ijs? vrij om in te staan? een gewone vloer? */
+    @FunctionalInterface
+    interface Vak {
+        boolean is(int x, int z);
+    }
+
+    /** Hoe snel je over een glijvloer glijdt (blokken per tik). */
+    static final double GLIJ_SNELHEID = 0.45;
+
+    /**
+     * Glijden over een glijvloer: vanaf vakje {@code x, z} in richting {@code r}. Is het volgende vakje niet vrij (een rots,
+     * een muur), dan stop je hier; is het ijs, dan glijd je verder; is het een gewone vloer, dan stap je erop en sta je
+     * stil; anders (een gat) stop je ook: je glijdt nooit een afgrond in. Hoogstens {@code max} vakjes. Geeft het vakje
+     * {x, z} waar je uitkomt (hetzelfde vakje = je kunt die kant niet op).
+     */
+    static int[] glij(int x, int z, org.bukkit.block.BlockFace r, Vak ijs, Vak vrij, Vak vloer, int max) {
+        int dx = r.getModX(), dz = r.getModZ();
+        for (int n = 0; n < max; n++) {
+            int nx = x + dx, nz = z + dz;
+            if (!vrij.is(nx, nz)) break;
+            if (ijs.is(nx, nz)) {
+                x = nx;
+                z = nz;
+                continue;
+            }
+            if (vloer.is(nx, nz)) return new int[]{nx, nz};
+            break;
+        }
+        return new int[]{x, z};
+    }
+
+    /** De vier richtingen waarin je kunt glijden. */
+    static final List<org.bukkit.block.BlockFace> GLIJ_RICHTINGEN = List.of(org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.EAST,
+            org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.WEST);
+
+    /**
+     * De kortste weg over een glijvloer van {@code start} naar {@code doel} (allebei vakjes zonder ijs): vanaf een vakje
+     * zonder ijs stap je het ijs op (en glijd je), op het ijs glijd je. Null = niet te halen.
+     */
+    static List<org.bukkit.block.BlockFace> glijOplossing(int[] start, int[] doel, Vak ijs, Vak vrij, Vak vloer, int max) {
+        java.util.Map<Long, Object[]> vorige = new java.util.HashMap<>();
+        java.util.ArrayDeque<int[]> rij = new java.util.ArrayDeque<>();
+        vorige.put(ZeldaHoofdstuk.Glij.sleutel(start[0], start[1]), new Object[]{null, null});     // de start (geen null: putIfAbsent)
+        rij.add(start);
+        while (!rij.isEmpty() && vorige.size() < 10_000) {
+            int[] c = rij.poll();
+            if (c[0] == doel[0] && c[1] == doel[1]) {
+                List<org.bukkit.block.BlockFace> weg = new ArrayList<>();
+                Object[] v = vorige.get(ZeldaHoofdstuk.Glij.sleutel(c[0], c[1]));
+                while (v[0] != null) {
+                    weg.add(0, (org.bukkit.block.BlockFace) v[1]);
+                    int[] p = (int[]) v[0];
+                    v = vorige.get(ZeldaHoofdstuk.Glij.sleutel(p[0], p[1]));
+                }
+                return weg;
+            }
+            boolean opIjs = ijs.is(c[0], c[1]);
+            for (org.bukkit.block.BlockFace r : GLIJ_RICHTINGEN) {
+                if (!opIjs && !(ijs.is(c[0] + r.getModX(), c[1] + r.getModZ()) && vrij.is(c[0] + r.getModX(), c[1] + r.getModZ()))) continue;
+                int[] e = glij(c[0], c[1], r, ijs, vrij, vloer, max);
+                if (e[0] == c[0] && e[1] == c[1]) continue;
+                if (vorige.putIfAbsent(ZeldaHoofdstuk.Glij.sleutel(e[0], e[1]), new Object[]{c, r}) == null) rij.add(e);
+            }
+        }
+        return null;
     }
 
     /** Hoe ver de klauwhaak reikt (blokken, van je ogen tot het haakpunt). */

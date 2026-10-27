@@ -1089,6 +1089,17 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "zelda-e3a-kloof-zuid", 0, 1, -446, 1480, 1536, g, zg + 14, 20, 8));
         f.add(Kaart.boven(w, map, "zelda-e3a-bergpoort", 1530, -312, 1579, -276, g - 2, zg + 30, 8));
         f.add(Kaart.voor(w, map, "zelda-e3a-bergpoort-zij", 0, -1, -294, 1530, 1579, g, zg + 30, 40, 8));
+        // eiland 3b, het IJspaleis: alles van boven, het bergpad, het voorplein met de IJstuin, het paleis (net onder de
+        // plafonds), de Glijzaal en de IJstuin van dichtbij, de Troonzaal, het geheel en de toren van opzij
+        int f3 = zg + 26;
+        f.add(Kaart.boven(w, map, "zelda-e3b-boven", ZeldaEiland3b.X1, ZeldaEiland3b.Z1, ZeldaEiland3b.X2, ZeldaEiland3b.Z2, g - 2, zg + 64, 2));
+        f.add(Kaart.boven(w, map, "zelda-e3b-bergpad", 1576, -312, 1640, -256, g - 2, zg + 40, 6));
+        f.add(Kaart.boven(w, map, "zelda-e3b-paleis", 1606, -338, 1714, -252, f3 - 8, f3 + 7, 4));
+        f.add(Kaart.boven(w, map, "zelda-e3b-glijzaal", 1645, -336, 1671, -306, f3 - 4, f3 + 5, 10));
+        f.add(Kaart.boven(w, map, "zelda-e3b-tuin", 1608, -337, 1631, -305, f3 - 2, f3 + 7, 10));
+        f.add(Kaart.boven(w, map, "zelda-e3b-troon", 1676, -320, 1712, -280, f3 - 2, f3 + 10, 8));
+        f.add(Kaart.voor(w, map, "zelda-e3b-zij", 0, -1, -250, 1578, 1718, g, zg + 64, 120, 3));
+        f.add(Kaart.voor(w, map, "zelda-e3b-toren-zij", 0, -1, -300, 1676, 1712, f3 - 2, zg + 64, 30, 6));
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;

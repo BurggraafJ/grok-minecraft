@@ -33,6 +33,7 @@ final class ZeldaLopen {
     private final Map<Long, ChunkSnapshot> chunks = new HashMap<>();
     private final Map<Long, Material> open = new HashMap<>();
     private final Set<Long> bereikt = new HashSet<>();
+    private final List<ZeldaHoofdstuk.Glij> glij = new ArrayList<>();
 
     private ZeldaLopen(World w, int x1, int y1, int z1, int x2, int y2, int z2) {
         this.w = w;
@@ -76,6 +77,18 @@ final class ZeldaLopen {
         return onder.isSolid() || water(hier) || ladder(hier);
     }
 
+    /** De glijvloer waar je op (x, y, z) op het ijs staat, of null. */
+    private ZeldaHoofdstuk.Glij glijOp(int x, int y, int z) {
+        for (ZeldaHoofdstuk.Glij g : glij) if (y == g.y + 1 && g.isIjs(x, z)) return g;
+        return null;
+    }
+
+    /** Waar je uitkomt als je vanaf (x, z) over deze glijvloer glijdt (zoals in het spel, {@link ZeldaRegels#glij}). */
+    private int[] glijd(ZeldaHoofdstuk.Glij g, int x, int z, org.bukkit.block.BlockFace r) {
+        return ZeldaRegels.glij(x, z, r, g::isIjs, (a, b) -> vrij(a, g.y + 1, b) && vrij(a, g.y + 2, b),
+                (a, b) -> !g.isIjs(a, b) && soort(a, g.y, b).isSolid(), 64);
+    }
+
     private void loop(int sx, int sy, int sz) {
         ArrayDeque<int[]> rij = new ArrayDeque<>();
         if (!staan(sx, sy, sz)) return;
@@ -87,6 +100,15 @@ final class ZeldaLopen {
             int x = c[0], y = c[1], z = c[2];
             List<int[]> naar = new ArrayList<>();
             Material hier = soort(x, y, z);
+            ZeldaHoofdstuk.Glij ijs = glijOp(x, y, z);
+            if (ijs != null) {                                                                             // op het ijs: alleen glijden
+                for (org.bukkit.block.BlockFace r : ZeldaRegels.GLIJ_RICHTINGEN) {
+                    int[] e = glijd(ijs, x, z, r);
+                    if (e[0] != x || e[1] != z) naar.add(new int[]{e[0], y, e[1]});
+                }
+                for (int[] n : naar) if (bereikt.add(sleutel(n[0], n[1], n[2]))) rij.add(n);
+                continue;
+            }
             for (int[] r : richting) {
                 int nx = x + r[0], nz = z + r[1];
                 if (staan(nx, y + 1, nz) && vrij(x, y + 2, z)) naar.add(new int[]{nx, y + 1, nz});       // stap of sprong omhoog
@@ -114,6 +136,12 @@ final class ZeldaLopen {
                 if (vrij(x, y - 1, z)) naar.add(new int[]{x, y - 1, z});
             }
             for (int[] n : naar) {
+                ZeldaHoofdstuk.Glij g = n[1] == y && Math.abs(n[0] - x) + Math.abs(n[2] - z) == 1 ? glijOp(n[0], n[1], n[2]) : null;
+                if (g != null) {                                                                           // een stap op het ijs: je glijdt door
+                    int[] e = glijd(g, x, z, n[2] < z ? org.bukkit.block.BlockFace.NORTH : n[2] > z ? org.bukkit.block.BlockFace.SOUTH
+                            : n[0] > x ? org.bukkit.block.BlockFace.EAST : org.bukkit.block.BlockFace.WEST);
+                    n = new int[]{e[0], y, e[1]};
+                }
                 if (!staan(n[0], n[1], n[2]) && !(ladder(soort(n[0], n[1], n[2])) || water(soort(n[0], n[1], n[2])))) continue;
                 if (bereikt.add(sleutel(n[0], n[1], n[2]))) rij.add(n);
             }
@@ -198,6 +226,7 @@ final class ZeldaLopen {
         }
         ZeldaLopen l = new ZeldaLopen(eerste.w, ax, ay, az, bx, by, bz);
         for (ZeldaHoofdstuk h : e.delen()) {
+            l.glij.addAll(h.glijvloeren);
             for (ZeldaHoofdstuk.Kamer k : h.kamers) {
                 l.opening(k.in);
                 l.opening(k.uit);

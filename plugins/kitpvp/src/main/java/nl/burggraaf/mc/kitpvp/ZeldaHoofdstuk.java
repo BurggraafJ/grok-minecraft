@@ -61,7 +61,8 @@ abstract class ZeldaHoofdstuk {
     }
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
-    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF }
+    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF,
+        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -138,6 +139,7 @@ abstract class ZeldaHoofdstuk {
         int[] bel;                                          // een bel in de kamer: luiden = nog eens vechten (null = geen)
         boolean vrijwillig;                                 // niet op het hoofdpad (telt niet mee als verplichte kamer)
         boolean alleenBel;                                  // een oefenplek: deuren open, gevochten wordt alleen als je de bel luidt
+        boolean haken;                                      // de klauwhaak werkt hier ook tijdens het gevecht (Grimmel: wegtrekken)
         // tijdens het spel
         Fase fase = Fase.RUST;
         boolean terug;                                      // dit gevecht begon met de bel: de extra golven doen mee
@@ -254,6 +256,7 @@ abstract class ZeldaHoofdstuk {
         final Deur deur;
         final Box gebied;
         final List<Regel> bijOplossen = new ArrayList<>();
+        Predicate<ZeldaVoortgang.Stand> licht;              // het licht brandt alleen als er iemand is voor wie dit klopt (de zonnesteen; null = altijd)
         // tijdens het spel
         final List<BlockFace> stand = new ArrayList<>();
         boolean opgelost;
@@ -533,6 +536,55 @@ abstract class ZeldaHoofdstuk {
     /** In de volgorde van het pad: hier zet je het getij om (de test trekt aan de hendel, tot het {@code vloed} is). */
     record Tij(Getij g, Getij.Hendel h, boolean vloed) {}
 
+    /**
+     * Een glijvloer (eiland 3b): glad ijs waarop je niet kunt lopen. Wie een stap op het ijs zet, glijdt rechtdoor tot hij
+     * ergens tegenaan komt (een rots, een muur) of van het ijs af is ({@link ZeldaRegels#glij}). Zo kom je van {@code start}
+     * naar {@code doel} (beide geen ijs; {@code oplossing}: de richtingen, voor de test en de zelftest). Geen tijd en geen
+     * vlag: wie het doel haalt, staat aan de overkant. {@code kitpvp zelda lopen} glijdt mee.
+     */
+    static final class Glij {
+        final String id, naam;
+        final int y;                                        // de ijsvloer (je staat op y + 1)
+        final Box gebied;                                   // de zaal: wie hierin op het ijs staat, glijdt
+        final Set<Long> ijs = new HashSet<>();              // de ijsvakjes (x, z), zie {@link #sleutel}
+        final int[] start, doel;                            // (x, z): waar je begint en waar je uitkomt
+        final List<BlockFace> oplossing = new ArrayList<>();
+
+        Glij(String id, String naam, int y, Box gebied, int[] start, int[] doel) {
+            this.id = id;
+            this.naam = naam;
+            this.y = y;
+            this.gebied = gebied;
+            this.start = start;
+            this.doel = doel;
+        }
+
+        static long sleutel(int x, int z) {
+            return ((long) x << 32) ^ (z & 0xFFFFFFFFL);
+        }
+
+        boolean isIjs(int x, int z) {
+            return ijs.contains(sleutel(x, z));
+        }
+
+        Glij ijs(int x, int z) {
+            ijs.add(sleutel(x, z));
+            return this;
+        }
+
+        /** De oplossing, als letters: N, O, Z, W. */
+        Glij oplossing(String richtingen) {
+            for (char c : richtingen.toCharArray())
+                oplossing.add(switch (c) {
+                    case 'N' -> BlockFace.NORTH;
+                    case 'O', 'E' -> BlockFace.EAST;
+                    case 'Z', 'S' -> BlockFace.SOUTH;
+                    default -> BlockFace.WEST;
+                });
+            return this;
+        }
+    }
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -551,6 +603,7 @@ abstract class ZeldaHoofdstuk {
     final List<Poort> poorten = new ArrayList<>();
     final List<Getij> getijden = new ArrayList<>();
     final List<Graaf> graven = new ArrayList<>();
+    final List<Glij> glijvloeren = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -633,7 +686,7 @@ abstract class ZeldaHoofdstuk {
             String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
                     : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id
-                    : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : null;
+                    : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : o instanceof Glij gl ? gl.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
@@ -659,6 +712,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Poort po) return po.gebied.midden(w);
         if (o instanceof Getij g) return g.gebied.midden(w);
         if (o instanceof Graaf gr) return gr.plek();
+        if (o instanceof Glij gl) return new Location(w, gl.start[0] + 0.5, gl.y + 1, gl.start[1] + 0.5);
         return null;
     }
 
@@ -695,6 +749,7 @@ abstract class ZeldaHoofdstuk {
         poorten.clear();
         getijden.clear();
         graven.clear();
+        glijvloeren.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -810,6 +865,13 @@ abstract class ZeldaHoofdstuk {
     /** Een graafplek op het pad (je dier graaft hier iets op; de test wacht tot het gebeurd is). */
     protected Graaf graaf(Graaf g) {
         graven.add(g);
+        volgorde.add(g);
+        return g;
+    }
+
+    /** Een glijvloer op het pad (de test glijdt met de oplossing van start naar doel). */
+    protected Glij glij(Glij g) {
+        glijvloeren.add(g);
         volgorde.add(g);
         return g;
     }

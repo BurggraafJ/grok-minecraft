@@ -306,6 +306,8 @@ final class ZeldaSpel implements Listener {
         metgezel.weg(p.getUniqueId());
         dier.weg(p.getUniqueId());
         trekken.remove(p.getUniqueId());
+        glijders.remove(p.getUniqueId());
+        glijVorige.remove(p.getUniqueId());
         if (ss != null) for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.baas != null && k.baas.balk != null) p.hideBossBar(k.baas.balk);
         for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) u.loopt.remove(p.getUniqueId());
         p.resetPlayerTime();
@@ -535,6 +537,7 @@ final class ZeldaSpel implements Listener {
             veilig("bronnen", this::bronnen);
         }
         if (!trekken.isEmpty()) veilig("klauwhaak", this::trekken);
+        veilig("glijden", () -> glijden(spelers));
         if (tikken % 20 == 0) {
             for (Player p : spelers) veilig("seconde", () -> seconde(p, sessie(p), nu));
             for (ZeldaHoofdstuk h : delen()) veilig("decor", () -> decor(h));
@@ -629,6 +632,13 @@ final class ZeldaSpel implements Listener {
             muziek.speel(p, ZeldaMuziek.HINT);
             vertel(p, ZeldaHoofdstuk.r("Wiske", "Kwijt? Klik op mij, dan help ik je."));
         }
+    }
+
+    /** Mag de klauwhaak in het gevecht waar deze speler in staat (een baas die je wegtrekt: {@code Kamer.haken})? */
+    boolean haakMag(Player p) {
+        for (ZeldaHoofdstuk h : hoofdstukken)
+            for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.binnen.in(p.getLocation())) return k.haken;
+        return true;
     }
 
     /** Staat deze speler in een kamer waar gevochten wordt? */
@@ -999,6 +1009,9 @@ final class ZeldaSpel implements Listener {
             case ROVERSCHUTTER -> org.bukkit.entity.Skeleton.class;
             case HARPOENIER, KAPITEIN -> org.bukkit.entity.Drowned.class;   // met een drietand: gooien doet hij altijd
             case NEVELWOLF -> org.bukkit.entity.Wolf.class;
+            case IJSKNECHT, IJSKOBOLD -> org.bukkit.entity.Zombie.class;
+            case VORSTSCHUTTER -> org.bukkit.entity.Stray.class;
+            case GRIMMEL -> org.bukkit.entity.PolarBear.class;
         };
         w.spawnParticle(Particle.SOUL, l.clone().add(0, 0.5, 0), 20, 0.4, 0.2, 0.4, 0.03);
         w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.8, 0), 10, 0.3, 0.5, 0.3, 0.01);
@@ -1074,6 +1087,32 @@ final class ZeldaSpel implements Listener {
                         wo.setAngry(true);
                     }
                 }
+                case IJSKNECHT -> {                                  // een ijsknecht van het IJspaleis (Witte Toppen): ijzig blauw, een schop van steen
+                    hp = 18;
+                    dmg = 3;
+                    eq.setHelmet(new ItemStack(Material.PACKED_ICE));
+                    eq.setChestplate(gekleurd(Material.LEATHER_CHESTPLATE, 0x9ed4f0));
+                    eq.setLeggings(gekleurd(Material.LEATHER_LEGGINGS, 0x6fa8c8));
+                    eq.setItemInMainHand(new ItemStack(Material.STONE_SHOVEL));
+                }
+                case VORSTSCHUTTER -> {                              // schiet met een boog (zijn pijlen maken je niet traag, zie onDrank)
+                    hp = 14;
+                    eq.setHelmet(gekleurd(Material.LEATHER_HELMET, 0xd8eef8));
+                    eq.setItemInMainHand(new ItemStack(Material.BOW));
+                }
+                case IJSKOBOLD -> {                                  // klein en snel, niet taai
+                    hp = 8;
+                    dmg = 2;
+                    eq.setHelmet(gekleurd(Material.LEATHER_HELMET, 0x9ed4f0));
+                    eq.setItemInMainHand(new ItemStack(Material.ICE));
+                }
+                case GRIMMEL -> {                                    // Grimmel, de reuzenijsbeer: groot, sjokt, stormt (zie Grimmel)
+                    hp = 60;
+                    dmg = 5;
+                    schaal = 2.0;
+                    zetAttr(m, Attribute.KNOCKBACK_RESISTANCE, 1.0);
+                    zetAttr(m, Attribute.MOVEMENT_SPEED, 0.2);
+                }
                 case KAPITEIN -> {                                   // Kapitein Zoutbaard: groot, staat bij zijn ton, gooit drietanden
                     hp = 60;
                     schaal = 1.6;
@@ -1093,7 +1132,8 @@ final class ZeldaSpel implements Listener {
                 eq.setDropChance(sl, 0f);
             if (m instanceof org.bukkit.entity.Zombie z) {
                 z.setShouldBurnInDay(false);
-                z.setAdult();
+                if (s == ZeldaHoofdstuk.Soort.IJSKOBOLD) z.setBaby();
+                else z.setAdult();
             }
             if (m instanceof org.bukkit.entity.AbstractSkeleton sk) sk.setShouldBurnInDay(false);
             if (m instanceof org.bukkit.entity.Raider r) {
@@ -1284,7 +1324,14 @@ final class ZeldaSpel implements Listener {
         w.getBlockAt(c[0], c[1], c[2]).setBlockData(ZeldaHoofdstuk.Spiegels.blok(sp.stand.get(i)), false);
         w.playSound(new Location(w, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 0.8f + 0.1f * i);
         sp.leegSinds = 0;
-        if (straal(sp, sp.stand).raak()) losOp(sp, false);
+        if (licht(sp) && straal(sp, sp.stand).raak()) losOp(sp, false);
+    }
+
+    /** Brandt het licht van deze spiegelpuzzel (er is iemand met de zonnesteen in de zaal, of hij heeft geen voorwaarde)? */
+    boolean licht(ZeldaHoofdstuk.Spiegels sp) {
+        if (sp.licht == null) return true;
+        for (Player q : in(sp.gebied)) if (sp.licht.test(voortgang.van(q.getUniqueId()))) return true;
+        return false;
     }
 
     private void losOp(ZeldaHoofdstuk.Spiegels sp, boolean stil) {
@@ -1333,7 +1380,7 @@ final class ZeldaSpel implements Listener {
                 losOp(sp, true);
                 break;
             }
-        if (bij.isEmpty()) return;
+        if (bij.isEmpty() || (!sp.opgelost && !licht(sp))) return;
         ZeldaRegels.Straal st = straal(sp, sp.stand);
         var w = plugin.w;
         Particle.DustOptions licht = new Particle.DustOptions(Color.fromRGB(0xfff2a0), 1.1f);
@@ -2200,7 +2247,7 @@ final class ZeldaSpel implements Listener {
         } else if (soort.startsWith("komt:") && ss != null) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 p.closeInventory();
-                vertel(p, ZeldaHoofdstuk.r("Wiske", "Daar ligt nog ijs. Nog even geduld."));
+                vertel(p, ZeldaHoofdstuk.r("Wiske", "Daar kunnen we nog niet heen. Nog even geduld."));
             });
         } else if (soort.startsWith("eiland:") && ss != null) {
             ZeldaEiland naar = eiland(soort.substring(7));
@@ -2442,7 +2489,7 @@ final class ZeldaSpel implements Listener {
     /** De klauwhaak schieten: grijpt hij een haakpunt (waar je op mikt, of een paar graden ernaast), dan trekt hij je erheen. */
     void haak(Player p) {
         Sessie ss = sessie(p);
-        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM) || inGevecht(p)) return;
+        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM) || (inGevecht(p) && !haakMag(p))) return;
         p.setCooldown(Klauwhaak.ITEM, 14);
         Location oog = p.getEyeLocation();
         org.bukkit.util.Vector kijk = oog.getDirection();
@@ -2544,6 +2591,124 @@ final class ZeldaSpel implements Listener {
     public void onHaakSchade(EntityDamageEvent e) {
         if (e.getEntity() instanceof Player p && trekken.containsKey(p.getUniqueId())
                 && (e.getCause() == EntityDamageEvent.DamageCause.FALL || e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION)) e.setCancelled(true);
+    }
+
+    // ── glijvloeren (eiland 3b) ─────────────────────────────────────────────────────────────
+
+    /** Iemand die over een glijvloer glijdt: vanaf het midden van een vakje, in een richting, tot een ander vakje. */
+    private static final class Glijden {
+        final ZeldaHoofdstuk.Glij g;
+        final double x, z, lang;
+        final BlockFace r;
+        final int[] naar;
+        double gedaan;
+
+        Glijden(ZeldaHoofdstuk.Glij g, int[] van, BlockFace r, int[] naar) {
+            this.g = g;
+            this.x = van[0] + 0.5;
+            this.z = van[1] + 0.5;
+            this.r = r;
+            this.naar = naar;
+            this.lang = Math.abs(naar[0] - van[0]) + Math.abs(naar[1] - van[1]);
+        }
+    }
+
+    final Map<UUID, Glijden> glijders = new HashMap<>();
+    /** Waar je vorige tik stond op een glijvloer (x, z), en tot welke tik je even niet glijdt (net gestopt). */
+    private final Map<UUID, double[]> glijVorige = new HashMap<>();
+
+    /** Glijdt deze speler nu over een glijvloer? */
+    boolean glijdt(Player p) {
+        return glijders.containsKey(p.getUniqueId());
+    }
+
+    /** De glijvloer (van het eiland van deze speler) waar hij in staat, of null. */
+    ZeldaHoofdstuk.Glij glijvloer(Player p) {
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null || ss.h.eiland == null) return null;
+        for (ZeldaHoofdstuk h : ss.h.eiland.delen())
+            for (ZeldaHoofdstuk.Glij g : h.glijvloeren) if (g.gebied.in(p.getLocation())) return g;
+        return null;
+    }
+
+    /** Het vakje waar je uitkomt als je vanaf {@code x, z} in richting {@code r} over deze glijvloer glijdt. */
+    int[] glijNaar(ZeldaHoofdstuk.Glij g, int x, int z, BlockFace r) {
+        var w = plugin.w;
+        return ZeldaRegels.glij(x, z, r, g::isIjs,
+                (a, b) -> w.getBlockAt(a, g.y + 1, b).isPassable() && w.getBlockAt(a, g.y + 2, b).isPassable(),
+                (a, b) -> !g.isIjs(a, b) && w.getBlockAt(a, g.y, b).getType().isSolid(), 64);
+    }
+
+    /**
+     * Begin te glijden vanaf het vakje waar je staat, in richting {@code r} (zoals een stap op het ijs; de test gebruikt
+     * dit ook). False als het niet kan (je staat tegen iets aan, of je glijdt al).
+     */
+    boolean glij(Player p, ZeldaHoofdstuk.Glij g, BlockFace r) {
+        if (glijdt(p) || p.isDead()) return false;
+        Location l = p.getLocation();
+        int[] van = {l.getBlockX(), l.getBlockZ()};
+        if (!g.isIjs(van[0], van[1]) && !g.isIjs(van[0] + r.getModX(), van[1] + r.getModZ())) return false;
+        int[] naar = glijNaar(g, van[0], van[1], r);
+        if (naar[0] == van[0] && naar[1] == van[1]) return false;
+        glijders.put(p.getUniqueId(), new Glijden(g, van, r, naar));
+        p.getWorld().playSound(l, Sound.BLOCK_POWDER_SNOW_STEP, 0.8f, 1.4f);
+        if (voortgang.van(p.getUniqueId()).zet("v:glij")) {
+            voortgang.vuil();
+            uitleg(p, ZeldaHoofdstuk.r("Wiske", "Wiiie! Je glijdt tot je ergens tegenaan botst."));
+        }
+        return true;
+    }
+
+    /**
+     * Elke tik: wie glijdt, schuift verder (bijna een half blok per tik, kijken kan gewoon); wie op het ijs stilstaat en een
+     * stap zet, begint te glijden in die richting. Na een stop even niets (anders glij je meteen weer).
+     */
+    private void glijden(List<Player> spelers) {
+        for (Player p : spelers) {
+            UUID id = p.getUniqueId();
+            Glijden gl = glijders.get(id);
+            if (gl != null) {
+                Sessie ss = sessie(p);
+                if (p.isDead() || ss == null || ss.vaart != null || beheer.is(id) || !gl.g.gebied.in(p.getLocation())) {
+                    glijders.remove(id);
+                    continue;
+                }
+                gl.gedaan = Math.min(gl.lang, gl.gedaan + ZeldaRegels.GLIJ_SNELHEID);
+                Location l = new Location(p.getWorld(), gl.x + gl.r.getModX() * gl.gedaan, gl.g.y + 1, gl.z + gl.r.getModZ() * gl.gedaan,
+                        p.getLocation().getYaw(), p.getLocation().getPitch());   // kijken kan gewoon door
+                p.setVelocity(new org.bukkit.util.Vector());
+                p.setFallDistance(0);
+                p.teleport(l);
+                if (tikken % 2 == 0) p.getWorld().spawnParticle(Particle.SNOWFLAKE, l.clone().add(0, 0.2, 0), 2, 0.2, 0.05, 0.2, 0.01);
+                if (gl.gedaan >= gl.lang) {
+                    glijders.remove(id);
+                    glijVorige.put(id, new double[]{l.getX(), l.getZ(), tikken + 4});
+                    if (gl.g.isIjs(gl.naar[0], gl.naar[1])) p.getWorld().playSound(l, Sound.BLOCK_GLASS_HIT, 0.7f, 0.6f);   // ergens tegenaan
+                    else p.getWorld().playSound(l, Sound.BLOCK_SNOW_STEP, 0.8f, 1f);                                     // van het ijs af
+                }
+                continue;
+            }
+            ZeldaHoofdstuk.Glij g = beheer.is(id) || aanHetHaken(p) ? null : glijvloer(p);
+            if (g == null) {
+                glijVorige.remove(id);
+                continue;
+            }
+            Location l = p.getLocation();
+            double[] v = glijVorige.get(id);
+            glijVorige.put(id, new double[]{l.getX(), l.getZ(), v == null ? 0 : v[2]});
+            if (v == null || tikken < v[2] || !g.isIjs(l.getBlockX(), l.getBlockZ()) || Math.abs(l.getY() - (g.y + 1)) > 0.7) continue;
+            double dx = l.getX() - v[0], dz = l.getZ() - v[1];
+            if (dx * dx + dz * dz < 0.0025) continue;                         // stil (een klein beetje schuiven telt niet)
+            BlockFace r = Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? BlockFace.EAST : BlockFace.WEST) : (dz > 0 ? BlockFace.SOUTH : BlockFace.NORTH);
+            if (!glij(p, g, r)) {                                              // daar staat iets: blijf in je vakje
+                Location m = new Location(p.getWorld(), l.getBlockX() + 0.5, g.y + 1, l.getBlockZ() + 0.5, l.getYaw(), l.getPitch());
+                if (Math.abs(l.getX() - m.getX()) > 0.3 || Math.abs(l.getZ() - m.getZ()) > 0.3) {
+                    p.setVelocity(new org.bukkit.util.Vector());
+                    p.teleport(m);
+                    glijVorige.put(id, new double[]{m.getX(), m.getZ(), tikken + 2});
+                }
+            }
+        }
     }
 
     // ── gebeurtenissen ──────────────────────────────────────────────────────────────────────
@@ -2826,6 +2991,9 @@ final class ZeldaSpel implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onDrank(EntityPotionEffectEvent e) {
         if (e.getCause() == EntityPotionEffectEvent.Cause.POTION_DRINK && baasVan(e.getEntity()) != null) e.setCancelled(true);
+        // een pijl van een vorstschutter maakt je in Zelda niet traag (licht vechten)
+        if (e.getCause() == EntityPotionEffectEvent.Cause.ARROW && e.getEntity() instanceof Player p && speelt(p) && e.getAction() != EntityPotionEffectEvent.Action.REMOVED)
+            e.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)

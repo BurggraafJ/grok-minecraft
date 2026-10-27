@@ -34,7 +34,7 @@ import org.bukkit.potion.PotionEffectType;
  * <p>Het vosje loopt mee en graaft bij de rotswand een oude deur van de bergwachters op: de Wachtersgang onder de rots
  * door naar de Wachterspost in de kloof. Daar ligt de klauwhaak; drie haakpunten in de kloofwand zijn de les, en zo kom
  * je boven op de Uitkijk (een rondje terug naar het dorp). Met de klauwhaak haak je je omhoog bij de ingestorte trap van
- * de Bergpoort: daar begint het bergpad naar het IJspaleis (eiland 3b), nu nog dicht door een lawine.
+ * de Bergpoort: daar begint het bergpad naar het IJspaleis (eiland 3b; Ys en Hagen hebben de lawine weggeschept).
  *
  * <p>Zijmissies: Saar en Sven zoeken hun geiten (Bles, Mekker en Sokje, verspreid over het dal; wie thuis is, staat in de
  * stal), en Ys geeft een brief mee voor zijn oude vriend Teun in Zoutkom (een opdracht terug naar het Zilverstrand; Teun
@@ -42,7 +42,7 @@ import org.bukkit.potion.PotionEffectType;
  */
 final class ZeldaEiland3a extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 1;
+    static final int VERSIE = 2;                        // 2: de lawine op het bergpad is weg (3b, het IJspaleis, sluit aan)
     /** Het vak van dit halve eiland (3b, de berg en het IJspaleis, komt oost ervan: x 1580 … 1720). */
     static final int X1 = 1400, X2 = 1579, Z1 = -480, Z2 = -180;
     /** Het plein van IJshoeve, het meer (eilandje in het midden), de kop van de fjord. */
@@ -84,16 +84,12 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
     /** Een hub met wegen in elke volgorde: «opnieuw vanaf hier» vergeet alleen tot de volgende rustplaats. */
     @Override boolean open() { return true; }
 
-    /** Het bergpad naar het IJspaleis (3b) ligt nog onder een lawine. */
-    @Override String wacht() {
-        return "Het bergpad is nog dicht gesneeuwd. Nog even geduld.";
-    }
-
     // ── tijd, naam en muziek per plek ───────────────────────────────────────────────────────
 
     /** De dag schuift op met wat je deed (een open eiland: je loopt ook terug): vroeg licht, en een gouden middag bij de Bergpoort. */
     @Override
     long hemel(Location l, ZeldaVoortgang.Stand s) {
+        if (s.heeft("baken3")) return 1500;                 // het Vorstbaken brandt (3b): een nieuwe ochtend
         if (s.heeft(id())) return 10500;
         if (s.heeft("klauwhaak")) return 7500;
         if (s.heeft("dier:sneeuwvos")) return 5000;
@@ -560,6 +556,9 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         brecht.eenmalig("brecht-ijs", null, List.of(
                         r("Brecht", "Brr. Hier vriest zelfs mijn baard."),
                         r("Brecht", "Ik wacht hier op je. Neem je tijd.")), null)
+                .eenmalig("brecht-vorst", s -> s.heeft("baken3"), List.of(
+                        r("Brecht", "Twee bakens! Ik zag het licht vanaf de fjord."),
+                        r("Brecht", "Nog één. Zeg maar wanneer we varen.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
         verhaal(new Verhaal("weg3", Box.van(1470, G, -262, 1480, G + 5, -250), List.of(
                 r("Wiske", "Rook uit schoorstenen. Daar is een dorp!"))));
@@ -702,6 +701,9 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 .eenmalig("tijmen-haak", s -> s.heeft("klauwhaak"), List.of(
                         r("Tijmen", "De klauwhaak van de wachters. Mooi zo."),
                         r("Tijmen", "Hoog op de berg slaapt het Vorstbaken.")), null)
+                .eenmalig("tijmen-vorst3a", s -> s.heeft("baken3"), List.of(
+                        r("Tijmen", "Het Vorstbaken brandt. Ik zag het vanaf hier."),
+                        r("Tijmen", "Op de Gloedberg zien we elkaar weer.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.wegwijzer(p, "Tijmen"));
         praten(tijmen);
     }
@@ -783,7 +785,15 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         Persoon hagen = persoon(new Persoon("Hagen", plek(1500, G + 1, -300, 180f), beroep("weaponsmith"), List.of(
                 r("Hagen", "Kou is goed voor staal. Voor mij minder."))));
         hagen.streek = Villager.Type.SNOW;
-        hagen.eenmalig("hagen-1", null, List.of(
+        // het bevroren harnas uit het IJspaleis (3b): Hagen warmt het in zijn vuur → het wachtersharnas (eerst, ook als hij je nog niet kende)
+        hagen.gesprek("hagen-harnas", s -> s.heeft(ZeldaEiland3b.IJSHARNAS) && !s.heeft("harnas2"), List.of(
+                        r("Hagen", "Laat zien… Dit harnas heb ik zelf gesmeed!"),
+                        r("Hagen", "Even in het vuur… zo. Weer soepel."),
+                        r("Hagen", "Grimmel stormt als een dolle. Laat hem tegen een zuil lopen.")), (spel, p, s) -> {
+                    p.playSound(p, org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6f, 1.1f);
+                    spel.beloon(p, "harnas2", "Wachtersharnas", "het harnas van de bergwachters");
+                })
+                .eenmalig("hagen-1", null, List.of(
                         r("Hagen", "Een reiziger! Kom bij het vuur."),
                         r("Hagen", "Ik smeedde klauwhaken voor de bergwachters."),
                         r("Hagen", "In hun oude Wachterspost ligt er vast nog een."),
@@ -793,7 +803,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Hagen", "De trap bij de Bergpoort is kapot. Haak je omhoog!")), null)
                 .eenmalig("hagen-ijs", s -> s.heeft("g:hagen-1"), List.of(
                         r("Hagen", "Zie je dat ijsblok? Er zit iets in."),
-                        r("Hagen", "Mijn vuur krijgt het niet los. Betoverd ijs.")), null);
+                        r("Hagen", "Mijn vuur krijgt het niet los. Betoverd ijs.")), null)
+                .eenmalig("hagen-grimmel", s -> s.heeft("k:troonzaal"), List.of(
+                        r("Hagen", "Grimmel is vrij, hoor ik. En het harnas hield?"),
+                        r("Hagen", "Goed staal. Zei ik toch.")), null);
     }
 
     /** De smidse van Hagen: open naar de weg, een esse, een aambeeld, een waterbak. */
@@ -875,10 +888,21 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Ys", "Ik ben Ys. Vroeger was ik bergwachter."),
                         r("Ys", "Boven op de berg staat ons IJspaleis."),
                         r("Ys", "Nu woont daar alleen de kou.")), null)
+                .gesprek("ys-hoorn2", s -> s.missie("hoorn") == 2, List.of(           // de hoorn uit het IJspaleis (3b) → het vierde hartstukje
+                        r("Ys", "Mijn hoorn! Luister…"),
+                        r("Ys", "Zo riepen we Grimmel, vroeger."),
+                        r("Ys", "Hier. Dit vond ik ooit in zijn vacht.")), (spel, p, s) -> {
+                    p.playSound(p, org.bukkit.Sound.ITEM_GOAT_HORN_SOUND_1, 0.9f, 1f);
+                    spel.missie(p, "hoorn", ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, ZeldaEiland3b.STUKJE_HOORN, "Hartstukje", null);
+                })
                 .gesprek("ys-brief", s -> s.missie("brief") == 0, List.of(
                         r("Ys", "Je kwam over zee? Ken je Teun, uit Zoutkom?"),
                         r("Ys", "Wij waren jongens samen, op de Kraai."),
                         r("Ys", "Breng hem deze brief. Hij zal lachen.")), (spel, p, s) -> spel.missie(p, "brief", 1))
+                .gesprek("ys-hoorn", s -> s.heeft(id()) && s.missie("hoorn") == 0, List.of(
+                        r("Ys", "Ga je naar het paleis? Daar ligt mijn oude hoorn nog."),
+                        r("Ys", "Daarmee riepen we onze beer. Breng je hem mee?")), (spel, p, s) -> spel.missie(p, "hoorn", 1))
                 .gesprek(null, s -> s.missie("brief") == 1, List.of(r("Ys", "Teun zit vast op zijn bankje. Dat deed hij toen al.")), null)
                 .eenmalig("ys-brief2", s -> s.missieKlaar("brief"), List.of(
                         r("Ys", "Wat zei hij? Ha! Die ouwe zeehond."),
@@ -887,7 +911,21 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Ys", "Een sneeuwvos. Die brengen geluk, zeggen ze.")), null)
                 .eenmalig("ys-haak", s -> s.heeft("klauwhaak"), List.of(
                         r("Ys", "Een klauwhaak! Zo klommen wij de berg op."),
-                        r("Ys", "Het bergpad begint bij de Bergpoort.")), null);
+                        r("Ys", "Het bergpad begint bij de Bergpoort.")), null)
+                .eenmalig("ys-pad", s -> s.heeft(id()), List.of(
+                        r("Ys", "Hagen en ik hebben het bergpad vrijgeschept."),
+                        r("Ys", "Langzaam, hoor. Maar het is vrij.")), null)
+                .eenmalig("ys-harnas", s -> s.heeft(ZeldaEiland3b.IJSHARNAS) && !s.heeft("harnas2"), List.of(
+                        r("Ys", "Dat harnas! Dat was het mijne."),
+                        r("Ys", "Hagen smeedde het. Hij krijgt het wel warm.")), null)
+                .eenmalig("ys-zuilen", s -> s.heeft(ZeldaEiland3b.ZONNESTEEN) && !s.heeft("k:troonzaal"), List.of(
+                        r("Ys", "In het paleis woont Grimmel, onze oude beer."),
+                        r("Ys", "Hij stormt, maar kijkt niet uit. Recht tegen de zuilen!")), null)
+                .eenmalig("ys-grimmel", s -> s.heeft("k:troonzaal"), List.of(
+                        r("Ys", "Grimmel is vrij? Dan slaapt hij weer in zijn hol."),
+                        r("Ys", "Dank je, kind. Dat had hij verdiend.")), null)
+                .eenmalig("ys-baken", s -> s.heeft("baken3"), List.of(
+                        r("Ys", "Het Vorstbaken brandt. Net als vroeger.")), null);
         // Noor, zijn kleindochter: de ijsbaan om het eilandje
         Persoon noor = persoon(new Persoon("Noor", plek(1440, G + 1, -304, 45f), null, List.of(
                 r("Noor", "Nog een rondje? Je tijd staat op het bord."))));
@@ -898,7 +936,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Noor", "Ik schaats het snelst van IJshoeve."),
                         r("Noor", "Stap op de plaat, en één keer om het eilandje!")), null)
                 .eenmalig("noor-2", s -> s.beste("ijsbaan") != null, List.of(
-                        r("Noor", "Wauw, wat snel! Opa, zag je dat?")), null);
+                        r("Noor", "Wauw, wat snel! Opa, zag je dat?")), null)
+                .eenmalig("noor-grimmel", s -> s.heeft("k:troonzaal"), List.of(
+                        r("Noor", "Opa zegt dat Grimmel vroeger met kinderen speelde."),
+                        r("Noor", "Mag ik hem ook eens aaien?")), null);
         verhaal(new Verhaal("uitleg-ijsbaan", Box.van(1439, G, -306, 1442, G + 4, -303), List.of(
                 r("Wiske", "Stap op de plaat, dan gaat het hekje open."),
                 r("Wiske", "Eén rondje om het eilandje. Glibberig!")))).uitleg = true;
@@ -1143,11 +1184,13 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 for (int z = PZ - 2; z <= PZ + 2; z++) {
                     vul(x, g + 1, z, x, f - 1, z, Material.STONE);
                     zet(x, f, z, Material.SNOW_BLOCK);
-                    vul(x, f + 1, z, x, f + 10, z, x >= 1575 ? Material.SNOW_BLOCK : Material.AIR);   // de lawine
+                    vul(x, f + 1, z, x, G + 44, z, Material.AIR);                       // open naar boven (de lawine is weg: versie 2)
                 }
                 for (int z : new int[]{PZ - 3, PZ + 3}) for (int y = f + 1; y <= f + 6; y++) zet(x, y, z, steen(x, y, z));
             }
-            for (int x = 1575; x <= 1579; x++) for (int z = PZ - 2; z <= PZ + 2; z++) if (kans(x, z, 3) == 0) zet(x, vlak + 4 + 11, z, Material.PACKED_ICE);
+            zet(1576, vlak + 5, PZ - 2, Material.SNOW_BLOCK);                   // wat over is van de lawine, opzij geschept
+            zet(1578, vlak + 5, PZ + 2, Material.SNOW_BLOCK);
+            zet(1579, vlak + 5, PZ - 2, Material.SNOW_BLOCK);
             // de poort: twee zuilen en een boog, met het haakpunt eronder
             for (int z : new int[]{PZ - 3, PZ + 3}) vul(1551, vlak + 1, z, 1551, vlak + 4, z, Material.CHISELED_STONE_BRICKS);
             vul(1551, vlak + 5, PZ - 3, 1551, vlak + 5, PZ + 3, Material.STONE_BRICKS);
@@ -1187,8 +1230,8 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 r(null, "De Witte Toppen · het dal voltooid"))));
         einde.vereist = "klauwhaak";
         einde.einde = true;
-        verhaal(new Verhaal("lawine", Box.van(1568, vlak + 1, PZ - 2, 1574, vlak + 8, PZ + 2), List.of(
-                r("Wiske", "Een lawine! Hier kunnen we nog niet door."))));
+        verhaal(new Verhaal("lawine-weg", Box.van(1568, vlak + 1, PZ - 2, 1574, vlak + 8, PZ + 2), List.of(
+                r("Wiske", "De lawine is weg! Iemand heeft geschept."))));
     }
 
     // ── versiering: sneeuwpoppen, een geitenweide, houtstapels, lantaarns langs de wegen ──
