@@ -49,6 +49,10 @@ final class Zelftest {
                     byte[] echt = new Pakket(System.currentTimeMillis(), w.getUniqueId().toString(), Bukkit.getUnsafe().serializeEntity(w, io.papermc.paper.entity.EntitySerializationFlag.FORCE)).maak(sleutel, sp.getUniqueId());
                     plugin.kopie().testOntvang(sp, echt);
                     sb.append(" kopie-gezet ").append(plugin.kopie().status());
+                    if (plugin.modus().equals("kitpvp")) {
+                        String ko = plugin.kopie().testKo(sp);
+                        sb.append(" ko-liggen=").append(ko.isEmpty() ? "OK" : "FOUT" + ko);
+                    }
                 }
             }
         } catch (Exception ex) {

@@ -262,6 +262,17 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.setSaturation(0f);
     }
 
+    /** Het item «Terug naar de hub» (vak 8): als /arena, geweigerd tijdens een gevecht. */
+    void hubKnop(Player p) {
+        if (spelers.inArena(p.getUniqueId()) && gevecht.blokkeer(p)) return;
+        p.closeInventory();
+        naarHub(p);
+    }
+
+    ItemStack hubItem() {
+        return menus.hub();
+    }
+
     void naarHub(Player p) {
         zetToestand(p, Toestand.HUB);
         schoon(p);
@@ -333,6 +344,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         if (!t.beheerd()) return;
         p.closeInventory();
         Kits.geef(p, id);
+        p.getInventory().setItem(Menus.HUB_VAK, menus.hub());
         zetToestand(p, Toestand.arena(arena.modus, arena.id, id));
         List<Location> plekken = arena.spawns;
         Location doel = plekken.isEmpty() ? hub.aankomst() : plekken.stream().max(Comparator.comparingDouble(l -> {
@@ -346,7 +358,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         p.teleport(doel);
         int s = Math.max(0, getConfig().getInt("bescherming-seconden", 3));
         beschermdTot.put(p.getUniqueId(), System.currentTimeMillis() + s * 1000L);
-        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text(" · " + s + " s bescherming", NamedTextColor.GRAY)));
+        p.sendActionBar(Component.text(k.naam(), k.kleur()).append(Component.text(" · " + s + " s bescherming · vak 8 = terug naar de hub", NamedTextColor.GRAY)));
         p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.4f, 1f);
         w.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
         werkBordBij(p);
@@ -425,6 +437,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         }
         if (e.getWhoClicked() instanceof Player p && !spelers.van(p.getUniqueId()).beheerd()) return;
         if (itemSoort(e.getCurrentItem()) != null || itemSoort(e.getCursor()) != null) e.setCancelled(true);
+        if (e.getHotbarButton() >= 0 && e.getWhoClicked() instanceof Player p && itemSoort(p.getInventory().getItem(e.getHotbarButton())) != null) e.setCancelled(true);
         if (e.getWhoClicked() instanceof Player p && spelers.van(p.getUniqueId()).veilig() && e.getHotbarButton() >= 0) e.setCancelled(true);
     }
 
@@ -444,6 +457,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         switch (soort) {
             case "kies" -> openKitMenu(p);
             case "modus" -> menus.modusMenu(p);
+            case "hub" -> hubKnop(p);
             case "lobby" -> {
                 if (!gevecht.blokkeer(p)) naarServer(p, "lobby");
             }
@@ -787,11 +801,18 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 {"f", "§7Reeks: §f" + reeks.getOrDefault(id, 0)},
                 {"g", "§7Plek: " + plekNaam(p, t)},
         };
-        int score = regels.length;
+        int score = regels.length + 1;
         for (String[] r : regels) {
             var s = o.getScore(r[0]);
             s.setScore(score--);
             s.customName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(r[1]));
+        }
+        if (t.plek() == Toestand.Plek.ARENA || t.plek() == Toestand.Plek.SPEL) {     // waar de weg terug is, rustig onderaan
+            var s = o.getScore("h");
+            s.setScore(score);
+            s.customName(Component.text("Hub: vak 8 of /arena", NamedTextColor.DARK_GRAY));
+        } else if (o.getScore("h").isScoreSet()) {
+            sb.resetScores("h");
         }
         if (p.getScoreboard() != sb) p.setScoreboard(sb);
     }

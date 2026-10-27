@@ -10,6 +10,8 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.AbstractHorse;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.entity.ChestedHorse;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -41,6 +43,9 @@ import org.bukkit.metadata.MetadataValue;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,12 +62,16 @@ import java.util.concurrent.TimeUnit;
  * Lobby- en kitpvp-kant: een kopie van je huisdier (uit het ondertekende cookie van survival, hier bewaard) loopt met
  * je mee. Niet opgeslagen in de wereld, geen drops, niet te berijden of te voeren; het echte dier blijft op survival.
  * Lobby: onkwetsbaar en vecht niet. KitPvP: een wolf vecht aan jouw kant (vanilla: wie jou slaat en wie jij slaat),
- * alleen in de arena's; uitgeschakeld = weg tot je volgende ronde (respawn of terug op het platform). Andere dieren
- * lopen alleen mee en zijn onkwetsbaar.
+ * alleen in de arena's. Uitgeschakeld = hij blijft liggen (zit stil, geen AI, niet te raken) met een klein
+ * revive-balkje boven zijn hoofd dat in {@link #KO_MS} vol loopt; vol, of een nieuwe ronde (respawn, terug naar de
+ * hub of kitruimte), dan staat hij weer op en vecht mee. Andere dieren lopen alleen mee en zijn onkwetsbaar.
  */
 final class Kopie implements Listener {
 
     static final String TAG = "huisdier-kopie";
+    static final String BALK_TAG = "huisdier-balk";
+    static final long KO_MS = 15_000L;                              // zo lang ligt een uitgeschakelde wolf
+    private static final int VAKJES = 10;
     private static final String TEAM = "huisdier_kopie";
 
     private final Huisdieren plugin;
@@ -74,7 +83,8 @@ final class Kopie implements Listener {
     private final Map<UUID, Pakket> pakket = new HashMap<>();       // speler → laatst bekende briefje
     private final Map<UUID, Long> pogingTot = new HashMap<>();
     private final Map<UUID, String> stand = new HashMap<>();
-    private final Set<UUID> uit = new HashSet<>();                  // kitpvp: uitgeschakeld tot de volgende ronde
+    private final Map<UUID, Long> ko = new HashMap<>();             // kitpvp: speler → tijd waarop zijn wolf weer opstaat
+    private final Map<UUID, UUID> balk = new HashMap<>();           // speler → revive-balkje (TextDisplay)
     private final Set<UUID> verborgen = new HashSet<>();
 
     Kopie(Huisdieren plugin, boolean kitpvp, byte[] sleutel) {
@@ -93,12 +103,14 @@ final class Kopie implements Listener {
     }
 
     void start() {
-        for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (isKopie(e)) e.remove();
+        for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (isKopie(e) || e.getScoreboardTags().contains(BALK_TAG)) e.remove();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tik, 20L, 10L);
         for (Player p : Bukkit.getOnlinePlayers()) binnen(p);
     }
 
     void stop() {
+        for (UUID s : new HashSet<>(balk.keySet())) balkWeg(s);
+        ko.clear();
         for (UUID id : kopie.values()) {
             Entity e = Bukkit.getEntity(id);
             if (e != null) e.remove();
@@ -146,7 +158,7 @@ final class Kopie implements Listener {
 
     private void binnen(Player p) {
         UUID id = p.getUniqueId();
-        uit.remove(id);
+        ko.remove(id);
         stand.remove(id);
         ruimSchoudersOp(p);
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) zet(p); }, 30L);
@@ -189,6 +201,8 @@ final class Kopie implements Listener {
     }
 
     private void weg(UUID speler) {
+        ko.remove(speler);
+        balkWeg(speler);
         UUID e = kopie.remove(speler);
         Entity en = e == null ? null : Bukkit.getEntity(e);
         if (en != null) en.remove();
@@ -199,7 +213,7 @@ final class Kopie implements Listener {
         UUID id = p.getUniqueId();
         weg(id);
         Pakket pk = bewaard(id);
-        if (pk == null || pk.leeg() || verborgen.contains(id) || uit.contains(id) || p.isDead()) return;
+        if (pk == null || pk.leeg() || verborgen.contains(id) || p.isDead()) return;
         Entity e;
         try {
             e = Bukkit.getUnsafe().deserializeEntity(pk.data, p.getWorld(), false);
@@ -267,13 +281,18 @@ final class Kopie implements Listener {
             UUID id = p.getUniqueId();
             if (kitpvp) {
                 String s = standVan(id), vorig = stand.put(id, s);
-                if (vorig != null && vechtStand(vorig) && !vechtStand(s) && uit.remove(id)) {   // nieuwe ronde
+                if (vorig != null && vechtStand(vorig) && !vechtStand(s) && ko.containsKey(id)) {   // nieuwe ronde
                     pogingTot.remove(id);
+                    Entity k = huidige(id);
+                    if (k instanceof LivingEntity kl) opstaan(id, kl);
+                    else ko.remove(id);
                 }
             }
             Entity e = huidige(id);
             if (e == null) {
-                if (p.isDead() || uit.contains(id) || verborgen.contains(id)) continue;
+                ko.remove(id);
+                balkWeg(id);
+                if (p.isDead() || verborgen.contains(id)) continue;
                 if (opSchouder(p)) continue;
                 Pakket pk = bewaard(id);
                 if (pk == null || pk.leeg()) continue;
@@ -283,6 +302,19 @@ final class Kopie implements Listener {
                 continue;
             }
             LivingEntity le = (LivingEntity) e;
+            Long tot = ko.get(id);
+            if (tot != null) {                                                 // uitgeschakeld: blijft liggen
+                boolean ver = !e.getWorld().equals(p.getWorld()) || e.getLocation().distanceSquared(p.getLocation()) > 48 * 48;
+                if (nu >= tot || ver) {
+                    opstaan(id, le);
+                    if (ver) e.teleport(p.getLocation());
+                } else {
+                    if (le instanceof Mob m && m.getTarget() != null) m.setTarget(null);
+                    if (le instanceof Sittable s && !s.isSitting()) s.setSitting(true);
+                    werkBalkBij(id, le, tot, nu);
+                }
+                continue;
+            }
             boolean v = vecht(le, id);
             if (le.isInvulnerable() == v) le.setInvulnerable(!v);
             if (le instanceof Mob m && m.getTarget() != null && (!v || !magDoel(id, m.getTarget()))) m.setTarget(null);
@@ -321,7 +353,7 @@ final class Kopie implements Listener {
             else en.remove();
             return;
         }
-        if (!vecht(dier, eig) || e.getCause() == EntityDamageEvent.DamageCause.FALL) {
+        if (ko.containsKey(eig) || !vecht(dier, eig) || e.getCause() == EntityDamageEvent.DamageCause.FALL) {
             e.setCancelled(true);
             return;
         }
@@ -340,13 +372,67 @@ final class Kopie implements Listener {
         }
     }
 
+    /** Uitgeschakeld: blijft liggen (zitten, AI uit, onkwetsbaar) met een revive-balkje; geen melding. */
     private void uitschakelen(UUID eig, LivingEntity dier) {
-        uit.add(eig);
-        String naam = plugin.naam(dier);
-        dier.getWorld().spawnParticle(Particle.POOF, dier.getLocation().add(0, dier.getHeight() / 2, 0), 12, 0.3, 0.3, 0.3, 0.02);
-        weg(eig);
-        Player p = Bukkit.getPlayer(eig);
-        if (p != null) p.sendActionBar(Component.text(naam + " is uitgeschakeld · terug na je respawn", NamedTextColor.GRAY));
+        long nu = System.currentTimeMillis();
+        ko.put(eig, nu + KO_MS);
+        dier.setInvulnerable(true);
+        dier.setFireTicks(0);
+        dier.setVelocity(new org.bukkit.util.Vector(0, Math.min(0, dier.getVelocity().getY()), 0));
+        if (dier instanceof Mob m) m.setTarget(null);
+        if (dier instanceof Sittable s) s.setSitting(true);
+        if (dier instanceof Mob m) m.setAI(false);
+        dier.getWorld().spawnParticle(Particle.POOF, dier.getLocation().add(0, dier.getHeight() / 2, 0), 6, 0.25, 0.2, 0.25, 0.01);
+        werkBalkBij(eig, dier, nu + KO_MS, nu);
+    }
+
+    /** Weer op: balkje weg, AI aan, vol leven; vecht mee als de eigenaar in een arena staat. */
+    private void opstaan(UUID eig, LivingEntity dier) {
+        ko.remove(eig);
+        balkWeg(eig);
+        if (!dier.isValid()) return;
+        if (dier instanceof Mob m) m.setAI(true);
+        if (dier instanceof Sittable s) s.setSitting(false);
+        var max = dier.getAttribute(Attribute.MAX_HEALTH);
+        if (max != null) dier.setHealth(max.getValue());
+        dier.setInvulnerable(!vecht(dier, eig));
+        dier.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, dier.getLocation().add(0, dier.getHeight() + 0.2, 0), 4, 0.25, 0.15, 0.25, 0.0);
+    }
+
+    /** Het balkje: grijze blokjes die groen vollopen. */
+    static Component balkTekst(long tot, long nu) {
+        double klaar = 1.0 - Math.max(0, Math.min(KO_MS, tot - nu)) / (double) KO_MS;
+        int vol = (int) Math.floor(klaar * VAKJES + 1e-9);
+        return Component.text("■".repeat(vol), NamedTextColor.GREEN)
+                .append(Component.text("■".repeat(VAKJES - vol), NamedTextColor.DARK_GRAY));
+    }
+
+    private void werkBalkBij(UUID eig, LivingEntity dier, long tot, long nu) {
+        Location l = dier.getLocation().add(0, dier.getHeight() + (dier.isCustomNameVisible() ? 0.75 : 0.3), 0);
+        UUID bid = balk.get(eig);
+        Entity b = bid == null ? null : Bukkit.getEntity(bid);
+        TextDisplay d = b instanceof TextDisplay td && td.isValid() ? td : null;
+        if (d == null) {
+            d = dier.getWorld().spawn(l, TextDisplay.class, x -> {
+                x.setPersistent(false);
+                x.addScoreboardTag(BALK_TAG);
+                x.setBillboard(Display.Billboard.CENTER);
+                x.setBackgroundColor(org.bukkit.Color.fromARGB(0, 0, 0, 0));
+                x.setShadowed(false);
+                x.setSeeThrough(false);
+                x.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(0.5f, 0.5f, 0.5f), new AxisAngle4f()));
+            });
+            balk.put(eig, d.getUniqueId());
+        } else if (d.getLocation().distanceSquared(l) > 0.04) {
+            d.teleport(l);
+        }
+        d.text(balkTekst(tot, nu));
+    }
+
+    private void balkWeg(UUID eig) {
+        UUID bid = balk.remove(eig);
+        Entity b = bid == null ? null : Bukkit.getEntity(bid);
+        if (b != null) b.remove();
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -354,7 +440,7 @@ final class Kopie implements Listener {
         if (!isKopie(e.getEntity()) || e.getTarget() == null) return;
         UUID eig = eigenaarVan(e.getEntity());
         Entity doel = e.getTarget();
-        if (eig == null || !vecht(e.getEntity(), eig) || doel.getUniqueId().equals(eig)) {
+        if (eig == null || ko.containsKey(eig) || !vecht(e.getEntity(), eig) || doel.getUniqueId().equals(eig)) {
             e.setCancelled(true);
             return;
         }
@@ -381,9 +467,13 @@ final class Kopie implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerRespawnEvent e) {
         Player p = e.getPlayer();
-        uit.remove(p.getUniqueId());
         pogingTot.remove(p.getUniqueId());
-        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline() && huidige(p.getUniqueId()) == null) zet(p); }, 5L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!p.isOnline()) return;
+            Entity k = huidige(p.getUniqueId());
+            if (k == null) zet(p);
+            else if (ko.containsKey(p.getUniqueId()) && k instanceof LivingEntity kl) opstaan(p.getUniqueId(), kl);   // nieuwe ronde
+        }, 5L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -391,7 +481,7 @@ final class Kopie implements Listener {
         Player p = e.getPlayer();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Entity k = huidige(p.getUniqueId());
-            if (k != null && p.isOnline() && (!k.getWorld().equals(p.getWorld()) || k.getLocation().distanceSquared(p.getLocation()) > 8 * 8)) {
+            if (k != null && p.isOnline() && !ko.containsKey(p.getUniqueId()) && (!k.getWorld().equals(p.getWorld()) || k.getLocation().distanceSquared(p.getLocation()) > 8 * 8)) {
                 k.teleport(p.getLocation());
                 if (k instanceof Mob m) m.setTarget(null);
             }
@@ -467,7 +557,6 @@ final class Kopie implements Listener {
         weg(id);
         ruimSchoudersOp(p);                                                // geen papegaai mee in de spelerdata
         stand.remove(id);
-        uit.remove(id);
         pogingTot.remove(id);
         pakket.remove(id);
     }
@@ -504,8 +593,33 @@ final class Kopie implements Listener {
         int levend = 0;
         for (UUID s : kopie.keySet()) if (huidige(s) != null) levend++;
         File[] f = map.listFiles((d, n) -> n.endsWith(".dat"));
-        return "kopieën=" + levend + " bewaard=" + (f == null ? 0 : f.length) + " uit=" + uit.size() + " verborgen=" + verborgen.size()
+        return "kopieën=" + levend + " bewaard=" + (f == null ? 0 : f.length) + " ko=" + ko.size() + " verborgen=" + verborgen.size()
                 + " sleutel=" + (sleutel != null) + " modus=" + (kitpvp ? "kitpvp" : "lobby");
+    }
+
+    /**
+     * Voor de zelftest: schakel de kopie van deze speler uit en controleer liggen + balkje, daarna opstaan.
+     * Geeft "" als alles klopt, anders de fouten.
+     */
+    String testKo(Player p) {
+        UUID id = p.getUniqueId();
+        Entity e = huidige(id);
+        if (!(e instanceof LivingEntity le)) return " ko:geen-kopie";
+        StringBuilder f = new StringBuilder();
+        uitschakelen(id, le);
+        if (!e.isValid()) f.append(" ko:weg");
+        if (!le.isInvulnerable()) f.append(" ko:te-raken");
+        if (le instanceof Mob m && m.hasAI()) f.append(" ko:ai-aan");
+        if (le instanceof Sittable s && !s.isSitting()) f.append(" ko:zit-niet");
+        if (!(balk.get(id) != null && Bukkit.getEntity(balk.get(id)) instanceof TextDisplay)) f.append(" ko:geen-balk");
+        String half = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(balkTekst(KO_MS / 2, 0));
+        if (half.length() != VAKJES) f.append(" ko:balk-lengte");
+        opstaan(id, le);
+        if (!e.isValid()) f.append(" op:weg");
+        if (le instanceof Mob m && !m.hasAI()) f.append(" op:ai-uit");
+        if (le instanceof Sittable s && s.isSitting()) f.append(" op:zit");
+        if (balk.containsKey(id)) f.append(" op:balk-blijft");
+        return f.toString();
     }
 
     /** Voor de zelftest: een briefje rechtstreeks toepassen (zoals een cookie). */

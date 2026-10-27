@@ -361,6 +361,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   klik = die kit en de arena in, met 3 s bescherming. Fallback: ster in vak 5 / `/kit` (kitmenu; bij PvP Arena ook de
   keuze colosseum of oefenarena), kompas in vak 1 = ander modus. Achterin de kitruimte een deur «Hub».
   Na een ronde (dood) respawn je in de kitruimte van je arena; `/arena` = terug naar de hub (in gevecht geweigerd).
+  **Weg terug (Jelle 27-10):** in elke arena en in Zelda ligt in vak 8 een herstelkompas «Terug naar de hub» (zelfde
+  als `/arena`, geweigerd tijdens de gevecht-tag); bij binnenkomst staat op de actiebalk «… · vak 8 = terug naar de
+  hub» en onderaan de sidebar één donkergrijze regel «Hub: vak 8 of /arena» (alleen in arena en Zelda).
   **PvP Arena**: colosseum (straal 30, midden 0/0, kitruimte boven de noordmuur) en, via de zijdeur «Oefenarena» in
   de kitruimte (of het kitmenu), de **oefenarena** (midden 0/110, straal 18, eigen kitruimte, zijdeur terug).
   **PvP Castle** (`Kasteel.java`, midden 0/−150, kitruimte erachter in het zuiden): twee kasteelmuren tegenover elkaar
@@ -479,12 +482,16 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   **KitPvP:** een wolf vecht mee (vanilla: wie jou slaat en wie jij slaat; nooit jou, nooit op het platform, niet tegen
   spelers in de oefenarena), alleen als jij in een arena staat; op het platform is hij onkwetsbaar. KitPvP zet daarvoor
   metadata `kitpvp-stand` (wacht/pvp/bots) op elke speler, en telt een beet als treffer van de eigenaar (kill, laatste
-  aanvaller, platform-/oefenregels, bescherming). Jijzelf kunt je wolf niet raken. Dodelijke schade = **uitgeschakeld**:
-  hij verdwijnt met wolkjes, jij krijgt één grijze actiebalkregel, en hij komt terug bij je volgende respawn of als je
-  terug op het platform staat (nieuwe ronde). Ga je dood, dan gaat hij mee terug. Andere dieren lopen alleen mee
+  aanvaller, platform-/oefenregels, bescherming). Jijzelf kunt je wolf niet raken. Dodelijke schade = **uitgeschakeld**
+  (Jelle 27-10): hij **blijft liggen** waar hij viel (zit, AI uit, niet te raken, geen doel) met boven zijn hoofd een
+  klein revive-balkje (TextDisplay, 10 blokjes ■ grijs → groen, tag `huisdier-balk`, niet opgeslagen); na 15 s
+  (`Kopie.KO_MS`) staat hij weer op met vol leven en vecht mee. Eerder op bij een nieuwe ronde: respawn, terug naar
+  hub/kitruimte, of als jij >48 blokken weg of in een andere wereld bent. Geen chat- of actiebalkmelding. Ga je dood,
+  dan gaat hij mee terug. Andere dieren lopen alleen mee
   (onkwetsbaar). Op lobby/kitpvp is `/huisdier` = meenemen aan/uit (`verborgen.yml`). Schade in kitpvp raakt het echte
   dier nooit. Console: `huisdier status`, `huisdier zelftest` (briefje heen en terug, vervalst en andere speler
-  geweigerd; met een spelernaam op lobby/kitpvp zet hij een testwolf als zijn huisdier, alleen voor tests).
+  geweigerd; met een spelernaam op lobby/kitpvp zet hij een testwolf als zijn huisdier, alleen voor tests; op kitpvp
+  test hij dan ook uitschakelen: liggen, AI uit, balkje, weer op → `ko-liggen=OK`).
 - **Veilige AFK** (eigen plugin VeiligAfk): `/afk` (ook /away) neemt Essentials over: 10 s aftellen (bewegen, schade of
   aanvallen breekt af), daarna geen schade (behalve /kill), geen honger, mobs negeren je, broadcast. Bewegen,
   aanvallen of blokken breken/plaatsen/gebruiken heft het op («Je bent weer kwetsbaar»). [AFK] in TAB en naamlabel

@@ -185,7 +185,7 @@ final class ZeldaSpel implements Listener {
         p.setFallDistance(0);
         hemel(p, ss, l);
         muziek.speel(p, ZeldaMuziek.BEGIN);
-        if (s.heeft("v:intro")) zeg(p, Component.text(h.naam() + " · " + h.rust.get(r).naam, NamedTextColor.GRAY));
+        if (s.heeft("v:intro")) zeg(p, Component.text(h.naam() + " · " + h.rust.get(r).naam + " · vak 8 = terug naar de hub", NamedTextColor.GRAY));
     }
 
     /** Speler gaat weg (hub, andere modus, uitloggen). */
@@ -260,6 +260,7 @@ final class ZeldaSpel implements Listener {
         }
         if (s.heeft("schild")) inv.setItemInOffHand(ding(Material.SHIELD, "Eikenschild", "schild"));
         inv.setItem(8, ding(Material.MAP, "Kaart", "kaart"));
+        inv.setItem(Menus.HUB_VAK, plugin.hubItem());
         inv.setHelmet(ding(Material.LEATHER_HELMET, "Muts", "muts"));
         inv.setChestplate(ding(Material.LEATHER_CHESTPLATE, "Groene tuniek", "tuniek"));
         inv.setBoots(ding(Material.LEATHER_BOOTS, "Laarzen", "laarzen"));

@@ -84,6 +84,7 @@ final class Zelftest {
         moet(fouten, pl.stand(p).equals("bots"), "stand in Zelda is " + pl.stand(p));
         moet(fouten, p.getLocation().getX() >= Zelda.GEBIED[0] && p.getLocation().getX() <= Zelda.GEBIED[2], "niet in het Zelda-gebied: " + plek(p));
         stappen.add("zelda");
+        moet(fouten, isHubItem(pl, p.getInventory().getItem(Menus.HUB_VAK)), "in Zelda geen «Terug naar de hub» in vak 8");
         commando(pl, p, "arena");
         moet(fouten, s.van(id).plek() == Toestand.Plek.HUB && pl.hub.binnen(p.getLocation()), "/arena bracht je niet uit Zelda naar de hub: " + s.van(id));
         moet(fouten, p.getInventory().getItem(4) != null && p.getInventory().getItem(4).getType() == Material.COMPASS, "na Zelda geen kompas in vak 5");
@@ -107,6 +108,7 @@ final class Zelftest {
         moet(fouten, pl.stand(p).equals("bots"), "stand in de oefenarena is " + pl.stand(p));
         moet(fouten, p.getInventory().contains(Material.BOW), "geen boog gekregen");
         moet(fouten, ArenaModus.inOefenarena(p.getLocation(), pl.g), "niet in de oefenarena: " + plek(p));
+        moet(fouten, isHubItem(pl, p.getInventory().getItem(Menus.HUB_VAK)), "in de oefenarena geen «Terug naar de hub» in vak 8");
         stappen.add("oefenarena");
         boolean gedaan = commando(pl, p, "arena");
         moet(fouten, s.van(id).plek() == Toestand.Plek.HUB && pl.hub.binnen(p.getLocation()),
@@ -126,8 +128,16 @@ final class Zelftest {
         moet(fouten, s.van(id).inArena(), "/arena werkte tijdens een gevecht");
         commando(pl, p, "modus", "arena");
         moet(fouten, s.van(id).inArena(), "/modus werkte tijdens een gevecht");
+        moet(fouten, isHubItem(pl, p.getInventory().getItem(Menus.HUB_VAK)), "in het kasteel geen «Terug naar de hub» in vak 8");
+        pl.hubKnop(p);
+        moet(fouten, s.van(id).inArena(), "«Terug naar de hub» werkte tijdens een gevecht");
         pl.gevecht().untag(p);
         stappen.add("gevecht-tag");
+        pl.hubKnop(p);
+        moet(fouten, s.van(id).plek() == Toestand.Plek.HUB && pl.hub.binnen(p.getLocation()), "«Terug naar de hub» bracht je niet naar de hub: " + s.van(id));
+        stappen.add("hub-knop");
+        pl.kiesModus(p, kasteel);
+        pl.kies(p, "krijger", pl.modi.arena("kasteel"));
         gedaan = commando(pl, p, "arena");
         moet(fouten, s.van(id).plek() == Toestand.Plek.HUB, "na het gevecht niet terug in de hub (" + gedaan + ", " + s.van(id) + ")");
         stappen.add("hub");
@@ -173,5 +183,9 @@ final class Zelftest {
     private static String plek(Player p) {
         Location l = p.getLocation();
         return l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ();
+    }
+
+    private static boolean isHubItem(KitPvP pl, org.bukkit.inventory.ItemStack it) {
+        return it != null && it.hasItemMeta() && "hub".equals(it.getItemMeta().getPersistentDataContainer().get(pl.itemKey, org.bukkit.persistence.PersistentDataType.STRING));
     }
 }

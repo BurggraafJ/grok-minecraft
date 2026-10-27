@@ -128,6 +128,13 @@ final class Menus {
         return item(Material.NETHER_STAR, tekst("Kit kiezen", NamedTextColor.GOLD), List.of(tekst("of /kit", NamedTextColor.GRAY)), "kies");
     }
 
+    /** Vak 8 in een arena en in Zelda: terug naar de hub en de moduskeuze (niet tijdens een gevecht). */
+    ItemStack hub() {
+        return item(Material.RECOVERY_COMPASS, tekst("Terug naar de hub", NamedTextColor.GRAY), List.of(tekst("of /arena · niet tijdens een gevecht", NamedTextColor.DARK_GRAY)), "hub");
+    }
+
+    static final int HUB_VAK = 7;
+
     ItemStack deur() {
         return item(Material.OAK_DOOR, tekst("Naar de lobby", NamedTextColor.AQUA), List.of(tekst("of /lobby, /survival", NamedTextColor.GRAY)), "lobby");
     }
