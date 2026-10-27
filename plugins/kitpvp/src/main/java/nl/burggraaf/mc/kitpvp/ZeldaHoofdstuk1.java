@@ -725,7 +725,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 List.of(r("Kees", "Weer aan het hakken. Dankzij jou."))));
         kees.streek = Villager.Type.TAIGA;
         stukje(STUKJE_KEES);
-        missie("bijl", "De verloren bijl", "Zoek de bijl van Kees bij de houtkap, achter de Oude Eik.", "Breng de bijl terug naar Kees, bij Thuis.");
+        missie("bijl", "De verloren bijl", "Zoek de bijl bij de houtkap, achter de Oude Eik.", "Breng de bijl terug naar Kees.");
         kees.gesprek("kees-1", s -> s.missie("bijl") == 0, List.of(
                         r("Kees", "Ha, buurkind. Mijn bijl is weg."),
                         r("Kees", "Hij viel bij de houtkap, achter de Oude Eik."),
@@ -1009,7 +1009,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         haakpunt(new Haakpunt("richel", X0 + 200, G + 2, -7, plek(200, G - 1, -7, 90f)));
         vondst(new Vondst(STUKJE_RICHEL, "Hartstukje", "", Material.REDSTONE, plek(201, G - 0.6, -7, 0f), box(200, G - 1, -8, 201, G + 1, -6))).voorwerp = "klauwhaak";
         verhaal(new Verhaal("richel", box(158, G, -4, 162, G + 6, 4), List.of(
-                r("Wiske", "Daar, op een richel aan de overkant: een hartstukje! Nog te hoog."))));
+                r("Wiske", "Een hartstukje, op die richel aan de overkant. Nog te hoog."))));
         rustvuur(208, -3);
         rust(new Rust("kloofrand", "Kloofrand", plek(208, G + 1, 0, -90f), box(203, G, -4, 213, G + 6, 4), List.of("schild", "zwaard")));
         verhaal(new Verhaal("zout", box(203, G, -4, 213, G + 6, 4), List.of(
@@ -1116,7 +1116,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         Persoon hanne = persoon(new Persoon("Hanne", plek(257, G + 1, -4, 0f), Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("cleric")),
                 List.of(r("Hanne", "Leeg? Het zielvuur hiernaast vult je flesje weer."))));
         hanne.streek = Villager.Type.SWAMP;
-        missie("moeraskruid", "Moeraskruid", "Zoek drie kruiden in het Veen: veenbes, zonnedauw en moerasmunt.", "Breng de kruiden naar Hanne, onder de moerashut.");
+        missie("moeraskruid", "Moeraskruid", "Zoek veenbes, zonnedauw en moerasmunt in het Veen.", "Breng de kruiden naar Hanne.");
         hanne.gesprek("hanne-1", s -> s.missie("moeraskruid") == 0, List.of(
                         r("Hanne", "Een bezoeker! Pas op, de ketel is heet."),
                         r("Hanne", "Ik brouw bronwater, maar mijn kruiden zijn op."),

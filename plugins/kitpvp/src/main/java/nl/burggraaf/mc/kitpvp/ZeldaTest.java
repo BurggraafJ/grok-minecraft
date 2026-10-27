@@ -40,6 +40,7 @@ final class ZeldaTest {
     private final List<String> fouten = new ArrayList<>(), gedaan = new ArrayList<>();
     private final Deque<Stap> rij = new ArrayDeque<>();
     private BukkitTask taak;
+    private boolean belGehad;                               // de bel is één keer getest (in de eerste kamer met een bel)
 
     ZeldaTest(KitPvP pl, Zelda z, Player p, CommandSender aan) {
         this.pl = pl;
@@ -89,12 +90,53 @@ final class ZeldaTest {
             moet(p.getInventory().getItem(0) != null && p.getInventory().getItem(0).getType() == Material.WOODEN_SWORD, "geen houten zwaard");
             moet(p.getInventory().getItem(8) != null && p.getInventory().getItem(8).getType() == Material.MAP, "geen kaart");
         }, 2, () -> true, 1);
-        boolean kamerGehad = false, belGehad = false;
+        // alle eilanden in de volgorde van het verhaal: varen, elk deel aflopen, de zijmissies (zonder alles: tot na de eerste kamer)
+        eilanden:
+        for (ZeldaEiland e : z.EILANDEN) {
+            if (e != h.eiland) stap("varen naar " + e.id(), () -> {
+                moet(e.open(stand()), e.id() + " is niet open na het vorige eiland (" + e.openNa() + ")");
+                stil();
+                z.spel.vaar(p, e);
+            }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
+            for (ZeldaHoofdstuk d : e.delen()) {
+                if (!pad(d, alles, d == h)) break eilanden;
+                stap("einde " + d.id(), () -> { }, 2, () -> stand().heeft(d.id()), 20);
+            }
+            for (ZeldaHoofdstuk d : e.delen())
+                for (ZeldaHoofdstuk.Persoon pe : d.personen)
+                    if (pe.naam.equals("Brecht")) stap("Brecht: varen", () -> {
+                        stil();
+                        z.spel.praat(p, pe);
+                        boolean menu = p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu;
+                        long open = z.EILANDEN.stream().filter(x -> x.open(stand()) && x.aanlegRust() != null).count();
+                        moet(open > 1 ? menu : rij().contains("geduld"), "Brecht: " + (open > 1 ? "geen menu" : "zegt " + rij()));
+                        p.closeInventory();
+                        stil();
+                    }, 2, () -> true, 1);
+            zijmissies(e);
+        }
+        stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
+        stap("opslag", () -> {
+            ZeldaVoortgang.Stand s = stand();
+            ZeldaVoortgang schijf = new ZeldaVoortgang(new File(pl.getDataFolder(), "zelda.yml"));
+            moet(schijf.van(id).rust(h.id()) == s.rust(h.id()) && s.rust(h.id()) > 0,
+                    "zelda.yml: rustplaats " + schijf.van(id).rust(h.id()) + " (in het geheugen " + s.rust(h.id()) + ")");
+            moet(schijf.van(id).vlaggen.containsAll(s.vlaggen) || !z.spel.voortgang.isVuil(), "zelda.yml: vlaggen niet bewaard");
+        }, 2, () -> true, 1);
+        start("kitpvp zelda test " + p.getName() + (alles ? " alles" : ""));
+    }
+
+    /**
+     * Eén deel aflopen in de volgorde van het pad (rustplaats, verhaal, vondst, kamer, uitdaging, puzzel). Zonder
+     * {@code alles}: stop bij de eerste rustplaats na de eerste kamer (dan false).
+     */
+    private boolean pad(ZeldaHoofdstuk h, boolean alles, boolean eerste) {
+        boolean kamerGehad = false;
         for (Object o : h.volgorde) {
             if (o instanceof ZeldaHoofdstuk.Rust r) {
-                if (r.index == 0) continue;
+                if (r.index == 0 && eerste) continue;
                 stap("rust " + r.id, () -> p.teleport(r.plek), 8, () -> stand().rust(h.id()) >= r.index && z.spel.sessie(p) != null && z.spel.sessie(p).rust == r.index, 40);
-                if (!alles && kamerGehad) break;
+                if (!alles && kamerGehad) return false;
             } else if (o instanceof ZeldaHoofdstuk.Verhaal v) {
                 stap("verhaal " + v.id, () -> p.teleport(v.zone.midden(h.w).add(0, 1, 0)), 8,
                         () -> stand().heeft("v:" + v.id) || (v.vereist != null && !stand().heeft(v.vereist)), 40);
@@ -153,29 +195,7 @@ final class ZeldaTest {
                 }, 4, () -> r.opgelost && r.deur.isOpen, 20);
             }
         }
-        if (alles) {
-            stap("einde", () -> { }, 2, () -> stand().heeft(h.id()), 20);
-            for (ZeldaHoofdstuk.Persoon pe : h.personen)
-                if (pe.naam.equals("Brecht")) stap("Brecht: varen", () -> {
-                    stil();
-                    z.spel.praat(p, pe);
-                    boolean menu = p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu;
-                    long open = z.EILANDEN.stream().filter(e -> e.open(stand()) && e.aanlegRust() != null).count();
-                    moet(open > 1 ? menu : rij().contains("geduld"), "Brecht: " + (open > 1 ? "geen menu" : "zegt " + rij()));
-                    p.closeInventory();
-                    stil();
-                }, 2, () -> true, 1);
-            zijmissies(h.eiland);
-        }
-        stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
-        stap("opslag", () -> {
-            ZeldaVoortgang.Stand s = stand();
-            ZeldaVoortgang schijf = new ZeldaVoortgang(new File(pl.getDataFolder(), "zelda.yml"));
-            moet(schijf.van(id).rust(h.id()) == s.rust(h.id()) && s.rust(h.id()) > 0,
-                    "zelda.yml: rustplaats " + schijf.van(id).rust(h.id()) + " (in het geheugen " + s.rust(h.id()) + ")");
-            moet(schijf.van(id).vlaggen.containsAll(s.vlaggen) || !z.spel.voortgang.isVuil(), "zelda.yml: vlaggen niet bewaard");
-        }, 2, () -> true, 1);
-        start("kitpvp zelda test " + p.getName() + (alles ? " alles" : ""));
+        return alles;
     }
 
     /** Alle vijanden in de kamer verslaan (en binnen blijven); true als de kamer gewonnen is. */

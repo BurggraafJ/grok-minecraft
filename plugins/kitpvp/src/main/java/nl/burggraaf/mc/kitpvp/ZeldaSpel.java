@@ -1158,7 +1158,7 @@ final class ZeldaSpel implements Listener {
     /** Gebarsten muur weer dicht. */
     void herstel(ZeldaHoofdstuk.Barst b) {
         b.leegSinds = 0;
-        deur(b.muur, false, b.gebied.midden(plugin.w).add(0, 1, 0));
+        deur(b.muur, false, b.gebied.midden(plugin.w).add(0, 2, 0));
     }
 
     private void barst(ZeldaHoofdstuk.Barst b, long nu) {

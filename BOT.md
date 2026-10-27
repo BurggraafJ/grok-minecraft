@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.3, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.4, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -409,7 +409,16 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   x 1092…1592, z −64…64): Morgal heeft prinses Zelda naar Nachtrots gebracht; met de fee Wiske loop je naar het oosten
   langs 6 rustplaatsen (zielvuur: bewaren, genezen, flesjes vullen, respawn), 2 feeënkringen (bronnen), 3 kamers die
   dichtgaan tot alle golven verslagen zijn, de baas Grauwmoer, een tijdrace over de Kloof, twee puzzels, vondsten en
-  de haven met het schip. **Zelda 2.0-motor** (Jelle 27-10, "veel groter"): muziek altijd (achtergrond per streek,
+  de haven met het schip. **Eiland 1** (sessie zelda-eiland-1, kitpvp 2.4): rustiger (open plek één golf van twee,
+  Veen twee golven, kade één golf; hoogstens twee verplichte kamers vóór de baas, de zelftest eist het); een kamer
+  die je al won laat je vrij door (vlag `k:<kamer>`), de **bel** in de kamer = nog eens, met extra golven; personen
+  **Kees** bij Thuis (zijmissie *De verloren bijl*, bijl bij de nieuwe houtkap achter de Oude Eik → hartstukje),
+  **Hanne** onder de moerashut (*Moeraskruid*: drie kruiden in het Veen → eerste flesje `fles1`), **Lotje** (telt
+  meeuwen op de pier) en **Brecht** (na de kade: praten = menu «Waarheen?» met de open eilanden; zolang er geen tweede
+  eiland is «nog even geduld»); vier hartstukjes `hs:lindewoud-1…4`: holle Oude Eik (huisdier snuffelt), Kees, een
+  richel in de Kloof (pas met de klauwhaak, haakpunt = lodestone) en achter een gebarsten muur in de tempel (pas met
+  bommen, barst = cracked deepslate bricks). Oude standen krijgen bij binnenkomen de `k:`-vlaggen van wat ze al
+  voorbij zijn. **Zelda 2.0-motor** (Jelle 27-10, "veel groter"): muziek altijd (achtergrond per streek,
   gevecht/baas eroverheen); **Wiske** is een kleine fee (allay, alleen voor jou zichtbaar) naast je schouder; klik op
   haar of **`/hint`** = een duwtje, nog eens = wat je moet doen en ze wijst; tips na doodgaan in een kamer; uitleg
   halverwege, op de kaart uit te zetten; harten + hartstukjes (vier = een hart), harnas in vijf trappen, flesjes
@@ -422,7 +431,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   (`kitpvp-stand` = `bots`). Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
   (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor]` (loopt met een
   echte speler; wist eerst diens voortgang), `kitpvp zelda verder|vaar|vlag|hint <speler> …`, `kitpvp bouw zelda`.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 2, `zelda-zee` 1;
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 3, `zelda-zee` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
   eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,

@@ -1038,6 +1038,9 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "zelda-ruine-zij", 0, 1, -12, zx + 110, zx + 156, g + 6, zg + 12, 30, 10));
         f.add(Kaart.voor(w, map, "zelda-haven-zij", 0, 1, -24, zx + 320, zx + 390, g + 2, zg + 22, 40, 8));
         f.add(Kaart.voor(w, map, "zelda-kring-zij", 0, 1, -12, zx + 278, zx + 314, g + 6, zg + 14, 34, 10));
+        f.add(Kaart.boven(w, map, "zelda-eik", zx + 82, -28, zx + 112, 4, g - 2, zg + 5, 10));                 // holle eik en houtkap (onder de kruin)
+        f.add(Kaart.voor(w, map, "zelda-richel", 1, 0, zx + 185, -20, 2, g, zg + 8, 20, 10));                   // oostwand van de Kloof
+        f.add(Kaart.voor(w, map, "zelda-barst", 0, 1, 2, zx + 140, zx + 154, zg - 1, zg + 9, 10, 12));          // gebarsten muur in het heiligdom
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;
