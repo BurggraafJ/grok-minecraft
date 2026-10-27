@@ -239,6 +239,7 @@ final class Zelda implements Modus {
                 for (ZeldaHoofdstuk.Deur d : g.sluizen) if (!deurKlopt(h, d, !g.rustVloed)) fouten.add(hid + ": getij " + g.id + ": een sluis staat verkeerd");
                 for (ZeldaHoofdstuk.Deur d : g.vloeddeuren) if (!deurKlopt(h, d, g.rustVloed)) fouten.add(hid + ": getij " + g.id + ": een vloeddeur staat verkeerd");
             }
+            if (h instanceof ZeldaEiland2b e2b && !e2b.teunOpPad) fouten.add(hid + ": Teun (2a, de ankersleutel) staat niet op het pad");
             // een baas met kruittonnen (Zoutbaard): de tonnen staan er als er niet gevochten wordt, en hij kan bij elke ton staan
             for (ZeldaHoofdstuk.Kamer k : h.kamers) {
                 if (!(k.baas instanceof Zoutbaard zb)) continue;

@@ -41,7 +41,7 @@ import org.bukkit.plugin.Plugin;
  */
 final class ZeldaEiland2b extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 3;
+    static final int VERSIE = 4;
     /** Het vak van dit halve eiland (oost van {@link ZeldaEiland2a#DIJK_X}); elke kolom zet dit deel zelf. */
     static final int X1 = 1230, X2 = 1360, Z1 = -480, Z2 = -180;
     /** Het hartstukje van 2b (de parelduik van Roos). */
@@ -62,6 +62,8 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
     private Zoutbaard zoutbaard;
     private Getij getij;
     private Location bakenKern;
+    /** Staat Teun (eiland 2a: de ankersleutel) op het pad? Nee = 2a was er niet bij het bouwen (de zelftest meldt het). */
+    boolean teunOpPad;
 
     ZeldaEiland2b(Plugin plugin) {
         this.plugin = plugin;
@@ -393,6 +395,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         g = bouwer.g;
         G = g + 8;
         leeg(bouwer.w);
+        teunOpPad = false;
         speelgebied = Box.van(X1 - 1, g - 4, Z1 + 2, X2 - 2, G + 50, Z2 - 2);
         boolean bouwen = bouwer.plaats;
         List<long[]> chunks = new ArrayList<>();
@@ -645,6 +648,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 Box.van(1320, G, pz - 2, 1322, G + 3, pz + 2), Box.van(1278, G - 7, pz - 8, 1324, G + 8, pz + 8),
                 deur(hek(Material.SPRUCE_FENCE, true), 1284, G + 1, pz - 1, 1284, G + 2, pz + 1), 25));
         duik.bord = new Location(w, 1279.5, G + 3.4, -289.5);
+        duik.via = Box.van(ax + 6, G - 5, pz - 1, bx - 6, G - 3, pz + 1);   // alleen wie door de gang zwom, haalt de finish
         duik.daarna = (spel, p, s) -> {
             if (s.missie("parelduik") == 1) spel.missie(p, "parelduik", 2);
         };
@@ -754,14 +758,13 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                     }
                     vul(x, G + 1, z, x, G + 11, z, Material.AIR);
                 }
-            // wat er ligt in een droge bak: zeewier, schelpen, plassen
+            // wat er ligt in een droge bak: zand en schelpen in de vloer (wat erop ligt, spoelt weg met het getij)
             for (int dx = -8; dx <= 11; dx++)
                 for (int dz = -11; dz <= 11; dz++) {
                     if (galerij(dx, dz) || bodem(dx, dz) != G - 6) continue;
-                    int k = kans(TX + dx, TZ + dz, 40);
-                    if (k == 0) zet(TX + dx, G - 5, TZ + dz, Material.DEAD_TUBE_CORAL_FAN);
-                    else if (k == 1) zet(TX + dx, G - 5, TZ + dz, augurk(1, false));
-                    else if (k == 2) zet(TX + dx, G - 5, TZ + dz, Material.DEAD_BUSH);
+                    int k = kans(TX + dx, TZ + dz, 30);
+                    if (k == 0) zet(TX + dx, G - 6, TZ + dz, Material.SAND);
+                    else if (k == 1) zet(TX + dx, G - 6, TZ + dz, Material.DEAD_BRAIN_CORAL_BLOCK);
                 }
             // pilaren tegen de muren en hangende lantaarns boven de bak
             for (int[] p : new int[][]{{-11, -11}, {11, -11}, {-11, 11}, {11, 11}, {-11, 0}, {0, -11}, {0, 11}})
@@ -806,7 +809,8 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         getij.vloeddeuren.add(new Deur(rooster, Material.AIR.createBlockData()).vlak(TX + 9, G - 5, TZ - 12, TX + 11, G - 3, TZ - 12));
         if (b.plaats) zet(TX - 9, G + 1, TZ - 3, Material.DARK_PRISMARINE);                // de sokkel van de hendel op de galerij
         getij.hendels.add(new Getij.Hendel(TX - 9, G + 2, TZ - 3, s -> s.heeft("maanparel") && s.heeft("r:getij"),
-                r("Wiske", "Hij zit vast. Hij hangt aan iets, diep beneden.")));
+                r("Wiske", "Hij zit vast. Hij hangt aan iets, diep beneden."), null));
+        getij.buurt = Box.van(TX - 18, G - 8, -362, BX + 9, G + HOOG + 8, TZ + 16);   // ook wie in de Draaikolk of de toren is
         // het pad: binnen, naar beneden, het rooster
         rustvuur(1285, G, -334);
         rust(new Rust("tempelpoort", "De Getijdentempel", plek(1285, G + 1, TZ, -90f), Box.van(1282, G, -336, 1287, G + 5, -325), List.of()));
@@ -886,7 +890,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 r("Wiske", "Raderen, kettingen… en een grote hendel."),
                 r("Wiske", "Zou de maanparel hem kunnen bewegen?"))));
         Getij.Hendel groot = new Getij.Hendel(1316, G - 4, -352, s -> s.heeft("maanparel"),
-                r("Wiske", "Er staat een maantje op. Tijmen weet er vast meer van."));
+                r("Wiske", "Er staat een maantje op. Tijmen weet er vast meer van."), true);    // de grote hendel zet alleen vloed
         getij.hendels.add(groot);
         tij(getij, groot, true);
         verhaal(new Verhaal("stijgt", Box.van(1309, G - 5, -358, 1319, G - 1, -346), List.of(
@@ -903,7 +907,10 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 r("Wiske", "Wie heeft hier de sleutel van?"))));
         anker.als = s -> !s.heeft("ankersleutel");
         for (ZeldaHoofdstuk h : eiland == null ? List.<ZeldaHoofdstuk>of() : eiland.delen())    // de sleutel heeft Teun, in Zoutkom (eiland 2a)
-            if (h != this && h.onderdeel("Teun") instanceof Persoon teun) praten(teun);
+            if (h != this && h.onderdeel("Teun") instanceof Persoon teun) {
+                praten(teun);
+                teunOpPad = true;
+            }
         if (b.plaats) {
             // de ronde zaal: een ring om een draaikolk, met een koepel
             for (int x = DX - 14; x <= DX + 14; x++)
@@ -1075,7 +1082,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 plekVan("ankerpoort"), s -> s.heeft("v:ankerpoort") || s.heeft("ankersleutel"));
         doel("sleutel", "Een ankerslot. Wie heeft de sleutel?", "Teun kende Zoutbaard. Vraag het hem, in Zoutkom.",
                 teun(), s -> s.heeft("ankersleutel"));
-        doel("zoutbaard", "Achter de Ankerpoort wacht Zoutbaard.", "Een bom in zijn ton, dan staat hij versuft.",
+        doel("zoutbaard", "Achter de Ankerpoort wacht Zoutbaard.", "Water laag? Trek de hendel op de galerij, zwem naar de poort.",
                 plekVan("draaikolk"), s -> s.heeft("k:draaikolk") || s.heeft("hart2"));
         doel("hart2", "Zoutbaard is vrij. Pak het hart van licht.", "Op het eilandje midden in de kolk.",
                 plekVan("hart2"), s -> s.heeft("hart2"));
@@ -1102,7 +1109,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         double t = nu / 1000.0;
         Particle.DustOptions schuim = new Particle.DustOptions(org.bukkit.Color.fromRGB(0xe8f6ff), 1.2f);
         for (Player p : wie) {
-            if (p.getLocation().distanceSquared(new Location(w, DX, G, DZ)) > 30 * 30) continue;
+            if (!p.getWorld().equals(w) || p.getLocation().distanceSquared(new Location(w, DX, G, DZ)) > 30 * 30) continue;
             for (int i = 0; i < 10; i++) {
                 double a = t * 2.2 + i * Math.PI / 5, r = 2 + (i % 3) * 1.2;
                 p.spawnParticle(Particle.DUST, new Location(w, DX + 0.5 + Math.cos(a) * r, G - 0.1, DZ + 0.5 + Math.sin(a) * r), 1, 0, 0, 0, 0, schuim);
@@ -1122,7 +1129,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         for (Player p : Bukkit.getOnlinePlayers()) {
             ZeldaSpel.Sessie ss = spel.sessie(p);
             if (ss == null || ss.vaart != null || ss.h.eiland != eiland || !spel.voortgang.van(p.getUniqueId()).heeft("baken2")) continue;
-            if (p.getLocation().distanceSquared(bakenKern) > 200 * 200) continue;
+            if (!p.getWorld().equals(w) || p.getLocation().distanceSquared(bakenKern) > 200 * 200) continue;
             p.sendBlockChange(bakenKern, aan);
             for (int i = 1; i < 40; i += 2) p.spawnParticle(Particle.DUST, bakenKern.clone().add(0.5, i, 0.5), 1, 0.12, 0.3, 0.12, 0, licht);
         }

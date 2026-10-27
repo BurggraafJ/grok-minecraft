@@ -177,6 +177,8 @@ abstract class ZeldaHoofdstuk {
         long openTot;
         Location bord;                                      // bord met de beste tijden (null = geen)
         Actie daarna;                                       // na het halen (bv. een missiestap verder)
+        Box via;                                            // hier moet je langs zijn gekomen (bv. de gang onder water; null = niet)
+        final java.util.Set<UUID> erdoor = new HashSet<>();  // wie in deze ronde langs {@link #via} kwam
         org.bukkit.entity.TextDisplay bordTekst;
         boolean bordOud = true;
 
@@ -479,8 +481,11 @@ abstract class ZeldaHoofdstuk {
      * naar de rust ({@code rustVloed}). {@code kitpvp zelda lopen} telt het water als water (zwemmen) en alle deuren als open.
      */
     static final class Getij {
-        /** Een hendel (blok {@link Material#LEVER}): wie mag eraan trekken, en wat Wiske zegt als het (nog) niet mag. */
-        record Hendel(int x, int y, int z, Predicate<ZeldaVoortgang.Stand> mag, Regel nee) {}
+        /**
+         * Een hendel (blok {@link Material#LEVER}): wie mag eraan trekken, wat Wiske zegt als het (nog) niet mag, en waar
+         * hij het getij heen zet ({@code naar}: true = vloed, false = eb, null = om en om).
+         */
+        record Hendel(int x, int y, int z, Predicate<ZeldaVoortgang.Stand> mag, Regel nee, Boolean naar) {}
 
         final String id, naam;
         final Box gebied;
@@ -493,6 +498,7 @@ abstract class ZeldaHoofdstuk {
         boolean vloed;                                      // zo staat hij (of: daar gaat hij heen, als hij {@link #bezig} is)
         int laag = -1;                                      // de volgende laag die omgaat (-1 = stil)
         long volgende, leegSinds;
+        Box buurt;                                          // wie hier is, telt als in de buurt (null = het gebied plus zes)
 
         Getij(String id, String naam, Box gebied, boolean rustVloed) {
             this.id = id;

@@ -4,8 +4,9 @@ Ontwerpdocument (oktober 2026). Hoofdstuk 1 «Het Lindewoud» staat live en viel
 is"). Zelda 2.0 maakt er een groter avontuur van: **vijf eilanden** in de Glazen Zee, elk een hub met meerdere dingen
 erop, verbonden door het schip de Zilvermeeuw. Dit document is het plan voor de bouwsessies: verhaal, eilanden,
 mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De motor»), eiland 1 ook (sessie
-`zelda-eiland-1`, kitpvp 2.4; en opnieuw als **open eiland** in sessie `zelda-lindewoud-v2`, kitpvp 2.6) en de westhelft
-van eiland 2 (sessie `zelda-eiland-2a`, kitpvp 2.5); de andere eilanden bouwen latere sessies, één per (half) eiland,
+`zelda-eiland-1`, kitpvp 2.4; en opnieuw als **open eiland** in sessie `zelda-lindewoud-v2`, kitpvp 2.6) en heel eiland 2
+(de westhelft in sessie `zelda-eiland-2a`, kitpvp 2.5; de Getijdentempel in sessie `zelda-eiland-2b`, kitpvp 2.7); de
+andere eilanden bouwen latere sessies, één per (half) eiland,
 in de volgorde onderaan. **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
@@ -124,7 +125,7 @@ de buren (z −179 / 179, x 1639): daar bouwt het alleen zee, zodat de zeeën va
 | eiland | voorwerp (vak, vlag) | harnas | hart | flesje | ook |
 |---|---|---|---|---|---|
 | 1 Lindewoud | zwaard, schild, boog (bestaan) | groene tuniek | `hart1` (Grauwmoer) | `fles1` (zijmissie Hanne), `fles2` (Tijmen, meteen) | `lichtwoord` (Tijmen), `sterkwater` (Hanne, met zeekraal van het Zilverstrand) |
-| 2 Zilverstrand | **bommen** (vak 4, vlag `bommen`): gooien, gebarsten muren, baas verdoven | `harnas1` maliënhemd (smid Hendrik) | `hart2` | `fles3` | — |
+| 2 Zilverstrand | **bommen** (vak 4, vlag `bommen`): gooien, gebarsten muren, baas verdoven | `harnas1` maliënhemd (smid Hendrik) | `hart2` (Zoutbaard) | `fles3` (Lotje, boodschap over zee) | `maanparel` (Tijmen: het getij), `ankersleutel` (Teun) |
 | 3 Witte Toppen | **klauwhaak** (vak 5, vlag `klauwhaak`): naar een haakpunt trekken | `harnas2` wachtersharnas (bergwachters) | `hart3` | `fles4` | **sneeuwvos** (`dier:sneeuwvos`) |
 | 4 Gloedberg | **vuurstaf** (vak 6, vlag `vuurstaf`): vuur op afstand, ijs smelten | `harnas3` gloedharnas (smeden; hitte in de mijn) | `hart4` | — | — |
 | 5 Nachtrots | **lichtpijlen** (boog, vak 2, vlag `lichtpijlen`): nevel en Morgal | `harnas4` lichtharnas (Zelda's wachters) | — | — | het einde |
@@ -249,35 +250,74 @@ Het pad (de test loopt het in deze volgorde af; rustplaatsen 0 … 3, nooit tuss
   Meeuwenrots: zo krijgen de duinen een doel en wordt de bom meteen twee keer gebruikt. Het einde van 2a is het licht
   van de vuurtoren; het baken (`baken2`) is voor 2b.
 
-#### Hoe 2b aanhaakt (sessie `zelda-eiland-2b`)
+#### 2b · oost, de Getijdentempel (gebouwd: sessie `zelda-eiland-2b`, deel `zelda-e2b`, klasse `ZeldaEiland2b`)
 
-- Een klasse `ZeldaEiland2b` (`e2b`, deel `zelda-e2b`) met vak **x 1230 … 1360, z −480 … −180**, als tweede deel in de
-  regel van het Zilverstrand: `List.of(new ZeldaEiland2a(plugin), new ZeldaEiland2b(plugin))`. Zolang 2b er niet is,
-  bouwt 2a daar alleen zee (`ZeldaEiland2a.OOST`); met 2b erbij bouwt 2a dat niet meer, dus 2b moet elke kolom van
-  zijn vak zelf zetten. Speelgebied van 2a: x 1062 … 1228 (2b begint op 1229).
-- **De dijk** (`ZeldaEiland2a.DIJK_X` = 1229, z −332 … −328): bovenkant op G tot x 1220, daarna G − 2 onder water.
-  2b gaat verder vanaf x 1230; eb en vloed kan 2b in `tik()` doen (blokken omzetten met een `Deur`, ook de stukjes van
-  2a op x 1221 … 1229: dat is spel, geen bouwen). De lichtbundel van de vuurtoren wijst naar x 1300, z −330: zet de
-  tempel daar in de buurt.
-- **Bommen** zijn er: `ZeldaHoofdstuk.boem(spel, speler, plek)` wordt aangeroepen als er een bom op dit deel ontploft
-  (na de gebarsten muren en de klap voor vijanden): daar kan de ton van Zoutbaard springen. Een muur die je óp het pad
-  moet openbreken: `barstOpPad(...)` met `voor` (de plek waar je staat; de test gooit daar een echte bom).
-- 2b mag `hs:zilverstrand-4` gebruiken; de zelftest eist hoogstens vier per eiland. Ook `fles3` (niet meer `fles2`:
-  die geeft Tijmen nu op het Lindewoud) en `hart2` zijn voor 2b. `wacht()` van 2a vervalt vanzelf (het laatste deel
-  telt). Teun heeft al een regel over eb (`teun-licht`).
-- **Tijmen** staat al op het plein van 2a met `spel.wegwijzer`: hij noemt vanzelf het eerste doel van 2b dat nog niet
-  klaar is. Geef hem op 2b een eigen plek bij de tempel (een tweede `Persoon` «Tijmen» in 2b mag: hij reist met de
-  sterren) en een gesprek als het baken brandt («Op de Witte Toppen zien we elkaar weer»). Een boodschap over zee voor
-  2b staat hieronder bij «Terugkerende personages».
+Een half eiland met een eigen hub. Vak **x 1230 … 1360, z −480 … −180** (2b zet elke kolom zelf; 2a bouwt daar geen zee
+meer). Coördinaten: het plein (1268, −330), de Getijdenzaal (midden 1300, −330), de Draaikolk (1332, −330), de toren met
+het baken (1348, −330), het wrak (1316, −404), de poelen (1288 … 1322, −284).
 
-#### 2b · oost, de tempel (plan)
+| plek | wat | soort |
+|---|---|---|
+| x 1230 … 1256, z −332 … −328 | **de dijk** verder vanaf Zoutkom: eerst nog onder water (waden), dan net erboven, met palen en lantaarns | verhaal |
+| 1268, −330 | **het Getijdenplein** (de hub): een oud plein van de getijdenwachters, een getijdenklok in het midden, gebroken zuilen, bordjes (Tempel, Het wrak, De poelen, Zoutkom); **Tijmen** onder zijn luifel | rust 0 `plein`, persoon |
+| 1296 … 1336, −420 … −362 | **het wad** (platen en prielen, overal te belopen) met **het wrak van de Kraai**, Zoutbaards schip: **Lorre** de papegaai in het ruim, het logboek in de kajuit | verhaal, persoon |
+| 1272 … 1332, −302 … −272 | **de getijdenpoelen**: rotsen met poeltjes; **Roos** de duikster en **de parelduik** (startplaat, hekje, een gang onder de rotsen door van de ene poel naar de andere, 25 s); de zingende schelp voor Lotje | uitdaging `parelduik`, persoon, vondst |
+| 1284, −330 | de portiek voor de tempel | rust 1 `tempelpoort` |
+| 1288 … 1312, −342 … −318 | **de Getijdenzaal**: een galerij (west, noord, zuid) rond een bak van zes diep; in rust **droog** (eb: Morgals nevel); een trap naar beneden; de hendel op de galerij (werkt pas als het raderwerk draait) | getij `getij`, bron `bron-zaal` |
+| 1299 … 1301, −339 | **de sluis** (een rooster onderin de bak): open bij eb | getij (sluis) |
+| 1291 … 1303, −357 … −348 | **de Spoelkamer** onder het terras: twee verdronken matrozen en een harpoenier (de bel = nog eens, met vier) — het enige gevecht | kamer `spoelkamer` |
+| 1308, −354 … −352 | **de pijpgang** met een gebarsten muur | barst `pijpgang` (op het pad) |
+| 1309 … 1319, −358 … −346 | **het raderwerk**: raderen en de grote hendel; met de maanparel stijgt het water (vlag `r:getij`) | getij (hendel), verhaal |
+| 1309 … 1311, −342 | **de vloeddeur** in de hoek van de bak: open bij vloed (een wand van water; zwem omhoog) | getij (vloeddeur) |
+| 1308 … 1311, −332 … −328 | **de drempel** aan de oostkant van de bak: alleen bij vloed zwemmend te halen | rust 2 `ankerpoort`, verhaal |
+| 1312, −330 | **de Ankerpoort**: open voor wie de `ankersleutel` heeft (van Teun in Zoutkom) | poort `ankerpoort` |
+| 1332, −330 | **de Draaikolk**: een ronde zaal om een kolk, drie kruittonnen; **Kapitein Zoutbaard**; op het eilandje in de kolk het hart van licht (`vereist = "k:draaikolk"`) | kamer + baas, vondst `hart2` |
+| 1348, −330 | **de toren**: een wenteltrap naar het platform (G+24) met **het Getijdenbaken** | rust 3 `baken`, vondst `baken2`, verhaal: einde (`e2b`) |
 
-De dijk naar de Getijdentempel; puzzels met **eb en vloed** (hendels die water laten zakken en stijgen: deuren van
-water), gebarsten muren (bommen), een tijdrace onder water door. Kerker met twee kamers en de baas **Kapitein
-Zoutbaard**, een verdronken zeerover die door Morgals nevel ronddoolt: hij gooit drietanden; gooi een bom in zijn ton,
-dan staat hij versuft. Bevrijd = hij bedankt je en vergaat tot zeeschuim. `hart2`, het **Getijdenbaken** ontsteekt
-(`baken2`), Wiske wordt feller. Het Witte Toppen gaat open. Muziek: *Getijdentempel* (druppels, ijzer), baas
-*Zoutbaard*.
+- **Hoofdlijn** (tien doelen voor `/hint` en Tijmen): naar het plein en praten met Tijmen (de maanparel) → de droge
+  Getijdenzaal → door de sluis naar de Spoelkamer → een bom op de pijpgang → in het raderwerk de grote hendel (vloed)
+  → door de vloeddeur omhoog en naar de drempel → de Ankerpoort zit op slot: de sleutel heeft **Teun** (terug over de
+  dijk naar Zoutkom) → Zoutbaard → het hart → het baken. Wie Lorre al hoorde («Teun! Teun!»), kan de sleutel ook eerder
+  halen.
+- **Eb en vloed**: de zaal staat in rust droog. De sluis gaat alleen open bij eb (het water drukt hem dicht), de
+  vloeddeur alleen bij vloed, en de drempel haal je alleen zwemmend (bij eb is hij zes blokken hoog). De grote hendel
+  in het raderwerk werkt met de maanparel; daarna ook de hendel op de galerij (wie terugkomt, hoeft niet weer door de
+  kelders). Het water gaat laag voor laag (een halve seconde per laag), met geluid; een minuut niemand in de zaal = weer
+  droog. Wie in een sluis of vloeddeur staat die dichtgaat, komt op de bodem van de bak.
+- **Zoutbaard**: 60 leven (+30 per extra speler), één matroos bij twee derde en bij een derde. Hij staat telkens bij een
+  van zijn drie kruittonnen en gooit drietanden (hoogstens twee harten per stuk); om de acht tellen springt hij naar
+  een andere ton (onder een derde om de zes). Zijn jas zit vol zeepokken: een klap doet maar een derde. Een bom bij hem
+  of bij zijn ton laat de ton springen en dan staat hij zes tellen **versuft** (gloeit, sterretjes): dan doet een klap
+  anderhalf keer zoveel. Een kapotte ton spoelt na vijftien tellen weer aan. Teun en het logboek verklappen het («een
+  vonk in zijn ton»), Wiske zegt het bij het begin, en na doodgaan als tip. Verslagen = hij vergaat tot zeeschuim («Zeg
+  Teun gedag, jong»).
+- **Personen**: Tijmen (plein: de maanparel; na het baken «Op de Witte Toppen zien we elkaar weer»), Roos (*De
+  parelduik* → `hs:zilverstrand-4`), Lorre (de papegaai: «Mijn schat! Teun!», na Zoutbaard «Kapitein vrij!»). Op 2a
+  erbij: Teun (de ankersleutel, en na Zoutbaard «Dan heeft hij nu rust»), Mira en Brecht (na het baken: naar het
+  noorden). Op het Lindewoud: **Lotje** (de boodschap over zee).
+- **Boodschap over zee**: wie op het Getijdenplein was, hoort van Lotje (op de pier van het Lindewoud) over zingende
+  schelpen; de schelp ligt bij de poelen (`vereist = "g:lotje-schelp"`); terug bij Lotje krijg je `fles3`. Zo is er
+  een opdracht terug naar Zoutkom (Teun, op de hoofdlijn) en een naar het Lindewoud (Lotje).
+- **Genezen**: vier rustplaatsen (de drempel vlak voor de Ankerpoort: na doodgaan bij Zoutbaard sta je daar), een bron
+  op de bodem van de zaal (bij de Spoelkamer), de flesjes, en buiten gevechten op adem komen.
+- **Hartstukjes**: `hs:zilverstrand-4` (Roos). Het eiland heeft er daarmee vier: 1 Pim, 2 de smokkelgrot (bommen), 3 de
+  Meeuwenrots (klauwhaak), 4 Roos.
+- **Muziek**: *Wad* (buiten: fluit en gitaar, in F), *Getijdentempel* (binnen: klokken, ijzeren xylofoon, druppels, in
+  fis-klein) en baas *Zoutbaard* (een zeemansjig in d-klein). **Hemel**: avondzon buiten, zonsondergang in de tempel,
+  nacht in de Draaikolk; brandt het baken, dan breekt voor jou de ochtend aan. Wie het baken ontstak, ziet het branden
+  (een kern van licht en een bundel omhoog, ook vanuit Zoutkom), en Wiske wordt feller (iets groter, meer glans).
+- **De Witte Toppen gaan open**: `baken2` is de `klaar`-vlag van het Zilverstrand. Omdat eiland 3 er nog niet is, staat
+  het als **aangekondigd** in `Zelda.KOMT` (`ZeldaEiland.Komt`): grijs op de zeekaart en in Brechts menu («nog even
+  geduld»), en `/hint` en Tijmen zeggen «Straks varen we naar de Witte Toppen». Sessie 3a haalt het daar weg en zet
+  het echte eiland in `Zelda.EILANDEN` (open na `baken2`); de zelftest meldt het als het op beide plekken staat.
+- **Afwijkingen van het plan, en waarom**: de Getijdentempel heeft **één** verplichte kamer plus de baas (niet twee
+  kamers: Jelle wil weinig vechten). Het getij gaat met **hendels** (zoals het plan zei), maar de eerste hendel zit
+  diep in de tempel en vraagt de maanparel van Tijmen: zo is Tijmen nodig en is de zaal een echte puzzel (eerst droog
+  naar beneden, dan vloed om erover te zwemmen). De **tijdrace onder water** is een zijmissie (Roos) buiten de tempel,
+  niet in de kerker. De **sleutel** van de Ankerpoort ligt niet in de kerker maar bij Teun: zo moet je terug naar
+  Zoutkom en hoor je wie Zoutbaard was. `fles3` is de beloning van de boodschap over zee (Lotje), niet van de kerker.
+  De rovers van 2a zijn **zombies** geworden: een drowned valt overdag niemand op het droge aan (`Drowned.okTarget`;
+  op kitpvp staat de tijd stil), dus op het bordes vochten ze niet.
 
 ### 3 · De Witte Toppen
 
@@ -295,6 +335,13 @@ bergwachters.
   weg naar zijn holen. `hart3`, `harnas2` (wachtersharnas), **Vorstbaken** (`baken3`).
 
 Muziek: *IJshoeve* (klokjes), *Sneeuwstorm* (zacht, didgeridoo), *IJspaleis* (ijzeren xylofoon), baas *Grimmel*.
+
+**Hoe 3a aanhaakt** (sessie `zelda-eiland-3a`): de Witte Toppen staan nu als aangekondigd eiland in `Zelda.KOMT` (grijs
+op de kaart na `baken2`). Haal die regel weg en zet het eiland in `Zelda.EILANDEN` met `openNa = "baken2"`
+(vak x 1400 … 1720, z −480 … −180; zee tot de rand). Brecht (2a) en Mira zeggen na het baken al «naar het noorden»;
+Tijmen op het Getijdenplein «Op de Witte Toppen zien we elkaar weer». Het getij (`ZeldaHoofdstuk.Getij`) is herbruikbaar
+voor bevroren hendels (bv. een bak met ijswater). De baas kan een eigen subklasse van `ZeldaBaas` zijn, zoals
+`Zoutbaard` (`soort`, `helper`, `beweeg`, `schade`, `boem`, `weg`).
 
 ### 4 · De Gloedberg
 
@@ -334,12 +381,13 @@ moet regelen; een vaste wegwijzer bij wie je steeds terugkomt. Zo knopen we de e
 
 | wie | wat | Lindewoud | Zilverstrand | later |
 |---|---|---|---|---|
-| **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al» | op elk eiland bij de hub of steiger (IJshoeve, Sintelgat, de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hoe komt hij hier nou weer?»); op Nachtrots helpt hij Wolf |
-| **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira | op elke steiger; na Morgal vaart hij iedereen naar huis |
+| **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al»; het Getijdenplein (2b): de **maanparel** (het getij) | op elk eiland bij de hub of steiger (IJshoeve, Sintelgat, de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hoe komt hij hier nou weer?»); op Nachtrots helpt hij Wolf |
+| **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira; na het baken: «naar het noorden» | op elke steiger; na Morgal vaart hij iedereen naar huis |
 | **Hanne**, kruidenvrouw | brouwt met wat je van andere eilanden meebrengt | *Moeraskruid* → `fles1` | *Zeekraal* (aan de dijk) → `sterkwater` | *Sneeuwbloem* van de Witte Toppen (een brouwsel tegen de kou in de mijn, of nog sterker bronwater) |
 | **Kees**, houthakker | heeft altijd iets nodig van ver weg | *De verloren bijl* | — | 4a: ijzerhout of een nieuw bijlblad van de smeden van de Gloedberg → iets voor de Kloof (een brug?) |
-| **Lotje**, kind op de pier | telt meeuwen, wil weten hoe het elders is | praatje | (vraagt naar de meeuwen) | kan een kleine boodschap krijgen (een veer van de Meeuwenrots, een sneeuwbal die niet smelt) |
-| **Wiske**, de fee | hint, uitleg, wijst | overal | overal | wordt feller bij elk baken |
+| **Lotje**, kind op de pier | telt meeuwen, wil weten hoe het elders is | praatje | (vraagt naar de meeuwen); *De zingende schelp* uit de getijdenpoelen (2b) → `fles3` | kan een kleine boodschap krijgen (een veer van de Meeuwenrots, een sneeuwbal die niet smelt) |
+| **Teun**, oude visser (Zoutkom) | weet van vroeger | — | de bakens (2a); voer met Zoutbaard: de **ankersleutel** en de ton buskruit (2b) | (kan meer van vroeger weten) |
+| **Wiske**, de fee | hint, uitleg, wijst | overal | overal | wordt feller bij elk baken (`ZeldaMetgezel.licht`: iets groter, meer glans) |
 
 **Bouwregel voor elk volgend eiland:** zet Tijmen bij de hub (met `wegwijzer` als laatste gesprek), en maak minstens
 één **boodschap over zee**: een zijmissie van een bekende op een eerder eiland die pas begint als je op het nieuwe
@@ -399,6 +447,13 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | lichtere baas | `ZeldaBaas.leven`, `levenPerSpeler`, `oproepen` | leven en hulp per baas |
 | sterk bronwater | vlag `sterkwater`, `ZeldaRegels.flesHp` | een flesje geneest 7 harten in plaats van 5 |
 | genezen bij een persoon | `spel.genees(p)` | helemaal beter (de bakker) |
+| **de Getijdentempel** (eiland 2b) | | |
+| eb en vloed | `ZeldaHoofdstuk.Getij` (+ `Hendel`), `getij(…)`, `tij(g, hendel, vloed)`, `spel.trek`, `spel.zetGetij` | een bak met waterlagen (van onder naar boven); een hendel (blok `LEVER`, `mag`: wie mag trekken, `nee`: wat Wiske zegt als het niet mag) zet het om, laag voor laag; `sluizen` open bij eb, `vloeddeuren` bij vloed; `onthoud` = vlag voor wie het omzette; `binnen` = waar wie in een dichtgaande deur staat terechtkomt; een minuut leeg = terug naar `rustVloed`; `zelda lopen` telt het water als water en de deuren als open; de test trekt met een echte klik (`tij` in de volgorde) |
+| een baas naar keuze | `ZeldaBaas.soort`, `helper`, `kleur`, `beweeg`, `schade`, `boem`, `weg` | een subklasse doet het anders: wat hij elke seconde doet, hoeveel een klap doet, wat een bom in zijn kamer doet, hoe hij verdwijnt; `golf()` roept de baas en zijn helpers op met deze soorten |
+| Kapitein Zoutbaard | `Zoutbaard` | staat bij een van zijn kruittonnen (blokken), springt om de paar tellen; een bom bij hem of zijn ton = de ton springt, hij is versuft (`ZeldaRegels.zoutbaardSchade`) |
+| drietanden | `ZeldaSpel.DRIETAND`, `onWorp` | een drietand van een vijand doet hoogstens twee harten en verdwijnt na het neerkomen; nieuwe vijanden `MATROOS` (zombie), `HARPOENIER` en `KAPITEIN` (drowned met drietand) |
+| een eiland dat eraan komt | `ZeldaEiland.Komt`, `Zelda.KOMT`, `spel.komt` | na `openNa` grijs op de kaart en bij Brecht («nog even geduld»); `/hint` en Tijmen zeggen dat je er straks heen vaart |
+| uiterlijk van een persoon | `Persoon.uiterlijk` | na het verschijnen (de kleur van Lorre de papegaai, zittend) |
 
 ### Hoe een eilandsessie aanhaakt
 
@@ -458,9 +513,13 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
    Mira/Hendrik/Pim/Teun, de bommenzak (voorwerp + spiegelpuzzel, vlag `bommen`), maliënhemd, één gevecht, eiland in
    `Zelda.EILANDEN` (open na `h1`). **Klaar als** je van het Lindewoud kunt varen (Brecht of kaart), alles op 2a te
    doen is, bommen gebarsten muren openen (ook die in de tempel van het Lindewoud), en zelftest en test OK zijn.
-3. **`zelda-eiland-2b`** — De Getijdentempel: eb-en-vloedpuzzels, kerker, Kapitein Zoutbaard, `hart2`, `fles3`,
-   Getijdenbaken (`baken2`), Tijmen bij de tempel, een boodschap over zee. **Klaar als** de kerker te halen is met alleen wat 2a geeft, de baas te verslaan is, `baken2` het Witte
-   Toppen opent, en zelftest en test OK zijn.
+3. **`zelda-eiland-2b`** (gebouwd, kitpvp 2.7) — De Getijdentempel: het Getijdenplein als hub, het wad met het wrak,
+   de getijdenpoelen, eb en vloed in de Getijdenzaal (motor `Getij`), de Spoelkamer, het raderwerk, de Ankerpoort
+   (sleutel bij Teun), Kapitein Zoutbaard (motor: baas naar keuze), `hart2`, Getijdenbaken (`baken2`, de Witte Toppen
+   aangekondigd: `Zelda.KOMT`), Tijmen (maanparel), Roos, Lorre, Lotje (`fles3`). **Klaar als** de kerker te halen is
+   met alleen wat 2a geeft, de baas te verslaan is, `baken2` het Witte Toppen opent, er een opdracht terug naar een
+   ander eiland is, een stand van 2.6.0 zonder verlies werkt, en zelftest, `test … alles`, `motor` en `zelda lopen`
+   OK zijn.
 4. **`zelda-eiland-3a`** — Witte Toppen dal en dorp: IJshoeve, personen, het sneeuwvosje (motor `ZeldaDier`, naam
    kiezen), de klauwhaak (voorwerp). **Klaar als** het vosje meeloopt en snuffelt, de klauwhaak werkt op haakpunten
    (ook het oude punt op het Lindewoud), en zelftest en test OK zijn.

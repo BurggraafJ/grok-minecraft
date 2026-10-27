@@ -77,14 +77,16 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 | `ZeldaEiland` | een eiland: id, naam, icoon, delen, aanleg-rustplaats (steiger), `openNa`-vlag, `klaar`-vlag, overtochtregels |
 | `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks`, `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Barst` (gebarsten muur), `Haakpunt`, `Spiegels` (draaispiegels), `Poort` (opent voor wie iets heeft), `Praten` (praten op het pad), `Box`; haken per deel: `tik`, `boem`, `wacht`, `hemel(plek, stand)` |
 | `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1, versie 4: een open eiland): Thuis, Lindedorp in het midden, drie wegen (noord, oost, zuid), de Heksenkring en de haven; Tijmen, Kees, Fien, Sem, Bram, Wout, Gerrit, Hanne, Brecht, Lotje; de oude stukken staan verschoven (`op(dx, dz)`); `motor()` = tips en doelen; `aanvullen` = oude standen (één keer omzetten) |
-| `ZeldaEiland2a` | «Het Zilverstrand» west (eiland 2a, deel `zelda-e2a`): steiger, Zoutkom, de vuurtoren met de spiegelkelder, de duinen, de Meeuwenrots, de dijk; Brecht, Teun, Mira, Hendrik, Pim en Tijmen; zeekraal voor Hanne; de vlieger en het licht van de vuurtoren in `tik()` |
+| `ZeldaEiland2a` | «Het Zilverstrand» west (eiland 2a, deel `zelda-e2a`): steiger, Zoutkom, de vuurtoren met de spiegelkelder, de duinen, de Meeuwenrots, de dijk; Brecht, Teun (ook de ankersleutel voor 2b), Mira, Hendrik, Pim en Tijmen; zeekraal voor Hanne; de vlieger en het licht van de vuurtoren in `tik()` |
+| `ZeldaEiland2b` | «Het Zilverstrand» oost, de Getijdentempel (eiland 2b, deel `zelda-e2b`): de dijk, het Getijdenplein (hub, Tijmen: de maanparel), het wad met het wrak (Lorre), de getijdenpoelen (Roos, de parelduik), de Getijdenzaal met eb en vloed, de Spoelkamer, de pijpgang, het raderwerk, de Ankerpoort, de Draaikolk (Zoutbaard), de toren met het Getijdenbaken; de kolk en het baken in `tik()` |
+| `Zoutbaard` | de baas van 2b (subklasse van `ZeldaBaas`): kruittonnen, springen, versuft na een bom, zeepokken |
 | `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
 | `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
 | `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
 | `ZeldaDier` | je eigen huisdier (vlag `dier:<soort>`): loopt mee, snuffelt verborgen vondsten op |
 | `ZeldaVoorwerp` | een voorwerp in de hotbar (nu: het flesje en de bommen; later klauwhaak, vuurstaf, lichtpijlen) |
 | `ZeldaRegels` | regels zonder wereld (unit-tests): harten, hartstukjes, harnas, flesjes, welk doel, opnieuw vanaf hier |
-| `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk) |
+| `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk); een andere baas = een subklasse met eigen `soort`, `helper`, `beweeg`, `schade`, `boem`, `weg` |
 | `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; drie lagen: achtergrond (altijd), lus (gevecht, baas), deuntjes; categorie «Nootblokken» |
 | `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden) |
 | `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door alle eilanden (varen, elk deel, zijmissies); `test <speler> motor`: alle motoronderdelen |
@@ -109,6 +111,11 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 - **Oefenplek** (`k.alleenBel`): de deuren staan open; wie erdoor loopt, loopt er gewoon door. Pas als je de bel luidt
   gaan ze dicht en wordt er gevochten (de eerste keer de gewone golven, daarna met de extra). Telt niet als verplichte
   kamer. Op het Lindewoud: het oefenveld en het Veen.
+- **Eb en vloed** (`Getij`, eiland 2b): een bak met waterlagen. Een **hendel** (`LEVER`; rechtsklik) zet het getij om:
+  het water zakt of stijgt laag voor laag (een halve seconde per laag). Mag het niet (`Hendel.mag`, bv. zonder de
+  maanparel), dan zit hij vast en zegt Wiske waarom (`Hendel.nee`). **Sluizen** zijn open bij eb (bij vloed drukt het
+  water ze dicht), **vloeddeuren** alleen bij vloed; bij vloed zwem je naar plekken die bij eb te hoog liggen. Een
+  minuut niemand in de buurt = terug naar de rust (`rustVloed`). Samen: het getij is van iedereen in de zaal.
 - **Poort** (`Poort`): een deur die opengaat als er iemand in het gebied staat voor wie hij mag (`mag`, bv. de vlag
   `lichtwoord` van Tijmen), en dan voor iedereen open is; een minuut niemand in de buurt = weer dicht. Op het
   Lindewoud: de doornen voor de Heksenkring.
@@ -160,7 +167,7 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 - **Tekst**: alles op **één plek**, de actiebalk, één grijze regel tegelijk (spreker in groen), elke regel 2,5–6 s.
   Geen titels, geen chat. 
 - **Muziek, altijd**: een achtergrondlied per streek (`muziek(Location)`: Thuis, Woud, Tempel, Veen, Haven, Zee,
-  Zoutkom, Duinen, Vuurtoren, Lindedorp),
+  Zoutkom, Duinen, Vuurtoren, Lindedorp, Wad, Getijdentempel; baas Zoutbaard),
   daarboven de gevechts- of baaslus en losse deuntjes. Zachter met de schuif «Nootblokken».
 - **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen gewoon
   bijkomen door eten); genezen bij rustplaatsen, bronnen, flesjes, gewonnen kamers, de bakker in Lindedorp, de helft
@@ -210,6 +217,17 @@ smokkelgrot (bommen) → kaap (rust 2) → het bordes (het enige gevecht) → de
 de bommenzak, de gebarsten wand) → het noordstrand → de duinpan (rust 3, Pim, de duinbaan) → de Meeuwenrots (een bom,
 het Zeelicht) → terug naar Mira: het licht brandt (einde `e2a`). De dijk naar 2b staat nog onder water.
 
+### Eiland 2b: «Het Zilverstrand» oost, de Getijdentempel (`e2b`, deel `zelda-e2b`, x 1230 … 1360, z −480 … −180)
+
+Zie de tabel in `ZELDA.md` («2b · oost, de Getijdentempel»). Kort: de dijk → het Getijdenplein (rust 0, Tijmen: de
+maanparel; bordjes naar het wrak, de poelen, de tempel en Zoutkom) → het wad met het wrak van de Kraai (Lorre, het
+logboek) en de getijdenpoelen (Roos, de parelduik) → de tempel (rust 1): de Getijdenzaal staat droog; door de sluis
+(open bij eb) naar de Spoelkamer (het enige gevecht) → een bom op de pijpgang → het raderwerk: de grote hendel
+(maanparel) = vloed → door de vloeddeur omhoog naar de drempel (rust 2) → de Ankerpoort (de sleutel heeft Teun in
+Zoutkom) → de Draaikolk: Kapitein Zoutbaard (een bom bij hem of zijn ton = versuft) → `hart2` → de toren op naar het
+Getijdenbaken (rust 3, `baken2`, einde `e2b`). Daarna staan de Witte Toppen als aangekondigd eiland op de kaart
+(`Zelda.KOMT`). Boodschap over zee: Lotje (Lindewoud) en de zingende schelp → `fles3`.
+
 ### Een eiland toevoegen
 
 Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `ZELDA.md`. Kort:
@@ -242,15 +260,18 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 - `kitpvp zelda test <speler> [alles]` — loopt met een echte speler door de poort en het hoofdstuk (kamers verslaan,
   puzzels, uitdaging, vondsten, rustplaatsen, opslag op schijf); zonder `alles` tot de eerste rustplaats na de eerste
   kamer; met `alles` ook vrije doorgang en de bel, vondsten voor later (blijven liggen), spiegels (echte klikken),
-  gebarsten muren op het pad (een echte bom), wat met de voorwerpen van nu te halen is, de zijmissies, Brecht (klik in
-  zijn menu = varen naar het volgende eiland), en aan het eind via de kaart terug naar een eerder eiland om daar met de
+  gebarsten muren op het pad (een echte bom), eb en vloed (een echte klik op de hendel, dan het water, de sluizen en de
+  vloeddeuren nagekeken), een echte bom in de ton van Zoutbaard (hij moet versuft zijn), wat met de voorwerpen van nu te
+  halen is, de zijmissies, Brecht (klik in zijn menu = varen naar het volgende eiland), het aangekondigde eiland op de
+  kaart (de Witte Toppen na `baken2`), en aan het eind via de kaart terug naar een eerder eiland om daar met de
   bommen te halen wat kon (`hs:lindewoud-4`); `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
   voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
 - `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), de wegwijzer
   (Tijmen noemt het dichtstbijzijnde doel van een groep), bron (met alleen Tijmens flesje),
   flesje, hartstukjes, harnas, huisdier (verschijnt, loopt mee), gesprek en zijmissie met beloning, opnieuw vanaf een
-  rustplaats, uitleg uit, de bommenzak (vak 4) en een echte bom tegen de tempelmuur, varen en aankomen, tip na
+  rustplaats, uitleg uit, de bommenzak (vak 4) en een echte bom tegen de tempelmuur, het getij (zonder maanparel zit de
+  hendel vast en zegt Wiske waarom; met: het water stijgt laag voor laag), varen en aankomen, tip na
   doodgaan in een kamer, de kaart, en weg = alles weg. Wist eerst en
   na afloop de voortgang van die speler (alleen voor tests).
 - `kitpvp zelda lopen <eiland>` — is alles te belopen? Volgt vanaf de aanleg elke plek waar je kunt staan (stap ≤ 1
@@ -262,10 +283,12 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   vlag aan (nog eens = uit), bv. `fles1`, `hs:test`, `harnas2`, `dier:vos`, `o:uitleg-uit` (helpen en testen).
   `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.
 - `kitpvp bouw zelda` — het Lindewoud opnieuw bouwen, `kitpvp bouw zelda-e2a` het Zilverstrand west, `kitpvp bouw
-  zelda-zee` de zee. `kitpvp kaart` maakt ook `zelda-*.png` (het Lindewoud: boven, thuis, dorp, noord, tempel, veen,
-  haven en zijaanzichten; `zelda-e2a-*`: boven, dorp, kelder, kaap, duinen, rots).
-- `/zelda ga <plek>` kent ook puzzels, uitdagingen en poorten (`vuren`, `kloof`, `doelen`, `spiegels`, `doornen`) en
-  zoekt daar een plek om te staan.
+  zelda-e2b` de Getijdentempel, `kitpvp bouw zelda-zee` de zee. `kitpvp kaart` maakt ook `zelda-*.png` (het Lindewoud: boven, thuis, dorp, noord, tempel, veen,
+  haven en zijaanzichten; `zelda-e2a-*`: boven, dorp, kelder, kaap, duinen, rots; `zelda-e2b-*`: boven, tempel, kelders
+  (en van opzij), de zaal van opzij, wrak, poelen, de duikgang van opzij).
+- `/zelda ga <plek>` kent ook puzzels, uitdagingen en poorten (`vuren`, `kloof`, `doelen`, `spiegels`, `doornen`,
+  `parelduik`, `ankerpoort`), getijden en hun hendels (`getij`, `hendel1`, `hendel2`), gebarsten muren (`muur-<id>`), en
+  een persoon die op twee delen staat met het deel erbij (`tijmen-e2b`); het zoekt daar een plek om te staan.
 
 ## Ruimte in de wereld
 
@@ -275,7 +298,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 | colosseum + kitruimte | −50 … 50 | −60 … 50 | midden 0/0, kitruimte boven de noordmuur (z −57 … −35) |
 | oefenarena + kitruimte | −24 … 24 | 51 … 134 | midden 0/110, kitruimte z 63 … 87 |
 | kasteel + kitruimte | −42 … 42 | −188 … −94 | midden 0/−150, gracht rondom, kitruimte z −119 … −95 |
-| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); het Lindewoud bouwt x 1024 … 1639, z −179 … 179 (land x 1045 … 1492, z −105 … 105, de rest zee); het Zilverstrand x 1060 … 1360, z −480 … −180 (2a tot 1229); de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
+| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); het Lindewoud bouwt x 1024 … 1639, z −179 … 179 (land x 1045 … 1492, z −105 … 105, de rest zee); het Zilverstrand x 1060 … 1360, z −480 … −180 (2a tot 1229, 2b vanaf 1230); de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
 
 Alle huidige gebieden liggen in de chunks die de plugin geladen houdt (`onEnable`). Het Zelda-gebied niet: alleen
 tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze zien (de server heeft 1–2 GB).
@@ -283,7 +306,7 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
 ## Bouwen en beheer
 
 - `plugins/KitPvP/gebouwd.yml`: `grond` (vloerhoogte) en per deel de gebouwde versie (`hub`, `arena`, `kasteel`,
-  `zelda`, `zelda-e2a`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
+  `zelda`, `zelda-e2a`, `zelda-e2b`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
   `plugins/KitPvP/zelda.yml`: voortgang in Story of Zelda.
 - Console: `kitpvp zelftest`, `kitpvp bouw [hub|arena|kasteel|zelda|alles]`, `kitpvp status`, `kitpvp aftellen <s>`,
   `kitpvp zelda …` (zie hierboven), `kitpvp kaart` (PNG's van hub, arena's, kasteel en Zelda in
@@ -306,4 +329,6 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
   poorten dicht in rust en niet voor iedereen open; eiland 2: hoogstens één verplichte kamer per half eiland (nu voor
   elk eiland), spiegels in de
   begintoestand en met de oplossing komt het licht bij het doel (maar niet al aan het begin), een vrije plek vóór elke
-  gebarsten muur, elk voorwerp in een eigen vak).
+  gebarsten muur, elk voorwerp in een eigen vak; eiland 2b: het getij in rust (water, sluizen, vloeddeuren), hendels op
+  hun plek en niet voor iedereen, de kruittonnen van Zoutbaard en een vrije plek bij elke ton, een aangekondigd eiland
+  dat niet ook echt bestaat).

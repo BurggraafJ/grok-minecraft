@@ -63,6 +63,12 @@ final class Zoutbaard extends ZeldaBaas {
         return heel[i];
     }
 
+    /** Staat er niemand op de plek van ton {@code i}? */
+    private boolean vrij(int i) {
+        int[] t = tonnen.get(i);
+        return w().getNearbyEntities(org.bukkit.util.BoundingBox.of(w().getBlockAt(t[0], t[1], t[2])), e -> e instanceof org.bukkit.entity.LivingEntity).isEmpty();
+    }
+
     @Override
     void start(org.bukkit.entity.LivingEntity e) {
         super.start(e);
@@ -89,7 +95,7 @@ final class Zoutbaard extends ZeldaBaas {
     void beweeg(ZeldaSpel spel, List<Player> in, float d) {
         long nu = System.currentTimeMillis();
         for (int i = 0; i < tonnen.size(); i++)
-            if (!heel[i] && nu >= terugOp[i]) {                          // een nieuwe ton aangespoeld
+            if (!heel[i] && nu >= terugOp[i] && vrij(i)) {               // een nieuwe ton aangespoeld (niet op iemand)
                 zetTon(i, true);
                 w().spawnParticle(Particle.SPLASH, ton(i), 20, 0.4, 0.4, 0.4, 0.1);
             }

@@ -330,6 +330,13 @@ final class ZeldaTest {
                         () -> !u.poort.isOpen && h.w.getBlockAt(u.poort.blokken.get(0)[0], u.poort.blokken.get(0)[1], u.poort.blokken.get(0)[2]).getType() == u.poort.dicht.getMaterial(), 80);
                 stap("uitdaging " + u.id + " start", () -> p.teleport(vrij(u.start.midden(h.w).add(0, 1, 0))), 8,
                         () -> u.loopt.containsKey(id) && u.poort.isOpen, 40);
+                if (u.via != null) {                                                     // eerst de finish zonder de weg erlangs: telt niet
+                    stap("uitdaging " + u.id + " niet om", () -> p.teleport(vrij(u.finish.midden(h.w).add(0, 1, 0))), 8, () -> {
+                        moet(stand().beste(u.id) == null, "uitdaging " + u.id + ": gehaald zonder erlangs te gaan");
+                        return true;
+                    }, 1);
+                    stap("uitdaging " + u.id + " erlangs", () -> p.teleport(u.via.midden(h.w).add(0, 0.5, 0)), 8, () -> u.erdoor.contains(id), 40);
+                }
                 stap("uitdaging " + u.id + " finish", () -> p.teleport(vrij(u.finish.midden(h.w).add(0, 1, 0))), 8, () -> stand().beste(u.id) != null, 40);
             } else if (o instanceof ZeldaHoofdstuk.Barst b) {                       // een gebarsten muur op het pad: een echte bom
                 stap("bom op " + b.id, () -> {

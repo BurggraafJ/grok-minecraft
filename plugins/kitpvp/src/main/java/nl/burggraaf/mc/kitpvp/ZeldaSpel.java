@@ -656,7 +656,8 @@ final class ZeldaSpel implements Listener {
                 Long start = u.loopt.get(p.getUniqueId());
                 if (u.start.in(l)) {
                     if (start == null || nu - start > 600) begin(p, u, nu);
-                } else if (start != null && u.finish.in(l)) gehaald(p, s, u, nu - start);
+                } else if (start != null && u.via != null && u.via.in(l)) u.erdoor.add(p.getUniqueId());
+                else if (start != null && u.finish.in(l) && (u.via == null || u.erdoor.contains(p.getUniqueId()))) gehaald(p, s, u, nu - start);
             }
             for (ZeldaHoofdstuk.Kamer k : h.kamers) {
                 if (k.alleenBel) continue;                              // een oefenplek: alleen de bel begint het gevecht
@@ -1118,6 +1119,7 @@ final class ZeldaSpel implements Listener {
     private void begin(Player p, ZeldaHoofdstuk.Uitdaging u, long nu) {
         boolean eerste = !u.loopt.containsKey(p.getUniqueId());
         u.loopt.put(p.getUniqueId(), nu);
+        u.erdoor.remove(p.getUniqueId());
         if (eerste) p.playSound(p, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.RECORDS, 0.7f, 1.2f);
     }
 
@@ -1420,7 +1422,8 @@ final class ZeldaSpel implements Listener {
         }
         if (g.onthoud != null && s.zet(g.onthoud)) voortgang.vuil();
         p.getWorld().playSound(l, Sound.BLOCK_LEVER_CLICK, 1f, 0.7f);
-        zetGetij(g, !g.vloed, false);
+        boolean naar = h.naar() != null ? h.naar() : !g.vloed;
+        if (naar != g.vloed) zetGetij(g, naar, false);                   // staat het al zo (een hendel die maar één kant op gaat): niets
     }
 
     /**
@@ -1480,7 +1483,7 @@ final class ZeldaSpel implements Listener {
             return;
         }
         if (g.vloed == g.rustVloed) return;
-        if (!in(g.gebied.groter(6)).isEmpty()) g.leegSinds = 0;
+        if (!in(g.buurt != null ? g.buurt : g.gebied.groter(6)).isEmpty()) g.leegSinds = 0;
         else if (g.leegSinds == 0) g.leegSinds = nu;
         else if (nu - g.leegSinds > 60_000L) zetGetij(g, g.rustVloed, true);
     }
@@ -2288,6 +2291,10 @@ final class ZeldaSpel implements Listener {
                     case CRAFTING_TABLE, COMPOSTER, CAULDRON, WATER_CAULDRON, FLOWER_POT, LECTERN, CAMPFIRE, SOUL_CAMPFIRE -> true;
                     default -> false;
                 })) e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);   // geen tonnen, werkbank, ketel: spullen blijven bij jou
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK && geklikt != null && geklikt.getType() == Material.LEVER && e.getHand() != EquipmentSlot.HAND) {
+            e.setCancelled(true);                                    // een hendel gaat alleen om via de hoofdhand (en dan door het getij)
+            return;
+        }
         // eerst wat je aanklikt (bel, spiegel, vuurschaal): dat gaat voor wat je vasthoudt (flesje, bom, kaart)
         if (e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getHand() == EquipmentSlot.HAND) {
             Block b = e.getClickedBlock();
