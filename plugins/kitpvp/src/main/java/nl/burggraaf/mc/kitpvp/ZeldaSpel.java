@@ -25,6 +25,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.AbstractArrow;
@@ -172,6 +173,7 @@ final class ZeldaSpel implements Listener {
         this.itemKey = new NamespacedKey(plugin, "zelda");
         this.hartKey = new NamespacedKey(plugin, "zelda-harten");
         voorwerpen.add(new Flesje());
+        voorwerpen.add(new Bommen());
     }
 
     void aan() {
@@ -511,6 +513,7 @@ final class ZeldaSpel implements Listener {
                 for (ZeldaHoofdstuk.Barst b : h.barsten) barst(b, nu);
             }
         }
+        if (tikken % 10 == 5) for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) veilig("spiegels", () -> spiegels(sp, nu));
         if (tikken % 10 == 0) {
             verteller(nu);
             for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) kamer(k, nu);
@@ -522,6 +525,11 @@ final class ZeldaSpel implements Listener {
         if (tikken % 20 == 0) {
             for (Player p : spelers) veilig("seconde", () -> seconde(p, sessie(p), nu));
             for (ZeldaHoofdstuk h : delen()) veilig("decor", () -> decor(h));
+            for (ZeldaHoofdstuk h : hoofdstukken) {                 // wat een deel zelf laat bewegen (vlieger, lichtbundel, …)
+                List<Player> op = new ArrayList<>();
+                for (Player p : spelers) if (sessie(p) != null && sessie(p).vaart == null && sessie(p).h == h) op.add(p);
+                if (!op.isEmpty()) veilig("deel " + h.id(), () -> h.tik(this, op, nu));
+            }
             if (tikken % 200 == 0) bewaar();
         }
     }
@@ -950,6 +958,8 @@ final class ZeldaSpel implements Listener {
             case SOLDAAT -> org.bukkit.entity.Vindicator.class;
             case KRUISBOOG -> org.bukkit.entity.Pillager.class;
             case HEKS -> org.bukkit.entity.Witch.class;
+            case ROVER -> org.bukkit.entity.Drowned.class;
+            case ROVERSCHUTTER -> org.bukkit.entity.Skeleton.class;
         };
         w.spawnParticle(Particle.SOUL, l.clone().add(0, 0.5, 0), 20, 0.4, 0.2, 0.4, 0.03);
         w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.8, 0), 10, 0.3, 0.5, 0.3, 0.01);
@@ -993,6 +1003,18 @@ final class ZeldaSpel implements Listener {
                     eq.setItemInMainHand(new ItemStack(Material.STONE_AXE));
                 }
                 case KRUISBOOG -> hp = 16;
+                case ROVER -> {                                      // meeuwenrover: verweerd, met een kort zwaard
+                    hp = 18;
+                    dmg = 3;
+                    eq.setHelmet(gekleurd(Material.LEATHER_HELMET, 0xb02e26));
+                    eq.setItemInMainHand(new ItemStack(Material.STONE_SWORD));
+                }
+                case ROVERSCHUTTER -> {                              // schiet van achteren, rode zakdoek
+                    hp = 14;
+                    eq.setHelmet(gekleurd(Material.LEATHER_HELMET, 0xb02e26));
+                    eq.setChestplate(gekleurd(Material.LEATHER_CHESTPLATE, 0x3c44aa));
+                    eq.setItemInMainHand(new ItemStack(Material.BOW));
+                }
                 default -> {
                     hp = 80 + 40 * (spelers - 1);
                     schaal = 1.5;
@@ -1016,6 +1038,15 @@ final class ZeldaSpel implements Listener {
             if (schaal != 1) zetAttr(m, Attribute.SCALE, schaal);
             zetAttr(m, Attribute.FOLLOW_RANGE, 40);
         });
+    }
+
+    private static ItemStack gekleurd(Material m, int rgb) {
+        ItemStack it = new ItemStack(m);
+        if (it.getItemMeta() instanceof LeatherArmorMeta lm) {
+            lm.setColor(Color.fromRGB(rgb));
+            it.setItemMeta(lm);
+        }
+        return it;
     }
 
     static boolean isVijand(Entity e) {
@@ -1047,6 +1078,7 @@ final class ZeldaSpel implements Listener {
         p.setExp(0f);
         muziek.speel(p, ZeldaMuziek.OPGELOST);
         zeg(p, Component.text(u.naam + " · " + ZeldaVoortgang.tijd(ms) + (record && oud != null ? " · record" : ""), NamedTextColor.GRAY));
+        if (u.daarna != null) u.daarna.doe(this, p, s);
     }
 
     private void uitdaging(ZeldaHoofdstuk.Uitdaging u, long nu) {
@@ -1158,6 +1190,90 @@ final class ZeldaSpel implements Listener {
             }
             p.setExp(Math.max(0f, Math.min(0.999f, over / (r.seconden * 1000f))));
         }
+    }
+
+    // ── spiegels: het licht naar het doel leiden ────────────────────────────────────────────
+
+    /** Waar het licht nu langs gaat (en of het het doel raakt). */
+    ZeldaRegels.Straal straal(ZeldaHoofdstuk.Spiegels sp, List<BlockFace> stand) {
+        var w = plugin.w;
+        return ZeldaRegels.straal(sp.bron, sp.richting, sp.spiegels, stand, sp.doel, c -> w.getBlockAt(c[0], c[1], c[2]).isPassable(), 64);
+    }
+
+    /** Rechtsklik op spiegel {@code i}: een kwartslag draaien; komt het licht nu bij het doel, dan is hij opgelost. */
+    void draai(Player p, ZeldaHoofdstuk.Spiegels sp, int i) {
+        if (sp.opgelost) return;
+        sp.stand.set(i, ZeldaRegels.draai(sp.stand.get(i)));
+        int[] c = sp.spiegels.get(i);
+        var w = p.getWorld();
+        w.getBlockAt(c[0], c[1], c[2]).setBlockData(ZeldaHoofdstuk.Spiegels.blok(sp.stand.get(i)), false);
+        w.playSound(new Location(w, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 0.8f + 0.1f * i);
+        sp.leegSinds = 0;
+        if (straal(sp, sp.stand).raak()) losOp(sp, false);
+    }
+
+    private void losOp(ZeldaHoofdstuk.Spiegels sp, boolean stil) {
+        sp.opgelost = true;
+        sp.leegSinds = 0;
+        var w = plugin.w;
+        w.getBlockAt(sp.doel[0], sp.doel[1], sp.doel[2]).setBlockData(sp.doelAan, false);
+        deur(sp.deur, true, sp.gebied.midden(w));
+        if (stil) return;
+        for (Player q : in(sp.gebied)) {
+            if (voortgang.van(q.getUniqueId()).zet("r:" + sp.id)) voortgang.vuil();
+            muziek.speel(q, ZeldaMuziek.OPGELOST);
+            for (ZeldaHoofdstuk.Regel rg : sp.bijOplossen) vertel(q, rg);
+        }
+    }
+
+    /** Spiegels terug naar het begin. */
+    void herstel(ZeldaHoofdstuk.Spiegels sp) {
+        var w = plugin.w;
+        sp.opgelost = false;
+        sp.leegSinds = 0;
+        for (int i = 0; i < sp.spiegels.size(); i++) {
+            sp.stand.set(i, sp.begin.get(i));
+            int[] c = sp.spiegels.get(i);
+            w.getBlockAt(c[0], c[1], c[2]).setBlockData(ZeldaHoofdstuk.Spiegels.blok(sp.begin.get(i)), false);
+        }
+        w.getBlockAt(sp.doel[0], sp.doel[1], sp.doel[2]).setBlockData(sp.doelUit, false);
+        deur(sp.deur, false, sp.gebied.midden(w));
+    }
+
+    /** Twee keer per seconde: het licht laten zien aan wie in de buurt is; opgelost en een minuut niemand = terug. */
+    private void spiegels(ZeldaHoofdstuk.Spiegels sp, long nu) {
+        List<Player> bij = in(sp.gebied.groter(4));
+        if (sp.opgelost) {
+            if (!bij.isEmpty()) sp.leegSinds = 0;
+            else if (sp.leegSinds == 0) sp.leegSinds = nu;
+            else if (nu - sp.leegSinds > 60_000L) herstel(sp);
+        } else for (Player p : in(sp.gebied))                       // wie hem al eens oploste, hoeft dat niet opnieuw
+            if (voortgang.van(p.getUniqueId()).heeft("r:" + sp.id)) {
+                List<BlockFace> op = sp.oplossing();
+                for (int i = 0; i < sp.spiegels.size(); i++) {
+                    sp.stand.set(i, op.get(i));
+                    int[] c = sp.spiegels.get(i);
+                    plugin.w.getBlockAt(c[0], c[1], c[2]).setBlockData(ZeldaHoofdstuk.Spiegels.blok(op.get(i)), false);
+                }
+                losOp(sp, true);
+                break;
+            }
+        if (bij.isEmpty()) return;
+        ZeldaRegels.Straal st = straal(sp, sp.stand);
+        var w = plugin.w;
+        Particle.DustOptions licht = new Particle.DustOptions(Color.fromRGB(0xfff2a0), 1.1f);
+        List<Location> punten = new ArrayList<>();
+        double[] vorige = {sp.bron[0] + 0.5, sp.bron[1] + 0.5, sp.bron[2] + 0.5};
+        List<int[]> door = new ArrayList<>(st.punten());
+        if (st.raak()) door.add(sp.doel);
+        for (int[] c : door) {                               // twee stipjes per blok, van midden naar midden
+            double[] m = {c[0] + 0.5, c[1] + 0.5, c[2] + 0.5};
+            punten.add(new Location(w, (vorige[0] + m[0]) / 2, (vorige[1] + m[1]) / 2, (vorige[2] + m[2]) / 2));
+            punten.add(new Location(w, m[0], m[1], m[2]));
+            vorige = m;
+        }
+        for (Player p : bij)
+            for (Location l : punten) p.spawnParticle(Particle.DUST, l, 1, 0.02, 0.02, 0.02, 0, licht);
     }
 
     // ── gebarsten muren (bommen) en haakpunten (klauwhaak) ──────────────────────────────────
@@ -1786,6 +1902,92 @@ final class ZeldaSpel implements Listener {
         }
     }
 
+    // ── de bommenzak (voorwerp in vak 4, eiland 2) ──────────────────────────────────────────
+
+    /**
+     * De bommenzak: rechtsklik = een bom gooien (een tel wachten tussen twee bommen). Waar hij neerkomt, sist hij even en
+     * dan ontploft hij ({@link #ontplof}): gebarsten muren breken open, vijanden vlakbij krijgen een flinke klap. Blokken
+     * gaan nooit echt kapot. De bommen raken nooit op.
+     */
+    final class Bommen implements ZeldaVoorwerp {
+        static final Material ITEM = Material.FIREWORK_STAR;
+        static final int LONT = 30;                          // ticks tussen neerkomen en ontploffen
+
+        public String id() { return "bommen"; }
+        public String vlag() { return "bommen"; }
+        public int vak() { return 3; }
+
+        public ItemStack item(ZeldaSpel spel, Player p, ZeldaVoortgang.Stand s) {
+            ItemStack it = ding(ITEM, "Bom", "bommen");
+            lore(it, "rechtsklik: gooien", "breekt gebarsten muren");
+            return it;
+        }
+
+        public void gebruik(ZeldaSpel spel, Player p, PlayerInteractEvent e) {
+            if (p.hasCooldown(ITEM)) return;
+            p.setCooldown(ITEM, 20);
+            var v = p.getEyeLocation().getDirection().multiply(0.85).add(new org.bukkit.util.Vector(0, 0.18, 0));
+            org.bukkit.entity.Snowball bal = p.launchProjectile(org.bukkit.entity.Snowball.class, v);
+            bal.setItem(new ItemStack(ITEM));
+            bal.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "v:" + id());
+            bal.addScoreboardTag(TAG);
+            p.playSound(p, Sound.ENTITY_SNOWBALL_THROW, 0.6f, 0.7f);
+        }
+
+        public void raak(ZeldaSpel spel, Player p, ProjectileHitEvent e) {
+            Location l;
+            if (e.getHitBlock() != null) {
+                Block voor = e.getHitBlockFace() == null ? e.getHitBlock() : e.getHitBlock().getRelative(e.getHitBlockFace());
+                l = voor.getLocation().add(0.5, 0.1, 0.5);
+            } else l = e.getEntity().getLocation();
+            e.getEntity().remove();
+            lont(p, l);
+        }
+    }
+
+    /** Een bom ligt te sissen op {@code l} en ontploft na de lont. */
+    void lont(Player p, Location l) {
+        var w = l.getWorld();
+        ItemDisplay bom = w.spawn(l.clone().add(0, 0.25, 0), ItemDisplay.class, d -> {
+            d.setPersistent(false);
+            d.addScoreboardTag(TAG);
+            d.setItemStack(new ItemStack(Bommen.ITEM));
+            d.setBrightness(new Display.Brightness(15, 15));
+        });
+        w.playSound(l, Sound.ENTITY_TNT_PRIMED, 0.6f, 1.3f);
+        for (int t = 0; t < Bommen.LONT; t += 5) {
+            int tt = t;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (bom.isValid()) w.spawnParticle(Particle.SMOKE, bom.getLocation().add(0, 0.35, 0), 3, 0.05, 0.05, 0.05, 0.01);
+                if (tt >= Bommen.LONT - 10 && bom.isValid()) w.spawnParticle(Particle.FLAME, bom.getLocation().add(0, 0.35, 0), 2, 0.05, 0.05, 0.05, 0.01);
+            }, t);
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            bom.remove();
+            if (p.isOnline() && speelt(p)) ontplof(p, l);
+        }, Bommen.LONT);
+    }
+
+    /**
+     * Een bom ontploft (zonder echte schade aan de wereld): knal, gebarsten muur vlakbij open ({@link #breek}), vijanden
+     * binnen 3,5 blok een klap, en het deel mag zelf nog iets doen ({@link ZeldaHoofdstuk#boem}).
+     */
+    void ontplof(Player p, Location l) {
+        var w = l.getWorld();
+        w.playSound(l, Sound.ENTITY_GENERIC_EXPLODE, 0.9f, 1.1f);
+        w.spawnParticle(Particle.EXPLOSION, l.clone().add(0, 0.5, 0), 3, 0.6, 0.4, 0.6, 0);
+        w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.5, 0), 12, 0.6, 0.4, 0.6, 0.02);
+        for (Entity e : w.getNearbyEntities(l, 3.5, 3.5, 3.5))
+            if (isVijand(e) && e instanceof LivingEntity le && !le.isDead()) {
+                le.damage(12, p);
+                var weg = le.getLocation().toVector().subtract(l.toVector()).setY(0);
+                if (weg.lengthSquared() > 0.01) le.setVelocity(weg.normalize().multiply(0.6).setY(0.35));
+            }
+        ZeldaHoofdstuk.Barst b = barstBij(l);
+        if (b != null) breek(p, b);
+        for (ZeldaHoofdstuk h : hoofdstukken) if (h.speelgebied != null && h.speelgebied.in(l)) h.boem(this, p, l);
+    }
+
     // ── gebeurtenissen ──────────────────────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.LOW)
@@ -1826,6 +2028,15 @@ final class ZeldaSpel implements Listener {
                         luid(p, k);
                         return;
                     }
+            if (b.getType() == ZeldaHoofdstuk.Spiegels.BLOK && hier != null)  // een spiegel: een kwartslag draaien
+                for (ZeldaHoofdstuk.Spiegels sp : alle(hier, h -> h.spiegels)) {
+                    int i = sp.index(b.getX(), b.getY(), b.getZ());
+                    if (i >= 0) {
+                        e.setCancelled(true);
+                        draai(p, sp, i);
+                        return;
+                    }
+                }
             for (ZeldaHoofdstuk.Reeks r : sessie(p).h.reeksen) {
                 if (r.hoe != ZeldaHoofdstuk.Reeks.Hoe.KLIK) continue;
                 int i = r.index(b.getX(), b.getY(), b.getZ());

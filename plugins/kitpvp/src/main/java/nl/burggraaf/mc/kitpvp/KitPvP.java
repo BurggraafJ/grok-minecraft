@@ -1053,6 +1053,15 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.boven(w, map, "zelda-eik", zx + 82, -28, zx + 112, 4, g - 2, zg + 5, 10));                 // holle eik en houtkap (onder de kruin)
         f.add(Kaart.voor(w, map, "zelda-richel", 1, 0, zx + 185, -20, 2, g, zg + 8, 20, 10));                   // oostwand van de Kloof
         f.add(Kaart.voor(w, map, "zelda-barst", 0, 1, 2, zx + 140, zx + 154, zg - 1, zg + 9, 10, 12));          // gebarsten muur in het heiligdom
+        // eiland 2a, het Zilverstrand west: alles van boven, het dorp, de kelder (net onder het plafond), de kaap en de duinen
+        f.add(Kaart.boven(w, map, "zelda-e2a-boven", ZeldaEiland2a.X1, -440, ZeldaEiland2a.X2, -200, g - 2, zg + 45, 3));
+        f.add(Kaart.boven(w, map, "zelda-e2a-dorp", 1108, -322, 1172, -210, g - 2, zg + 22, 6));
+        f.add(Kaart.boven(w, map, "zelda-e2a-kelder", 1077, -347, 1101, -302, g, zg + 7, 14));
+        f.add(Kaart.voor(w, map, "zelda-e2a-kaap-zij", 0, -1, -296, 1068, 1130, g, zg + 45, 60, 6));
+        f.add(Kaart.voor(w, map, "zelda-e2a-kaap-noord", 0, 1, -350, 1068, 1130, g, zg + 45, 60, 6));
+        f.add(Kaart.boven(w, map, "zelda-e2a-duinen", 1100, -416, 1222, -340, g - 2, zg + 24, 6));
+        f.add(Kaart.voor(w, map, "zelda-e2a-rots-zij", 0, -1, -376, 1180, 1216, g, zg + 24, 30, 10));
+        f.add(Kaart.voor(w, map, "zelda-e2a-duinen-zij", 0, -1, -345, 1096, 1224, g, zg + 24, 80, 4));
         List<String> uit = new ArrayList<>();
         for (File x : f) uit.add(x.getPath());
         return uit;

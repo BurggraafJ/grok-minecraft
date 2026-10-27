@@ -11,6 +11,7 @@ import java.util.function.Predicate;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LivingEntity;
@@ -60,7 +61,7 @@ abstract class ZeldaHoofdstuk {
     }
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
-    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS }
+    enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -174,6 +175,7 @@ abstract class ZeldaHoofdstuk {
         final Map<UUID, Long> loopt = new HashMap<>();      // speler → starttijd (ms)
         long openTot;
         Location bord;                                      // bord met de beste tijden (null = geen)
+        Actie daarna;                                       // na het halen (bv. een missiestap verder)
         org.bukkit.entity.TextDisplay bordTekst;
         boolean bordOud = true;
 
@@ -226,6 +228,74 @@ abstract class ZeldaHoofdstuk {
                 if (d[0] == x && d[1] == y && d[2] == z) return i;
             }
             return -1;
+        }
+    }
+
+    /**
+     * Puzzel met draaispiegels: licht komt uit {@code bron} in {@code richting} en loopt rechtdoor tot het iets raakt.
+     * Raakt het een spiegel, dan gaat het verder in de richting waar die spiegel naar wijst (rechtsklik = een kwartslag
+     * draaien). Komt het licht bij het {@code doel}, dan is hij opgelost: het doel gaat aan en de deur open, tot er een
+     * minuut niemand meer is. Geen tijd: rustig puzzelen. Wie hem al eens oploste ({@code r:<id>}) vindt hem opgelost.
+     * Een spiegel zonder {@code goed} is een lokspiegel (voor de oplossing maakt hij niet uit).
+     */
+    static final class Spiegels {
+        /** Zo ziet een spiegel eruit: een kristal dat wijst waar het licht heen gaat. */
+        static final Material BLOK = Material.AMETHYST_CLUSTER;
+
+        final String id, naam;
+        final int[] bron, doel;
+        final BlockFace richting;
+        final List<int[]> spiegels = new ArrayList<>();
+        final List<BlockFace> begin = new ArrayList<>(), goed = new ArrayList<>();
+        final BlockData doelUit, doelAan;
+        final Deur deur;
+        final Box gebied;
+        final List<Regel> bijOplossen = new ArrayList<>();
+        // tijdens het spel
+        final List<BlockFace> stand = new ArrayList<>();
+        boolean opgelost;
+        long leegSinds;
+
+        Spiegels(String id, String naam, int[] bron, BlockFace richting, int[] doel, BlockData doelUit, BlockData doelAan, Deur deur, Box gebied) {
+            this.id = id;
+            this.naam = naam;
+            this.bron = bron;
+            this.richting = richting;
+            this.doel = doel;
+            this.doelUit = doelUit;
+            this.doelAan = doelAan;
+            this.deur = deur;
+            this.gebied = gebied;
+        }
+
+        /** Een spiegel op x, y, z: zo staat hij aan het begin, en zo hoort hij (null = lokspiegel). */
+        Spiegels spiegel(int x, int y, int z, BlockFace begin, BlockFace goed) {
+            spiegels.add(new int[]{x, y, z});
+            this.begin.add(begin);
+            this.goed.add(goed);
+            stand.add(begin);
+            return this;
+        }
+
+        int index(int x, int y, int z) {
+            for (int i = 0; i < spiegels.size(); i++) {
+                int[] d = spiegels.get(i);
+                if (d[0] == x && d[1] == y && d[2] == z) return i;
+            }
+            return -1;
+        }
+
+        /** Hoe de spiegels staan als hij opgelost is (lokspiegels zoals ze nu staan). */
+        List<BlockFace> oplossing() {
+            List<BlockFace> l = new ArrayList<>();
+            for (int i = 0; i < spiegels.size(); i++) l.add(goed.get(i) != null ? goed.get(i) : stand.get(i));
+            return l;
+        }
+
+        static BlockData blok(BlockFace f) {
+            BlockData d = BLOK.createBlockData();
+            if (d instanceof org.bukkit.block.data.Directional r) r.setFacing(f);
+            return d;
         }
     }
 
@@ -359,6 +429,7 @@ abstract class ZeldaHoofdstuk {
         final String id;
         final Deur muur;
         final Box gebied;
+        Location voor;                                      // waar je staat om er een bom tegen te gooien (test; null = vanzelf)
         long leegSinds;
 
         Barst(String id, Deur muur, Box gebied) {
@@ -388,6 +459,7 @@ abstract class ZeldaHoofdstuk {
     final List<Missie> missies = new ArrayList<>();
     final List<Barst> barsten = new ArrayList<>();
     final List<Haakpunt> haakpunten = new ArrayList<>();
+    final List<Spiegels> spiegels = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -432,11 +504,23 @@ abstract class ZeldaHoofdstuk {
         return false;
     }
 
+    /**
+     * Elke seconde (zolang er iemand in Zelda is): wat dit deel zelf laat bewegen of oplichten (een vlieger, een
+     * lichtbundel; op eiland 2b eb en vloed). {@code wie} = de spelers op dit deel.
+     */
+    void tik(ZeldaSpel spel, List<org.bukkit.entity.Player> wie, long nu) {
+    }
+
+    /** Een bom ontploft op dit deel (na de gebarsten muren; bv. een baas verdoven, een ton laten springen). */
+    void boem(ZeldaSpel spel, org.bukkit.entity.Player p, Location l) {
+    }
+
     /** Een onderdeel op id (rust, kamer, uitdaging, puzzel, verhaal; vondst op vlag; bron; persoon op naam), of null. */
     Object onderdeel(String id) {
         for (Object o : volgorde) {
             String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
-                    : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag : null;
+                    : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
+                    : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
@@ -452,6 +536,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Kamer k) return k.start.midden(w);
         if (o instanceof Uitdaging u) return u.start.midden(w);
         if (o instanceof Reeks r) return r.gebied.midden(w);
+        if (o instanceof Spiegels sp) return sp.gebied.midden(w);
         if (o instanceof Verhaal v) return v.zone.midden(w);
         if (o instanceof Vondst v) return v.plek;
         if (o instanceof Bron b) return b.midden;
@@ -489,6 +574,7 @@ abstract class ZeldaHoofdstuk {
         missies.clear();
         barsten.clear();
         haakpunten.clear();
+        spiegels.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -534,6 +620,19 @@ abstract class ZeldaHoofdstuk {
     protected Barst barst(Barst b) {
         barsten.add(b);
         return b;
+    }
+
+    /** Een gebarsten muur óp het pad (je moet erdoor): telt mee in de volgorde (de test gooit er een bom tegen). */
+    protected Barst barstOpPad(Barst b) {
+        barst(b);
+        volgorde.add(b);
+        return b;
+    }
+
+    protected Spiegels spiegels(Spiegels s) {
+        spiegels.add(s);
+        volgorde.add(s);
+        return s;
     }
 
     protected Haakpunt haakpunt(Haakpunt h) {

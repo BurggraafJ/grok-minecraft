@@ -214,4 +214,46 @@ class ZeldaRegelsTest {
         assertNull(ZeldaRegels.plek(":3"));
         assertNull(ZeldaRegels.plek("h1:-1"), "geen negatieve rustplaats");
     }
+
+    @Test
+    void spiegelsDraaienMetDeKlokMee() {
+        var f = org.bukkit.block.BlockFace.NORTH;
+        for (var verwacht : List.of(org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.WEST, org.bukkit.block.BlockFace.NORTH)) {
+            f = ZeldaRegels.draai(f);
+            assertEquals(verwacht, f);
+        }
+    }
+
+    @Test
+    void hetLichtVolgtDeSpiegels() {
+        var N = org.bukkit.block.BlockFace.NORTH;
+        var W = org.bukkit.block.BlockFace.WEST;
+        var S = org.bukkit.block.BlockFace.SOUTH;
+        var E = org.bukkit.block.BlockFace.EAST;
+        // zoals de kelder van de vuurtoren: bron oost, drie spiegels, doel zuid; muren om een kamer van 0 … 10
+        int[] bron = {11, 0, 5}, doel = {2, 0, 11};
+        List<int[]> sp = List.of(new int[]{6, 0, 5}, new int[]{6, 0, 1}, new int[]{2, 0, 1});
+        java.util.function.Predicate<int[]> vrij = c -> c[0] >= 0 && c[0] <= 10 && c[2] >= 0 && c[2] <= 10;
+        var goed = ZeldaRegels.straal(bron, W, sp, List.of(N, W, S), doel, vrij, 64);
+        assertTrue(goed.raak(), "de oplossing brengt het licht bij het doel");
+        assertEquals(4 + 1 + 3 + 1 + 3 + 1 + 9, goed.punten().size(), "elk blok onderweg, spiegels meegeteld");
+        assertFalse(ZeldaRegels.straal(bron, W, sp, List.of(E, W, S), doel, vrij, 64).raak(), "terug naar de bron: geen doel");
+        assertFalse(ZeldaRegels.straal(bron, W, sp, List.of(N, S, S), doel, vrij, 64).raak(), "heen en weer tussen twee spiegels: stopt (geen rondjes)");
+        var muur = ZeldaRegels.straal(bron, W, sp, List.of(W, W, S), doel, vrij, 64);
+        assertFalse(muur.raak());
+        assertEquals(0, muur.punten().get(muur.punten().size() - 1)[0], "tot de muur, niet erdoor");
+    }
+
+    @Test
+    void opnieuwVergeetOokDeSpiegels() {
+        Proef h = new Proef();
+        ZeldaHoofdstuk.Box z = ZeldaHoofdstuk.Box.van(0, 0, 0, 1, 1, 1);
+        var r0 = h.rust(new ZeldaHoofdstuk.Rust("begin", "Begin", null, z, List.of()));
+        h.spiegels(new ZeldaHoofdstuk.Spiegels("spiegels", "Spiegels", new int[]{0, 0, 0}, org.bukkit.block.BlockFace.WEST, new int[]{1, 0, 0},
+                null, null, null, z));
+        var b = h.barstOpPad(new ZeldaHoofdstuk.Barst("kelder", new ZeldaHoofdstuk.Deur(null, null).blok(0, 0, 0), z));
+        assertEquals(List.of("r:spiegels"), ZeldaRegels.opnieuw(h.volgorde, r0), "puzzel vergeten, een gebroken muur blijft open");
+        assertSame(b, h.onderdeel("kelder"), "een gebarsten muur op het pad hoort bij de volgorde");
+        assertTrue(h.volgorde.contains(b));
+    }
 }

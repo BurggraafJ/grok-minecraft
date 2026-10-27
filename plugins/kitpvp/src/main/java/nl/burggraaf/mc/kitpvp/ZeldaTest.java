@@ -41,6 +41,7 @@ final class ZeldaTest {
     private final Deque<Stap> rij = new ArrayDeque<>();
     private BukkitTask taak;
     private boolean belGehad;                               // de bel is één keer getest (in de eerste kamer met een bel)
+    private String geklikt;                                 // het eiland waarheen Brecht vaart na een klik in zijn menu
 
     ZeldaTest(KitPvP pl, Zelda z, Player p, CommandSender aan) {
         this.pl = pl;
@@ -90,18 +91,25 @@ final class ZeldaTest {
             moet(p.getInventory().getItem(0) != null && p.getInventory().getItem(0).getType() == Material.WOODEN_SWORD, "geen houten zwaard");
             moet(p.getInventory().getItem(8) != null && p.getInventory().getItem(8).getType() == Material.MAP, "geen kaart");
         }, 2, () -> true, 1);
-        // alle eilanden in de volgorde van het verhaal: varen, elk deel aflopen, de zijmissies (zonder alles: tot na de eerste kamer)
+        // alle eilanden in de volgorde van het verhaal: varen (met Brecht: klik in zijn menu), elk deel aflopen, wat nu te
+        // halen is (een bom tegen een gebarsten muur), de zijmissies (zonder alles: tot na de eerste kamer)
         eilanden:
-        for (ZeldaEiland e : z.EILANDEN) {
+        for (int i = 0; i < z.EILANDEN.size(); i++) {
+            ZeldaEiland e = z.EILANDEN.get(i), volgende = i + 1 < z.EILANDEN.size() ? z.EILANDEN.get(i + 1) : null;
             if (e != h.eiland) stap("varen naar " + e.id(), () -> {
                 moet(e.open(stand()), e.id() + " is niet open na het vorige eiland (" + e.openNa() + ")");
-                stil();
-                z.spel.vaar(p, e);
+                moet(!e.id().equals(geklikt) || z.spel.sessie(p).vaart != null, "Brecht vaart niet na een klik op " + e.naam());
+                if (z.spel.sessie(p).vaart == null) {
+                    stil();
+                    z.spel.vaar(p, e);
+                }
             }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
             for (ZeldaHoofdstuk d : e.delen()) {
                 if (!pad(d, alles, d == h)) break eilanden;
                 stap("einde " + d.id(), () -> { }, 2, () -> stand().heeft(d.id()), 20);
             }
+            laterHalen(e);
+            zijmissies(e);
             for (ZeldaHoofdstuk d : e.delen())
                 for (ZeldaHoofdstuk.Persoon pe : d.personen)
                     if (pe.naam.equals("Brecht")) stap("Brecht: varen", () -> {
@@ -110,10 +118,26 @@ final class ZeldaTest {
                         boolean menu = p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu;
                         long open = z.EILANDEN.stream().filter(x -> x.open(stand()) && x.aanlegRust() != null).count();
                         moet(open > 1 ? menu : rij().contains("geduld"), "Brecht: " + (open > 1 ? "geen menu" : "zegt " + rij()));
-                        p.closeInventory();
+                        if (menu && volgende != null && volgende.open(stand()) && klik("eiland:" + volgende.id())) geklikt = volgende.id();
+                        else p.closeInventory();
                         stil();
                     }, 2, () -> true, 1);
-            zijmissies(e);
+        }
+        // later terug: met een nieuw voorwerp (bommen) naar een eerder eiland varen (via de kaart) en daar halen wat nu kan
+        if (alles) for (ZeldaEiland e : z.EILANDEN) {
+            List<ZeldaHoofdstuk.Vondst> nu = new ArrayList<>();
+            for (ZeldaHoofdstuk d : e.delen())
+                for (ZeldaHoofdstuk.Vondst v : d.vondsten) if (v.voorwerp != null && z.spel.voorwerpen.stream().anyMatch(x -> x.vlag().equals(v.voorwerp))) nu.add(v);
+            if (nu.isEmpty() || e == z.EILANDEN.get(z.EILANDEN.size() - 1)) continue;
+            stap("terug naar " + e.id() + " (kaart)", () -> {
+                stil();
+                z.spel.kaart(p);
+                moet(klik("eiland:" + e.id()), "kaart: " + e.naam() + " staat er niet op");
+            }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
+            laterHalen(e);
+            stap("later " + e.id(), () -> {
+                for (ZeldaHoofdstuk.Vondst v : nu) if (stand().heeft(v.voorwerp)) moet(stand().heeft(v.vlag), "later terug: " + v.vlag + " niet te halen met " + v.voorwerp);
+            }, 2, () -> true, 1);
         }
         stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
@@ -198,11 +222,31 @@ final class ZeldaTest {
                     stap("kamer " + k.id + " nieuw erbij verslaan", () -> { }, 5, () -> verslaan(h, k) && stand().heeft("k:" + k.id), 900);
                 }
             } else if (o instanceof ZeldaHoofdstuk.Uitdaging u) {
-                stap("uitdaging " + u.id + " dicht", () -> p.teleport(u.start.midden(h.w).add(-3, 1, 0)), 20,
+                stap("uitdaging " + u.id + " dicht", () -> p.teleport(vrij(u.start.midden(h.w).add(-3, 1, 0))), 20,
                         () -> !u.poort.isOpen && h.w.getBlockAt(u.poort.blokken.get(0)[0], u.poort.blokken.get(0)[1], u.poort.blokken.get(0)[2]).getType() == u.poort.dicht.getMaterial(), 80);
-                stap("uitdaging " + u.id + " start", () -> p.teleport(u.start.midden(h.w).add(0, 1, 0)), 8,
+                stap("uitdaging " + u.id + " start", () -> p.teleport(vrij(u.start.midden(h.w).add(0, 1, 0))), 8,
                         () -> u.loopt.containsKey(id) && u.poort.isOpen, 40);
-                stap("uitdaging " + u.id + " finish", () -> p.teleport(u.finish.midden(h.w).add(0, 1, 0)), 8, () -> stand().beste(u.id) != null, 40);
+                stap("uitdaging " + u.id + " finish", () -> p.teleport(vrij(u.finish.midden(h.w).add(0, 1, 0))), 8, () -> stand().beste(u.id) != null, 40);
+            } else if (o instanceof ZeldaHoofdstuk.Barst b) {                       // een gebarsten muur op het pad: een echte bom
+                stap("bom op " + b.id, () -> {
+                    moet(stand().heeft("bommen"), "geen bommen voor de gebarsten muur " + b.id);
+                    if (b.muur.isOpen) z.spel.herstel(b);
+                    gooi(h, b);
+                }, 50, () -> b.muur.isOpen && stand().heeft("b:" + b.id), 60);
+            } else if (o instanceof ZeldaHoofdstuk.Spiegels sp) {                  // draai de spiegels met echte klikken
+                stap("spiegels " + sp.id, () -> {
+                    if (sp.opgelost) z.spel.herstel(sp);
+                    moet(!z.spel.straal(sp, sp.stand).raak(), "spiegels " + sp.id + ": al opgelost voor er geklikt is");
+                    p.teleport(vrij(sp.gebied.midden(h.w).add(0, 1, 0)));
+                    for (int i = 0; i < sp.spiegels.size(); i++)
+                        for (int n = 0; n < 4 && sp.goed.get(i) != null && sp.stand.get(i) != sp.goed.get(i); n++) {
+                            int[] c = sp.spiegels.get(i);
+                            var e = new org.bukkit.event.player.PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
+                                    p.getInventory().getItemInMainHand(), h.w.getBlockAt(c[0], c[1], c[2]), org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND);
+                            z.spel.onKlik(e);
+                            moet(e.isCancelled(), "spiegels " + sp.id + ": spiegel " + i + " reageert niet op een klik");
+                        }
+                }, 4, () -> sp.opgelost && sp.deur.isOpen && stand().heeft("r:" + sp.id), 20);
             } else if (o instanceof ZeldaHoofdstuk.Reeks r) {
                 stap("puzzel " + r.id, () -> {
                     if (r.opgelost || !r.isAan.isEmpty()) z.spel.herstel(r);
@@ -212,6 +256,84 @@ final class ZeldaTest {
             }
         }
         return alles;
+    }
+
+    /** Een vrije plek (twee blokken lucht met een vloer) op {@code l}, vlak eronder of anders erboven (een duintop). */
+    private static Location vrij(Location l) {
+        for (int i = 0; i <= 3; i++) if (staan(l.clone().add(0, -i, 0))) return l.clone().add(0, -i, 0);
+        for (int i = 1; i <= 12; i++) if (staan(l.clone().add(0, i, 0))) return l.clone().add(0, i, 0);
+        return l;
+    }
+
+    private static boolean staan(Location t) {
+        return t.getBlock().isPassable() && t.clone().add(0, 1, 0).getBlock().isPassable() && t.clone().add(0, -1, 0).getBlock().getType().isSolid();
+    }
+
+    /** Gooi een echte bom (het voorwerp, zoals rechtsklik) tegen een gebarsten muur, vanaf de plek ervoor. */
+    private void gooi(ZeldaHoofdstuk h, ZeldaHoofdstuk.Barst b) {
+        Location doel = b.muur.omvang().midden(h.w).add(0, 0.6, 0);
+        Location voor = b.voor != null ? b.voor.clone() : null;
+        if (voor == null) {                                  // de kant die het verst van wat erachter ligt af is
+            double best = -1;
+            for (org.bukkit.block.BlockFace f : new org.bukkit.block.BlockFace[]{org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.WEST}) {
+                Location l = b.muur.omvang().midden(h.w).add(f.getModX() * 2.5, 0, f.getModZ() * 2.5);
+                if (!l.getBlock().isPassable() || !l.clone().add(0, 1, 0).getBlock().isPassable()) continue;
+                double d = 1e9;
+                for (ZeldaHoofdstuk.Vondst v : h.vondsten) if (v.voorwerp != null) d = Math.min(d, v.plek.distance(l));
+                if (d > best) {
+                    best = d;
+                    voor = l;
+                }
+            }
+        }
+        if (voor == null) {
+            fouten.add("gebarsten muur " + b.id + ": geen plek om ervoor te staan");
+            return;
+        }
+        voor.setDirection(doel.toVector().subtract(voor.toVector().add(new org.bukkit.util.Vector(0, 1.62, 0))));
+        p.teleport(voor);
+        p.setCooldown(ZeldaSpel.Bommen.ITEM, 0);
+        z.spel.voorwerp("bommen").gebruik(z.spel, p, null);
+    }
+
+    /** Klik in het open Zelda-menu (Brecht of de kaart) op het item met deze soort; false als het er niet is. */
+    private boolean klik(String soort) {
+        var view = p.getOpenInventory();
+        if (!(view.getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu)) return false;
+        for (int i = 0; i < view.getTopInventory().getSize(); i++) {
+            var it = view.getTopInventory().getItem(i);
+            if (it == null || !it.hasItemMeta() || !soort.equals(it.getItemMeta().getPersistentDataContainer().get(z.spel.itemKey, org.bukkit.persistence.PersistentDataType.STRING))) continue;
+            var e = new org.bukkit.event.inventory.InventoryClickEvent(view, org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, i,
+                    org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PICKUP_ALL);
+            z.spel.onMenu(e);
+            return e.isCancelled();
+        }
+        p.closeInventory();
+        return false;
+    }
+
+    /**
+     * Wat op dit eiland nu te halen is met een voorwerp dat je hebt (een vondst met {@code voorwerp}): een bom tegen de
+     * gebarsten muur ervoor, en dan pakken. Wat nog niet kan (klauwhaak), blijft liggen.
+     */
+    private void laterHalen(ZeldaEiland e) {
+        for (ZeldaHoofdstuk d : e.delen())
+            for (ZeldaHoofdstuk.Vondst v : d.vondsten) {
+                if (v.voorwerp == null) continue;
+                final ZeldaHoofdstuk.Barst[] muur = {null};
+                final boolean[] kan = {false};
+                stap("later " + v.vlag, () -> {
+                    ZeldaVoortgang.Stand s = stand();
+                    kan[0] = s.heeft(v.voorwerp) && !s.heeft(v.vlag);
+                    if (!kan[0]) return;
+                    for (ZeldaHoofdstuk x : e.delen())
+                        for (ZeldaHoofdstuk.Barst b : x.barsten) if (b.gebied.in(v.plek) && !b.muur.isOpen) muur[0] = b;
+                    if (muur[0] != null) gooi(d, muur[0]);
+                }, 50, () -> !kan[0] || muur[0] == null || muur[0].muur.isOpen, 60);
+                stap("pak " + v.vlag, () -> {
+                    if (kan[0]) p.teleport(vrij(v.zone.midden(d.w).add(0, 1, 0)));
+                }, 8, () -> !kan[0] || stand().heeft(v.vlag), 40);
+            }
     }
 
     /** Alle vijanden in de kamer verslaan (en binnen blijven); true als de kamer gewonnen is. */
@@ -255,7 +377,7 @@ final class ZeldaTest {
                 for (String hs : d.stukjes) {
                     ZeldaHoofdstuk.Vondst v = null;
                     for (ZeldaHoofdstuk.Vondst x : d.vondsten) if (x.vlag.equals(hs)) v = x;
-                    boolean later = v != null && v.voorwerp != null;
+                    boolean later = v != null && v.voorwerp != null && !s.heeft(v.voorwerp);
                     moet(s.heeft(hs) != later, "hartstukje " + hs + (later ? " al gevonden (hoort pas met " + v.voorwerp + ")" : " niet gevonden"));
                 }
             }
@@ -391,16 +513,21 @@ final class ZeldaTest {
         stap("uitleg uit stil", () -> moet(!rij().contains("Je kaart"), "uitleg kwam toch: " + rij()), 2, () -> true, 1);
         if (!h.barsten.isEmpty()) {
             ZeldaHoofdstuk.Barst b = h.barsten.get(0);
-            stap("gebarsten muur", () -> {
+            stap("bom", () -> {                                                   // de bommenzak in vak 4, een echte bom tegen de muur
+                stand().zet("bommen");
+                sp.uitrusten(p, stand());
+                moet(item(3) == ZeldaSpel.Bommen.ITEM, "bommen niet in vak 4 maar " + item(3));
                 if (b.muur.isOpen) sp.herstel(b);
-                p.teleport(b.gebied.midden(h.w).add(0, 2, 0));
-                sp.breek(p, b);
-                moet(b.muur.isOpen && stand().heeft("b:" + b.id), "gebarsten muur " + b.id + " ging niet open");
+                gooi(h, b);
+            }, 50, () -> b.muur.isOpen && stand().heeft("b:" + b.id), 60);
+            stap("gebarsten muur", () -> {
                 moet(sp.barstBij(b.muur.omvang().midden(h.w)) == b, "barstBij vindt de muur niet");
                 sp.herstel(b);
             }, 10, () -> b.muur.isOpen, 40);                                      // wie hem openbrak, vindt hem open
             stap("gebarsten muur dicht", () -> {
                 stand().wis("b:" + b.id);
+                stand().wis("bommen");
+                sp.uitrusten(p, stand());
                 p.teleport(h.rust.get(2).plek);
                 sp.herstel(b);
             }, 10, () -> !b.muur.isOpen, 1);

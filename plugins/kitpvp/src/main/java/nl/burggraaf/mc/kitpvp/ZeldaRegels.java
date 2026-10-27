@@ -102,6 +102,7 @@ final class ZeldaRegels {
             if (o == r) na = true;
             else if (na && o instanceof ZeldaHoofdstuk.Verhaal v && !v.einde) weg.add("v:" + v.id);
             else if (na && o instanceof ZeldaHoofdstuk.Reeks rk) weg.add("r:" + rk.id);
+            else if (na && o instanceof ZeldaHoofdstuk.Spiegels sp) weg.add("r:" + sp.id);
         }
         return weg;
     }
@@ -138,6 +139,49 @@ final class ZeldaRegels {
     /** Golf {@code i} van dit gevecht (eerst de gewone, dan de extra). */
     static List<ZeldaHoofdstuk.Soort> golf(ZeldaHoofdstuk.Kamer k, int i) {
         return i < k.golven.size() ? k.golven.get(i) : k.extra.get(i - k.golven.size());
+    }
+
+    /** Een spiegel een kwartslag verder draaien (met de klok mee: noord → oost → zuid → west). */
+    static org.bukkit.block.BlockFace draai(org.bukkit.block.BlockFace f) {
+        return switch (f) {
+            case NORTH -> org.bukkit.block.BlockFace.EAST;
+            case EAST -> org.bukkit.block.BlockFace.SOUTH;
+            case SOUTH -> org.bukkit.block.BlockFace.WEST;
+            default -> org.bukkit.block.BlockFace.NORTH;
+        };
+    }
+
+    /** Waar het licht van een spiegelpuzzel langs gaat ({@link #straal}). */
+    record Straal(List<int[]> punten, boolean raak) {}
+
+    /**
+     * Het licht van een spiegelpuzzel volgen: vanaf {@code bron} in richting {@code r}, blok voor blok. Een spiegel stuurt
+     * het verder in zijn richting ({@code stand}), het {@code doel} = raak, een blok dat niet {@code vrij} is = stop.
+     * Hoogstens {@code max} blokken (en nooit rondjes). De punten zijn de blokken waar het licht door gaat.
+     */
+    static Straal straal(int[] bron, org.bukkit.block.BlockFace r, List<int[]> spiegels, List<org.bukkit.block.BlockFace> stand, int[] doel,
+                         java.util.function.Predicate<int[]> vrij, int max) {
+        List<int[]> punten = new ArrayList<>();
+        java.util.Set<String> gezien = new java.util.HashSet<>();
+        int x = bron[0], y = bron[1], z = bron[2];
+        for (int n = 0; n < max; n++) {
+            x += r.getModX();
+            y += r.getModY();
+            z += r.getModZ();
+            int[] c = {x, y, z};
+            if (x == doel[0] && y == doel[1] && z == doel[2]) return new Straal(punten, true);
+            int i = -1;
+            for (int j = 0; j < spiegels.size(); j++) if (spiegels.get(j)[0] == x && spiegels.get(j)[1] == y && spiegels.get(j)[2] == z) i = j;
+            if (i >= 0) {
+                punten.add(c);
+                if (!gezien.add(x + "," + y + "," + z + "," + stand.get(i))) break;
+                r = stand.get(i);
+                continue;
+            }
+            if (!vrij.test(c)) break;
+            punten.add(c);
+        }
+        return new Straal(punten, false);
     }
 
     /** {@code "h1:3"} → {@code {"h1", "3"}}; null bij onzin. */
