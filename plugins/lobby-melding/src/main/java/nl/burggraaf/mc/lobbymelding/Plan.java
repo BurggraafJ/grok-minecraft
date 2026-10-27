@@ -111,7 +111,8 @@ final class Plan {
                 || n.equals("blue_orchid") || n.equals("pink_petals") || n.equals("wildflowers") || n.equals("leaf_litter")
                 || n.equals("short_dry_grass") || n.equals("bush") || n.equals("sunflower") || n.equals("lilac") || n.equals("rose_bush")
                 || n.equals("peony") || n.equals("sweet_berry_bush") || n.equals("wheat") || n.equals("carrots") || n.equals("potatoes")
-                || n.equals("beetroots") || n.equals("torchflower") || n.equals("vine") || n.equals("glow_lichen") || n.equals("sugar_cane");
+                || n.equals("beetroots") || n.equals("torchflower") || n.equals("vine") || n.equals("lily_pad")
+                || n.equals("red_mushroom") || n.equals("brown_mushroom") || n.equals("pitcher_plant") || n.equals("seagrass") || n.equals("glow_lichen") || n.equals("sugar_cane");
     }
 
     List<String> palet() {

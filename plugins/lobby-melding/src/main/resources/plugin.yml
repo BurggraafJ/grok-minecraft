@@ -2,18 +2,18 @@ name: LobbyMelding
 version: '${version}'
 main: nl.burggraaf.mc.lobbymelding.LobbyMelding
 api-version: '${apiVersion}'
-description: "De lobby van Burggraaf Craft: een grote tuin met poorten naar Survival en KitPvP, 10 parkour-levels, servermenu, veilig (geen schade of honger)."
+description: "De lobby van Burggraaf Craft: een klein tuindorp met poorten naar Survival en KitPvP en tien parkour-levels; veilig (geen schade of honger)."
 author: Minecraft Bot
 commands:
   lobbymelding:
-    description: "/lobbymelding terug | wie-terug | info (console, door mc)"
+    description: "/lobbymelding info | zelftest | kaart | bouw | voortgang <speler> [n] | terug | wie-terug (console, door mc)"
     permission: lobbymelding.beheer
   spawn:
-    description: "Terug naar de fontein in de tuin"
+    description: "Terug naar de brink (de spawn)"
     aliases: [tuin]
     permission: lobbymelding.speler
   parkour:
-    description: "/parkour reset = terug naar de start van je level (timer opnieuw); /parkour kies = level-kiezer"
+    description: "/parkour = terug naar de start van je level; /parkour kies = level kiezen"
     aliases: [parcours]
     permission: lobbymelding.speler
 permissions:

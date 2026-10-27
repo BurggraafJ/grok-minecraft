@@ -141,35 +141,54 @@ final class Baan {
         return fout;
     }
 
-    /** Tussen stap i en i+1: lucht op de lijn ertussen (van voethoogte tot boven je hoofd), en eronder (valruimte). */
-    private List<String> corridor(Plan p, int i) {
-        List<String> fout = new ArrayList<>();
+    /** Een cel van de luchtstrook tussen twee stappen: x, z en de laagste/hoogste blokhoogte die vrij moet zijn. */
+    record Cel(int x, int z, int laag, int hoog) {}
+
+    /**
+     * De luchtstrook van stap i naar i+1: de cellen op de lijn tussen de dichtstbijzijnde punten van de twee vlakken
+     * én tussen hun middens (zo is ook een schuine sprong vanaf het midden vrij), van voethoogte tot boven je hoofd
+     * op het hoogste punt van de sprong. Niet de cellen van de stappen zelf.
+     */
+    List<Cel> strook(int i) {
+        List<Cel> uit = new ArrayList<>();
         Stap a = stappen.get(i), b = stappen.get(i + 1);
-        if (a.soort == Soort.LADDER || b.soort == Soort.LADDER) return fout;
-        // dichtstbijzijnde punten van de twee vlakken
+        if (a.soort == Soort.LADDER || b.soort == Soort.LADDER) return uit;
         double ax = klem(b.mx(), a.x1, a.x2 + 1), az = klem(b.mz(), a.z1, a.z2 + 1);
         double bx = klem(ax, b.x1, b.x2 + 1), bz = klem(az, b.z1, b.z2 + 1);
         ax = klem(bx, a.x1, a.x2 + 1);
         az = klem(bz, a.z1, a.z2 + 1);
-        double laag = Math.min(a.voet, b.voet);
-        double hoog = Math.max(a.voet, b.voet) + (a.soort == Soort.SLIJM ? Sprong.stuiterTop(Math.max(0, (i > 0 ? stappen.get(i - 1).voet : a.voet) - a.voet)) : Sprong.TOPHOOGTE) + 1.8;
-        int n = (int) Math.ceil(Math.hypot(bx - ax, bz - az) * 4) + 1;
+        int laag = (int) Math.floor(Math.min(a.voet, b.voet));
+        double top = a.soort == Soort.SLIJM ? Sprong.stuiterTop(Math.max(0, (i > 0 ? stappen.get(i - 1).voet : a.voet) - a.voet)) : Sprong.TOPHOOGTE;
+        int hoog = (int) Math.floor(Math.max(a.voet, b.voet) + top + 1.8 - 0.01);
         java.util.Set<Long> gezien = new java.util.HashSet<>();
-        for (int k = 0; k <= n; k++) {
-            double t = n == 0 ? 0 : k / (double) n;
-            int x = (int) Math.floor(ax + (bx - ax) * t), z = (int) Math.floor(az + (bz - az) * t);
-            if (!gezien.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
-            if (a.bevat(x, z) || b.bevat(x, z)) continue;
-            for (int y = (int) Math.floor(laag); y <= (int) Math.floor(hoog - 0.01); y++) {
-                if (!p.doorloopbaar(x, y, z) && stapOp(x, y, z) < 0) {
-                    fout.add("level " + nr + ": sprong " + i + "→" + (i + 1) + " geblokkeerd op " + x + "," + y + "," + z + " (" + p.naam(x, y, z) + ")");
+        double[][] lijnen = {{ax, az, bx, bz}, {a.mx(), a.mz(), b.mx(), b.mz()}};
+        for (double[] l : lijnen) {
+            int n = (int) Math.ceil(Math.hypot(l[2] - l[0], l[3] - l[1]) * 4) + 1;
+            for (int k = 0; k <= n; k++) {
+                double t = k / (double) n;
+                int x = (int) Math.floor(l[0] + (l[2] - l[0]) * t), z = (int) Math.floor(l[1] + (l[3] - l[1]) * t);
+                if (!gezien.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
+                if (a.bevat(x, z) || b.bevat(x, z)) continue;
+                uit.add(new Cel(x, z, laag, hoog));
+            }
+        }
+        return uit;
+    }
+
+    /** Tussen stap i en i+1: lucht in de strook, en (als {@link #valVrij}) eronder tot de grond. */
+    private List<String> corridor(Plan p, int i) {
+        List<String> fout = new ArrayList<>();
+        for (Cel c : strook(i)) {
+            for (int y = c.laag(); y <= c.hoog(); y++) {
+                if (!p.doorloopbaar(c.x(), y, c.z()) && stapOp(c.x(), y, c.z()) < 0) {
+                    fout.add("level " + nr + ": sprong " + i + "→" + (i + 1) + " geblokkeerd op " + c.x() + "," + y + "," + c.z() + " (" + p.naam(c.x(), y, c.z()) + ")");
                     return fout;
                 }
             }
             if (valVrij) {
-                for (int y = p.g + 1; y < (int) Math.floor(laag); y++) {
-                    if (!p.doorloopbaar(x, y, z) && !p.naam(x, y, z).equals("water") && stapOp(x, y, z) < 0) {
-                        fout.add("level " + nr + ": onder sprong " + i + "→" + (i + 1) + " staat iets op " + x + "," + y + "," + z + " (" + p.naam(x, y, z) + ")");
+                for (int y = p.g + 1; y < c.laag(); y++) {
+                    if (!p.doorloopbaar(c.x(), y, c.z()) && !p.naam(c.x(), y, c.z()).equals("water") && stapOp(c.x(), y, c.z()) < 0) {
+                        fout.add("level " + nr + ": onder sprong " + i + "→" + (i + 1) + " staat iets op " + c.x() + "," + y + "," + c.z() + " (" + p.naam(c.x(), y, c.z()) + ")");
                         return fout;
                     }
                 }

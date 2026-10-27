@@ -1,9 +1,3 @@
-titel: "Even geduld"
-ondertitel: "De server herstart, je gaat zo vanzelf terug"
-bericht: "Server herstart even, je gaat zo vanzelf terug naar survival. Typ /blijf om te blijven parkouren, /terug om terug te gaan."   # leeg = geen chatregel
-actionbar: "Server herstart even, je gaat zo vanzelf terug…"   # leeg = geen actionbar
-parkour: true          # korte parkour naast de spawn (start groen, checkpoint goud, finish smaragd)
-aftellen: 5            # seconden aftellen (titels + geluid) voordat iedereen terug naar survival gaat
-terug-naar: survival   # Velocity-servernaam
-survival-host: 127.0.0.1   # om te zien of survival er is (wol-item uit = meteen aftellen en terug)
-survival-poort: 30067
+actief: true           # false = de plugin doet niets (op staging doet hij vanzelf niets)
+aftellen: 5            # seconden aftellen (actiebalk) bij `lobbymelding terug` (het oude pad zonder de Velocity-plugin netwerk)
+terug-naar: survival   # Velocity-servernaam voor `lobbymelding terug`
