@@ -426,6 +426,18 @@ final class Zelda implements Modus {
                 if (spel.speelt(p)) spel.uitrusten(p, st);
                 s.sendMessage("zelda: " + p.getName() + " " + args[3] + " " + (aan ? "aan" : "uit"));
             }
+            case "lopen" -> {
+                ZeldaEiland e = args.length >= 3 ? spel.eiland(args[2].toLowerCase()) : null;
+                if (e == null) {
+                    s.sendMessage("kitpvp zelda lopen <eiland> (eilanden: " + String.join(", ", EILANDEN.stream().map(ZeldaEiland::id).toList()) + ")");
+                    return;
+                }
+                java.util.Set<String> vw = new java.util.HashSet<>();
+                for (ZeldaVoorwerp v : spel.voorwerpen) vw.add(v.vlag());
+                List<String> niet = ZeldaLopen.onbereikbaar(e, vw);
+                s.sendMessage("zelda lopen " + e.id() + ": " + (niet.isEmpty() ? "OK, alles te belopen" : niet.size() + " plekken niet te belopen"));
+                for (String n : niet) s.sendMessage("  ✗ " + n);
+            }
             case "hint" -> {
                 if (p == null) {
                     s.sendMessage("kitpvp zelda hint <speler>");
@@ -460,7 +472,7 @@ final class Zelda implements Modus {
                     sb.append(" · ").append(h.id()).append(":");
                     for (ZeldaHoofdstuk.Kamer k : h.kamers) sb.append(' ').append(k.id).append('=').append(k.fase.name().toLowerCase());
                 }
-                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer <speler>");
+                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer <speler> · kitpvp zelda lopen <eiland>");
             }
         }
     }

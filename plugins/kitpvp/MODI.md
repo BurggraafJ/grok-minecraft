@@ -128,7 +128,8 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 - **Spiegels** (`Spiegels`, eiland 2a): licht komt uit een bron en gaat rechtdoor; een spiegel (amethistkristal) stuurt
   het in de richting waar hij naar wijst, rechtsklik = een kwartslag draaien. Raakt het licht het doel, dan gaat de
   deur open (tot het gebied een minuut leeg is); `r:<id>` = voortaan opgelost. Geen tijd. Het licht is te zien als
-  gele stipjes voor wie in de buurt is. Lokspiegels (`goed` = null) mogen.
+  gele stipjes voor wie in de buurt is. Lokspiegels (`goed` = null) mogen. Samen puzzelen mag: komt er iemand bij die
+  hem al eens oploste, dan staat hij meteen goed (zoals bij de reeksen).
   **Haakpunt** (`Haakpunt`, blok `HAAKPUNT`): blok + landingsplek voor de klauwhaak (eiland 3).
 - **Verhaal**: de eerste keer in een zone een paar korte regels (`v:<id>`, dus nooit dubbel). Met `uitleg` = uitleg
   (hoe iets werkt), overgeslagen als je op de kaart «Uitleg: uit» kiest.
@@ -241,6 +242,10 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   rustplaats, uitleg uit, de bommenzak (vak 4) en een echte bom tegen de tempelmuur, varen en aankomen, tip na
   doodgaan in een kamer, de kaart, en weg = alles weg. Wist eerst en
   na afloop de voortgang van die speler (alleen voor tests).
+- `kitpvp zelda lopen <eiland>` — is alles te belopen? Volgt vanaf de aanleg elke plek waar je kunt staan (stap ≤ 1
+  omhoog, ≤ 3 omlaag, een gat van één blok, ladders, zwemmen; deuren en gebarsten muren open) en noemt wat je niet
+  haalt (rustplaats, persoon, vondst, kamer, uitdaging, verhaal, bron, spiegel, bel). Laadt de chunks van het eiland;
+  doet ook mee in `test … alles` (vanaf eiland 2; de Kloof van het Lindewoud vraagt schuine sprongen).
 - `kitpvp zelda vaar <speler> <eiland>` — de overtocht naar een eiland. `kitpvp zelda vlag <speler> <vlag>` — een
   vlag aan (nog eens = uit), bv. `fles1`, `hs:test`, `harnas2`, `dier:vos`, `o:uitleg-uit` (helpen en testen).
   `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.

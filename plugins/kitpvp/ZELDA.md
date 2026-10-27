@@ -330,7 +330,9 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 7. Bommen (gebouwd in 2a): `spel.ontplof` breekt de gebarsten muur bij de knal open (`spel.barstBij`, `spel.breek`) en
    roept `boem()` van het deel aan. Klauwhaak (3a): trek naar `spel.haakpunt(blok)` en zet de speler op `landing()`;
    er zijn er twee: boven de richel in de Kloof (`hs:lindewoud-3`) en boven op de Meeuwenrots (`hs:zilverstrand-3`).
-8. De test vaart van eiland naar eiland met een klik in het menu van Brecht, haalt na elk eiland wat met de voorwerpen
+8. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`): de test teleporteert, dus deze
+   controle volgt vanaf de steiger elke plek waar een speler kan staan en noemt wat je zonder teleporteren niet haalt.
+9. De test vaart van eiland naar eiland met een klik in het menu van Brecht, haalt na elk eiland wat met de voorwerpen
    van nu te halen is (een echte bom tegen de muur ervoor, dan pakken), en vaart aan het eind via de kaart terug naar
    eerdere eilanden om daar hetzelfde te doen (het Lindewoud: `hs:lindewoud-4` achter de tempelmuur).
 

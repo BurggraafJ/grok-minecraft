@@ -634,7 +634,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         rustvuur(1155, G, -301);
         rust(new Rust("plein", "Zoutkom", plek(1152, G + 1, -300, 90f), Box.van(1139, G, -306, 1158, G + 6, -287), List.of()));
         // Ouwe Teun op het bankje: de bakens (uitleg), en wat er met Mira is
-        Persoon teun = persoon(new Persoon("Teun", plek(1145, G + 1, -290, 0f), beroep("fisherman"), List.of(
+        Persoon teun = persoon(new Persoon("Teun", plek(1146, G + 1, -288, 0f), beroep("fisherman"), List.of(
                 r("Teun", "Vroeger ving je hier zilvervis. Zakken vol."))));
         teun.streek = Villager.Type.TAIGA;
         teun.eenmalig("teun-1", null, List.of(
@@ -730,7 +730,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         }
         barst(new Barst("grot", deur(BARST.createBlockData(), 1095, G + 1, -304, 1096, G + 2, -304),
                 Box.van(1090, G - 1, -311, 1101, G + 6, -297))).voor = plek(1095, G + 1, -301, 180f);
-        verhaal(new Verhaal("grot", Box.van(1091, G, -303, 1100, G + 5, -297), List.of(
+        verhaal(new Verhaal("smokkelgrot", Box.van(1091, G, -303, 1100, G + 5, -297), List.of(
                 r("Wiske", "Die rotswand is gebarsten. Daarachter glinstert iets."))));
         vondst(new Vondst(STUKJE_GROT, "Hartstukje", "", Material.REDSTONE, plek(1096, G + 1.4, -307, 0f),
                 Box.van(1094, G + 1, -309, 1097, G + 3, -305))).voorwerp = "bommen";
@@ -741,7 +741,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
     private void kaap() {
         rustvuur(1123, G, -316);
         rust(new Rust("kaap", "De kaap", plek(1120, G + 1, -322, 90f), Box.van(1116, G, -328, 1128, G + 6, -313), List.of()));
-        verhaal(new Verhaal("bordes", Box.van(1116, G, -328, 1128, G + 6, -313), List.of(
+        verhaal(new Verhaal("trap", Box.van(1116, G, -328, 1128, G + 6, -313), List.of(
                 r("Wiske", "Daarboven, op het bordes: rovers!"),
                 r("Wiske", "Ben je er klaar voor? Dan de trap op."))));
         if (b.plaats) {
@@ -749,7 +749,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             vul(1108, G, -324, 1108, TOP, -320, Material.STONE_BRICKS);
             vul(1108, TOP + 1, -324, 1118, TOP + 5, -320, Material.AIR);
             for (int i = 1; i <= 9; i++) {
-                int x = 1108 + i, y = TOP - i;
+                int x = 1108 + i, y = TOP + 1 - i;                     // bovenste trede gelijk met het bordes, onderste een halve stap
                 for (int z = -323; z <= -321; z++) {
                     vul(x, G - 2, z, x, y - 1, z, Material.STONE_BRICKS);
                     zet(x, y, z, Bouwer.trap(Material.STONE_BRICK_STAIRS, BlockFace.WEST));
@@ -782,7 +782,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             zet(1104, TOP + 1, -327, Material.BARREL);
             zet(1105, TOP + 2, -327, Material.BARREL);
             vul(1096, TOP + 1, -317, 1096, TOP + 3, -317, Material.SPRUCE_FENCE);
-            zet(1096, TOP + 4, -317, Bouwer.gericht(Material.BLACK_WALL_BANNER, BlockFace.EAST));
+            zet(1096, TOP + 4, -317, Bouwer.gericht(Material.BLACK_BANNER, BlockFace.EAST));
         }
         BlockData hekDicht = hek(Material.SPRUCE_FENCE, true);
         Kamer k = kamer(new Kamer("bordes", "Het bordes", Box.van(1095, TOP - 1, -327, 1106, TOP + 10, -317), Box.van(1097, TOP, -326, 1105, TOP + 6, -318),
@@ -827,7 +827,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             for (int y : new int[]{TOP + 5, TOP + 13, TOP + 21}) {
                 zet(LX, y, LZ - 5, hek(Material.GLASS_PANE, false));
                 zet(LX - 5, y, LZ, hek(Material.GLASS_PANE, true));
-                zet(LX, y, LZ + 5, hek(Material.GLASS_PANE, false));
+                zet(LX + 5, y, LZ, hek(Material.GLASS_PANE, true));
             }
             // ladder naar boven (tegen de zuidwand) en de lamp
             BlockData ladder = Bouwer.gericht(Material.LADDER, BlockFace.NORTH);
@@ -842,8 +842,8 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             zet(LX - 2, TOP + 1, LZ - 3, Material.BARREL);
             zet(LX + 3, TOP + 1, LZ - 2, Material.BARREL);
             zet(LX - 3, TOP + 1, LZ + 2, Bouwer.trap(Material.SPRUCE_STAIRS, BlockFace.WEST));
-            zet(LX, TOP + 6, LZ, Bouwer.hangend(Material.LANTERN));
-            zet(LX, TOP + 14, LZ, Bouwer.hangend(Material.LANTERN));
+            zet(LX, TOP + 7, LZ, Bouwer.hangend(Material.LANTERN));
+            zet(LX, TOP + 15, LZ, Bouwer.hangend(Material.LANTERN));
         }
         verhaal(new Verhaal("vuurtoren", Box.van(LX - 4, TOP + 1, LZ - 4, LX + 4, TOP + 5, LZ + 4), List.of(
                 r("Wiske", "Er zit hier iemand. Praat eens met haar."))));
@@ -879,7 +879,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             for (int[] s : new int[][]{{1092, -322}, {1092, -328}, {1086, -328}, {1083, -322}}) zet(s[0], G + 4, s[1], Material.CHISELED_STONE_BRICKS);
             // het bergkamertje achter de tralies
             vul(1086, G + 3, -311, 1092, G + 8, -306, Material.STONE_BRICKS);
-            vul(1087, G + 4, -310, 1091, G + 7, -307, Material.AIR);
+            vul(1087, G + 4, -311, 1091, G + 7, -307, Material.AIR);
             sokkel(1089, G + 4, -308);
             zet(1087, G + 4, -310, Material.BARREL);
             zet(1091, G + 4, -310, Material.BARREL);
@@ -891,9 +891,10 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             vul(1088, G + 6, -342, 1089, G + 6, -342, Material.AIR);
             for (int i = 1; i <= 3; i++)
                 for (int x = 1088; x <= 1089; x++) {
-                    vul(x, G - 2, -342 - i, x, G + 3 - i - 1, -342 - i, Material.STONE_BRICKS);
-                    zet(x, G + 3 - i, -342 - i, Bouwer.trap(Material.STONE_BRICK_STAIRS, BlockFace.SOUTH));
-                    vul(x, G + 4 - i, -342 - i, x, G + 7, -342 - i, Material.AIR);
+                    int ty = G + 4 - i;                                 // de bovenste trede gelijk met de gangvloer
+                    vul(x, G - 2, -342 - i, x, ty - 1, -342 - i, Material.STONE_BRICKS);
+                    zet(x, ty, -342 - i, Bouwer.trap(Material.STONE_BRICK_STAIRS, BlockFace.SOUTH));
+                    vul(x, ty + 1, -342 - i, x, G + 7, -342 - i, Material.AIR);
                 }
             zet(1088, G + 5, -334, Bouwer.gericht(Material.WALL_TORCH, BlockFace.SOUTH));
             // het luik uit de vuurtoren: een ladder omlaag, tegen een pilaar
@@ -960,7 +961,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
 
     private void duinpan() {
         rustvuur(1146, G, -376);
-        rust(new Rust("duinpan", "De duinpan", plek(1150, G + 1, -371, -90f), Box.van(1142, G, -380, 1157, G + 6, -364), List.of("bommen")));
+        rust(new Rust("duinpan", "De duinpan", plek(1150, G + 1, -371, -90f), Box.van(1142, G, -380, 1157, G + 6, -364), List.of()));
         if (b.plaats) {
             // startplaat, het hek van de duinbaan en vlaggetjes langs de route
             zet(1157, G + 1, -372, Material.BIRCH_PRESSURE_PLATE);
@@ -1028,19 +1029,19 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             zet(1201, G + 1, -393, Material.LANTERN);
             zet(1198, G + 5, -396, Bouwer.hangend(Material.LANTERN));
             for (int[] n : new int[][]{{1195, -401}, {1201, -401}, {1196, -394}}) zet(n[0], G + 1, n[1], Material.WHITE_CARPET);
-            // boven op de rots: meeuwennesten en een haakpunt aan de rand
-            for (int[] n : new int[][]{{1196, -396}, {1199, -400}, {1201, -395}, {1195, -400}}) {
+            // boven op de rots: een vlakke top, meeuwennesten en een haakpunt aan de rand
+            vul(RX - 1, G + 20, -392, RX + 1, G + 20, -391, Material.STONE);
+            vul(1196, G + 20, -400, 1202, G + 20, -394, Material.STONE);
+            vul(1196, G + 21, -398, 1198, G + 23, -396, Material.AIR);
+            zet(RX, G + 21, -391, HAAKPUNT);
+            for (int[] n : new int[][]{{1194, -395}, {1199, -400}, {1201, -395}, {1195, -400}}) {
                 zet(n[0], G + 21, n[1], Material.HAY_BLOCK);
                 zet(n[0] + 1, G + 21, n[1], Material.WHITE_CARPET);
             }
-            vul(RX - 1, G + 20, -392, RX + 1, G + 20, -391, Material.STONE);
-            zet(RX, G + 21, -391, HAAKPUNT);
-            vul(1196, G + 20, -400, 1202, G + 20, -394, Material.STONE);
-            vul(1196, G + 21, -398, 1198, G + 23, -396, Material.AIR);
         }
         verhaal(new Verhaal("meeuwenrots", Box.van(1191, G, -388, 1204, G + 6, -379), List.of(
                 r("Wiske", "De Meeuwenrots. En een gebarsten muur…"),
-                r("Wiske", "Daarachter zit vast hun nest. Gooi een bom!"))));
+                r("Wiske", "Daarachter zit vast hun nest."))));
         Barst muur = barstOpPad(new Barst("rots", deur(BARST.createBlockData(), 1197, G + 1, -389, 1198, G + 2, -389), Box.van(1186, G - 1, -404, 1210, G + 8, -378)));
         muur.voor = plek(1197, G + 1, -385, 180f);
         vondst(new Vondst("zeelicht", "Het Zeelicht", "breng hem naar Mira", Material.SEA_LANTERN, plek(1198, G + 2.4, -400, 0f),
@@ -1116,7 +1117,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         doel("bommen", "De tralies zijn open. Wat ligt daar?", "In het kamertje achter de tralies.",
                 plekVan("bommen"), s -> s.heeft("bommen"));
         doel("kelder", "Die gebarsten wand. Gooi er een bom tegen!", "Bom in vak 4. Kijk naar de wand en rechtsklik.",
-                plekVan("kelder"), s -> s.heeft("b:kelder") || s.rust(id()) >= 3);
+                plekVan("kelder"), s -> s.heeft("b:kelder") || s.heeft("zeelicht"));
         doel("rots", "De meeuwen nestelen op de Meeuwenrots, in de duinen.", "De grote rots in het noordoosten. Ook daar: een bom.",
                 plekVan("rots"), s -> s.heeft("zeelicht"));
         doel("licht", "Breng het Zeelicht naar Mira.", "In de vuurtoren, op de kaap. Reis via je kaart.",

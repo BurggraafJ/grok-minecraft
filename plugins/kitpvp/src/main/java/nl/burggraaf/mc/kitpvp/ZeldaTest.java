@@ -108,6 +108,11 @@ final class ZeldaTest {
                 if (!pad(d, alles, d == h)) break eilanden;
                 stap("einde " + d.id(), () -> { }, 2, () -> stand().heeft(d.id()), 20);
             }
+            if (e != h.eiland) stap("belopen " + e.id(), () -> {                    // alles te halen zonder te teleporteren?
+                java.util.Set<String> vw = new java.util.HashSet<>();
+                for (ZeldaVoorwerp v : z.spel.voorwerpen) vw.add(v.vlag());
+                for (String f : ZeldaLopen.onbereikbaar(e, vw)) fouten.add("niet te belopen: " + f);
+            }, 2, () -> true, 1);
             laterHalen(e);
             zijmissies(e);
             for (ZeldaHoofdstuk d : e.delen())
@@ -118,8 +123,10 @@ final class ZeldaTest {
                         boolean menu = p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu;
                         long open = z.EILANDEN.stream().filter(x -> x.open(stand()) && x.aanlegRust() != null).count();
                         moet(open > 1 ? menu : rij().contains("geduld"), "Brecht: " + (open > 1 ? "geen menu" : "zegt " + rij()));
-                        if (menu && volgende != null && volgende.open(stand()) && klik("eiland:" + volgende.id())) geklikt = volgende.id();
-                        else p.closeInventory();
+                        if (menu && volgende != null && volgende.open(stand())) {
+                            if (klik("eiland:" + volgende.id())) geklikt = volgende.id();
+                            else fouten.add("Brecht: " + volgende.naam() + " staat niet in zijn menu");
+                        } else p.closeInventory();
                         stil();
                     }, 2, () -> true, 1);
         }

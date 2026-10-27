@@ -528,7 +528,7 @@ final class ZeldaSpel implements Listener {
             for (ZeldaHoofdstuk h : hoofdstukken) {                 // wat een deel zelf laat bewegen (vlieger, lichtbundel, …)
                 List<Player> op = new ArrayList<>();
                 for (Player p : spelers) if (sessie(p) != null && sessie(p).vaart == null && sessie(p).h == h) op.add(p);
-                if (!op.isEmpty()) veilig("deel " + h.id(), () -> h.tik(this, op, nu));
+                veilig("deel " + h.id(), () -> h.tik(this, op, nu));
             }
             if (tikken % 200 == 0) bewaar();
         }
@@ -1983,7 +1983,7 @@ final class ZeldaSpel implements Listener {
         w.spawnParticle(Particle.EXPLOSION, l.clone().add(0, 0.5, 0), 3, 0.6, 0.4, 0.6, 0);
         w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.5, 0), 12, 0.6, 0.4, 0.6, 0.02);
         for (Entity e : w.getNearbyEntities(l, 3.5, 3.5, 3.5))
-            if (isVijand(e) && e instanceof LivingEntity le && !le.isDead()) {
+            if (isVijand(e) && !e.getScoreboardTags().contains(NPC) && e instanceof LivingEntity le && !le.isDead()) {
                 le.damage(12, p);
                 var weg = le.getLocation().toVector().subtract(l.toVector()).setY(0);
                 if (weg.lengthSquared() > 0.01) le.setVelocity(weg.normalize().multiply(0.6).setY(0.35));
@@ -2009,20 +2009,7 @@ final class ZeldaSpel implements Listener {
                     case CRAFTING_TABLE, COMPOSTER, CAULDRON, WATER_CAULDRON, FLOWER_POT, LECTERN, CAMPFIRE, SOUL_CAMPFIRE -> true;
                     default -> false;
                 })) e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);   // geen tonnen, werkbank, ketel: spullen blijven bij jou
-        ItemStack it = e.getItem();
-        String soort = it == null || !it.hasItemMeta() ? null : it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
-        if ("kaart".equals(soort)) {
-            e.setCancelled(true);
-            if (e.getHand() == EquipmentSlot.HAND) kaart(p);
-            return;
-        }
-        if (soort != null && soort.startsWith("v:")) {             // een voorwerp (flesje, …)
-            e.setCancelled(true);
-            ZeldaVoorwerp v = voorwerp(soort.substring(2));
-            if (v != null && e.getHand() == EquipmentSlot.HAND && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK))
-                v.gebruik(this, p, e);
-            return;
-        }
+        // eerst wat je aanklikt (bel, spiegel, vuurschaal): dat gaat voor wat je vasthoudt (flesje, bom, kaart)
         if (e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getHand() == EquipmentSlot.HAND) {
             Block b = e.getClickedBlock();
             ZeldaEiland hier = sessie(p).h.eiland;
@@ -2051,6 +2038,20 @@ final class ZeldaSpel implements Listener {
                     return;
                 }
             }
+        }
+        ItemStack it = e.getItem();
+        String soort = it == null || !it.hasItemMeta() ? null : it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        if ("kaart".equals(soort)) {
+            e.setCancelled(true);
+            if (e.getHand() == EquipmentSlot.HAND) kaart(p);
+            return;
+        }
+        if (soort != null && soort.startsWith("v:")) {             // een voorwerp (flesje, …)
+            e.setCancelled(true);
+            ZeldaVoorwerp v = voorwerp(soort.substring(2));
+            if (v != null && e.getHand() == EquipmentSlot.HAND && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK))
+                v.gebruik(this, p, e);
+            return;
         }
     }
 
