@@ -903,7 +903,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
         luik.setHalf(org.bukkit.block.data.Bisected.Half.TOP);
         luik.setFacing(BlockFace.NORTH);
         poort(new Poort("luik", new Deur(luik, Material.AIR.createBlockData()).blok(1318, G, -358),
-                Box.van(1316, G - 5, -358, 1319, G - 1, -355), s -> s.heeft("e:zilverstrand")));
+                Box.van(1316, G - 5, -358, 1319, G, -355), s -> s.heeft("e:zilverstrand")));
     }
 
     // ── 8. de drempel, de Ankerpoort, de Draaikolk (Kapitein Zoutbaard) ─────────────────────

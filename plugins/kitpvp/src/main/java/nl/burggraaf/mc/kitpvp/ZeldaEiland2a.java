@@ -38,7 +38,7 @@ import org.joml.Vector3f;
  */
 final class ZeldaEiland2a extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 1;
+    static final int VERSIE = 2;
     /** Het vak van dit halve eiland (eiland 2b krijgt x 1230 … 1360 van hetzelfde vak). */
     static final int X1 = 1060, X2 = 1229, Z1 = -480, Z2 = -180, OOST = 1360;
     /** De dijk naar de Getijdentempel loopt bij z −332 … −328 tot de rand van dit vak (2b gaat verder vanaf x 1230). */
@@ -1082,7 +1082,8 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             vul(RX - 1, G + 20, -392, RX + 1, G + 20, -391, Material.STONE);
             vul(1196, G + 20, -400, 1202, G + 20, -394, Material.STONE);
             vul(1196, G + 21, -398, 1198, G + 23, -396, Material.AIR);
-            zet(RX, G + 21, -391, HAAKPUNT);
+            zet(RX, G + 21, -391, Material.STONE);                          // het haakpunt steekt uit over de rand (versie 2): van onderaf te raken
+            zet(RX, G + 21, -390, HAAKPUNT);
             for (int[] n : new int[][]{{1194, -395}, {1199, -400}, {1201, -395}, {1195, -400}}) {
                 zet(n[0], G + 21, n[1], Material.HAY_BLOCK);
                 zet(n[0] + 1, G + 21, n[1], Material.WHITE_CARPET);
@@ -1103,7 +1104,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
         reizen.uitleg = true;
         verhaal(new Verhaal("top", Box.van(1191, G, -388, 1204, G + 6, -379), List.of(
                 r("Wiske", "Boven op de rots glinstert nog iets. Te hoog…")))).vereist = "zeelicht";
-        haakpunt(new Haakpunt("rots", RX, G + 21, -391, plek(RX, G + 21, -396, 180f)));
+        haakpunt(new Haakpunt("rots", RX, G + 21, -390, plek(RX, G + 21, -396, 180f)));
         vondst(new Vondst(STUKJE_ROTS, "Hartstukje", "", Material.REDSTONE, plek(1200, G + 21.4, -398, 0f),
                 Box.van(1199, G + 21, -400, 1202, G + 24, -397))).voorwerp = "klauwhaak";
     }

@@ -176,6 +176,14 @@ final class ZeldaLopen {
      * vlaggen). Elke regel noemt het onderdeel en waar het ligt.
      */
     static List<String> onbereikbaar(ZeldaEiland e, Set<String> voorwerpen) {
+        return onbereikbaar(e, voorwerpen, Set.of());
+    }
+
+    /**
+     * Idem, maar de poorten in {@code dicht} (ids) blijven dicht: zo zie je wat er achter een poort ligt (en of je er
+     * ook omheen kunt; {@code kitpvp zelda lopen <eiland> dicht <poort> zonder <voorwerp>}).
+     */
+    static List<String> onbereikbaar(ZeldaEiland e, Set<String> voorwerpen, Set<String> dicht) {
         ZeldaHoofdstuk eerste = e.delen().get(0);
         if (eerste.w == null || e.aanlegRust() == null) return List.of(e.id() + ": niet geladen");
         int ax = Integer.MAX_VALUE, ay = Integer.MAX_VALUE, az = Integer.MAX_VALUE, bx = Integer.MIN_VALUE, by = Integer.MIN_VALUE, bz = Integer.MIN_VALUE;
@@ -198,7 +206,7 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Reeks r : h.reeksen) l.opening(r.deur);
             for (ZeldaHoofdstuk.Barst b : h.barsten) l.opening(b.muur);
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels) l.opening(s.deur);
-            for (ZeldaHoofdstuk.Poort p : h.poorten) l.opening(p.deur);
+            for (ZeldaHoofdstuk.Poort p : h.poorten) if (!dicht.contains(p.id)) l.opening(p.deur);
             for (ZeldaHoofdstuk.Getij g : h.getijden) {                  // eb en vloed: het water telt als water (zwemmen), de deuren als open
                 for (ZeldaHoofdstuk.Deur d : g.lagen) for (int[] c : d.blokken) l.open.put(sleutel(c[0], c[1], c[2]), Material.WATER);
                 for (ZeldaHoofdstuk.Deur d : g.sluizen) l.opening(d);

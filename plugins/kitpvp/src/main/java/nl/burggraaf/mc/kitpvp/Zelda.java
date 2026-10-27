@@ -500,13 +500,17 @@ final class Zelda implements Modus {
             case "lopen" -> {
                 ZeldaEiland e = args.length >= 3 ? spel.eiland(args[2].toLowerCase()) : null;
                 if (e == null) {
-                    s.sendMessage("kitpvp zelda lopen <eiland> (eilanden: " + String.join(", ", EILANDEN.stream().map(ZeldaEiland::id).toList()) + ")");
+                    s.sendMessage("kitpvp zelda lopen <eiland> [zonder <voorwerp>] [dicht <poort>] (eilanden: " + String.join(", ", EILANDEN.stream().map(ZeldaEiland::id).toList()) + ")");
                     return;
                 }
-                java.util.Set<String> vw = new java.util.HashSet<>();
+                java.util.Set<String> vw = new java.util.HashSet<>(), dicht = new java.util.HashSet<>();
                 for (ZeldaVoorwerp v : spel.voorwerpen) vw.add(v.vlag());
-                List<String> niet = ZeldaLopen.onbereikbaar(e, vw);
-                s.sendMessage("zelda lopen " + e.id() + ": " + (niet.isEmpty() ? "OK, alles te belopen" : niet.size() + " plekken niet te belopen"));
+                for (int i = 3; i + 1 < args.length; i += 2)          // kitpvp zelda lopen <eiland> [zonder <voorwerp>] [dicht <poort>] …
+                    if (args[i].equalsIgnoreCase("zonder")) vw.remove(args[i + 1].toLowerCase());
+                    else if (args[i].equalsIgnoreCase("dicht")) dicht.add(args[i + 1].toLowerCase());
+                List<String> niet = ZeldaLopen.onbereikbaar(e, vw, dicht);
+                s.sendMessage("zelda lopen " + e.id() + (args.length > 3 ? " (" + String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length)) + ")" : "")
+                        + ": " + (niet.isEmpty() ? "OK, alles te belopen" : niet.size() + " plekken niet te belopen"));
                 for (String n : niet) s.sendMessage("  ✗ " + n);
             }
             case "hint" -> {
