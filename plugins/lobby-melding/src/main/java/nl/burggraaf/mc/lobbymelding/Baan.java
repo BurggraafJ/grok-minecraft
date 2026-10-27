@@ -144,10 +144,13 @@ final class Baan {
     /** Een cel van de luchtstrook tussen twee stappen: x, z en de laagste/hoogste blokhoogte die vrij moet zijn. */
     record Cel(int x, int z, int laag, int hoog) {}
 
+    /** Halve breedte van een speler (blokken), net iets ruimer. */
+    static final double BREED = 0.31;
+
     /**
-     * De luchtstrook van stap i naar i+1: de cellen op de lijn tussen de dichtstbijzijnde punten van de twee vlakken
-     * én tussen hun middens (zo is ook een schuine sprong vanaf het midden vrij), van voethoogte tot boven je hoofd
-     * op het hoogste punt van de sprong. Niet de cellen van de stappen zelf.
+     * De luchtstrook van stap i naar i+1: de cellen die een speler (0,6 breed) raakt op de lijn tussen de
+     * dichtstbijzijnde punten van de twee vlakken én tussen hun middens (zo is ook een schuine sprong vanaf het midden
+     * vrij), van voethoogte tot boven je hoofd op het hoogste punt van de sprong. Niet de cellen van de stappen zelf.
      */
     List<Cel> strook(int i) {
         List<Cel> uit = new ArrayList<>();
@@ -165,11 +168,14 @@ final class Baan {
         for (double[] l : lijnen) {
             int n = (int) Math.ceil(Math.hypot(l[2] - l[0], l[3] - l[1]) * 4) + 1;
             for (int k = 0; k <= n; k++) {
-                double t = k / (double) n;
-                int x = (int) Math.floor(l[0] + (l[2] - l[0]) * t), z = (int) Math.floor(l[1] + (l[3] - l[1]) * t);
-                if (!gezien.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
-                if (a.bevat(x, z) || b.bevat(x, z)) continue;
-                uit.add(new Cel(x, z, laag, hoog));
+                double t = k / (double) n, px = l[0] + (l[2] - l[0]) * t, pz = l[1] + (l[3] - l[1]) * t;
+                // een speler is 0,6 breed: elke cel die zijn lijf langs de lijn raakt
+                for (int x = (int) Math.floor(px - BREED); x <= (int) Math.floor(px + BREED); x++)
+                    for (int z = (int) Math.floor(pz - BREED); z <= (int) Math.floor(pz + BREED); z++) {
+                        if (!gezien.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
+                        if (a.bevat(x, z) || b.bevat(x, z)) continue;
+                        uit.add(new Cel(x, z, laag, hoog));
+                    }
             }
         }
         return uit;
