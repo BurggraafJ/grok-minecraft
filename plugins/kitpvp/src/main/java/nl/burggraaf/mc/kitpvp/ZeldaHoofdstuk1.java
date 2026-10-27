@@ -711,7 +711,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 plekVan("Tijmen"), s -> s.heeft("g:tijmen-1") || s.heeft("g:tijmen-oud") || s.heeft("hart1"));
         doel("drie", "schild", "Wachter Bram heeft een schild voor je.", "Het oefenveld ligt in het woud, voorbij de Oude Eik.",
                 plekVan("Bram"), s -> s.heeft("schild"));
-        doel("drie", "zwaard", "In de oude tempel ligt een zwaard.", "Steek de drie vuurschalen snel aan. Dan gaat de poort open.",
+        doel("drie", "zwaard", "In de oude tempel ligt een zwaard.", "Steek de drie vuurschalen snel aan, dan gaat de poort open.",
                 plekVan("vuren"), s -> s.heeft("zwaard"));
         doel("drie", "boog", "In het Veen ligt een boog.", "Op het eilandje midden in het Veen, in het zuiden.",
                 plekVan("boog"), s -> s.heeft("boog"));
@@ -865,7 +865,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                         r("Kees", "Ha, buurkind. Mijn bijl is weg."),
                         r("Kees", "Hij viel bij de houtkap, achter de Oude Eik."),
                         r("Kees", "Toen kwamen die moerasdingen. Ik rende!")), (spel, p, s) -> spel.missie(p, "bijl", 1))
-                .gesprek(null, s -> s.missie("bijl") == 1, List.of(r("Kees", "De houtkap ligt achter de Oude Eik, ten noorden van het dorp.")), null)
+                .gesprek(null, s -> s.missie("bijl") == 1, List.of(r("Kees", "De houtkap ligt achter de Oude Eik, boven het dorp.")), null)
                 .gesprek("kees-2", s -> s.missie("bijl") == 2, List.of(
                         r("Kees", "Mijn bijl! Hier, dit lag al jaren in mijn schuur.")), (spel, p, s) -> {
                     spel.missie(p, "bijl", ZeldaVoortgang.KLAAR);

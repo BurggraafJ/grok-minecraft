@@ -81,7 +81,7 @@ final class Zelftest {
         moet(fouten, rz != null && !rz.dicht() && rz.modus() == zelda, "Zelda-poort stuurt niet naar Zelda");
         if (rz != null && !rz.dicht()) pl.kiesModus(p, rz.modus());
         moet(fouten, s.van(id).plek() == Toestand.Plek.SPEL && "zelda".equals(s.van(id).modus()), "door de Zelda-poort niet in Zelda: " + s.van(id));
-        moet(fouten, pl.stand(p).equals("bots"), "stand in Zelda is " + pl.stand(p));
+        moet(fouten, pl.stand(p).equals("geen"), "stand in Zelda is " + pl.stand(p) + " (geen huisdier in Zelda)");
         moet(fouten, p.getLocation().getX() >= Zelda.GEBIED[0] && p.getLocation().getX() <= Zelda.GEBIED[2], "niet in het Zelda-gebied: " + plek(p));
         stappen.add("zelda");
         moet(fouten, isHubItem(pl, p.getInventory().getItem(Menus.HUB_VAK)), "in Zelda geen «Terug naar de hub» in vak 8");
