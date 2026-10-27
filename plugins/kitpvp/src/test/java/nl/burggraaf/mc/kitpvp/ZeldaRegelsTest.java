@@ -416,7 +416,13 @@ class ZeldaRegelsTest {
         assertTrue(ZeldaRegels.smidshelm(s, 0));
         assertTrue(ZeldaRegels.smidshelm(s, 1), "ook over het maliënhemd");
         assertFalse(ZeldaRegels.smidshelm(s, 2), "het wachtersharnas heeft een betere helm");
-        assertTrue(ZeldaRegels.LICHTER < 1 && ZeldaRegels.LICHTER > 0.5);
+    }
+
+    @Test
+    void balansIsLangerMaarLichter() {
+        assertTrue(ZeldaRegels.SCHADE < 1 && ZeldaRegels.SCHADE >= 0.3, "vijanden doen minder, maar niet niks");
+        assertTrue(ZeldaRegels.BAAS_LEVEN >= 1, "een baas duurt langer, niet korter");
+        assertTrue(ZeldaRegels.GOLF_PAUZE >= 2500, "adem tussen golven");
     }
 
     @Test

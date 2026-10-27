@@ -1225,7 +1225,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         }
         k.alleenBel = true;                                     // een oefenplek: alleen de bel begint het gevecht
         k.vrijwillig = true;
-        k.golf(Soort.VEENLOPER, Soort.VEENLOPER)
+        k.golf(Soort.VEENLOPER, Soort.SPIN)                     // balans: langer, lichter, gemengd (Jelle 27-10)
+                .golf(Soort.VEENLOPER, Soort.MOSSCHUTTER)
+                .golf(Soort.SPIN, Soort.VEENLOPER, Soort.SPIN)
                 .extra(Soort.SPIN, Soort.VEENLOPER, Soort.SPIN, Soort.VEENLOPER);
         k.bel = bel(67, -5, BlockFace.EAST);
         bron("bron-oefenveld", plek(60, G + 1, 2, 0f));
@@ -1506,7 +1508,8 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         }
         k.alleenBel = true;                                     // het Veen is om doorheen te lopen; wie wil jagen, luidt de bel
         k.vrijwillig = true;
-        k.golf(Soort.MOSSCHUTTER, Soort.VEENLOPER, Soort.SPIN)
+        k.golf(Soort.VEENLOPER, Soort.SPIN)                     // balans: langer, lichter, gemengd (Jelle 27-10)
+                .golf(Soort.MOSSCHUTTER, Soort.VEENLOPER, Soort.SPIN)
                 .golf(Soort.VEENREUS, Soort.MOSSCHUTTER)
                 .extra(Soort.SPIN, Soort.SPIN, Soort.MOSSCHUTTER, Soort.VEENLOPER);
         zet(219, G, -4, Material.MOSS_BLOCK);
@@ -1802,7 +1805,9 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 deur(hekDicht, 324, G + 1, -1, G + 3, 1), deur(hekDicht, 346, G + 1, -1, G + 3, 1)));
         int[][] sp = {{330, -4}, {336, -5}, {342, -3}, {342, 3}, {336, 5}, {330, 4}};
         for (int[] s : sp) k.spawns.add(plek(s[0], G + 1, s[1], 90f));
-        k.golf(Soort.SOLDAAT, Soort.SOLDAAT)                                        // licht: twee soldaten
+        k.golf(Soort.SOLDAAT, Soort.KRUISBOOG)                                      // balans: langer, lichter, gemengd (Jelle 27-10)
+                .golf(Soort.SOLDAAT, Soort.SPIN)
+                .golf(Soort.KRUISBOOG, Soort.SOLDAAT, Soort.KRUISBOOG)
                 .extra(Soort.SOLDAAT, Soort.KRUISBOOG, Soort.KRUISBOOG, Soort.SOLDAAT);
         k.bel = bel(327, -3, BlockFace.EAST);
         bron("bron-kade", plek(327, G + 1, 3, 0f));                  // genezen óp de kade (Jelle 27-10)

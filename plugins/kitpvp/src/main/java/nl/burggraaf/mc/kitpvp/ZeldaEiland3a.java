@@ -970,7 +970,9 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 deur(sneeuw, 1435, y0 + 1, -375, 1437, G, -375), deur(sneeuw, 1435, y0 + 1, -385, 1437, G, -385)));
         for (int[] s : new int[][]{{1433, -380}, {1439, -380}, {1436, -383}, {1433, -383}, {1439, -383}})
             k.spawns.add(plek(s[0], y0 + 1, s[1], 0f));
-        k.golf(Soort.NEVELWOLF, Soort.NEVELWOLF)
+        k.golf(Soort.NEVELWOLF, Soort.NEVELWOLF)                // balans: langer, lichter, gemengd (Jelle 27-10)
+                .golf(Soort.NEVELWOLF, Soort.ROVERSCHUTTER)
+                .golf(Soort.NEVELWOLF, Soort.SPIN, Soort.NEVELWOLF)
                 .extra(Soort.NEVELWOLF, Soort.NEVELWOLF, Soort.NEVELWOLF);
         k.bijStart.add(r("Wiske", "Wolven! Ze zitten achter het vosje aan."));
         k.bel = new int[]{1440, y0 + 1, -384};

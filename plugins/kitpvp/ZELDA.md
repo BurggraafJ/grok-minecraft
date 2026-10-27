@@ -457,6 +457,9 @@ eiland was (`s.heeft("e:<eiland>")`), met de vondst op het nieuwe eiland (`verei
 bij de bekende. `/hint` noemt zo'n missie ook op het andere eiland, en `kitpvp zelda test … alles` vaart aan het eind
 twee rondes heen en weer om ze af te maken.
 
+## Balans van gevechten (kitpvp 2.8.2, Jelle 27-10)
+- Gevechten langer maar lichter, meer variatie in tegenstanders, heelplek en bescherming voor elk zwaar gevecht (Jelle 27-10). Gebruik de gedeelde balans in `ZeldaRegels` (`SCHADE` 0.55 op alle vijandschade, `BAAS_LEVEN` 1.5, `GOLF_PAUZE` 4 s): geef een kamer liever 3 gemengde golven (vechter + schutter + snel klein beestje, bijv. `SPIN`) dan 1 zware; richting 1-3 minuten, zelden dood. Bijstellen = die drie getallen, niet per kamer.
+
 ## De motor (gebouwd in deze sessie)
 
 Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken erop aan.

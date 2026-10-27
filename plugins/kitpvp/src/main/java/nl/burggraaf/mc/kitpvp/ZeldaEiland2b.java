@@ -874,7 +874,9 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 deur(Material.WAXED_OXIDIZED_COPPER_GRATE.createBlockData(), 1304, G - 5, -354, 1304, G - 3, -352)));
         for (int[] s : new int[][]{{1292, -350}, {1292, -356}, {1297, -356}, {1302, -355}, {1302, -349}, {1297, -353}})
             k.spawns.add(plek(s[0], G - 5, s[1], 0f));
-        k.golf(Soort.MATROOS, Soort.MATROOS, Soort.HARPOENIER)
+        k.golf(Soort.MATROOS, Soort.HARPOENIER)                 // balans: langer, lichter, gemengd (Jelle 27-10)
+                .golf(Soort.MATROOS, Soort.ROVER, Soort.MATROOS)
+                .golf(Soort.HARPOENIER, Soort.MATROOS, Soort.ROVERSCHUTTER)
                 .extra(Soort.MATROOS, Soort.HARPOENIER, Soort.MATROOS, Soort.HARPOENIER);
         k.bijStart.add(r("Wiske", "Verdronken matrozen! Ze zijn betoverd."));
         if (b.plaats) zet(1291, G - 5, -357, Bouwer.gericht(Material.BELL, BlockFace.EAST));

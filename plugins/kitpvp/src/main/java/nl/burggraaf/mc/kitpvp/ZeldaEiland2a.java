@@ -833,7 +833,9 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 deur(hekDicht, 1107, TOP + 1, -323, 1107, TOP + 3, -321), deur(Material.DARK_OAK_PLANKS.createBlockData(), LX + 5, TOP + 1, LZ, LX + 5, TOP + 2, LZ)));
         for (int[] s : new int[][]{{1100, -325}, {1104, -325}, {1105, -322}, {1104, -319}, {1100, -319}, {1098, -322}})
             k.spawns.add(plek(s[0], TOP + 1, s[1], 90f));
-        k.golf(Soort.ROVER, Soort.ROVER, Soort.ROVERSCHUTTER)
+        k.golf(Soort.ROVER, Soort.ROVERSCHUTTER)                // balans: langer, lichter, gemengd (Jelle 27-10)
+                .golf(Soort.ROVER, Soort.SPIN, Soort.ROVER)
+                .golf(Soort.ROVERSCHUTTER, Soort.ROVER, Soort.ROVERSCHUTTER)
                 .extra(Soort.ROVER, Soort.ROVERSCHUTTER, Soort.ROVER, Soort.ROVERSCHUTTER);
         k.bijStart.add(r("Wiske", "Meeuwenrovers! Pas op voor de schutter."));
         zet(1097, TOP + 1, -327, Bouwer.gericht(Material.BELL, BlockFace.EAST));

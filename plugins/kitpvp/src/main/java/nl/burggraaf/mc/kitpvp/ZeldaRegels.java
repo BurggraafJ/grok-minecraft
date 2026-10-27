@@ -26,8 +26,15 @@ final class ZeldaRegels {
         return s.heeft(HELM) && harnas <= 1;
     }
 
-    /** Schade van heksen en soldaten op spelers (Jelle 27-10: iets lichter). */
-    static final double LICHTER = 0.75;
+    /**
+     * Balans van alle gevechten op één plek (Jelle 27-10: "langer maar minder zwaar, meer verschillende tegenstanders").
+     * {@link #SCHADE}: wat elke vijand (ook een baas, ook pijlen en drankjes) op een speler doet, als factor.
+     * {@link #BAAS_LEVEN}: het leven van een baas (en per extra speler) als factor. {@link #GOLF_PAUZE}: adem tussen golven.
+     * De golven zelf staan per kamer (meer golven, gemengd: vechter + schutter + snel klein beestje).
+     */
+    static final double SCHADE = 0.55;
+    static final double BAAS_LEVEN = 1.5;
+    static final long GOLF_PAUZE = 4000L;
 
     /** Hoogste harnas. */
     static final int MAX_HARNAS = 4;

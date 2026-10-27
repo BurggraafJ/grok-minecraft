@@ -863,7 +863,7 @@ final class ZeldaSpel implements Listener {
             LivingEntity e = spawn(s, l, spelers);
             k.vijanden.add(e);
             if (baas) {
-                double hp = k.baas.leven + k.baas.levenPerSpeler * (spelers - 1);
+                double hp = (k.baas.leven + k.baas.levenPerSpeler * (spelers - 1)) * ZeldaRegels.BAAS_LEVEN;   // balans: langer
                 zetAttr(e, Attribute.MAX_HEALTH, hp);
                 e.setHealth(hp);
                 k.baas.start(e);
@@ -923,7 +923,7 @@ final class ZeldaSpel implements Listener {
         if (!k.vijanden.isEmpty()) return;
         if (k.golf + 1 < ZeldaRegels.golven(k)) {
             if (k.volgendeGolf == 0) {
-                k.volgendeGolf = nu + 2500;
+                k.volgendeGolf = nu + ZeldaRegels.GOLF_PAUZE;
                 for (Player p : in) p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASEDRUM, SoundCategory.RECORDS, 0.8f, 0.6f);
             } else if (nu >= k.volgendeGolf) {
                 k.golf++;
@@ -2698,9 +2698,7 @@ final class ZeldaSpel implements Listener {
         }
         if (v != null && speelt(v) && d instanceof org.bukkit.entity.Trident && isVijand(bron))     // een drietand: hoogstens twee harten
             e.setDamage(Math.min(e.getDamage(), DRIETAND));
-        if (v != null && speelt(v) && isVijand(bron) && (bron instanceof org.bukkit.entity.Witch || bron instanceof org.bukkit.entity.Vindicator
-                || bron instanceof org.bukkit.entity.Pillager))                                   // heks en soldaten iets lichter
-            e.setDamage(e.getDamage() * ZeldaRegels.LICHTER);
+        if (v != null && speelt(v) && isVijand(bron)) e.setDamage(e.getDamage() * ZeldaRegels.SCHADE);   // balans: lichter (ZeldaRegels)
         ZeldaBaas baas = baasVan(doel);
         if (baas != null) e.setDamage(baas.schade(e.getDamage()));
     }

@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'nl.burggraaf.mc'
-version = '2.8.1'
+version = '2.8.2'
 
 def paperApi = findProperty('paperApiVersion') ?: '26.3.build.223-stable'
 def mcVersion = findProperty('mcVersion') ?: '26.3'
