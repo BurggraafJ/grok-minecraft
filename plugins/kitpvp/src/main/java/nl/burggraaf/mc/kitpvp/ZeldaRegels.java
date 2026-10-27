@@ -18,6 +18,17 @@ final class ZeldaRegels {
     static final int MAX_HARTEN = 20;
     /** Zoveel hartstukjes = één hart. */
     static final int STUKJES_PER_HART = 4;
+    /** De smidshelm van Kees (Lindedorp; ook bij de Moerashut en de haven voor wie daar al voorbij is). */
+    static final String HELM = "helm1";
+
+    /** Draag je de smidshelm (ijzeren helm, en een broek bij de groene tuniek)? Alleen onder het wachtersharnas. */
+    static boolean smidshelm(ZeldaVoortgang.Stand s, int harnas) {
+        return s.heeft(HELM) && harnas <= 1;
+    }
+
+    /** Schade van heksen en soldaten op spelers (Jelle 27-10: iets lichter). */
+    static final double LICHTER = 0.75;
+
     /** Hoogste harnas. */
     static final int MAX_HARNAS = 4;
     /** Hoeveel een vol flesje geneest (halve harten). */

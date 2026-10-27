@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.8, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.8.1, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -419,7 +419,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   op het eilandje; de moerashut van **Hanne**: *Moeraskruid* → `fles1`, en later *Zeekraal*: een boodschap op het
   Zilverstrand → sterk bronwater, je flesjes genezen meer). Met zwaard, schild en boog terug naar Tijmen: hij leert je
   het **lichtwoord** (vlag `lichtwoord`), dan wijken de **doornen** voor de Heksenkring (achter de drie doelen aan het
-  kanaal). Grauwmoer (lichter: minder leven, één helper) verslaan = haar nevel boven zee is weg; de kade (twee
+  kanaal). Grauwmoer (lichter: minder leven, één helper; kitpvp 2.8.1, Jelle 27-10: een bron ín de Heksenkring en óp de kade, heksen en soldaten doen 25% minder schade, en Kees geeft in Lindedorp de **smidshelm** (vlag `helm1`, ijzeren helm + broek onder het wachtersharnas; ook bij Moerashut en haven, en vanzelf voor wie al voorbij de heks is)) verslaan = haar nevel boven zee is weg; de kade (twee
   soldaten) en dan **Brecht** op de pier (einde `h1`; daarna varen). Rondwegen: dorp → eik → oefenveld → tempel →
   dorp, en tempel → Kloof → haven → kringpad → Heksenkring → Veen → dorp. Verplicht vechten alleen bij Grauwmoer en op
   de kade; het oefenveld en het Veen zijn **oefenplekken** (alleen gevecht als je de bel luidt). **Genezen overal:**

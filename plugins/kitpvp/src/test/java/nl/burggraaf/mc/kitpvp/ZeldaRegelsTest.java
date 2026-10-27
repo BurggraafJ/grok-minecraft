@@ -407,4 +407,26 @@ class ZeldaRegelsTest {
         assertTrue(ZeldaRegels.HAAK_BEREIK >= 22, "de Meeuwenrots (2a): het haakpunt zit ±21 blokken boven het pleintje");
         assertTrue(ZeldaVoorwerp.LATER.contains("klauwhaak"));
     }
+
+    @Test
+    void smidshelmAlleenOnderHetWachtersharnas() {
+        ZeldaVoortgang.Stand s = new ZeldaVoortgang.Stand();
+        assertFalse(ZeldaRegels.smidshelm(s, 0), "zonder helm-vlag geen helm");
+        s.zet(ZeldaRegels.HELM);
+        assertTrue(ZeldaRegels.smidshelm(s, 0));
+        assertTrue(ZeldaRegels.smidshelm(s, 1), "ook over het maliënhemd");
+        assertFalse(ZeldaRegels.smidshelm(s, 2), "het wachtersharnas heeft een betere helm");
+        assertTrue(ZeldaRegels.LICHTER < 1 && ZeldaRegels.LICHTER > 0.5);
+    }
+
+    @Test
+    void wieVoorbijDeHeksIsKrijgtDeHelmAlsnog() {
+        ZeldaVoortgang.Stand s = new ZeldaVoortgang.Stand();
+        s.zet("hart1");
+        ZeldaHoofdstuk1.aanvullen(s, "h1");
+        assertTrue(s.heeft(ZeldaRegels.HELM));
+        ZeldaVoortgang.Stand nieuw = new ZeldaVoortgang.Stand();
+        ZeldaHoofdstuk1.aanvullen(nieuw, "h1");
+        assertFalse(nieuw.heeft(ZeldaRegels.HELM), "een nieuwe speler haalt hem zelf in Lindedorp");
+    }
 }

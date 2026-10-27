@@ -753,6 +753,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         }
         if (s.heeft("hart1")) nieuw |= s.zet("k:heksenkring");
         if (s.heeft(id)) nieuw |= s.zet("k:kade");                      // wie het eiland af heeft, joeg ze van de kade
+        if (s.heeft("hart1") || s.heeft(id)) nieuw |= s.zet(ZeldaRegels.HELM);   // al voorbij de heks: de smidshelm alsnog
         return nieuw;
     }
 
@@ -986,7 +987,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 r("Wiske", "Lindedorp! In die toren woont Tijmen."),
                 r("Wiske", "Hij is tovenaar. Hij weet altijd raad."))));
         rustvuur(120, 7);
-        rust(6, new Rust("dorp", "Lindedorp", plek(116, G + 1, 5, -90f), box(113, G, 2, 124, G + 6, 12), List.of()));
+        rust(6, new Rust("dorp", "Lindedorp", plek(116, G + 1, 5, -90f), box(113, G, 2, 124, G + 6, 12), List.of(ZeldaRegels.HELM)));   // Kees geeft de smidshelm (Jelle 27-10)
         verhaal(new Verhaal("uitleg-rust", box(113, G, 2, 124, G + 6, 12), List.of(
                 r("Wiske", "Bij een zielvuur bewaar je je reis, en genees je."),
                 r("Wiske", "Val je, dan begin je hier weer.")))).uitleg = true;
@@ -1574,7 +1575,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         }
         hanne();
         rustvuur(260, 3);
-        rust(4, new Rust("moerashut", "Moerashut", plek(258, G + 1, 0, -90f), box(252, G, -4, 263, G + 6, 6), List.of()));
+        rust(4, new Rust("moerashut", "Moerashut", plek(258, G + 1, 0, -90f), box(252, G, -4, 263, G + 6, 6), List.of(ZeldaRegels.HELM)));
         op(0, 0);
     }
 
@@ -1725,6 +1726,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         k.baas.levenPerSpeler = 30;
         k.baas.oproepen = new int[]{1, 1};
         k.golf(Soort.HEKS);
+        bron("bron-heksenkring", plek(cx - 8, G + 1, 0, 0f));    // genezen ín de kring (Jelle 27-10: de heks is zwaar)
         sokkel(313, 2);
         Vondst hart = vondst(new Vondst("hart1", "Hartcontainer", "een hart erbij", Material.RED_DYE, plek(313, G + 2.3, 2, 0f), box(311, G, -3, 315, G + 4, 3)));
         hart.vereist = "k:heksenkring";                         // ligt aan het kringpad: pas te zien en te pakken als je Grauwmoer versloeg
@@ -1742,7 +1744,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     private void haven() {
         op(0, 0);
         rustvuur(318, -3);
-        rust(5, new Rust("haven", "Haventrap", plek(319, G + 1, 0, -90f), box(314, G, -4, 323, G + 6, 4), List.of()));
+        rust(5, new Rust("haven", "Haventrap", plek(319, G + 1, 0, -90f), box(314, G, -4, 323, G + 6, 4), List.of(ZeldaRegels.HELM)));
         verhaal(new Verhaal("kade", box(320, G, -4, 323, G + 6, 4), List.of(
                 r("Wiske", "Soldaten van Morgal. Ze hebben de kade bezet!"))));
         if (b.plaats) {
@@ -1803,6 +1805,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         k.golf(Soort.SOLDAAT, Soort.SOLDAAT)                                        // licht: twee soldaten
                 .extra(Soort.SOLDAAT, Soort.KRUISBOOG, Soort.KRUISBOOG, Soort.SOLDAAT);
         k.bel = bel(327, -3, BlockFace.EAST);
+        bron("bron-kade", plek(327, G + 1, 3, 0f));                  // genezen óp de kade (Jelle 27-10)
 
         // Brecht: na Grauwmoer vaart hij je naar elk eiland dat open is (een nieuw eiland verschijnt vanzelf in zijn menu)
         Persoon brecht = persoon(new Persoon("Brecht", plek(366, G + 1, -1, 90f), beroep("fisherman"), List.of(

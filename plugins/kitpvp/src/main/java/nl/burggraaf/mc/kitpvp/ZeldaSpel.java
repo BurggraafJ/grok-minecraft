@@ -391,6 +391,10 @@ final class ZeldaSpel implements Listener {
         inv.setItem(8, ding(Material.MAP, "Kaart", "kaart"));
         inv.setItem(Menus.HUB_VAK, plugin.hubItem());
         harnas(p, ZeldaRegels.harnas(s));
+        if (ZeldaRegels.smidshelm(s, ZeldaRegels.harnas(s))) {
+            p.getInventory().setHelmet(ding(Material.IRON_HELMET, "Smidshelm", "muts"));
+            if (p.getInventory().getLeggings() == null) p.getInventory().setLeggings(ding(Material.LEATHER_LEGGINGS, "Broek", "broek"));
+        }
         harten(p, ZeldaRegels.harten(s));
     }
 
@@ -676,7 +680,10 @@ final class ZeldaSpel implements Listener {
         ss.rh = h;
         ss.rust = r.index;
         boolean nieuw = false;
+        boolean helm = !s.heeft(ZeldaRegels.HELM);
         for (String v : r.geeft) nieuw |= s.zet(v);
+        if (helm && s.heeft(ZeldaRegels.HELM)) vertel(p, r.id.equals("dorp") ? ZeldaHoofdstuk.r("Kees", "Hier, een helm. Tegen heksen en soldaten.")
+                : ZeldaHoofdstuk.r("Wiske", "Een helm van Kees. Tegen heksen en soldaten."));
         if (nieuw) uitrusten(p, s);
         if (h.eiland != null && s.zet("e:" + h.eiland.id())) nieuw = true;      // hier ben je geweest (ook zonder te varen)
         String hier = h.id() + ":" + r.index;
@@ -2691,6 +2698,9 @@ final class ZeldaSpel implements Listener {
         }
         if (v != null && speelt(v) && d instanceof org.bukkit.entity.Trident && isVijand(bron))     // een drietand: hoogstens twee harten
             e.setDamage(Math.min(e.getDamage(), DRIETAND));
+        if (v != null && speelt(v) && isVijand(bron) && (bron instanceof org.bukkit.entity.Witch || bron instanceof org.bukkit.entity.Vindicator
+                || bron instanceof org.bukkit.entity.Pillager))                                   // heks en soldaten iets lichter
+            e.setDamage(e.getDamage() * ZeldaRegels.LICHTER);
         ZeldaBaas baas = baasVan(doel);
         if (baas != null) e.setDamage(baas.schade(e.getDamage()));
     }
