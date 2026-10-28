@@ -488,7 +488,8 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
                         r("Ida", "Binnen kun je niet omhoog. De trap is buiten."),
                         r("Ida", "Maar die zit in de nevel. Brr.")), null)
                 .eenmalig("ida-dag", s -> s.heeft(VRIJ_ZELDA), List.of(
-                        r("Ida", "De zon! Nu durf ik wel naar het dak.")), null);
+                        r("Ida", "De zon! Nu durf ik wel naar het dak.")), null)
+                .gesprek(null, s -> s.heeft(VRIJ_ZELDA), List.of(r("Ida", "Wat een uitzicht moet dat zijn, van het dak.")), null);
         verhaal(new Verhaal("torenhal", Box.van(CX - 8, P, -8, CX + 2, P + 5, 8), List.of(
                 r("Wiske", "Morgals hal. Leeg… en geen trap omhoog."),
                 r("Wiske", "Die trap omlaag? Daar glimt iets.")))).als = s -> !s.heeft(VRIJ_ZELDA);

@@ -35,22 +35,25 @@ final class ZeldaFeest {
     static final int FX = 1240, FZ = -60;
     /** De opdracht na het einde: Zelda's kroontje uit Morgals schatkamer (5b), terug naar Zelda. */
     static final String SCHAT = "schatkamer", KROON = "kroon:zelda";
+    /** Na het kroontje: Zelda's brieven naar Teun (Zoutkom), Ys (IJshoeve), Okker (Sintelgat) en Wolf (de kreek), terug naar Zelda. */
+    static final String BRIEVEN = "brieven";
+    static final String[] BRIEF_AAN = {"Teun", "Ys", "Okker", "Wolf"};
     /** Wie Zelda bevrijdde (en dus het feest ziet). */
     static final String E5B = "e5b";
 
     /** Op het feest: wie hielp, met een plek {dx, dz} rond Zelda. */
     private static final Object[][] GASTEN = {
-            {"Hendrik", 5, 0, "armorer", Villager.Type.DESERT, false, "Bas is weer thuis. Hij smeedt al hoefijzers."},
-            {"Bas", 4, 2, null, Villager.Type.PLAINS, true, "Ik ga nooit meer naar een schip kijken!"},
-            {"Dina", 2, 4, "toolsmith", Villager.Type.SAVANNA, false, "Een warm broodje voor de held. Hier!"},
-            {"Joppe", 0, 5, null, Villager.Type.SAVANNA, true, "Mama zegt: nu ben ik voorzichtig."},
-            {"Ys", -2, 4, "fisherman", Villager.Type.SNOW, false, "Teun speelt nog steeds vals. Ik zag het."},
-            {"Mira", -4, 2, "cartographer", Villager.Type.PLAINS, false, "Mijn vuurtoren brandt. En jij ook, zie ik."},
-            {"Teun", -5, 0, "fisherman", Villager.Type.TAIGA, false, "Zoutbaard had dit feest ook leuk gevonden."},
-            {"Wolf", -2, -4, "armorer", Villager.Type.TAIGA, false, "Een wachter van Zelda zonder werk. Heerlijk."},
-            {"Hagen", 0, -5, "weaponsmith", Villager.Type.SNOW, false, "Mooi harnas. Goed gewarmd, hè?"},
-            {"Okker", 2, -4, "armorer", Villager.Type.SAVANNA, false, "Mijn esse brandt vandaag alleen voor jou."},
-            {"Ida", 4, -2, "cartographer", Villager.Type.SNOW, false, "Ik klom op Morgals toren. Wat een uitzicht!"}};
+            {"Hendrik", 5, 0, "armorer", Villager.Type.DESERT, false, "Bas is weer thuis. Hij smeedt al hoefijzers.", null, "Kom eens langs in Zoutkom. Het vuur brandt."},
+            {"Bas", 4, 2, null, Villager.Type.PLAINS, true, "Ik ga nooit meer naar een schip kijken!", "vrij:bas", "Ik help Hendrik weer in de smidse."},
+            {"Dina", 2, 4, "toolsmith", Villager.Type.SAVANNA, false, "Een warm broodje voor de held. Hier!", null, "In Sintelgat bak ik er nog meer."},
+            {"Joppe", 0, 5, null, Villager.Type.SAVANNA, true, "Mama zegt: nu ben ik voorzichtig.", "vrij:joppe", "Ik blijf voortaan bij mama."},
+            {"Ys", -2, 4, "fisherman", Villager.Type.SNOW, false, "Teun speelt nog steeds vals. Ik zag het.", null, "Het meer is weer glad. Kom eens glijden."},
+            {"Mira", -4, 2, "cartographer", Villager.Type.PLAINS, false, "Mijn vuurtoren brandt. En jij ook, zie ik.", null, "Kijk 's avonds naar zee. Dat is mijn licht."},
+            {"Teun", -5, 0, "fisherman", Villager.Type.TAIGA, false, "Zoutbaard had dit feest ook leuk gevonden.", null, "Zoutkom wacht op je. Mijn kaarten ook."},
+            {"Wolf", -2, -4, "armorer", Villager.Type.TAIGA, false, "Een wachter van Zelda zonder werk. Heerlijk.", null, "Nachtrots is stil nu. Alleen de zee."},
+            {"Hagen", 0, -5, "weaponsmith", Villager.Type.SNOW, false, "Een feest! Het is hier warmer dan in IJshoeve.", null, "Mijn smidse in IJshoeve staat altijd open."},
+            {"Okker", 2, -4, "armorer", Villager.Type.SAVANNA, false, "Mijn esse brandt vandaag alleen voor jou.", null, "Sintelgat smeedt weer. Dankzij jou."},
+            {"Ida", 4, -2, "cartographer", Villager.Type.SNOW, false, "Ik klom op Morgals toren. Wat een uitzicht!", null, "Morgen klim ik weer. Ga je mee?"}};
 
     /** Na het einde zeggen ze op het Lindewoud iets nieuws (één keer, vooraan): {naam, regel}. */
     private static final String[][] THUIS = {
@@ -59,7 +62,7 @@ final class ZeldaFeest {
             {"Fien", "Feestbrood! Pak maar, je hebt het verdiend."},
             {"Sem", "Later word ik net als jij!"},
             {"Bram", "Ik gaf je een schild. En kijk nu eens!"},
-            {"Gerrit", "Wolkje is thuis, en Zelda ook. Wat een dag."},
+            {"Gerrit", "Zelda is thuis! Wat een dag."},
             {"Brecht", "Mijn Zilvermeeuw voer nog nooit zo hard."},
             {"Lotje", "Ik telde de meeuwen. En één prinses!"}};
 
@@ -108,8 +111,21 @@ final class ZeldaFeest {
                     if (s.zet(KROON)) spel.voortgang.vuil();
                     spel.genees(p);
                     vuurwerk(spel, h, 2);
-                });
+                })
+                .gesprek("zelda-brieven", s -> s.missie(SCHAT) == ZeldaVoortgang.KLAAR && s.missie(BRIEVEN) == 0, List.of(
+                        ZeldaHoofdstuk.r("Zelda", "Wil je mijn dank rondbrengen? Vier brieven."),
+                        ZeldaHoofdstuk.r("Zelda", "Voor Teun, Ys, Okker en Wolf.")), (spel, p, s) -> spel.missie(p, BRIEVEN, 1))
+                .gesprek(null, s -> s.missie(BRIEVEN) == 1, List.of(ZeldaHoofdstuk.r("Zelda", "Teun, Ys, Okker en Wolf. Brecht vaart je.")), null)
+                .gesprek("zelda-brieven-2", s -> s.missie(BRIEVEN) == 2, List.of(
+                        ZeldaHoofdstuk.r("Zelda", "Iedereen weet het nu. Dank je wel!"),
+                        ZeldaHoofdstuk.r("Wiske", "Kom je nog eens langs? Ik blijf hier.")), (spel, p, s) -> {
+                    spel.missie(p, BRIEVEN, ZeldaVoortgang.KLAAR);
+                    spel.genees(p);
+                    vuurwerk(spel, h, 4);
+                })
+                .gesprek(null, s -> s.missie(BRIEVEN) == ZeldaVoortgang.KLAAR, List.of(ZeldaHoofdstuk.r("Zelda", "Kom je nog eens? Het feest gaat door.")), null);
         h.missie(SCHAT, "De schat van Morgal", "Zoek Morgals schatkamer, onder in zijn toren.", "Breng Zelda haar kroontje, op het Lindewoud.");
+        h.missie(BRIEVEN, "Zelda's brieven", "Breng de brieven naar Teun, Ys, Okker en Wolf.", "Terug naar Zelda, op het Lindewoud.");
         // Tijmen: de wegwijzer op het feest
         ZeldaHoofdstuk.Persoon tijmen = h.persoon(new ZeldaHoofdstuk.Persoon("Tijmen", plek(h, FX - 4, FZ - 2, naarMidden(-4, -2)), null, List.of(
                 ZeldaHoofdstuk.r("Tijmen", "Wat een feest. Zelfs de sterren dansen."))));
@@ -129,10 +145,16 @@ final class ZeldaFeest {
                     List.of(ZeldaHoofdstuk.r(naam, "Daar is ze! Praat met Zelda."))));
             pe.streek = (Villager.Type) g[4];
             pe.kind = (boolean) g[5];
-            pe.zichtbaar = s -> s.heeft(E5B);
+            String nodig = (String) g[7];                                 // een gevangene staat er alleen als je hem bevrijdde
+            pe.zichtbaar = s -> s.heeft(E5B) && (nodig == null || s.heeft(nodig));
             pe.beheerNaam = naam.toLowerCase() + "-feest";
             ZeldaHoofdstuk.Actie actie = naam.equals("Dina") ? (spel, p, s) -> spel.genees(p) : null;
-            pe.eenmalig("feest-" + naam.toLowerCase(), s -> s.heeft("zelda"), List.of(ZeldaHoofdstuk.r(naam, (String) g[6])), actie);
+            String eerst = naam.equals("Hendrik") ? null : (String) g[6];
+            if (naam.equals("Hendrik"))                                         // Bas is alleen thuis als je hem bevrijdde
+                pe.eenmalig("feest-hendrik", s -> s.heeft("zelda"), List.of(), (spel, p, s) ->
+                        spel.vertel(p, ZeldaHoofdstuk.r("Hendrik", s.heeft("vrij:bas") ? (String) g[6] : "Wat een feest! Zoutkom is trots op je.")));
+            else pe.eenmalig("feest-" + naam.toLowerCase(), s -> s.heeft("zelda"), List.of(ZeldaHoofdstuk.r(naam, eerst)), actie);
+            pe.gesprek(null, s -> s.heeft("zelda"), List.of(ZeldaHoofdstuk.r(naam, (String) g[8])), null);   // daarna: kom eens langs
         }
         // aankomst in de haven, en op het feest
         ZeldaHoofdstuk.Rust haven = h.rust("haven");
@@ -152,6 +174,47 @@ final class ZeldaFeest {
         feest.als = s -> !s.heeft("zelda");
         h.doel("feest", "Muziek, bij het oefenveld!", "Op de open plek in het woud. Praat met Zelda.", zelda.plek,
                 s -> s.heeft("zelda") || !s.heeft(E5B));
+    }
+
+    /**
+     * Brecht op elke steiger: nieuws na een grote stap (één keer, waar je hem het eerst ziet), vóór zijn eigen gesprekken.
+     * Zo zegt hij na elke stap iets nieuws en stuurt hij je verder (het kroontje, de brieven).
+     */
+    static void brechtNieuws(ZeldaHoofdstuk.Persoon brecht) {
+        List<ZeldaHoofdstuk.Gesprek> nieuws = List.of(
+                nieuws("brecht-binnen", s -> s.heeft("e5a") && !s.heeft(ZeldaEiland5b.VRIJ_ZELDA), "Je was binnen in Morgals burcht! Ik hield de wacht."),
+                nieuws("brecht-schat", s -> s.heeft("zelda") && s.missie(SCHAT) == 1, "Zelda's kroontje? Onder in Morgals toren, zei ze."),
+                nieuws("brecht-kroon", s -> s.heeft(KROON) && s.missie(BRIEVEN) == 0, "Zelda met haar kroontje. Wat een plaatje!"),
+                nieuws("brecht-brieven", s -> s.missie(BRIEVEN) == 1, "Brieven van de prinses? Stap maar in, ik vaar."));
+        brecht.gesprekken.addAll(0, nieuws);
+    }
+
+    private static ZeldaHoofdstuk.Gesprek nieuws(String id, java.util.function.Predicate<ZeldaVoortgang.Stand> als, String regel) {
+        return new ZeldaHoofdstuk.Gesprek(id, s -> !s.heeft("g:" + id) && als.test(s), List.of(ZeldaHoofdstuk.r("Brecht", regel)), null);
+    }
+
+    /** Na het bouwen van een deel: wie een brief van Zelda krijgt (de laatste met die naam: in de kreek de vrije Wolf, niet die in zijn cel). */
+    static void naBouw(ZeldaHoofdstuk h) {
+        String[][] wie = {{"e2a", "Teun", "Een brief van Zelda? Voor mij? Nou nou."}, {"e3a", "Ys", "Van de prinses zelf. Die hang ik bij mijn wak."},
+                {"e4a", "Okker", "Een brief van Zelda! Die komt boven de esse."}, {"e5a", "Wolf", "Van Zelda. Nu is mijn wacht echt voorbij."}};
+        for (String[] w : wie) {
+            if (!w[0].equals(h.id())) continue;
+            ZeldaHoofdstuk.Persoon pe = null;
+            for (ZeldaHoofdstuk.Persoon x : h.personen) if (x.naam.equals(w[1])) pe = x;
+            if (pe != null) brief(pe, w[2]);
+        }
+    }
+
+    /** Een brief van Zelda afgeven (vooraan: hij gaat voor); alle vier = terug naar Zelda. */
+    static void brief(ZeldaHoofdstuk.Persoon pe, String regel) {
+        String id = "brief-" + pe.naam.toLowerCase();
+        pe.gesprekken.add(0, new ZeldaHoofdstuk.Gesprek(id, s -> s.missie(BRIEVEN) == 1 && !s.heeft("g:" + id), List.of(
+                ZeldaHoofdstuk.r(pe.naam, regel)), (spel, p, s) -> {
+            int n = 0;
+            for (String aan : BRIEF_AAN) if (s.heeft("g:brief-" + aan.toLowerCase())) n++;
+            if (n >= BRIEF_AAN.length) spel.missie(p, BRIEVEN, 2);
+            else spel.zeg(p, net.kyori.adventure.text.Component.text("Brieven · " + n + " van " + BRIEF_AAN.length, net.kyori.adventure.text.format.NamedTextColor.GRAY));
+        }));
     }
 
     /** Het einde: de vlag {@code zelda}, het slotdeuntje en vuurwerk boven de open plek. */

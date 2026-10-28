@@ -88,7 +88,10 @@ final class Zelda implements Modus {
     @Override
     public List<Deel> delen() {
         List<Deel> d = new ArrayList<>();
-        for (ZeldaHoofdstuk h : HOOFDSTUKKEN) d.add(new Deel(h.deelId(), h.versie(), h::bouw));
+        for (ZeldaHoofdstuk h : HOOFDSTUKKEN) d.add(new Deel(h.deelId(), h.versie(), b -> {
+            h.bouw(b);
+            ZeldaFeest.naBouw(h);                                       // Zelda's brieven bij Teun, Ys, Okker en Wolf (na het feest)
+        }));
         d.add(new Deel(zee.deelId(), zee.versie(), zee::bouw));
         return d;
     }

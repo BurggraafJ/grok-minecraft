@@ -43,7 +43,7 @@ import org.bukkit.plugin.Plugin;
  */
 final class ZeldaEiland3b extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 1;
+    static final int VERSIE = 2;                        // 2: de oostkust rond en golvend (geen rechthoek meer)
     /** Het vak van dit halve eiland (oost van 3a); elke kolom zet dit deel zelf. */
     static final int X1 = 1580, X2 = 1720, Z1 = -480, Z2 = -180;
     /** De as van het bergpad en het paleis (z), en de hartstukjes en vlaggen van 3b. */
@@ -272,7 +272,14 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
 
     /** Hoe ver je van de zee bent (negatief = zee): de kust van het vak (noord, zuid en oost; in het westen ligt 3a). */
     private static double kust(int x, int z) {
-        return Math.min(Math.min(z + 474, -186 - z), 1716 - x) + (zacht(x, z, 7) - 0.5) * 4;
+        double d = Math.min(Math.min(z + 474, -186 - z), 1716 - x);
+        // versie 2: de oosthoeken rond (geen rechthoek meer, van zee en op de kaart), de noord- en zuidkust golvend; bij 3a
+        // (west) en langs het paleis (oost, z −345 … −248) blijft de kust waar hij was
+        for (int[] hoek : new int[][]{{1646, -404}, {1646, -256}})
+            if (x > hoek[0] && (hoek[1] < -300 ? z < hoek[1] : z > hoek[1])) d = Math.min(d, 70 - Math.hypot(x - hoek[0], z - hoek[1]));
+        double golf = Math.min(1, Math.max(0, (x - 1590) / 30.0)) * (zacht(x + 31, z - 17, 23) - 0.5) * 16;
+        if (z < -345 || z > -248) d += Math.min(golf, 0);
+        return d + (zacht(x, z, 7) - 0.5) * 4;
     }
 
     private static double bult(int x, int z, int cx, int cz, double r) {

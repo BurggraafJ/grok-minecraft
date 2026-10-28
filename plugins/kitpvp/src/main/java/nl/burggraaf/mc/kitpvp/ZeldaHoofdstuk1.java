@@ -1869,7 +1869,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         for (int[] s : sp) k.spawns.add(plek(s[0], G + 1, s[1], 90f));
         k.golf(Soort.SOLDAAT, Soort.KRUISBOOG)                                      // balans: langer, lichter, gemengd (Jelle 27-10)
                 .golf(Soort.SOLDAAT, Soort.SPIN)
-                .golf(Soort.KRUISBOOG, Soort.SOLDAAT, Soort.KRUISBOOG)
+                .golf(Soort.KRUISBOOG, Soort.SOLDAAT, Soort.SPIN)            // één kruisboog tegelijk: het eerste uur blijft licht (afronding)
                 .extra(Soort.SOLDAAT, Soort.KRUISBOOG, Soort.KRUISBOOG, Soort.SOLDAAT);
         k.bel = bel(327, -3, BlockFace.EAST);
         bron("bron-kade", plek(327, G + 1, 3, 0f));                  // genezen óp de kade (Jelle 27-10)
@@ -1883,6 +1883,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                 .gesprek(null, s -> !s.heeft("hart1"), List.of(
                         r("Brecht", "Zie je die nevel boven zee? Dat is Grauwmoer."),
                         r("Brecht", "Zolang zij er is, vaart niemand.")), null);
+        ZeldaFeest.brechtNieuws(brecht);                       // nieuws na elke grote stap (één keer, op elke steiger)
         // Lotje telt meeuwen aan het eind van de pier
         Persoon lotje = persoon(new Persoon("Lotje", plek(373, G + 1, 1, -90f), null, List.of(
                 r("Lotje", "Negenenveertig, vijftig… Niet storen, hoor!"))));

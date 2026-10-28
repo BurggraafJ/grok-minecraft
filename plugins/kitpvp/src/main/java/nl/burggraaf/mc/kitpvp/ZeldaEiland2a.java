@@ -551,6 +551,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                         r("Brecht", "Het baken brandt! Nu durf ik het noorden in."),
                         r("Brecht", "Naar de Witte Toppen? Zeg het maar.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
+        ZeldaFeest.brechtNieuws(brecht);                       // nieuws na elke grote stap (één keer, op elke steiger)
     }
 
     private static Villager.Profession beroep(String id) {

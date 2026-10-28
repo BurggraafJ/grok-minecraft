@@ -563,6 +563,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Brecht", "Twee bakens! Ik zag het licht vanaf de fjord."),
                         r("Brecht", "Nog één. Zeg maar wanneer we varen.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
+        ZeldaFeest.brechtNieuws(brecht);                       // nieuws na elke grote stap (één keer, op elke steiger)
         verhaal(new Verhaal("weg3", Box.van(1470, G, -262, 1480, G + 5, -250), List.of(
                 r("Wiske", "Rook uit schoorstenen. Daar is een dorp!"))));
     }
@@ -710,7 +711,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                     spel.beloon(p, "lantaarn", "Sterrenlantaarn", "licht in de storm");
                     spel.uitleg(p, r("Wiske", "Met dat licht zie je sporen in de storm."));
                 })
-                .eenmalig("tijmen-haak", s -> s.heeft("klauwhaak"), List.of(
+                .eenmalig("tijmen-haak", s -> s.heeft("klauwhaak") && !s.heeft("baken3"), List.of(
                         r("Tijmen", "De klauwhaak van de wachters. Mooi zo."),
                         r("Tijmen", "Hoog op de berg slaapt het Vorstbaken.")), null)
                 .eenmalig("tijmen-vorst3a", s -> s.heeft("baken3"), List.of(
@@ -842,7 +843,8 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                         r("Hagen", "Mijn vuur krijgt het niet los. Betoverd ijs.")), null)
                 .eenmalig("hagen-grimmel", s -> s.heeft("k:troonzaal"), List.of(
                         r("Hagen", "Grimmel is vrij, hoor ik. En het harnas hield?"),
-                        r("Hagen", "Goed staal. Zei ik toch.")), null);
+                        r("Hagen", "Goed staal. Zei ik toch.")), null)
+                .gesprek(null, s -> s.missie(GLOEDKOOL) == ZeldaVoortgang.KLAAR, List.of(r("Hagen", "Okkers kool gloeit nog. Eindelijk warme handen.")), null);
         missie(GLOEDKOOL, "De gloedkool", "Vraag Okker in Sintelgat om een gloedkool.", "Breng de gloedkool naar Hagen, in IJshoeve.");
     }
 

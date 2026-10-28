@@ -190,7 +190,7 @@ final class ZeldaTest {
         // eilanden (een opdracht van Hanne begint pas als de vorige klaar is), dan alles klaar
         List<ZeldaEiland> rond = begin == null ? z.EILANDEN : List.of(z.EILANDEN.get(0), begin.eiland);   // vanaf een deel: alleen dat eiland en thuis
         if (alles && z.EILANDEN.size() > 1) {
-            for (int ronde = 0; ronde < 3; ronde++)
+            for (int ronde = 0; ronde < 4; ronde++)                     // (na het feest: het kroontje, dan Zelda's brieven)
                 for (ZeldaEiland e : rond) {
                     stap("boodschap: naar " + e.id(), () -> {
                         stil();
@@ -683,7 +683,7 @@ final class ZeldaTest {
         for (ZeldaHoofdstuk.Sluip sl : d.sluipen) s.zet("l:" + sl.id);
         for (String g : GAVEN.getOrDefault(d.id(), List.of())) s.zet(g);
         for (String st : d.stukjes) s.zet(st);
-        for (ZeldaHoofdstuk.Missie m : d.missies) if (!m.id().equals(ZeldaFeest.SCHAT)) s.missies.put(m.id(), ZeldaVoortgang.KLAAR);   // de schat is na het einde (5b)
+        for (ZeldaHoofdstuk.Missie m : d.missies) if (!m.id().equals(ZeldaFeest.SCHAT) && !m.id().equals(ZeldaFeest.BRIEVEN)) s.missies.put(m.id(), ZeldaVoortgang.KLAAR);   // de schat en de brieven zijn na het einde (5b)
         for (ZeldaHoofdstuk.Persoon pe : d.personen) for (ZeldaHoofdstuk.Gesprek g : pe.gesprekken)                                   // wat ze toen zeiden
             if (g.id() != null && !NA_DE_TOREN.contains(g.id()) && !g.id().startsWith("na-") && !g.id().startsWith("feest-") && !g.id().startsWith("zelda-")) s.zet("g:" + g.id());
         ZeldaRegels.vulFlessen(s);

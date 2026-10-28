@@ -562,6 +562,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                         r("Brecht", "Een zwart harnas? Mira's lamp maakt alles schoon."),
                         r("Brecht", "Zeg maar, dan varen we naar het Zilverstrand.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
+        ZeldaFeest.brechtNieuws(brecht);                       // nieuws na elke grote stap (één keer, op elke steiger)
         tijmen();
         wolfRaam();
         if (torenErbij()) {                                                     // Zelda is vrij (5b): ze wacht bij de Zilvermeeuw

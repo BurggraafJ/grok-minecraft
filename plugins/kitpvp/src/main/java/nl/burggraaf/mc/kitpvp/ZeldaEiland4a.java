@@ -586,6 +586,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                         r("Brecht", "De nevel in het noorden is weg! Ik zag het vanaf het water."),
                         r("Brecht", "Nachtrots! Zeg maar wanneer, dan varen we.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
+        ZeldaFeest.brechtNieuws(brecht);                       // nieuws na elke grote stap (één keer, op elke steiger)
         verhaal(new Verhaal("weg4", Box.van(1108, G, 326, 1114, G + 6, 338), List.of(
                 r("Wiske", "Huisjes tegen de berg. Daar wonen vast mijnwerkers."))));
     }
