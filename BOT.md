@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.10.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.11.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -406,7 +406,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   gezondheid + gouden appel.
   **Story of Zelda** (`Zelda*.java`; plan en bouwsessies in `ZELDA.md`, techniek in `MODI.md`): avontuur over de
   eilanden van de Glazen Zee, alleen of samen. Door de poort = naar je **laatste rustplaats** (voortgang per speler in
-  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu drie eilanden. **Eiland 1, «Het Lindewoud»**
+  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu vier eilanden. **Eiland 1, «Het Lindewoud»**
   (deel `zelda` versie 4, sessie zelda-lindewoud-v2, kitpvp 2.6; Jelle 27-10: "te veel vechten, te moeilijk, je moet kunnen
   rehealen, kunnen teruglopen"): een **open eiland** (bouwvak x 1024…1639, z −179…179; land x 1045…1492, z −105…105).
   Je wordt wakker in je huisje aan de bosrand (west); het pad brengt je naar **Lindedorp** in het midden (grote linde,
@@ -502,10 +502,23 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   gloedijzer (de Daaltrap is een korte weg terug). Met de esse aan en het gloedijzer smeedt Okker het **gloedharnas**
   (`harnas3`): dan pas door de gloed naar de **Askamer** (het enige gevecht: asknecht, vonkschutter, sintelmijt in drie
   gemengde golven, met zielvuur en bron ervoor) en de **Smidsepoort** (einde `e4a`); de Asgang leidt naar het Uitzicht
-  (Ida). De **Smidse** (4b) staat aangekondigd (`Zelda.KOMT`, een deel van het eiland). Zijmissies: de lorrie (Dina),
+  (Ida). Zijmissies: de lorrie (Dina),
   de sporen (Fenna, race), de mijnvuren (Kobus) → drie hartstukjes; boodschap over zee: Hagen in IJshoeve wil een
   gloedkool van Okker → `fles6`; de vuurstaf smelt het ijsblok bij Hagen (`hs:witte-toppen-3`). Muziek *Sintelgat*,
-  *Mijnen*, *Gloed*. Volgende delen (de Smidse, Nachtrots) komen in losse sessies (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  *Mijnen*, *Gloed*. **Eiland 4b, de Gloedberg: de Smidse** (sessie zelda-eiland-4b, kitpvp 2.11, deel `zelda-e4b`,
+  x 1260…1400; de kegel en de krater, met een wand rond de top): achter de Smidsepoort de **Smidsehal** (Tijmen leest het
+  schrift: «drie vonken wekken het Hart»; een oude schildplaat), dan in elke volgorde, in een rondje: de **Kettingzaal**
+  (klauwhaak naar een pijler boven de lava, het touw van de kettingbrug doorbranden), de **Stuwdam** (een bom tegen de
+  dam: water op lava wordt een pad van steen) en de **Gietzaal** (drie ovens met de vuurstaf: de gietrivier zakt; lava
+  die op een ritme stijgt en zakt over de stenen); Okker smeedt de schildplaat tot het **Gloedschild** (sintels ketsen
+  erop af). Drie vonken en het schild openen de **Hartdeur**: **Asgrim de Gloedwachter** zweeft over de lava, kantel de
+  kuip boven hem (pijl of bom) en hij is even gedoofd (het enige gevecht; zielvuur en bron in de voorkamer) → `hart4` →
+  met de klauwhaak de **Schoorsteen** op → de krater: het **Gloedbaken** (`baken4`) → op de uitkijk breekt de
+  **Nevelring** (ook op het Lindewoud is de zwarte nevel om Nachtrots dan weg). **Nachtrots** staat aangekondigd
+  (`Zelda.KOMT`). **Lava doet in Zelda geen echte schade**: wie erin stapt, springt terug naar waar hij veilig stond
+  (één hart). Boodschap over zee: Kees op het Lindewoud wil een bijlblad uit de Smidse → `fles7`; een hartstukje in een
+  nevelnis wacht op de lichtpijlen (Nachtrots). Muziek *Smidse*, baas *Asgrim*. Volgend eiland (Nachtrots) komt in
+  losse sessies (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).

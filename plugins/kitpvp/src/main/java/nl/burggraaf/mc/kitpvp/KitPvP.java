@@ -1114,6 +1114,14 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "zelda-e4a-mijn-zij", 0, 1, 325, 1160, 1262, g, zg + 40, 14, 5));      // van binnen, door de Daaltrap en de Gloedader
         f.add(Kaart.voor(w, map, "zelda-e4a-vonk-zij", 1, 0, 1197, 252, 300, g, zg + 34, 12, 8));       // door de Schachtput en de Vonkkamer
         f.add(Kaart.voor(w, map, "zelda-e4a-zij", 0, -1, 470, 1060, 1400, g, zg + 72, 300, 2));
+        // eiland 4b, de Smidse: alles van boven, de zalen (net onder de plafonds), de kloof van de Kettingzaal, het Hart, de krater,
+        // en van opzij: door het Hart en de schoorsteen, en door de Smidsehal
+        f.add(Kaart.boven(w, map, "zelda-e4b-boven", ZeldaEiland4b.X1, ZeldaEiland4b.Z1, ZeldaEiland4b.X2, ZeldaEiland4b.Z2, g - 2, zg + 80, 2));
+        f.add(Kaart.boven(w, map, "zelda-e4b-zalen", 1256, 236, 1342, 346, d4 - 1, d4 + 4, 5));
+        f.add(Kaart.boven(w, map, "zelda-e4b-kloof", 1256, 242, 1300, 272, zg - 8, d4 - 1, 8));
+        f.add(Kaart.boven(w, map, "zelda-e4b-krater", 1296, 312, 1342, 346, zg + 48, zg + 62, 8));
+        f.add(Kaart.voor(w, map, "zelda-e4b-hart-zij", 0, 1, 330, 1256, 1342, zg - 4, zg + 66, 8, 5));
+        f.add(Kaart.voor(w, map, "zelda-e4b-hal-zij", 1, 0, 1262, 236, 346, zg - 8, zg + 20, 14, 5));
         List<String> uit = new ArrayList<>();
         for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;

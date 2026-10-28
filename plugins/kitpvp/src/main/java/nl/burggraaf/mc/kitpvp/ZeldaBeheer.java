@@ -95,7 +95,7 @@ final class ZeldaBeheer {
 
     // ── plekken ─────────────────────────────────────────────────────────────────────────────
 
-    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren, betoverd ijs, haakpunten, graafplekken, glijvloeren. */
+    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren, betoverd ijs, haakpunten, graafplekken, glijvloeren, lava op een ritme. */
     Map<String, Location> plekken() {
         Map<String, Location> m = new LinkedHashMap<>();
         for (ZeldaEiland e : spel.eilanden) {
@@ -106,8 +106,9 @@ final class ZeldaBeheer {
                 for (ZeldaHoofdstuk.Rust r : h.rust) zet(m, r.id, r.plek);
                 for (ZeldaHoofdstuk.Kamer k : h.kamers) zet(m, k.id, k.start.midden(h.w));
                 for (ZeldaHoofdstuk.Persoon pe : h.personen)                       // dezelfde persoon op twee delen (Tijmen): de tweede met het deel erbij
-                    if (m.containsKey(pe.naam.toLowerCase(Locale.ROOT))) zet(m, pe.naam + "-" + h.id(), pe.plek);
-                    else zet(m, pe.naam, pe.plek);
+                    if (!m.containsKey(pe.naam.toLowerCase(Locale.ROOT))) zet(m, pe.naam, pe.plek);
+                    else if (!m.containsKey((pe.naam + "-" + h.id()).toLowerCase(Locale.ROOT))) zet(m, pe.naam + "-" + h.id(), pe.plek);
+                    else zet(m, pe.naam + "-" + h.id() + "-2", pe.plek);                  // twee keer op één deel (Tijmen op de uitkijk, 4b)
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) zet(m, r.id, r.gebied.midden(h.w));
                 for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) zet(m, u.id, u.start.midden(h.w));
                 for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) zet(m, sp.id, sp.gebied.midden(h.w));
@@ -124,6 +125,7 @@ final class ZeldaBeheer {
                 for (ZeldaHoofdstuk.Haakpunt hp : h.haakpunten) zet(m, "haak-" + hp.id(), hp.landing());   // boven, bij de landing
                 for (ZeldaHoofdstuk.Graaf gr : h.graven) zet(m, "graaf-" + gr.id(), gr.plek());
                 for (ZeldaHoofdstuk.Glij gl : h.glijvloeren) zet(m, gl.id, h.plekVan(gl.id));                  // bij de start, voor het ijs
+                for (ZeldaHoofdstuk.Ritme rt : h.ritmes) zet(m, rt.id, h.plekVan(rt.id));                       // voor de stenen
             }
         }
         if (spel.zee.w != null && !spel.zee.dek.isEmpty()) zet(m, "zee", spel.zee.dek.get(0));
