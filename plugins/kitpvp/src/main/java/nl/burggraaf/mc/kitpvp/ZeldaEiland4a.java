@@ -1391,7 +1391,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
             zet(1255, D + 1, 299, Bouwer.gericht(Material.BELL, BlockFace.WEST));
             vul(1247, D + 1, z1 - 1, 1249, D + 3, z1 - 1, Material.AIR);
         }
-        Kamer k = kamer(new Kamer("askamer", "De Askamer", Box.van(x1, D, z1, x2, D + 9, z2), Box.van(1242, D + 1, 298, 1254, D + 5, 314),
+        Kamer k = kamer(new Kamer("askamer", "De Askamer", Box.van(x1, D, z1, x2, D + 9, z2), Box.van(1242, D, 298, 1254, D + 5, 314),
                 deur(tralies(false), 1247, D + 1, 317, 1249, D + 3, 317), deur(tralies(false), 1247, D + 1, 295, 1249, D + 3, 295)));
         for (int[] sp : new int[][]{{1242, 299}, {1254, 299}, {1242, 313}, {1254, 313}, {1248, 306}, {1248, 300}})
             k.spawns.add(plek(sp[0], D + 1, sp[1], 0f));

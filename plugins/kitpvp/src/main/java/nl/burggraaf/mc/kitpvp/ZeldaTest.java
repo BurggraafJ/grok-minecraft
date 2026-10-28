@@ -263,7 +263,7 @@ final class ZeldaTest {
                 kamerGehad = true;
                 stap("kamer " + k.id + " rustig", () -> {
                     if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
-                    p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                    p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
                 }, 20, () -> {
                     moet(k.fase == ZeldaHoofdstuk.Fase.RUST && k.in.isOpen && k.uit.isOpen && k.vijanden.isEmpty(), "kamer " + k.id + ": begint zonder bel");
                     return true;
@@ -283,7 +283,7 @@ final class ZeldaTest {
                         }, 1);
                 stap("kamer " + k.id + " dicht", () -> {
                     if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
-                    p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                    p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
                 }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
                 if (k.baas instanceof Zoutbaard zb) stap("bom in de ton van " + zb.naam, () -> {     // een echte bom in de ton waar hij bij staat
                     moet(stand().heeft("bommen"), "geen bommen voor " + zb.naam);
@@ -354,7 +354,7 @@ final class ZeldaTest {
                     belGehad = true;
                     stap("kamer " + k.id + " vrije doorgang", () -> {
                         z.spel.herstel(k);
-                        p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                        p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
                     }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.GEWONNEN && k.in.isOpen && k.uit.isOpen && k.vijanden.isEmpty(), 40);
                     stap("kamer " + k.id + " van de andere kant", () -> {                  // terug vanaf de uitgang (zijmissies)
                         z.spel.herstel(k);
@@ -367,7 +367,7 @@ final class ZeldaTest {
                             "kamer " + k.id + ": met de bel " + (k.golf + 1) + " golven (verwacht " + (k.golven.size() + k.extra.size()) + ")"), 2, () -> true, 1);
                     stap("kamer " + k.id + " nieuw erbij", () -> {                          // wie hem nog niet won, vecht gewoon
                         stand().wis("k:" + k.id);
-                        p.teleport(k.start.midden(h.w).add(0, 1, 0));
+                        p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
                     }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG && !k.terug, 40);
                     stap("kamer " + k.id + " nieuw erbij verslaan", () -> { }, 5, () -> verslaan(h, k) && stand().heeft("k:" + k.id), 900);
                 }
@@ -627,7 +627,7 @@ final class ZeldaTest {
 
     /** Rechtsklik op de bel van een kamer, zoals een speler (vanuit het midden van de kamer). */
     private void belKlik(ZeldaHoofdstuk h, ZeldaHoofdstuk.Kamer k) {
-        p.teleport(k.start.midden(h.w).add(0, 1, 0));
+        p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
         var b = h.w.getBlockAt(k.bel[0], k.bel[1], k.bel[2]);
         var e = new org.bukkit.event.player.PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
                 p.getInventory().getItemInMainHand(), b, org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND);
@@ -735,7 +735,7 @@ final class ZeldaTest {
     /** Alle vijanden in de kamer verslaan (en binnen blijven); true als de kamer gewonnen is. */
     private boolean verslaan(ZeldaHoofdstuk h, ZeldaHoofdstuk.Kamer k) {
         for (LivingEntity e : new ArrayList<>(k.vijanden)) if (e.isValid()) e.damage(10_000, p);
-        if (!k.binnen.in(p.getLocation())) p.teleport(k.start.midden(h.w).add(0, 1, 0));
+        if (!k.binnen.in(p.getLocation())) p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
         return k.fase == ZeldaHoofdstuk.Fase.GEWONNEN;
     }
 
@@ -809,7 +809,7 @@ final class ZeldaTest {
         stap("poort", this::doorDePoort, 2, () -> true, 1);
         stap("kamer " + k.id + " dicht", () -> {
             if (k.fase != ZeldaHoofdstuk.Fase.RUST) z.spel.herstel(k);
-            p.teleport(k.start.midden(h.w).add(0, 1, 0));
+            p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
         }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
         stap("dood", () -> p.setHealth(0), 3, () -> {
             if (p.isDead()) p.spigot().respawn();
@@ -1069,7 +1069,7 @@ final class ZeldaTest {
         stap("tip: kamer " + k.id, () -> {
             stil();
             if (k.fase != ZeldaHoofdstuk.Fase.RUST) sp.herstel(k);
-            p.teleport(k.start.midden(h.w).add(0, 1, 0));
+            p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
         }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
         stap("tip: dood", () -> {
             stil();
