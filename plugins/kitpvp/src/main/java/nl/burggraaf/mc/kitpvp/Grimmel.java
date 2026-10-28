@@ -39,6 +39,8 @@ final class Grimmel extends ZeldaBaas {
     static final double SNELHEID = 0.7, BEREIK = 30;
     /** Zo dicht bij zijn midden word je geraakt, en zoveel doet dat (halve harten, vóór de balans en je harnas). */
     static final double RAAK = 1.9, STORM_SCHADE = 8;
+    /** Zo groot is hij als hij vrij is (weglopen, en slapen in zijn hol). */
+    static final double VRIJ_SCHAAL = 1.8;
 
     /** De ijszuilen: per zuil {x1, z1, x2, z2, y1, y2} (blokken, grenzen erbij). */
     final List<int[]> zuilen;
@@ -133,9 +135,29 @@ final class Grimmel extends ZeldaBaas {
     void stop() {
         if (taak != null) taak.cancel();
         taak = null;
-        for (int i = 0; i < zuilen.size(); i++) if (!heel[i]) zetZuil(i, true);
+        for (int i = 0; i < zuilen.size(); i++) if (!heel[i]) {
+            opzij(i);                                                        // wie op de plek van de zuil staat, eerst opzij (niet inmetselen)
+            zetZuil(i, true);
+        }
         versuft = 0;
         super.stop();
+    }
+
+    /** Wie (of wat) op de plek van zuil {@code i} staat, gaat een stukje opzij: naar de kant van het midden van de zaal. */
+    private void opzij(int i) {
+        int[] c = zuilen.get(i);
+        BoundingBox b = new BoundingBox(c[0] - 0.3, c[4], c[1] - 0.3, c[2] + 1.3, c[5] + 1, c[3] + 1.3);
+        Location m = zuil(i), naar = grond.get(0);
+        Vector weg = naar.toVector().subtract(m.toVector()).setY(0);
+        if (weg.lengthSquared() < 0.01) weg = new Vector(1, 0, 0);
+        weg.normalize().multiply(2.6);
+        for (org.bukkit.entity.Entity e : w().getNearbyEntities(b, x -> x instanceof LivingEntity)) {
+            Location l = m.clone().add(weg);
+            l.setY(c[4]);
+            l.setYaw(e.getLocation().getYaw());
+            l.setPitch(e.getLocation().getPitch());
+            e.teleport(l);
+        }
     }
 
     /** Elke seconde: gebroken zuilen terug, duizelen, en om de paar tellen stormen naar wie het dichtst bij is. */
@@ -310,7 +332,7 @@ final class Grimmel extends ZeldaBaas {
             b.setAI(false);
             b.setSilent(true);
             var s = b.getAttribute(Attribute.SCALE);
-            if (s != null) s.setBaseValue(1.8);
+            if (s != null) s.setBaseValue(VRIJ_SCHAAL);
         });
         Vector r = hol.toVector().subtract(l.toVector()).setY(0);
         double lang = r.length();
@@ -320,7 +342,7 @@ final class Grimmel extends ZeldaBaas {
         final BukkitTask[] t = {null};
         t[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             tik[0]++;
-            if (!beer.isValid() || tik[0] * 0.12 >= lang || tik[0] > 200) {
+            if (!beer.isValid() || tik[0] * 0.12 >= lang || tik[0] > lang / 0.12 + 20) {
                 beer.remove();
                 t[0].cancel();
                 return;

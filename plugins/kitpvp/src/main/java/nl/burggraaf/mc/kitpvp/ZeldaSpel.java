@@ -2489,7 +2489,8 @@ final class ZeldaSpel implements Listener {
     /** De klauwhaak schieten: grijpt hij een haakpunt (waar je op mikt, of een paar graden ernaast), dan trekt hij je erheen. */
     void haak(Player p) {
         Sessie ss = sessie(p);
-        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM) || (inGevecht(p) && !haakMag(p))) return;
+        if (ss == null || ss.vaart != null || p.isDead() || trekken.containsKey(p.getUniqueId()) || p.hasCooldown(Klauwhaak.ITEM) || (inGevecht(p) && !haakMag(p))
+                || glijdt(p)) return;                                       // tijdens het glijden niet (eerst stilstaan)
         p.setCooldown(Klauwhaak.ITEM, 14);
         Location oog = p.getEyeLocation();
         org.bukkit.util.Vector kijk = oog.getDirection();
@@ -2666,7 +2667,7 @@ final class ZeldaSpel implements Listener {
             Glijden gl = glijders.get(id);
             if (gl != null) {
                 Sessie ss = sessie(p);
-                if (p.isDead() || ss == null || ss.vaart != null || beheer.is(id) || !gl.g.gebied.in(p.getLocation())) {
+                if (p.isDead() || ss == null || ss.vaart != null || beheer.is(id) || aanHetHaken(p) || !gl.g.gebied.in(p.getLocation())) {
                     glijders.remove(id);
                     continue;
                 }
@@ -2697,6 +2698,8 @@ final class ZeldaSpel implements Listener {
             if (v == null || tikken < v[2] || !g.isIjs(l.getBlockX(), l.getBlockZ()) || l.getY() < g.y + 0.6 || l.getY() > g.y + 3.5) continue;
             double dx = l.getX() - v[0], dz = l.getZ() - v[1];
             if (dx * dx + dz * dz < 0.0025) continue;                         // stil (een klein beetje schuiven telt niet)
+            Sessie ss = sessie(p);
+            if (ss != null && System.currentTimeMillis() - ss.geraakt < 600) continue;   // een duw (een klap) is geen stap
             BlockFace r = Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? BlockFace.EAST : BlockFace.WEST) : (dz > 0 ? BlockFace.SOUTH : BlockFace.NORTH);
             if (!glij(p, g, r)) {                                              // daar staat iets: blijf in je vakje
                 Location m = new Location(p.getWorld(), l.getBlockX() + 0.5, g.y + 1, l.getBlockZ() + 0.5, l.getYaw(), l.getPitch());

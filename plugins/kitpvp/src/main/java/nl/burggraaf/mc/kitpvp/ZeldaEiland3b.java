@@ -603,7 +603,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             }
             for (int[] l : new int[][]{{1611, -307}, {1628, -307}, {1611, -283}, {1628, -283}}) lantaarnpaal(l[0], F + 1, l[1]);
             bord(1625, F + 1, -297, BlockFace.WEST, "Het IJspaleis");
-            bord(1619, F + 1, -306, BlockFace.SOUTH, "De IJstuin");
+            bord(1615, F + 1, -307, BlockFace.SOUTH, "De IJstuin");
             bord(1614, F + 1, -283, BlockFace.NORTH, "De sleebaan");
             bord(1612, F + 1, -290, BlockFace.EAST, "Het bergpad");
             // de gracht voor de poort: een ladder eruit (aan de kant van het plein)
@@ -721,6 +721,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             vul(1622, F + 1, -334, 1627, F + 5, -332, Material.QUARTZ_BRICKS);  // het balkon
             for (int x = 1622; x <= 1627; x++) zet(x, F + 5, -332, Material.CHISELED_QUARTZ_BLOCK);
             vul(1621, F + 1, -333, 1621, F + 2, -333, Material.QUARTZ_BRICKS);  // het afstapje (alleen omlaag)
+            vul(1611, F + 3, -325, 1628, F + 8, -325, Material.LIGHT_BLUE_STAINED_GLASS);   // een scherm van glas: het balkon is niet vanaf het ijs te zien (eerst glijden)
             zet(1624, F + 5, -331, ZeldaHoofdstuk.HAAKPUNT);
             zet(1626, F + 6, -334, Material.SPRUCE_FENCE);
             zet(1626, F + 7, -334, Material.SPRUCE_PRESSURE_PLATE);
@@ -824,7 +825,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
         // de poorttoren aan de westkant, met twee torentjes
         for (int z : new int[]{-300, -288})
             for (int dz = -1; dz <= 1; dz++) {
-                vul(1633, F + 1, z + dz, 1634, F + 14, z + dz, Material.QUARTZ_BRICKS);
+                vul(1633, F - 6, z + dz, 1634, F + 14, z + dz, Material.QUARTZ_BRICKS);   // vanaf de bodem van de gracht
                 zet(1633, F + 15, z + dz, (dz == 0) ? Material.QUARTZ_PILLAR : Material.QUARTZ_SLAB);
             }
         vul(1634, F + 11, -299, 1634, F + 12, -289, Material.PACKED_ICE);
@@ -873,7 +874,6 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             for (int z = -296; z <= -292; z++) zet(1634, F + 5, z, Material.CHISELED_QUARTZ_BLOCK);
             for (int z : new int[]{-296, -292}) vul(1634, F + 1, z, 1634, F + 4, z, Material.QUARTZ_PILLAR);
             zet(1633, F + 6, PZ, ZeldaHoofdstuk.HAAKPUNT);
-            zet(1633, F + 7, PZ, Material.IRON_CHAIN);
             vul(1646, F + 1, -295, 1646, F + 4, -293, Material.AIR);          // naar de Kristalzaal (oost)
             for (int z = -296; z <= -292; z++) zet(1646, F + 5, z, Material.CHISELED_QUARTZ_BLOCK);
             // banieren, twee ijsbeelden van wachters, kettingen van de valbrug
@@ -924,7 +924,6 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
                         r("Tijmen", "Hier, een zonnesteen. Hij bewaart het laatste licht."),
                         r("Tijmen", "In de zaal met de spiegels heb je hem nodig.")), (spel, p, s) -> {
                     spel.beloon(p, ZONNESTEEN, "Zonnesteen", "licht voor de spiegels");
-                    spel.uitleg(p, r("Wiske", "Met de zonnesteen gaat het licht aan in de spiegelzaal."));
                 })
                 .eenmalig("tijmen-grimmel", s -> s.heeft("k:troonzaal"), List.of(
                         r("Tijmen", "Grimmel is vrij. Hoor je het? Het paleis ademt weer.")), null)
@@ -1069,7 +1068,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
     private void oostgang() {
         if (b.plaats) {
             for (int z = -314; z <= -286; z += 7) {
-                zet(1671, F + 4, z, Bouwer.gericht(Material.SOUL_WALL_TORCH, BlockFace.EAST));
+                if (z < -301 || z > -299) zet(1671, F + 4, z, Bouwer.gericht(Material.SOUL_WALL_TORCH, BlockFace.EAST));   // niet in de deur naar de Kristalzaal
                 zet(1677, F + 4, z + 3, Bouwer.gericht(Material.SOUL_WALL_TORCH, BlockFace.WEST));
             }
             // de troondeur: een deur van blauw ijs met twee lege houders voor de kristallen
@@ -1246,7 +1245,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
         beer.zichtbaar = s -> s.heeft("k:troonzaal");
         beer.uiterlijk = e -> {
             if (e instanceof org.bukkit.entity.LivingEntity le && le.getAttribute(org.bukkit.attribute.Attribute.SCALE) != null)
-                le.getAttribute(org.bukkit.attribute.Attribute.SCALE).setBaseValue(1.6);
+                le.getAttribute(org.bukkit.attribute.Attribute.SCALE).setBaseValue(Grimmel.VRIJ_SCHAAL);
         };
         beer.eenmalig("grimmel-1", null, List.of(
                 r("Wiske", "Hij snuffelt aan je hand."),
@@ -1361,7 +1360,11 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
     @Override
     void tik(ZeldaSpel spel, List<Player> wie, long nu) {
         for (Player p : wie) {
-            if (!p.getWorld().equals(w) || spel.beheer.is(p.getUniqueId()) || inPaleis(p.getLocation())) continue;
+            if (!p.getWorld().equals(w) || spel.beheer.is(p.getUniqueId())) continue;
+            if (inPaleis(p.getLocation())) {
+                binnen(spel, p, nu);
+                continue;
+            }
             Location l = p.getLocation();
             if (w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) > l.getBlockY() + 1) continue;     // onder een dak
             java.util.concurrent.ThreadLocalRandom r = java.util.concurrent.ThreadLocalRandom.current();
@@ -1369,6 +1372,21 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
         }
         zon(spel);
         baken(spel);
+    }
+
+    /**
+     * Binnen in het paleis: af en toe zacht geklingel van ijs en wat glinstering, en zolang Grimmel nog betoverd is, in de
+     * Oostgang af en toe een brom uit de Troonzaal (alleen voor jou).
+     */
+    private void binnen(ZeldaSpel spel, Player p, long nu) {
+        Location l = p.getLocation();
+        java.util.concurrent.ThreadLocalRandom r = java.util.concurrent.ThreadLocalRandom.current();
+        if (r.nextInt(9) == 0)
+            p.playSound(l.clone().add(r.nextDouble(-6, 6), r.nextDouble(2, 6), r.nextDouble(-6, 6)), org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_CHIME, org.bukkit.SoundCategory.AMBIENT, 0.25f, 0.7f + r.nextFloat() * 0.6f);
+        for (int i = 0; i < 4; i++) p.spawnParticle(Particle.SNOWFLAKE, l.clone().add(r.nextDouble(-7, 7), r.nextDouble(1, 5), r.nextDouble(-7, 7)), 1, 0, 0, 0, 0.005);
+        boolean gang = l.getX() >= 1671 && l.getX() <= 1679 && l.getZ() >= -317 && l.getZ() <= -283;
+        if (gang && nu % 15_000L < 1000 && !spel.voortgang.van(p.getUniqueId()).heeft("k:troonzaal"))
+            p.playSound(new Location(w, 1692.5, F + 2, PZ + 0.5), org.bukkit.Sound.ENTITY_POLAR_BEAR_WARNING, org.bukkit.SoundCategory.HOSTILE, 0.35f, 0.5f);
     }
 
     /** De houder in de Spiegelzaal: brandt als er iemand met de zonnesteen in de zaal is (dan schijnt het licht). */
