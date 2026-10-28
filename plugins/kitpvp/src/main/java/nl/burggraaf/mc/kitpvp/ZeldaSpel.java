@@ -2137,8 +2137,8 @@ final class ZeldaSpel implements Listener {
                 vertel(p, ZeldaHoofdstuk.r("Wiske", "Hier zijn we klaar. Op je kaart (vak 9) kun je naar " + ZeldaRegels.inZin(o.naam()) + " varen."));
                 return;
             }
-        for (ZeldaHoofdstuk.Persoon pe : alle(e, h -> h.personen))     // iemand met iets nieuws (nog eens vragen = ze wijst)
-            if (pe.nieuw(s)) {
+        for (ZeldaHoofdstuk.Persoon pe : alle(e, h -> h.personen))     // iemand met iets nieuws (nog eens vragen = ze wijst), die je ook ziet
+            if (pe.nieuw(s) && (pe.zichtbaar == null || pe.zichtbaar.test(s))) {
                 ss.hintDoel = "p:" + pe.naam;
                 if (ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, pe.plek);
                 ss.hintTijd = nu;
@@ -3413,7 +3413,11 @@ final class ZeldaSpel implements Listener {
 
     /** Ziet deze wachter (in deze stand) iemand die met zijn voeten op x, y, z staat: in zijn lichtkegel, en niets ertussen? */
     boolean ziet(ZeldaHoofdstuk.Sluip.Wachter wa, ZeldaRegels.Pose po, double x, double y, double z) {
-        if (!ZeldaRegels.inKegel(po, wa.bereik, wa.hoek, x, y, z)) return false;
+        return ziet(wa, po, x, y, z, 1);
+    }
+
+    private boolean ziet(ZeldaHoofdstuk.Sluip.Wachter wa, ZeldaRegels.Pose po, double x, double y, double z, double verder) {
+        if (!ZeldaRegels.inKegel(po, wa.bereik * verder, wa.hoek, x, y, z)) return false;
         var w = plugin.w;
         Location oog = new Location(w, po.x(), po.y() + 1.5, po.z());
         for (double h : new double[]{0.3, 1.0, 1.6}) {
@@ -3427,9 +3431,17 @@ final class ZeldaSpel implements Listener {
 
     /** Ziet een van de wachters van dit stuk iemand op x, y, z (voeten), op tijdstip {@code nu}? */
     boolean gezien(ZeldaHoofdstuk.Sluip sl, double x, double y, double z, long nu) {
-        for (ZeldaHoofdstuk.Sluip.Wachter wa : sl.wachters) if (ziet(wa, stand(sl, wa, nu), x, y, z)) return true;
+        return gezien(sl, x, y, z, nu, 1);
+    }
+
+    /** Idem, met een kortere kegel ({@code verder} × het bereik: wie bukt, zien ze pas van dichtbij, {@link #BUKKEN}). */
+    boolean gezien(ZeldaHoofdstuk.Sluip sl, double x, double y, double z, long nu, double verder) {
+        for (ZeldaHoofdstuk.Sluip.Wachter wa : sl.wachters) if (ziet(wa, stand(sl, wa, nu), x, y, z, verder)) return true;
         return false;
     }
+
+    /** Wie bukt (sluipt), zien de wachters pas op dit deel van hun bereik. */
+    static final double BUKKEN = 0.4;
 
     /** De cellen van het pad van dit sluipstuk (rechte stukken, elk blok één cel); {@code index[i]} = de cel van punt i. Null = geen recht pad. */
     static List<int[]> cellen(ZeldaHoofdstuk.Sluip sl, int[] index) {
@@ -3526,7 +3538,7 @@ final class ZeldaSpel implements Listener {
             Sessie ss = sessie(p);
             Location l = p.getLocation();
             if (p.isDead() || beheer.is(p.getUniqueId()) || !sl.gebied.in(l)) continue;
-            if (!ss.ongezien && gezien(sl, l.getX(), l.getY(), l.getZ(), nu)) {
+            if (!ss.ongezien && gezien(sl, l.getX(), l.getY(), l.getZ(), nu, p.isSneaking() ? BUKKEN : 1)) {
                 gezienDoor(p, ss, sl, nu);
                 continue;
             }

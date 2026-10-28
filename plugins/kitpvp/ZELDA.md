@@ -702,7 +702,8 @@ de kegel van 4b). Hoogtes: G = zeeniveau + 1, **K = G+2** (de kerkers), **P = G+
   keer iets anders). Bukken helpt (dan zien ze je pas van dichtbij). Wie de finish haalt, is erlangs (`l:<id>`). Elke
   wachter loopt van 6 vóór tot 5 achter zijn schuilplek; buren lopen een kwart ritme verschoven: wacht in een balkon of nis
   tot hij langs is en loop achter hem aan. De unit-test en de zelftest rekenen uit dat elk stuk tussen twee schuilplekken
-  op ruim een vijfde van het ritme ongezien te lopen is. Na de binnenplaats zijn de wachters gevlucht.
+  ongezien te lopen is (de unit-test met een model: op minstens een vijfde van het ritme; de zelftest met de echte blokken:
+  minstens 5 %). Na de binnenplaats zijn de wachters gevlucht.
 - **Lichtpijlen** (vak 7, vlag `lichtpijlen`, `ZeldaSpel.Lichtpijlen`): rechtsklik = een pijl van licht, en ook de boog
   schiet nu licht (de **Lichtboog**). Waar een lichtpijl Morgals nevel raakt (`ZeldaHoofdstuk.Nevel`, blok `TINTED_GLASS` met
   zwarte deeltjes), verdwijnt die; wie hem wegschoot (`n:<id>`) vindt hem weg, zonder iemand in de buurt kruipt hij na een

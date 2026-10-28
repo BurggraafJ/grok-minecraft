@@ -1127,9 +1127,9 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 List.of(r("Wolkje", "Bèèèh!"), r("Wiske", "Een schaap? Van Gerrit, denk ik!"), r("Wiske", "Hup, naar huis. Brecht neemt je mee.")));
         gevangene("bas", "Bas", EntityType.VILLAGER, true, 1745, -16, 1745, 1746, -18, List.of(r("Bas", "Psst! Ik ben Bas, uit Zoutkom."), r("Bas", "Ik wilde Morgals schip zien. Dom, hè?")),
                 List.of(r("Bas", "Een sleutel! Eindelijk!"), r("Bas", "Ik ga naar huis, naar Hendrik.")));
-        gevangene("kiek", "Kiek", EntityType.GOAT, true, 1754, -25, 1754, 1755, -22, List.of(r("Kiek", "Mèh…"), r("Wiske", "Een geitje. Dat hoort hier niet!")),
+        gevangene("kiek", "Kiek", EntityType.GOAT, true, 1754, -23, 1754, 1755, -22, List.of(r("Kiek", "Mèh…"), r("Wiske", "Een geitje. Dat hoort hier niet!")),
                 List.of(r("Kiek", "Mèèh!"), r("Wiske", "Een geitje van Saar en Sven, vast."), r("Wiske", "Naar huis, naar IJshoeve!")));
-        gevangene("joppe", "Joppe", EntityType.VILLAGER, true, 1745, -25, 1745, 1746, -22, List.of(r("Joppe", "Ik zocht gloedijzer op het strand…"), r("Joppe", "…en toen pakten ze me. Help je me?")),
+        gevangene("joppe", "Joppe", EntityType.VILLAGER, true, 1745, -23, 1745, 1746, -22, List.of(r("Joppe", "Ik zocht gloedijzer op het strand…"), r("Joppe", "…en toen pakten ze me. Help je me?")),
                 List.of(r("Joppe", "Vrij! Dank je wel!"), r("Joppe", "Ik ben Joppe, uit Sintelgat. Naar mama Dina!")));
         wolfKreek();
         // het maanmos voor Hanne (een boodschap over zee): in een lege cel, achter tralies
@@ -1515,7 +1515,8 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         k.bijStart.add(r("Wiske", "Je harnas glanst. Daar schrikken ze van!"));
         k.tips.addAll(List.of(r("Wiske", "De schutters eerst! Die blijven achteraan."),
                 r("Wiske", "Zwarte mijtjes? Een lichtpijl doet ze dubbel pijn.")));
-        poort(new Poort("westpoort", deur(tralies(true), 1799, P + 1, -2, 1799, P + 4, 2), Box.van(1790, P, -4, 1806, P + 5, 4), s -> s.heeft("k:binnenplaats")));
+        poort(new Poort("westpoort", deur(tralies(true), 1799, P + 1, -2, 1799, P + 4, 2), Box.van(1790, P, -4, 1799, P + 5, 4),   // alleen van de laan (niet midden in een gevecht)
+                s -> s.heeft("k:binnenplaats") && k.fase != Fase.BEZIG));
     }
 
     // ── 10. de voorburcht en de hoofdpoort (na de binnenplaats: een rondje terug) ───────────
@@ -1542,7 +1543,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 for (int z = -5; z <= 5; z++) if (kans(x, z, 4) == 0) zet(x, P, z, Material.COBBLED_DEEPSLATE);
             paalbord(1765, P + 1, -5, BlockFace.WEST, "De muurvoet");
         }
-        poort(new Poort("hoofdpoort", deur(tralies(true), 1768, P + 1, -2, 1768, P + 5, 2), Box.van(1759, P, -5, 1776, P + 6, 5), s -> s.heeft("k:binnenplaats")));
+        poort(new Poort("hoofdpoort", deur(tralies(true), 1768, P + 1, -2, 1768, P + 5, 2), Box.van(1758, P, -5, 1776, P + 6, 5), s -> s.heeft("k:binnenplaats")));
     }
 
     // ── 11. de torenpoort: het einde van 5a ─────────────────────────────────────────────────
