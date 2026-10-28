@@ -373,10 +373,13 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   op de koele plek, met de koelsteen langzamer, afkoelen in water, met het gloedharnas niets; in de gloed alleen het
   harnas; verder houdt de test je koel, want hij teleporteert), in de Smidse de lava op een ritme (hij moet stijgen en
   zakken; de test zet je op een steen als de lava erover staat: je moet eruit springen, met hoogstens één hart schade) en
-  Asgrim (een echte pijl op de kuip boven hem: hij moet gedoofd neerploffen en dan gewoon schade krijgen), dan twee rondes langs alle eilanden voor de
+  Asgrim (een echte pijl op de kuip boven hem: hij moet gedoofd neerploffen en dan gewoon schade krijgen), op Nachtrots het
+  sluipen (eerst wordt hij gezien: terug bij het zielvuur, het hek dicht, Wiske zegt iets; dan sluipt hij écht van schuilplek
+  naar schuilplek en gaat pas als niemand hem onderweg ziet, op het ritme van de wachters), Morgals nevel (een echte
+  lichtpijl) en praten met iemand op een ander eiland (hij vaart naar Mira en terug), dan drie rondes langs alle eilanden voor de
   boodschappen over zee, en aan het eind via de kaart terug naar een eerder eiland om daar met de bommen, de
   klauwhaak en de vuurstaf te halen wat kon (`hs:lindewoud-4`, de richel `hs:lindewoud-3`, de Meeuwenrots
-  `hs:zilverstrand-3`, het ijsblok bij Hagen `hs:witte-toppen-3`); `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
+  `hs:zilverstrand-3`, het ijsblok bij Hagen `hs:witte-toppen-3`, met de lichtpijlen de nevelnis in de Smidse `hs:gloedberg-4`); `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
   voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
 - `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), de wegwijzer
@@ -386,7 +389,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   rustplaats, uitleg uit, de bommenzak (vak 4) en een echte bom tegen de tempelmuur, het getij (zonder maanparel zit de
   hendel vast en zegt Wiske waarom; met: het water stijgt laag voor laag), de klauwhaak (vak 5, een echte haak naar de
   richel in de Kloof, en mis: dan blijf je staan), de vuurstaf (vak 6, een echte vlam op een vuurschaal van de
-  tempelruïne, van een afstand), varen en aankomen, tip na
+  tempelruïne, van een afstand), de lichtpijlen (vak 7, een pijl van licht, en Morgals nevel verdwijnt), varen en aankomen, tip na
   doodgaan in een kamer, de kaart, en weg = alles weg. Wist eerst en
   na afloop de voortgang van die speler (alleen voor tests).
 - `kitpvp zelda lopen <eiland> [zonder <voorwerp>] [dicht <poort>]` — is alles te belopen? Volgt vanaf de aanleg elke
@@ -472,4 +475,7 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
   dat niet ook echt bestaat; eiland 3a: graafplekken vrij en met vloer, niet meer dieren dan spelers, vrije huisdieren
   uit, haakpunten met een vrije landing; eiland 3b: glijvloeren (ijs onder elk ijsvakje, start en doel om te staan, en
   met de oplossing kom je bij het doel), de ijszuilen van Grimmel in rust, de klauwhaak werkt in zijn zaal en er is een
-  haakpunt om je weg te trekken, Hagen (3a) staat op het pad).
+  haakpunt om je weg te trekken, Hagen (3a) staat op het pad; eiland 5a: Morgals nevel (dicht in rust, te zien vanaf de plek
+ervoor), sluipen (het hek open in rust, een pad om te staan, wachters niet in een muur, schuilplekken die nooit gezien worden,
+en elk stuk tussen twee schuilplekken is met de echte blokken op minstens 5 % van het ritme ongezien te lopen), Mira (2a) staat
+op het pad).

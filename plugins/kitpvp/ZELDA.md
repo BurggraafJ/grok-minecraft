@@ -1000,3 +1000,8 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
 - IJshoeve (3a): de schoorstenen van de huisjes lopen door tot y 1 (in `ZeldaEiland3a.huis` begint `nok` op 0, en in de
   vlakke wereld is G negatief). Oplossing: `int nok = Integer.MIN_VALUE;` en `zelda-e3a` versie 3 (dan herbouwt 3a).
   Gezien in sessie `zelda-eiland-4a` (4a had dezelfde code en is opgelost); 3a is niet aangeraakt (buiten het vak).
+- Rond Nachtrots (5a): buiten het vak (z voorbij ±150, x voorbij 2000, en de strook z −179 … −151 tussen de Witte Toppen en
+  Nachtrots) ligt nog de vlakke wereld (gras, zeven blokken onder zeeniveau). Vanaf de noord- en zuidkust van Nachtrots ligt
+  die rand op ±75 … 95 blokken: net op de grens van de zichtafstand (6 chunks), in de mist. Zie `kitpvp kaart zelda-e5a`
+  (`zelda-e5a-omgeving`). Oplossing voor `zelda-afronding`: een bouwdeel dat in heel `Zelda.GEBIED` zee zet waar geen eiland
+  of zee is. Gezien in sessie `zelda-eiland-5a`; niet opgelost (buiten het vak).

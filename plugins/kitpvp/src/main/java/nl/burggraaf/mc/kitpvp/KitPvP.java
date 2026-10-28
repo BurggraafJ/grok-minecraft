@@ -1133,6 +1133,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "zelda-e5a-cellen-zij", 0, 1, -24, 1700, 1810, zg - 6, w5 + 10, 8, 5));
         f.add(Kaart.voor(w, map, "zelda-e5a-kapel-zij", 0, 1, 20, 1700, 1810, zg - 6, w5 + 10, 12, 5));
         f.add(Kaart.voor(w, map, "zelda-e5a-zij", 0, -1, 100, ZeldaEiland5a.X1, ZeldaEiland5a.TX2, g, zg + 80, 200, 2));
+        f.add(Kaart.boven(w, map, "zelda-e5a-omgeving", 1560, -260, 2047, 260, g - 2, zg + 80, 1));   // met de randen van het vak (wat je van ver ziet)
         List<String> uit = new ArrayList<>();
         for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;
