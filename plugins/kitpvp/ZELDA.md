@@ -998,7 +998,9 @@ Geen nieuwe eilanden; wat er veranderde, en waarom:
 - **Zelda's uiterlijk**: een mannequin met de huid «Alex» uit het spel zelf (smal model, lang haar; een sleutel naar een
   textuur van de client, geen download) en haar witte jurk; daaronder geen tekst.
 - **`zelda lopen`**: `zonder bommen` houdt gebarsten muren dicht en `zonder vuurstaf` vuurpuzzels die alleen een vlam
-  aansteekt; `dicht <id>` werkt ook voor een puzzel of muur.
+  aansteekt; `dicht <id>` werkt ook voor een puzzel of muur. En: op een muurtje of hek (anderhalf hoog) stapt de controle
+  niet meer (een speler kan dat ook niet). Zo bleek dat `nachtrots zonder bommen dicht torenladder` alles haalde: hij liep
+  over het muurtje langs het puin. Nu is het puin echt nodig, en zijn alle eilanden nog steeds «alles te belopen».
 
 ## Terugkerende personages
 
