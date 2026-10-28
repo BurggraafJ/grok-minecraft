@@ -86,6 +86,9 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 | `ZeldaEiland4a` | «De Gloedberg», Sintelgat en de mijnen (eiland 4a, deel `zelda-e4a`): de Zwarte Baai, Sintelgat (hub: Tijmen met de koelsteen, Okker, Dina, Fenna, Kobus; de mijnvuren), de Laadkade (de race), de mijn (de Lorriehal, de Oude Gang, de Schachtput, de Vonkkamer met de vuurstaf en de lampen, de hete gangen met koelplekken en betoverd ijs, de Gloedader, de Daaltrap, de gloed, de Askamer, de Smidsepoort, de Asgang), het Uitzicht (Ida), de Zijgang (de lorrie); de kegel van de vulkaan in het vak van 4b zolang 4b er niet is (nu niet meer); as, rook en lava in `tik()` |
 | `ZeldaEiland4b` | «De Gloedberg», de Smidse (eiland 4b, deel `zelda-e4b`): de kegel en de krater (elke kolom van x 1260 … 1400, een wand rond de top), de Smidsepoort (een `Poort` in de wand van 4a), de Smidsehal (hub: Tijmen, de schildplaat), de Kettingzaal (klauwhaak, kettingbrug), de Stuwdam (bom: water op lava wordt steen), de Gietzaal (ovens, lava op een ritme), de Hartdeur (drie vonken + het Gloedschild van Okker), de voorkamer (nevelnis), het Hart (Asgrim), de Schoorsteen (vier haakpunten), de krater (het Gloedbaken) en de uitkijk (de Nevelring breekt); vuurschalen, water, nevel en het baken in `tik()` |
 | `ZeldaEiland5a` | «Nachtrots», de muren (eiland 5a, deel `zelda-e5a`): de visserskreek (hub: Brecht, Tijmen verstopt, Wolf achter zijn raampje met de muursleutel), het klifpad (haak, bom), de muurvoet, de weergang (sluipen langs vier nachtwachten), de Kerkertoren, de kerkers (hub binnen), de cellengang (sluipen langs drie cipiers; gevangenen van alle eilanden, de slapende kerkermeester met de sleutelbos, Wolfs cel), het Vissersgat, de kapel (de lichtpijlen), de wachtersgang, de wapenkamer (het zwarte harnas), de kerkertrap, het wachthuis, de binnenplaats (het enige gevecht), de voorburcht en de hoofdpoort, de torenpoort; tot 5b er is ook de rots met de toren (x 1880 … 2000) als decor; onweer en nevel in `tik()` |
+| `ZeldaEiland5b` | «Nachtrots», de toren en Morgal (eiland 5b, deel `zelda-e5b`): de torenpoort (Tijmen breekt het zegel; een `Poort` in de muur van 5a) en de brugpoort, de Nevelbrug (drie nevelbruggen boven zee, twee pijlers), de voorhof (hub), de torenhal (Ida; daaronder Morgals schatkamer, open na het einde), de trap om de toren (west een trap van licht, noord de ingestorte trap met een haakpunt en Zelda's kamertje, oost drie wachtersvuren, zuid puin en weer een trap van licht), het torenbalkon (de laatste rust, Tijmen) met de ladder terug, de troonzaal (Morgal), het dak (Zelda in een kooi van nevel); het vangnet om de toren; de terugvaart (`vaart`); nevel en licht om de toren in `tik()` |
+| `Morgal` | de baas van 5b (subklasse van `ZeldaBaas`): drie fases met adem ertussen: nevelgeesten (hij zweeft in zijn nevel), duistere bollen (sla ze terug met je zwaard: versuft), licht in zijn nevelhart (alleen lichtpijlen); eigen muziek per fase |
+| `ZeldaFeest` | het feest op de open plek van het Lindewoud (het einde, vanuit `ZeldaHoofdstuk1`): Zelda en wie hielp (alleen voor wie Zelda bevrijdde), Zelda's gesprek = de vlag `zelda` en vuurwerk, wat de mensen van het Lindewoud daarna zeggen, de opdracht *De schat van Morgal*, lichtjes en de feestmuziek |
 | `Asgrim` | de baas van 4b (subklasse van `ZeldaBaas`): zweeft onder vier koelkuipen, gooit sintels; een pijl of bom kantelt de kuip boven hem = gedoofd (dan doet een klap alles), de kuip loopt weer vol |
 | `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
 | `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
@@ -204,6 +207,18 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   keer). Bukken (shift): ze zien je pas van dichtbij. Wie de `finish` haalt, krijgt `l:<id>`. Het ritme loopt alleen als er
   iemand in de buurt is (anders geen wachters in de wereld); `actief` = voor wie ze er zijn (op Nachtrots: tot de
   binnenplaats). `pad` (rechte stukken) en `schuil` (de punten waar niemand je ooit ziet) zijn voor de test en de zelftest.
+- **Nevelbrug** (`Nevel.brug`, eiland 5b): een brug of trap van wit steen, verstopt in Morgals nevel (je ziet alleen zwarte
+  mist). Een lichtpijl hoeft nergens tegenaan: vliegt hij door de nevel, dan verschijnt het stuk, blok voor blok. Wie hem zag
+  (`n:<id>`) vindt hem voortaan; een minuut niemand = weer nevel.
+- **Vangnet** (`Val`, eiland 5b): wie in het gebied valt (meer dan een paar blokken) of in zee belandt (onder `laag`), staat
+  meteen weer waar hij veilig stond, zonder schade; Wiske zegt het één keer. Vallen doet daar ook nooit pijn.
+- **Morgal** (eiland 5b): zie ZELDA.md («5b · de toren en Morgal»). Een zwaai van een speler in de kamer gaat naar de baas
+  (`ZeldaBaas.zwaai`); een baas weet wat hem raakte (`ZeldaBaas.schade(schade, door)`).
+- **Het einde** (eiland 5b): Zelda bevrijd (`vrij:zelda`, het einde van `e5b`), de terugvaart (een bijzondere overtocht:
+  `ZeldaHoofdstuk.vaart`) en het feest op het Lindewoud (`ZeldaFeest`): praten met Zelda zet de klaar-vlag van Nachtrots
+  (`zelda`) = Story of Zelda voltooid (`spel.voltooid`): op de kaart «Story of Zelda · voltooid» met de hartstukjes, en
+  `/hint` en Tijmen noemen hoeveel er nog liggen. Alles blijft open. De achtergrondmuziek kan van je voortgang afhangen
+  (`ZeldaHoofdstuk.muziek(plek, stand)`: het feest).
 - **Gloedschild** (vlag `gloedschild`, eiland 4b): het schild heet zo (zwart met gloed); Asgrims sintels ketsen erop af als
   je het omhoog houdt (een gewoon schild houdt de helft tegen).
 - **Persoon voor sommigen** (`Persoon.zichtbaar`): alleen te zien (en dus te praten) voor wie het klopt; bv. een geit in
@@ -212,7 +227,8 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   Geen titels, geen chat. 
 - **Muziek, altijd**: een achtergrondlied per streek (`muziek(Location)`: Thuis, Woud, Tempel, Veen, Haven, Zee,
   Zoutkom, Duinen, Vuurtoren, Lindedorp, Wad, Getijdentempel, IJshoeve, Sneeuwstorm, Wachterspost, Bergpad, IJspaleis,
-  Sintelgat, Mijnen, Gloed, Smidse, Nachtrots, Muren, Kerkers; bazen Zoutbaard, Grimmel en Asgrim; gevecht Nachtwacht),
+  Sintelgat, Mijnen, Gloed, Smidse, Nachtrots, Muren, Kerkers, Toren, Feest; bazen Zoutbaard, Grimmel, Asgrim en Morgal in drie
+  delen; gevecht Nachtwacht),
   daarboven de gevechts- of baaslus en losse deuntjes. Zachter met de schuif «Nootblokken».
 - **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen gewoon
   bijkomen door eten); genezen bij rustplaatsen, bronnen, flesjes, gewonnen kamers, de bakker in Lindedorp, de helft
@@ -319,6 +335,16 @@ wachthuis (rust 3) → de binnenpoort → de binnenplaats (het enige gevecht) �
 (5b) staat in `Zelda.KOMT`. Boodschap over zee: Hanne en het maanmos → `fles8`. Na de binnenplaats zijn de wachters weg en
 gaan de westpoort en de hoofdpoort open (een rondje terug naar de muurvoet).
 
+### Eiland 5b: «Nachtrots», de toren en Morgal (`e5b`, deel `zelda-e5b`, x 1880 … 2000, z −150 … 150)
+
+Zie de tabel in `ZELDA.md` («5b · de toren en Morgal»). Kort: Tijmen breekt het zegel van de torenpoort → de brugpoort en de
+Nevelbrug (drie lichtpijlen door de nevel) → de voorhof (rust 0, bron; de torenhal met Ida) → de trap om de toren: west een trap
+van licht, noord de ingestorte trap (klauwhaak; Zelda's kamertje met een bron), oost drie wachtersvuren (vuurstaf: de trap
+verschijnt), zuid puin (bom) en weer een trap van licht → het torenbalkon (rust 1, bron, Tijmen; de ladder terug) → de
+troonzaal: Morgal (drie fases) → de ladder naar het dak: Zelda (einde `e5b`) → Brecht in de kreek: de terugvaart → het feest
+op het oefenveld van het Lindewoud: praten met Zelda = `zelda`, «Story of Zelda · voltooid». Daarna: Zelda's kroontje uit
+Morgals schatkamer (`hs:nachtrots-4`). Rond de toren vangt de nevel je op als je valt.
+
 ### Eiland 2b: «Het Zilverstrand» oost, de Getijdentempel (`e2b`, deel `zelda-e2b`, x 1230 … 1360, z −480 … −180)
 
 Zie de tabel in `ZELDA.md` («2b · oost, de Getijdentempel»). Kort: de dijk → het Getijdenplein (rust 0, Tijmen: de
@@ -376,11 +402,17 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   Asgrim (een echte pijl op de kuip boven hem: hij moet gedoofd neerploffen en dan gewoon schade krijgen), op Nachtrots het
   sluipen (eerst wordt hij gezien: terug bij het zielvuur, het hek dicht, Wiske zegt iets; dan sluipt hij écht van schuilplek
   naar schuilplek en gaat pas als niemand hem onderweg ziet, op het ritme van de wachters), Morgals nevel (een echte
-  lichtpijl) en praten met iemand op een ander eiland (hij vaart naar Mira en terug), dan drie rondes langs alle eilanden voor de
+  lichtpijl) en praten met iemand op een ander eiland (hij vaart naar Mira en terug), in de toren de nevelbruggen (een echte
+  lichtpijl door de nevel), het vangnet (hij valt van hoog: de nevel vangt hem op, zonder schade) en Morgal (zijn geesten
+  verslaan; een echte zwaai vlak voor een duistere bol: Morgal moet versuft zijn en een klap alles doen; in zijn nevelhart een
+  echte lichtpijl: die moet raken, een zwaard niet), Zelda op het dak, de terugvaart en het feest (hij vaart naar het
+  Lindewoud, praat met Zelda: `zelda`, en de kaart zegt «voltooid»), dan drie rondes langs alle eilanden voor de
   boodschappen over zee, en aan het eind via de kaart terug naar een eerder eiland om daar met de bommen, de
   klauwhaak en de vuurstaf te halen wat kon (`hs:lindewoud-4`, de richel `hs:lindewoud-3`, de Meeuwenrots
   `hs:zilverstrand-3`, het ijsblok bij Hagen `hs:witte-toppen-3`, met de lichtpijlen de nevelnis in de Smidse `hs:gloedberg-4`); `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
-  voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). `kitpvp zelda verder <speler>` — door de poort,
+  voortgang van die speler** (alleen voor tests; zijn testtijd komt op het tijdenbord, `reset` haalt hem weg). Met `alles vanaf
+  <deel>` (bv. `vanaf e5b`, voor wie aan één deel werkt) telt alles vóór dat deel als gedaan en begint de route bij de aanleg
+  van zijn eiland (de rondes gaan dan alleen langs dat eiland en het Lindewoud). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
 - `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), de wegwijzer
   (Tijmen noemt het dichtstbijzijnde doel van een groep), bron (met alleen Tijmens flesje),
@@ -406,7 +438,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.
 - `kitpvp bouw zelda` — het Lindewoud opnieuw bouwen, `kitpvp bouw zelda-e2a` het Zilverstrand west, `kitpvp bouw
   zelda-e2b` de Getijdentempel, `kitpvp bouw zelda-e3a` het dal van de Witte Toppen, `kitpvp bouw zelda-e3b` het
-  IJspaleis, `kitpvp bouw zelda-e4a` Sintelgat en de mijnen, `kitpvp bouw zelda-e4b` de Smidse, `kitpvp bouw zelda-e5a` Nachtrots, `kitpvp bouw zelda-zee` de zee. `kitpvp kaart [begin]` maakt ook `zelda-*.png` (met `begin` alleen de plaatjes
+  IJspaleis, `kitpvp bouw zelda-e4a` Sintelgat en de mijnen, `kitpvp bouw zelda-e4b` de Smidse, `kitpvp bouw zelda-e5a` Nachtrots, `kitpvp bouw zelda-e5b` de toren, `kitpvp bouw zelda-zee` de zee. `kitpvp kaart [begin]` maakt ook `zelda-*.png` (met `begin` alleen de plaatjes
   waarvan de naam zo begint, bv. `zelda-e3b`: lichter) (het Lindewoud: boven, thuis, dorp, noord, tempel, veen,
   haven en zijaanzichten; `zelda-e2a-*`: boven, dorp, kelder, kaap, duinen, rots; `zelda-e2b-*`: boven, tempel, kelders
   (en van opzij), de zaal van opzij, wrak, poelen, de duikgang van opzij; `zelda-e3a-*`: boven, dorp, meer, bos, kuil,
@@ -416,12 +448,17 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   Daaltrap), de Vonkkamer van opzij en het geheel van opzij; `zelda-e4b-*`: boven, de zalen (net boven de vloer), de kloof
   van de Kettingzaal, de krater, het Hart en de schoorsteen van opzij, de Smidsehal en de Kettingzaal van opzij; `zelda-e5a-*`:
   boven (met de toren van 5b), de kreek, de weergang, de burcht (op het plateau), de kerkers, en van opzij door de cellengang,
-  door de kapel en het geheel).
+  door de kapel en het geheel; `zelda-e5b-*`: boven, de brug, de trap om de toren per richel (`trap1` … `trap5`, net boven de
+  vloer), de torenhal, de schatkamer, de troonzaal, het dak, de toren van vier kanten en het geheel van opzij; `zelda-feest`: het
+  oefenveld van het Lindewoud).
 - `/zelda ga <plek>` kent ook puzzels, uitdagingen en poorten (`vuren`, `kloof`, `doelen`, `spiegels`, `doornen`,
   `parelduik`, `ankerpoort`, `ijsbaan`, `wachtersdeur`, `luik`, `valbrug`, `sleebaan`, `troonpoort`, `spiegelzaal`,
   `lampen`, `esse`, `mijnvuren`, `sporen`, `daaltrap`, `asgang`, `smidsepoort`, `kettingbrug`, `koelpad`, `ovens`,
   `hartdeur`, `gloedbaken`, `muurdeur`, `vissersgat`, `cel-wolf`, `cel-wolkje`, `cel-bas`, `cel-kiek`, `cel-joppe`, `cel-mos`,
-  `binnenpoort`, `westpoort`, `hoofdpoort`, `kapelvuren`), sluipstukken (`weergang`, `kerkerwacht`: bij het begin), Morgals
+  `binnenpoort`, `westpoort`, `hoofdpoort`, `kapelvuren`, `torenpoort`, `torenvuren`, `kooi`, `torenladder`, `schatkamer`),
+  de toren (`voorhof`, `balkon`, `nachttroon`, `zelda-e5b` op het dak, `haak-torenrichel`, `muur-torenpuin`, nevelbruggen
+  `nevel-brug1` … `nevel-brug3`, `nevel-trap1`, `nevel-trap2`), het feest op het Lindewoud (`feest` = Zelda daar, de gasten
+  `tijmen-feest`, `hendrik-feest`, `wolf-feest`, …), sluipstukken (`weergang`, `kerkerwacht`: bij het begin), Morgals
   nevel (`nevel-<id>`: `nevel-kapeldeur`, `nevel-wapenkamer`, `nevel-wapenkist`, `nevel-nevelgang`, `nevel-kerkertrap`,
   `nevel-nevelnis`; voor de nevel), lava op een ritme (`gietvloer`), betoverd ijs (`ijs-<id>`: `ijs-ijsblok`, `ijs-koel1`,
   `ijs-koel2`, `ijs-koelgang`; voor het ijs),
@@ -447,7 +484,7 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
 ## Bouwen en beheer
 
 - `plugins/KitPvP/gebouwd.yml`: `grond` (vloerhoogte) en per deel de gebouwde versie (`hub`, `arena`, `kasteel`,
-  `zelda`, `zelda-e2a`, `zelda-e2b`, `zelda-e3a`, `zelda-e3b`, `zelda-e4a`, `zelda-e4b`, `zelda-e5a`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
+  `zelda`, `zelda-e2a`, `zelda-e2b`, `zelda-e3a`, `zelda-e3b`, `zelda-e4a`, `zelda-e4b`, `zelda-e5a`, `zelda-e5b`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
   `plugins/KitPvP/zelda.yml`: voortgang in Story of Zelda.
 - Console: `kitpvp zelftest`, `kitpvp bouw [hub|arena|kasteel|zelda|alles]`, `kitpvp status`, `kitpvp aftellen <s>`,
   `kitpvp zelda …` (zie hierboven), `kitpvp kaart` (PNG's van hub, arena's, kasteel en Zelda in
@@ -478,4 +515,6 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
   haakpunt om je weg te trekken, Hagen (3a) staat op het pad; eiland 5a: Morgals nevel (dicht in rust, te zien vanaf de plek
 ervoor), sluipen (het hek open in rust, een pad om te staan, wachters niet in een muur, schuilplekken die nooit gezien worden,
 en elk stuk tussen twee schuilplekken is met de echte blokken op minstens 5 % van het ritme ongezien te lopen), Mira (2a) staat
-op het pad).
+op het pad; eiland 5b: nevelbruggen (lucht in de nevel en een brug in het licht, dicht in rust, vanaf de plek ervoor te zien),
+vangnetten (in het gebied, een vrije proefplek), Morgals plekken (in de troonzaal en vrij; wie op de vloer staat heeft een vloer),
+Tijmen bij de torenpoort (5a) en Zelda op het feest (het Lindewoud) staan op het pad).

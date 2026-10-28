@@ -37,6 +37,7 @@ final class ZeldaLopen {
     private final Map<Long, Material> open = new HashMap<>();
     private final Set<Long> bereikt = new HashSet<>();
     private final List<ZeldaHoofdstuk.Glij> glij = new ArrayList<>();
+    private final List<ZeldaHoofdstuk.Val> vallen = new ArrayList<>();
 
     private ZeldaLopen(World w, int x1, int y1, int z1, int x2, int y2, int z2) {
         this.w = w;
@@ -78,7 +79,14 @@ final class ZeldaLopen {
         if (!vrij(x, y, z) || !vrij(x, y + 1, z)) return false;
         Material hier = soort(x, y, z), onder = soort(x, y - 1, z);
         if (hier == Material.LAVA || soort(x, y + 1, z) == Material.LAVA) return false;   // in lava sta je niet (je springt er meteen uit)
+        if (opgevangen(x, y, z)) return false;
         return onder.isSolid() || water(hier) || ladder(hier);
+    }
+
+    /** Zwem je hier in een vangnet (onder zijn {@code laag})? Daar kom je niet: de nevel zet je terug waar je veilig stond. */
+    private boolean opgevangen(int x, int y, int z) {
+        for (ZeldaHoofdstuk.Val v : vallen) if (y < v.laag() && v.gebied().in(x + 0.5, y + 0.5, z + 0.5)) return true;
+        return false;
     }
 
     /** De glijvloer waar je op (x, y, z) op het ijs staat, of null. */
@@ -147,6 +155,7 @@ final class ZeldaLopen {
                     n = new int[]{e[0], y, e[1]};
                 }
                 if (!staan(n[0], n[1], n[2]) && !(ladder(soort(n[0], n[1], n[2])) || water(soort(n[0], n[1], n[2])))) continue;
+                if (opgevangen(n[0], n[1], n[2])) continue;
                 if (bereikt.add(sleutel(n[0], n[1], n[2]))) rij.add(n);
             }
         }
@@ -231,6 +240,7 @@ final class ZeldaLopen {
         ZeldaLopen l = new ZeldaLopen(eerste.w, ax, ay, az, bx, by, bz);
         for (ZeldaHoofdstuk h : e.delen()) {
             l.glij.addAll(h.glijvloeren);
+            l.vallen.addAll(h.vallen);
             for (ZeldaHoofdstuk.Kamer k : h.kamers) {
                 l.opening(k.in);
                 l.opening(k.uit);

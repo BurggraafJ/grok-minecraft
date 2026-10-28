@@ -106,7 +106,8 @@ final class ZeldaBeheer {
                 for (ZeldaHoofdstuk.Rust r : h.rust) zet(m, r.id, r.plek);
                 for (ZeldaHoofdstuk.Kamer k : h.kamers) zet(m, k.id, k.start.midden(h.w));
                 for (ZeldaHoofdstuk.Persoon pe : h.personen)                       // dezelfde persoon op twee delen (Tijmen): de tweede met het deel erbij
-                    if (!m.containsKey(pe.naam.toLowerCase(Locale.ROOT))) zet(m, pe.naam, pe.plek);
+                    if (pe.beheerNaam != null) zet(m, pe.beheerNaam, pe.plek);        // een eigen naam (het feest: «feest», «hendrik-feest»)
+                    else if (!m.containsKey(pe.naam.toLowerCase(Locale.ROOT))) zet(m, pe.naam, pe.plek);
                     else if (!m.containsKey((pe.naam + "-" + h.id()).toLowerCase(Locale.ROOT))) zet(m, pe.naam + "-" + h.id(), pe.plek);
                     else zet(m, pe.naam + "-" + h.id() + "-2", pe.plek);                  // twee keer op één deel (Tijmen op de uitkijk, 4b)
                 for (ZeldaHoofdstuk.Reeks r : h.reeksen) zet(m, r.id, r.gebied.midden(h.w));

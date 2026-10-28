@@ -91,6 +91,7 @@ final class ZeldaFeest {
         zelda.soort = EntityType.MANNEQUIN;
         zelda.uiterlijk = e -> ZeldaEiland5b.zelda(e, false);
         zelda.zichtbaar = s -> s.heeft(E5B);
+        zelda.beheerNaam = "feest";                                     // /zelda ga feest
         zelda.gesprek("zelda-feest", s -> s.heeft(E5B) && !s.heeft("zelda"), List.of(
                         ZeldaHoofdstuk.r("Zelda", "Iedereen is er. Voor jou!"),
                         ZeldaHoofdstuk.r("Zelda", "Jij en Wiske brachten het licht terug."),
@@ -114,6 +115,7 @@ final class ZeldaFeest {
                 ZeldaHoofdstuk.r("Tijmen", "Wat een feest. Zelfs de sterren dansen."))));
         tijmen.soort = EntityType.WANDERING_TRADER;
         tijmen.zichtbaar = s -> s.heeft(E5B);
+        tijmen.beheerNaam = "tijmen-feest";
         tijmen.eenmalig("feest-tijmen", s -> s.heeft("zelda"), List.of(
                         ZeldaHoofdstuk.r("Tijmen", "Vroeger leerde ik Zelda de sterren lezen."),
                         ZeldaHoofdstuk.r("Tijmen", "Nu lees jij ze beter dan ik.")), null)
@@ -128,6 +130,7 @@ final class ZeldaFeest {
             pe.streek = (Villager.Type) g[4];
             pe.kind = (boolean) g[5];
             pe.zichtbaar = s -> s.heeft(E5B);
+            pe.beheerNaam = naam.toLowerCase() + "-feest";
             ZeldaHoofdstuk.Actie actie = naam.equals("Dina") ? (spel, p, s) -> spel.genees(p) : null;
             pe.eenmalig("feest-" + naam.toLowerCase(), s -> s.heeft("zelda"), List.of(ZeldaHoofdstuk.r(naam, (String) g[6])), actie);
         }

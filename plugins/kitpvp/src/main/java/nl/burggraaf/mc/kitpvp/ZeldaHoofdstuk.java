@@ -372,6 +372,7 @@ abstract class ZeldaHoofdstuk {
         boolean kind;                                       // klein (een kind)
         java.util.function.Consumer<org.bukkit.entity.Entity> uiterlijk;   // na het verschijnen (bv. de kleur van een papegaai)
         Predicate<ZeldaVoortgang.Stand> zichtbaar;          // alleen te zien voor wie dit klopt (een geit die thuis is; null = voor iedereen)
+        String beheerNaam;                                  // zo heet hij bij /zelda ga (null = zijn naam; de gasten op het feest: «hendrik-feest»)
         LivingEntity ent;
 
         Persoon(String naam, Location plek, Villager.Profession beroep, List<Regel> praat) {

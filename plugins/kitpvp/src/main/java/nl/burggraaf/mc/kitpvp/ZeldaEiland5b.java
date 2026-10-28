@@ -320,23 +320,34 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
 
     /**
      * Aanhaken aan 5a (altijd, zonder herbouw: zo blijft het kloppen als 5a ooit opnieuw gebouwd wordt): de gang door de oostmuur
-     * achter de torenpoort, en de brugkop door de rots tot aan de klif (x 1859 … 1872, z −2 … 2).
+     * achter de torenpoort, en de brugpoort: een overdekte gang door de rots tot aan de klif (x 1859 … 1874, z −2 … 2), met muren en
+     * een dak, zodat je er alleen door de torenpoort in komt (niet over de rotsen om de burcht heen).
      */
     private void aanhaken() {
-        for (int x = 1859; x <= 1872; x++)
-            for (int z = -2; z <= 2; z++) {
+        for (int x = 1859; x <= 1874; x++)
+            for (int z = -3; z <= 3; z++) {
+                boolean rand = Math.abs(z) == 3;
+                if (x >= 1873) {                                                    // het eind van de brugpoort steekt boven zee uit
+                    if (!rand) continue;
+                    b.vulAltijd(x, P - 2, z, x, P + 7, z, Material.POLISHED_BLACKSTONE_BRICKS);
+                    b.zetAltijd(x, P + 8, z, Material.POLISHED_BLACKSTONE_BRICK_WALL);
+                    continue;
+                }
+                if (rand) {
+                    if (x >= 1863) b.vulAltijd(x, P + 1, z, x, P + 7, z, Material.POLISHED_BLACKSTONE_BRICKS);
+                    continue;
+                }
                 b.zetAltijd(x, P, z, Math.abs(z) <= 1 ? Material.POLISHED_BLACKSTONE_BRICKS : ZeldaEiland5a.vloer(x, z));
-                int hoog = x <= 1862 ? P + 5 : P + 7;
+                int hoog = x <= 1862 ? P + 5 : P + 6;
                 b.vulAltijd(x, P + 1, z, x, hoog, z, Material.AIR);
+                if (x >= 1863) b.zetAltijd(x, P + 7, z, x % 4 == 0 && z == 0 ? Material.SOUL_LANTERN : Material.POLISHED_BLACKSTONE);   // het dak
             }
         for (int x = 1859; x <= 1862; x++) {                                        // een boog in de muur
             b.zetAltijd(x, P + 5, -2, Material.POLISHED_BLACKSTONE_BRICKS);
             b.zetAltijd(x, P + 5, 2, Material.POLISHED_BLACKSTONE_BRICKS);
         }
-        b.zetAltijd(1872, P + 1, -2, Material.POLISHED_BLACKSTONE_BRICK_WALL);    // twee paaltjes met een lamp aan het eind van de brugkop
-        b.zetAltijd(1872, P + 2, -2, Material.SOUL_LANTERN);
-        b.zetAltijd(1872, P + 1, 2, Material.POLISHED_BLACKSTONE_BRICK_WALL);
-        b.zetAltijd(1872, P + 2, 2, Material.SOUL_LANTERN);
+        for (int z = -2; z <= 2; z++) b.zetAltijd(1874, P + 7, z, Material.POLISHED_BLACKSTONE_BRICKS);   // de boog aan zee
+        for (int z : new int[]{-3, 3}) b.zetAltijd(1874, P + 9, z, Material.SOUL_LANTERN);
     }
 
     // ── 1. de torenpoort: Tijmen breekt het zegel ───────────────────────────────────────────
@@ -523,10 +534,10 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
             zet(1934, P + 13, -12, Material.CRACKED_POLISHED_BLACKSTONE_BRICKS);        // waar hij brak
             richel(1941, -12, 1950, -11, P + 20, true, false, false, false);
             richel(1951, -16, 1956, -11, P + 20, true, true, false, false);          // de overloop (noordoost)
-            zet(1941, P + 23, -11, ZeldaHoofdstuk.HAAKPUNT);
+            zet(1941, P + 26, -11, ZeldaHoofdstuk.HAAKPUNT);                           // hoog: alleen vanaf de ingestorte trap te raken
             zet(1955, P + 21, -15, Material.SOUL_LANTERN);
         }
-        Haakpunt hp = haakpunt(new Haakpunt("torenrichel", 1941, P + 23, -11, plek(1942, P + 21, -12, 90f)));
+        Haakpunt hp = haakpunt(new Haakpunt("torenrichel", 1941, P + 26, -11, plek(1942, P + 21, -12, 90f)));
         verhaal(new Verhaal("ingestort", Box.van(1929, P + 10, -16, 1934, P + 16, -11), List.of(
                 r("Wiske", "De trap is ingestort! Te ver om te springen."),
                 r("Wiske", "Daar, boven de richel: een haakpunt.")))).als = s -> !s.heeft("v:noordrichel");
@@ -740,7 +751,6 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
         eq.setBoots(kleur(Material.LEATHER_BOOTS, 0xd4af37, false));
         eq.setHelmet(kroon ? new org.bukkit.inventory.ItemStack(Material.GOLDEN_HELMET) : null);
         eq.setItemInMainHand(new org.bukkit.inventory.ItemStack(Material.END_ROD));
-        for (org.bukkit.inventory.EquipmentSlot sl : org.bukkit.inventory.EquipmentSlot.values()) eq.setDropChance(sl, 0f);
     }
 
     private static org.bukkit.inventory.ItemStack kleur(Material m, int rgb, boolean goud) {

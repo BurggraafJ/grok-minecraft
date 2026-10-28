@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.12.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.13.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -406,7 +406,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   gezondheid + gouden appel.
   **Story of Zelda** (`Zelda*.java`; plan en bouwsessies in `ZELDA.md`, techniek in `MODI.md`): avontuur over de
   eilanden van de Glazen Zee, alleen of samen. Door de poort = naar je **laatste rustplaats** (voortgang per speler in
-  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu vijf eilanden (Nachtrots half: de muren). **Eiland 1, «Het Lindewoud»**
+  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Vijf eilanden, het verhaal is af (2.13: de toren, Morgal, het feest). **Eiland 1, «Het Lindewoud»**
   (deel `zelda` versie 4, sessie zelda-lindewoud-v2, kitpvp 2.6; Jelle 27-10: "te veel vechten, te moeilijk, je moet kunnen
   rehealen, kunnen teruglopen"): een **open eiland** (bouwvak x 1024…1639, z −179…179; land x 1045…1492, z −105…105).
   Je wordt wakker in je huisje aan de bosrand (west); het pad brengt je naar **Lindedorp** in het midden (grote linde,
@@ -532,9 +532,20 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   `hs:gloedberg-4`). In de wapenkamer het **zwarte harnas**: Mira maakt het in het licht van haar vuurtoren weer schoon (het
   **lichtharnas**, `harnas4`; terug naar het Zilverstrand). De kerkertrap op, het wachthuis (rust, bron), de binnenpoort
   (wachtwoord + lichtharnas) en het enige gevecht: de **binnenplaats** (nachtsoldaat, nachtschutter, nevelmijt; drie gemengde
-  golven). Dan de **torenpoort**: de toren en Morgal (5b) staan aangekondigd (`Zelda.KOMT`). Boodschap over zee: Hanne wil
-  maanmos uit de kerkers → een achtste flesje (`fles8`). Muziek *Nachtrots*, *Muren*, *Kerkers*, gevecht *Nachtwacht*. De
-  toren (5b) komt in een volgende sessie (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  golven). Dan de **torenpoort**. Boodschap over zee: Hanne wil maanmos uit de kerkers → een achtste flesje (`fles8`). Muziek
+  *Nachtrots*, *Muren*, *Kerkers*, gevecht *Nachtwacht*. **Eiland 5b, Nachtrots: de toren en Morgal** (sessie zelda-eiland-5b,
+  kitpvp 2.13, deel `zelda-e5b`, x 1880…2000, z −150…150): Tijmen breekt Morgals zegel op de torenpoort; door de overdekte
+  brugpoort naar de **Nevelbrug** boven zee (een lichtpijl door de nevel laat de brug zien: motor `Nevel.brug`); de voorhof
+  op de torenrots (rust, bron; in de torenhal Ida). De toren beklim je **buiten, om de muur**: west een trap van licht
+  (lichtpijl), noord een ingestorte trap (klauwhaak; Zelda's kamertje met een bron), oost drie wachtersvuren (vuurstaf: de trap
+  verschijnt), zuid puin (bom) en weer een trap van licht; wie valt, vangt de nevel op (motor `Val`: terug waar je veilig
+  stond, geen schade). Het **torenbalkon** (rust, bron, Tijmen; een ladder terug naar beneden). In de troonzaal **Morgal** in
+  drie fases met adem ertussen (nevelgeesten; duistere bollen die je met je zwaard terugslaat; lichtpijlen in zijn
+  nevelhart; klasse `Morgal`). Op het dak **Zelda** in een kooi van nevel: de zon komt op. Brecht vaart Zelda en jou naar huis
+  (de terugvaart), en op het oefenveld van het Lindewoud is **het feest** met iedereen die hielp (`ZeldaFeest`): praten met
+  Zelda = vlag `zelda`, vuurwerk, «Story of Zelda · voltooid» (ook op de kaart, met de hartstukjes). Alles blijft open: de
+  gasten zeggen iets nieuws, Zelda's kroontje ligt in Morgals schatkamer onder de toren (`hs:nachtrots-4`). Muziek *Toren*,
+  baas *Morgal* (drie delen), *Dageraad*, *Feest* (het lied van thuis als feest). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).
@@ -553,16 +564,17 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   graafplek (`graaf-deur`), glijvloer (`glijzaal`, `glijtuin`), rustplaats van 3b (`berghut`, `voorplein`,
   `kristalzaal`, `troondrempel`, `vorstbaken`), kamer (`wachtzaal`, `troonzaal`), Nachtrots (`kreek`, `muurvoet`, `kerkerhal`,
   `wachthuis`, `torenpoort`, `binnenplaats`, sluipstukken `weergang` en `kerkerwacht`, `wolf-e5a`, nevel `nevel-<id>`, cellen
-  `cel-<naam>`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
+  `cel-<naam>`; de toren: `voorhof`, `balkon`, `nachttroon`, `zelda-e5b`, `nevel-brug1`…`3`, `nevel-trap1`/`2`, `kooi`,
+  `torenladder`, `schatkamer`), het feest (`feest`, gasten `<naam>-feest`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
   zijn) = Zelda-voortgang terug naar het begin; zit hij in Zelda, dan eerst naar de hub (spullen weg, beheer uit) en
   opnieuw naar binnen bij het begin. Console: `kitpvp zelda reset <speler>`. Raakt alleen zelda.yml van die speler. Console:
   `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
   (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor]` (loopt met een
-  echte speler; wist eerst diens voortgang; `alles` loopt alle eilanden af, vaart heen en weer voor boodschappen en
-  controleert of alles te belopen is), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp zelda lopen
+  echte speler; wist eerst diens voortgang; `alles` loopt alle eilanden af van Thuis tot het feest, vaart heen en weer voor
+  boodschappen en controleert of alles te belopen is; `alles vanaf <deel>` begint later, alleen voor tests), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp zelda lopen
   <eiland> [zonder <voorwerp>] [dicht <poort>]` (is alles te belopen? en wat ligt er achter een poort of voorwerp?),
-  `kitpvp bouw zelda`, `kitpvp bouw zelda-e2a`, `kitpvp bouw zelda-e2b`, `kitpvp bouw zelda-e3a`, `kitpvp bouw zelda-e3b`.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 4, `zelda-e2a` 2, `zelda-e2b` 5, `zelda-e3a` 2, `zelda-e3b` 1, `zelda-zee` 1;
+  `kitpvp bouw zelda`, `kitpvp bouw zelda-e2a` … `zelda-e5a`, `kitpvp bouw zelda-e5b` (de toren), `kitpvp bouw zelda-zee`.
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 4, `zelda-e2a` 2, `zelda-e2b` 5, `zelda-e3a` 2, `zelda-e3b` 1, `zelda-e4a` 1, `zelda-e4b` 1, `zelda-e5a` 1, `zelda-e5b` 1, `zelda-zee` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
   eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,

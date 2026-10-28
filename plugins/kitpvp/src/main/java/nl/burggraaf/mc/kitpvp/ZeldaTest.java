@@ -82,15 +82,41 @@ final class ZeldaTest {
     }
 
     void route(boolean alles) {
+        route(alles, null);
+    }
+
+    /**
+     * Met {@code vanaf} (een deel-id, voor wie aan één deel werkt): alles ervoor telt als gedaan (vondsten, kamers, rustplaatsen,
+     * puzzels, wat personen geven) en de route begint bij de aanleg van dat eiland. Alleen voor tests: zo hoef je niet elke keer
+     * het hele spel door.
+     */
+    void route(boolean alles, String vanaf) {
         if (p.isDead()) p.spigot().respawn();
         pl.naarHub(p);                                       // eerst uit Zelda, anders schrijft de rustplaats meteen weer
         z.spel.voortgang.wis(id);
         ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
+        ZeldaHoofdstuk begin = vanaf == null ? null : z.spel.deel(vanaf);
+        if (vanaf != null && (begin == null || begin.eiland == null)) {
+            aan.sendMessage("kitpvp zelda test: onbekend deel " + vanaf);
+            return;
+        }
+        if (begin != null) {
+            ZeldaVoortgang.Stand s = stand();
+            for (ZeldaHoofdstuk d : z.HOOFDSTUKKEN) {
+                if (d == begin) break;
+                overslaan(s, d);
+            }
+            ZeldaEiland be = begin.eiland;
+            s.laatste = be.delen().get(0).id() + ":" + be.aanlegRust().index;
+            s.hoofdstuk = be.delen().get(0).id();
+            s.bezoek(be.delen().get(0).id(), be.aanlegRust().index);
+            z.spel.voortgang.vuil();
+        }
         stap("poort", () -> {
             doorDePoort();
-            Location r0 = h.rust.get(0).plek;
+            Location r0 = begin != null ? begin.eiland.aanlegPlek() : h.rust.get(0).plek;
             moet(p.getLocation().distanceSquared(r0) < 4, "niet bij het begin: " + xyz(p.getLocation()) + " (verwacht " + xyz(r0) + ")");
-            moet(p.getInventory().getItem(0) != null && p.getInventory().getItem(0).getType() == Material.WOODEN_SWORD, "geen houten zwaard");
+            moet(begin != null || p.getInventory().getItem(0) != null && p.getInventory().getItem(0).getType() == Material.WOODEN_SWORD, "geen houten zwaard");
             moet(p.getInventory().getItem(8) != null && p.getInventory().getItem(8).getType() == Material.MAP, "geen kaart");
         }, 2, () -> true, 1);
         // alle eilanden in de volgorde van het verhaal: varen (met Brecht: klik in zijn menu), elk deel aflopen, wat nu te
@@ -98,7 +124,8 @@ final class ZeldaTest {
         eilanden:
         for (int i = 0; i < z.EILANDEN.size(); i++) {
             ZeldaEiland e = z.EILANDEN.get(i), volgende = i + 1 < z.EILANDEN.size() ? z.EILANDEN.get(i + 1) : null;
-            if (e != h.eiland) stap("varen naar " + e.id(), () -> {
+            if (begin != null && i < z.EILANDEN.indexOf(begin.eiland)) continue;      // vanaf een deel: de eilanden ervoor zijn gedaan
+            if (e != h.eiland && (begin == null || e != begin.eiland)) stap("varen naar " + e.id(), () -> {
                 moet(e.open(stand()), e.id() + " is niet open na het vorige eiland (" + e.openNa() + ")");
                 moet(!e.id().equals(geklikt) || z.spel.sessie(p).vaart != null, "Brecht vaart niet na een klik op " + e.naam());
                 if (z.spel.sessie(p).vaart == null) {
@@ -107,6 +134,7 @@ final class ZeldaTest {
                 }
             }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
             for (ZeldaHoofdstuk d : e.delen()) {
+                if (begin != null && e == begin.eiland && e.delen().indexOf(d) < e.delen().indexOf(begin)) continue;
                 if (!pad(d, alles, d == h)) break eilanden;
                 stap("einde " + d.id(), () -> { }, 2, () -> stand().heeft(d.id()), 20);
             }
@@ -155,9 +183,10 @@ final class ZeldaTest {
         }, 2, () -> true, 1);
         // boodschappen over zee (Hanne vraagt zeekraal van het Zilverstrand, later maanmos van Nachtrots): drie rondes langs alle
         // eilanden (een opdracht van Hanne begint pas als de vorige klaar is), dan alles klaar
+        List<ZeldaEiland> rond = begin == null ? z.EILANDEN : List.of(z.EILANDEN.get(0), begin.eiland);   // vanaf een deel: alleen dat eiland en thuis
         if (alles && z.EILANDEN.size() > 1) {
             for (int ronde = 0; ronde < 3; ronde++)
-                for (ZeldaEiland e : z.EILANDEN) {
+                for (ZeldaEiland e : rond) {
                     stap("boodschap: naar " + e.id(), () -> {
                         stil();
                         if (z.spel.sessie(p).h.eiland == e) return;
@@ -169,7 +198,7 @@ final class ZeldaTest {
         }
         // later terug: met een nieuw voorwerp (bommen, de klauwhaak) naar een eerder eiland varen (via de kaart) en daar halen
         // wat nu kan (na de boodschappen over zee: anders noemt de hint eerst een opdracht die nog loopt)
-        if (alles) for (ZeldaEiland e : z.EILANDEN) {
+        if (alles) for (ZeldaEiland e : rond) {
             List<ZeldaHoofdstuk.Vondst> nu = new ArrayList<>();
             for (ZeldaHoofdstuk d : e.delen())
                 for (ZeldaHoofdstuk.Vondst v : d.vondsten) if (v.voorwerp != null && z.spel.voorwerpen.stream().anyMatch(x -> x.vlag().equals(v.voorwerp))) nu.add(v);
@@ -191,7 +220,7 @@ final class ZeldaTest {
                 for (ZeldaHoofdstuk.Vondst v : nu) if (stand().heeft(v.voorwerp)) moet(stand().heeft(v.vlag), "later terug: " + v.vlag + " niet te halen met " + v.voorwerp);
             }, 2, () -> true, 1);
         }
-        if (alles && z.EILANDEN.size() > 1) for (ZeldaEiland e : z.EILANDEN) klaar(e, true);
+        if (alles && z.EILANDEN.size() > 1) for (ZeldaEiland e : begin == null ? z.EILANDEN : List.of(begin.eiland)) klaar(e, true);
         stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
             ZeldaVoortgang.Stand s = stand();
@@ -525,7 +554,10 @@ final class ZeldaTest {
                     voor[0] = z.spel.sessie(p).opgevangen;
                     p.setVelocity(new org.bukkit.util.Vector());
                     p.teleport(v.proef());
-                }, 4, () -> z.spel.sessie(p).opgevangen > voor[0] || ((org.bukkit.entity.Entity) p).isOnGround(), 200);
+                }, 4, () -> {
+                    if (!((org.bukkit.entity.Entity) p).isOnGround()) p.setFallDistance(Math.max(p.getFallDistance(), 6f));   // zoals een speler die valt (de testspeler valt niet vanzelf)
+                    return z.spel.sessie(p).opgevangen > voor[0] || ((org.bukkit.entity.Entity) p).isOnGround();
+                }, 200);
                 stap("vangnet " + v.id() + " zacht", () -> {
                     var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
                     moet(max != null && p.getHealth() >= max.getValue() - 0.01, "vangnet " + v.id() + ": vallen deed pijn (" + p.getHealth() + ")");
@@ -600,6 +632,44 @@ final class ZeldaTest {
     private void heel() {
         var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
         if (max != null && !p.isDead()) p.setHealth(max.getValue());
+    }
+
+    /** Wat personen op een deel geven (in een gesprek, geen vondst): voor {@link #overslaan}. */
+    private static final java.util.Map<String, List<String>> GAVEN = java.util.Map.of(
+            "h1", List.of("schild", "fles2", "lichtwoord", ZeldaRegels.HELM),
+            "e2a", List.of("harnas1"),
+            "e2b", List.of("maanparel", "ankersleutel"),
+            "e3a", List.of("sterrenlantaarn"),
+            "e3b", List.of("zonnesteen", "harnas2"),
+            "e4a", List.of("koelsteen", "harnas3"),
+            "e4b", List.of(ZeldaSpel.GLOEDSCHILD),
+            "e5a", List.of(ZeldaEiland5a.MUURSLEUTEL, ZeldaEiland5a.WACHTWOORD, ZeldaEiland5a.WOLF_VRIJ, "harnas4"));
+
+    /** Gesprekken op eerdere delen die pas met de toren (5b) komen: die blijven nieuw als je {@link #overslaan}. */
+    private static final java.util.Set<String> NA_DE_TOREN = java.util.Set.of("tijmen-zegel", "brecht-zelda", "zelda-kreek", "wolf-zelda");
+
+    /** Een deel overslaan (test vanaf een later deel): alsof je het speelde. */
+    private void overslaan(ZeldaVoortgang.Stand s, ZeldaHoofdstuk d) {
+        s.zet(d.id());
+        if (d.eiland != null) s.zet("e:" + d.eiland.id());
+        for (ZeldaHoofdstuk.Vondst v : d.vondsten) if (v.voorwerp == null && (v.vereist == null || !v.vereist.startsWith("g:"))) s.zet(v.vlag);
+        for (ZeldaHoofdstuk.Kamer k : d.kamers) s.zet("k:" + k.id);
+        for (ZeldaHoofdstuk.Rust r : d.rust) {
+            s.bezoek(d.id(), r.index);
+            s.bereik(d.id(), r.index);
+        }
+        for (ZeldaHoofdstuk.Verhaal v : d.verhalen) s.zet("v:" + v.id);
+        for (ZeldaHoofdstuk.Reeks r : d.reeksen) s.zet("r:" + r.id);
+        for (ZeldaHoofdstuk.Spiegels sp : d.spiegels) s.zet("r:" + sp.id);
+        for (ZeldaHoofdstuk.Barst b : d.barsten) s.zet("b:" + b.id);
+        for (ZeldaHoofdstuk.Nevel n : d.nevels) s.zet("n:" + n.id);
+        for (ZeldaHoofdstuk.Sluip sl : d.sluipen) s.zet("l:" + sl.id);
+        for (String g : GAVEN.getOrDefault(d.id(), List.of())) s.zet(g);
+        for (String st : d.stukjes) s.zet(st);
+        for (ZeldaHoofdstuk.Missie m : d.missies) if (!m.id().equals(ZeldaFeest.SCHAT)) s.missies.put(m.id(), ZeldaVoortgang.KLAAR);   // de schat is na het einde (5b)
+        for (ZeldaHoofdstuk.Persoon pe : d.personen) for (ZeldaHoofdstuk.Gesprek g : pe.gesprekken)                                   // wat ze toen zeiden
+            if (g.id() != null && !NA_DE_TOREN.contains(g.id()) && !g.id().startsWith("na-") && !g.id().startsWith("feest-") && !g.id().startsWith("zelda-")) s.zet("g:" + g.id());
+        ZeldaRegels.vulFlessen(s);
     }
 
     /** Het eiland waar deze persoon staat (null = op geen enkel eiland, bv. een proefpersoon). */

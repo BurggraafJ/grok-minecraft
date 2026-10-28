@@ -691,13 +691,14 @@ final class Zelda implements Modus {
             }
             case "test" -> {
                 if (p == null) {
-                    s.sendMessage("kitpvp zelda test <speler> [alles|dood]: speler niet online");
+                    s.sendMessage("kitpvp zelda test <speler> [alles [vanaf <deel>]|dood|motor]: speler niet online");
                     return;
                 }
                 ZeldaTest t = new ZeldaTest(plugin, this, p, s);
                 if (args.length >= 4 && args[3].equalsIgnoreCase("dood")) t.dood();
                 else if (args.length >= 4 && args[3].equalsIgnoreCase("motor")) t.motor();
-                else t.route(args.length >= 4 && args[3].equalsIgnoreCase("alles"));
+                else t.route(args.length >= 4 && args[3].equalsIgnoreCase("alles"),
+                        args.length >= 6 && args[4].equalsIgnoreCase("vanaf") ? args[5].toLowerCase() : null);   // alles vanaf <deel>: alleen voor tests
             }
             case "in" -> {
                 if (p == null) {
