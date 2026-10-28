@@ -203,7 +203,7 @@ final class ZeldaTest {
             for (ZeldaHoofdstuk d : e.delen())
                 for (ZeldaHoofdstuk.Vondst v : d.vondsten) if (v.voorwerp != null && z.spel.voorwerpen.stream().anyMatch(x -> x.vlag().equals(v.voorwerp))) nu.add(v);
             if (nu.isEmpty() || e == z.EILANDEN.get(z.EILANDEN.size() - 1)) continue;
-            stap("hint: later naar " + e.id(), () -> {                                 // Wiske weet dat je daar nu iets kunt halen
+            if (begin == null) stap("hint: later naar " + e.id(), () -> {                 // (vanaf een deel: de eilanden ertussen zijn overgeslagen)                                 // Wiske weet dat je daar nu iets kunt halen
                 stil();
                 z.spel.sessie(p).hintWacht = 0;
                 z.spel.hint(p);

@@ -288,7 +288,7 @@ final class ZeldaRegels {
     }
 
     /** Hoe ver je een duistere bol met je zwaard terugslaat (van je ogen), en hoeveel graden opzij hij mag zijn. */
-    static final double ZWAAI_BEREIK = 3.8, ZWAAI_HOEK = 75;
+    static final double ZWAAI_BEREIK = 4.5, ZWAAI_HOEK = 80;
 
     /**
      * Sla je met een zwaai deze bol terug? Hij moet dichtbij zijn ({@code bereik}, vanaf je ogen) en ongeveer voor je

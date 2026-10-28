@@ -45,7 +45,7 @@ final class Morgal extends ZeldaBaas {
     /** Seconden adem tussen twee fases, en hoe lang hij versuft is (in fase 2, en in fase 3 op de grond). */
     static final int ADEM = 6, VERSUFT = 5, VERSUFT_HART = 4;
     /** Een bol: schade (halve harten, vóór de balans en je harnas), snelheid (blokken per tik), teruggeslagen sneller; hoe dichtbij hij raakt. */
-    static final double BOL_SCHADE = 5, BOL_SNELHEID = 0.3, TERUG_SNELHEID = 0.55, BOL_RAAK = 1.25;
+    static final double BOL_SCHADE = 5, BOL_SNELHEID = 0.24, TERUG_SNELHEID = 0.55, BOL_RAAK = 1.25;
     /** Om de zoveel seconden een bol (fase 2, fase 3), en om de zoveel verschuift hij in fase 2. */
     static final int WERP = 4, WERP_HART = 3, VERSCHUIF = 6;
     /** Onder dit deel van zijn leven vlucht hij omhoog (fase 3). */
