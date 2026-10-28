@@ -994,11 +994,14 @@ public final class KitPvP extends JavaPlugin implements Listener {
             case "zelda" -> {
                 if (modi.get("zelda") instanceof Zelda z) z.beheer(sender, args);
             }
-            case "kaart" -> {
+            case "kaart" -> {                                      // kitpvp kaart [begin]: alleen plaatjes waarvan de naam zo begint
+                Kaart.alleen = args.length >= 2 ? args[1] : null;
                 try {
                     for (String f : kaarten()) sender.sendMessage("kaart: " + f);
                 } catch (IOException | RuntimeException e) {
                     sender.sendMessage("kaart mislukt: " + e);
+                } finally {
+                    Kaart.alleen = null;
                 }
             }
             case "test" -> {
@@ -1020,7 +1023,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             default -> sender.sendMessage("kitpvp: grond=" + g + " modi=" + modi.alle().size() + " in-arena=" + spelers.aantalInArena()
                     + " spelers=" + Bukkit.getOnlinePlayers().size() + " bouwen=" + (bouwer != null && bouwer.bezig() ? bouwer.inRij() + " stappen" : "klaar")
-                    + " · kitpvp zelftest | test <speler> | zelda | bouw [hub|arena|kasteel|zelda|alles] | kaart | aftellen [s]");
+                    + " · kitpvp zelftest | test <speler> | zelda | bouw [hub|arena|kasteel|zelda|alles] | kaart [begin] | aftellen [s]");
         }
     }
 
@@ -1101,7 +1104,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "zelda-e3b-zij", 0, -1, -250, 1578, 1718, g, zg + 64, 120, 3));
         f.add(Kaart.voor(w, map, "zelda-e3b-toren-zij", 0, -1, -300, 1676, 1712, f3 - 2, zg + 64, 30, 6));
         List<String> uit = new ArrayList<>();
-        for (File x : f) uit.add(x.getPath());
+        for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;
     }
 

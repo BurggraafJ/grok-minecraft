@@ -309,10 +309,9 @@ final class ZeldaTest {
                     if (max != null) p.setHealth(max.getValue());
                     Location zu = gr.zuil(0), mid = k.start.midden(h.w);
                     double y = gr.grond.get(0).getY();
-                    org.bukkit.util.Vector as = mid.toVector().subtract(zu.toVector()).setY(0);
-                    as = Math.abs(as.getX()) >= Math.abs(as.getZ()) ? new org.bukkit.util.Vector(Math.signum(as.getX()), 0, 0) : new org.bukkit.util.Vector(0, 0, Math.signum(as.getZ()));
-                    Location rand = new Location(h.w, zu.getX(), y, zu.getZ()).add(as.clone().multiply(1.0));
-                    Location staan = rand.clone().add(as.clone().multiply(2.0)), beer = rand.clone().add(as.clone().multiply(9.0));
+                    org.bukkit.util.Vector as = mid.toVector().subtract(zu.toVector()).setY(0).normalize();   // van de zuil naar het midden van de zaal
+                    Location rand = new Location(h.w, zu.getX(), y, zu.getZ()).add(as.clone().multiply(1.6));
+                    Location staan = rand.clone().add(as.clone().multiply(2.0)), beer = rand.clone().add(as.clone().multiply(8.0));
                     beer.setDirection(as.clone().multiply(-1));
                     gr.ent.teleport(beer);
                     staan.setDirection(as.clone().multiply(-1));

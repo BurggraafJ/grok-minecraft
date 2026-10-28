@@ -18,6 +18,9 @@ final class Kaart {
     private Kaart() {
     }
 
+    /** Alleen plaatjes waarvan de naam hiermee begint ({@code kitpvp kaart <begin>}; null = alles). */
+    static String alleen;
+
     private static int kleur(Block b) {
         Material m = b.getType();
         if (m == Material.WATER) return 0x3f76e4;
@@ -34,6 +37,7 @@ final class Kaart {
 
     /** Bovenaanzicht van x1..x2, z1..z2 (noord boven), vanaf hoogte ytop naar beneden. */
     static File boven(World w, File map, String naam, int x1, int z1, int x2, int z2, int ybodem, int ytop, int px) throws IOException {
+        if (alleen != null && !naam.startsWith(alleen)) return null;
         int bw = x2 - x1 + 1, bh = z2 - z1 + 1;
         BufferedImage img = new BufferedImage(bw * px, bh * px, BufferedImage.TYPE_INT_RGB);
         for (int x = x1; x <= x2; x++)
@@ -56,6 +60,7 @@ final class Kaart {
      * breedte langs de andere as van a1..a2, hoogte y1..y2. Verder weg = donkerder.
      */
     static File voor(World w, File map, String naam, int dx, int dz, int vanaf, int a1, int a2, int y1, int y2, int diep, int px) throws IOException {
+        if (alleen != null && !naam.startsWith(alleen)) return null;
         int bw = a2 - a1 + 1, bh = y2 - y1 + 1;
         BufferedImage img = new BufferedImage(bw * px, bh * px, BufferedImage.TYPE_INT_RGB);
         for (int a = a1; a <= a2; a++)

@@ -280,10 +280,16 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
         return Math.exp(-d2 / (2 * r * r));
     }
 
-    /** Hoe hoog de berg hier is (boven G): rond G+30 (zoals 3a aan de rand), met toppen in het noorden en het zuiden. */
+    /**
+     * Hoe hoog de berg hier is (boven G): nooit lager dan G+30 (zo kom je nergens via de berg om de haakpunten heen, en
+     * aan de rand met 3a is hij even hoog), met toppen in het noorden en het zuiden en ruggen en kuilen ertussen.
+     */
     private static int berg(int x, int z) {
-        double h = 30 + 16 * bult(x, z, 1650, -390, 26) + 12 * bult(x, z, 1668, -218, 20) + 8 * bult(x, z, 1702, -425, 18) + (zacht(x + 11, z - 7, 8) - 0.5) * 5;
-        return (int) Math.round(h);
+        double h = 31 + 17 * bult(x, z, 1650, -392, 24) + 13 * bult(x, z, 1668, -216, 18) + 9 * bult(x, z, 1702, -428, 16)
+                + 9 * bult(x, z, 1606, -442, 15) + 7 * bult(x, z, 1600, -214, 13)
+                + Math.max(0, (zacht(x + 11, z - 7, 11) - 0.35) * 14) + (zacht(x - 5, z + 3, 5) - 0.5) * 3;
+        if (x < 1592) h = 30 + (h - 30) * Math.max(0, x - 1580) / 12.0;     // aan de rand: zoals het dal (3a, G+30)
+        return (int) Math.round(Math.max(30, h));
     }
 
     /** De oude sleebaan (drie breed): de vloer boven G, of -1. Van het plateau west omlaag, dan noord naar de berghut. */
@@ -359,6 +365,17 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
                 } else for (int x = x1; x <= x2; x++)
                     for (int z = z1; z <= z2; z++) kolom(x, z, top[x - X1][z - Z1], soort[x - X1][z - Z1]);
             }
+        // een borstwering waar het plateau naar zee afloopt (niet bij de gracht)
+        for (int x = X1 + 1; x < X2; x++)
+            for (int z = Z1 + 1; z < Z2; z++) {
+                if (soort[x - X1][z - Z1] != SNEEUW || top[x - X1][z - Z1] != F) continue;
+                boolean rand = false;
+                for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    int ax = x + d[0] - X1, az = z + d[1] - Z1;
+                    rand |= top[ax][az] < F - 2 && (soort[ax][az] == ROTS || soort[ax][az] == ZEE);
+                }
+                if (rand) zet(x, F + 1, z, Material.STONE_BRICK_WALL);
+            }
         // sparren op de lagere hellingen, ijspieken op het plateau (niet op de wegen)
         for (int x = X1 + 3; x <= X2 - 3; x++)
             for (int z = Z1 + 3; z <= Z2 - 3; z++) {
@@ -380,6 +397,15 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
                 if (top[ax][az] != y || soort[ax][az] != soort[x - X1][z - Z1]) return false;
             }
         return true;
+    }
+
+    /** Is het hier steil (een buur minstens vier lager)? */
+    private boolean steil(int x, int z, int hg) {
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            int ax = x + d[0] - X1, az = z + d[1] - Z1;
+            if (ax >= 0 && az >= 0 && ax < top.length && az < top[0].length && top[ax][az] <= hg - 4) return true;
+        }
+        return false;
     }
 
     /** Vlak bij het paleis, de IJstuin of de sleebaan (daar geen ijspieken). */
@@ -405,6 +431,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             default -> Material.SNOW_BLOCK;
         };
         if (s == ROTS) for (int y = Math.max(g + 1, hg - 4); y < hg; y++) zet(x, y, z, steen(x, y, z));
+        if (s == ROTS && steil(x, z, hg)) opp = steen(x, hg, z);                 // een steile rots: geen sneeuw
         zet(x, hg, z, opp);
         vul(x, hg + 1, z, x, ymax, z, Material.AIR);
     }
@@ -505,7 +532,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             zet(1589, y0 + 1, -303, Material.BARREL);
             zet(1587, y0 + 3, -301, Bouwer.hangend(Material.LANTERN));
             for (int x = 1585; x <= 1586; x++) zet(x, y0 + 1, -297, Bouwer.trap(Material.SPRUCE_STAIRS, BlockFace.NORTH));
-            // touwen en klimspullen bij de wand, een pikhouweel in de sneeuw
+            // klimspullen bij de wand
             zet(1592, y0 + 1, -299, Material.BARREL);
             zet(1592, y0 + 1, -300, Material.HAY_BLOCK);
             lantaarnpaal(1584, y0 + 1, -290);
@@ -521,7 +548,7 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             vul(1600, G + 23, PZ + 2, 1600, G + 26, PZ + 2, Material.SPRUCE_LOG);
             zet(1601, G + 26, PZ + 2, stam(Material.SPRUCE_LOG, org.bukkit.Axis.X));
             zet(1601, G + 25, PZ + 2, ZeldaHoofdstuk.HAAKPUNT);
-            zet(1610, G + 26, -297, Material.LANTERN);
+            zet(1608, G + 25, -298, Material.LANTERN);
             bord(1591, y0 + 1, -296, BlockFace.WEST, "Het IJspaleis");
         }
         rustvuur(1589, y0, -287);
@@ -671,7 +698,8 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
                     boolean muur = x == x1 || x == x2 || z == z1 || z == z2;
                     zet(x, F, z, muur ? Material.POLISHED_DIORITE : (x + z) % 3 == 0 ? Material.STONE_BRICKS : Material.POLISHED_ANDESITE);
                     for (int y = F + 1; y <= F + 8; y++) {
-                        boolean raam = muur && y >= F + 3 && y <= F + 6 && ((x - x1) % 4 == 2 || (z - z1) % 4 == 2) && !(x == x1 || x == x2) == (z == z1 || z == z2);
+                        boolean langsX = x == x1 || x == x2, langsZ = z == z1 || z == z2;
+                        boolean raam = muur && !(langsX && langsZ) && y >= F + 3 && y <= F + 6 && (langsX ? (z - z1) % 4 == 2 : (x - x1) % 4 == 2);
                         zet(x, y, z, !muur ? Material.AIR : raam ? Material.LIGHT_BLUE_STAINED_GLASS : y == F + 8 ? Material.QUARTZ_BRICKS : ijsmuur(x, y, z));
                     }
                     zet(x, F + 9, z, muur || (x - x1) % 5 == 0 || (z - z1) % 5 == 0 ? Material.QUARTZ_BRICKS : Material.LIGHT_BLUE_STAINED_GLASS);   // een dak van glas
@@ -742,8 +770,8 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             zet(1593, G + 15, -283, Material.SPRUCE_FENCE);
             zet(1593, G + 16, -283, Material.SPRUCE_FENCE);
             for (int x : new int[]{1587, 1591}) {                          // de finish: twee vlaggetjes
-                zet(x, G + 15, -281, Material.SPRUCE_FENCE);
-                zet(x, G + 16, -281, Material.LIGHT_BLUE_WOOL);
+                zet(x, G + 15, -283, Material.SPRUCE_FENCE);
+                zet(x, G + 16, -283, Material.LIGHT_BLUE_WOOL);
             }
         }
         verhaal(new Verhaal("uitleg-sleebaan", Box.van(1611, F, -270, 1616, F + 4, -264), List.of(
