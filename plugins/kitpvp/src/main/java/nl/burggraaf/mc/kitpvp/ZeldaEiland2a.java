@@ -1061,7 +1061,7 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 r("Pim", "Nog een keer? Je tijd staat op het bord."))));
         pim.kind = true;
         stukje(STUKJE_PIM);
-        missie("vlieger", "De vlieger", "Ren de vlieger achterna: stap op de plaat bij Pim.", "Vertel Pim dat het gelukt is.");
+        missie("vlieger", "De vlieger", "Ren de vlieger achterna. Start bij Pim.", "Vertel Pim dat het gelukt is.");
         pim.eenmalig("pim-1", null, List.of(
                         r("Pim", "Mijn vlieger trekt zo hard! Hou je hem bij?"),
                         r("Pim", "Stap op de plaat en ren hem achterna."),

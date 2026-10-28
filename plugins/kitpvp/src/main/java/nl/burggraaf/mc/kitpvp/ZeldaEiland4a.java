@@ -899,7 +899,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         Persoon fenna = persoon(new Persoon("Fenna", plek(1136, D + 1, 307, 90f), beroep("cartographer"), List.of(
                 r("Fenna", "Nog een keer? Je tijd staat op het bord."))));
         stukje(STUKJE_SPOREN);
-        missie("sporen", "De sporen", "Ren over de sporen naar de Laadkade: stap op de plaat bij Fenna.", "Vertel Fenna dat het gelukt is.");
+        missie("sporen", "De sporen", "Ren over de sporen naar de Laadkade. Start bij Fenna.", "Vertel Fenna dat het gelukt is.");
         fenna.eenmalig("fenna-1", null, List.of(
                         r("Fenna", "Hoi! Ik ben Fenna, de koerier."),
                         r("Fenna", "Elke dag ren ik over de sporen naar de Laadkade."),
@@ -918,7 +918,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         Persoon kobus = persoon(new Persoon("Kobus", plek(1147, D + 1, 338, 180f), beroep("mason"), List.of(
                 r("Kobus", "Zestig jaar in de mijn. Ik ken elke steen."))));
         stukje(STUKJE_VUREN);
-        missie("mijnvuren", "De mijnvuren", "Steek de drie mijnvuren aan, hoog op de rotsen bij het plein.", "Vertel Kobus dat ze branden.");
+        missie("mijnvuren", "De mijnvuren", "Steek de drie mijnvuren aan, hoog bij het plein.", "Vertel Kobus dat ze branden.");
         kobus.gesprek("kobus-2", s -> s.missie("mijnvuren") == 2, List.of(
                         r("Kobus", "Ze branden weer! Dat ik dat nog zie."),
                         r("Kobus", "Hier, van mijn opa. Voor jou.")), (spel, p, s) -> {

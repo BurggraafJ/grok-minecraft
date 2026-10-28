@@ -656,7 +656,7 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
                 r("Roos", "Nog een keer? Je tijd staat op het bord."))));
         roos.streek = Villager.Type.JUNGLE;
         stukje(STUKJE_ROOS);
-        missie("parelduik", "De parelduik", "Duik door de gang onder de rotsen: stap op de plaat bij Roos.", "Vertel Roos dat het gelukt is.");
+        missie("parelduik", "De parelduik", "Duik onder de rotsen door. Start bij Roos.", "Vertel Roos dat het gelukt is.");
         roos.eenmalig("roos-1", null, List.of(
                         r("Roos", "Hoi! Ik ben Roos. Ik duik naar parels."),
                         r("Roos", "Onder de rotsen loopt een gang naar de andere poel."),

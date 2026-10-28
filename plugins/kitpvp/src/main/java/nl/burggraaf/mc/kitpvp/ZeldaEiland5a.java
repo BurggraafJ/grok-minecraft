@@ -1398,7 +1398,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
             spel.uitleg(p, r("Wiske", "Het harnas van Zelda's wachters. Zwart van de nevel."),
                     r("Wiske", "Licht maakt het schoon. Mira's vuurtoren!"));
         };
-        missie(LICHTHARNAS, "Het zwarte harnas", "Breng het zwarte harnas naar Mira, in de vuurtoren van het Zilverstrand.");
+        missie(LICHTHARNAS, "Het zwarte harnas", "Breng het zwarte harnas naar Mira, op het Zilverstrand.");
         Nevel kist = nevelOpPad(new Nevel("wapenkist", nevelDeur(1786, K + 1, -17, 1788, K + 3, -17), Box.van(1784, K, -20, 1792, K + 5, -8)));
         kist.voor = plek(1787, K + 1, -13, 180f);
         vondst(new Vondst(STUKJE_KIST, "Hartstukje", null, Material.RED_DYE, plek(1787, K + 2.4, -19, 0f), Box.van(1786, K + 1, -19, 1788, K + 3, -18)));

@@ -226,6 +226,24 @@ final class ZeldaTest {
             }, 2, () -> true, 1);
         }
         if (alles && z.EILANDEN.size() > 1) for (ZeldaEiland e : begin == null ? z.EILANDEN : List.of(begin.eiland)) klaar(e, true);
+        if (alles && begin == null) stap("hint: hartstukjes", () -> {             // alles gevonden: dank je wel; een stukje kwijt: Wiske weet waar
+            stil();
+            ZeldaSpel.Sessie ss = z.spel.sessie(p);
+            ss.hintWacht = 0;
+            z.spel.hint(p);
+            moet(rij().contains("Dank je wel"), "hint na alles: " + rij());
+            stil();
+            ZeldaEiland eerste = z.EILANDEN.get(0), hier = ss.h.eiland;
+            String weg = eerste.delen().get(0).stukjes.iterator().next();
+            stand().wis(weg);
+            ss.hintWacht = 0;
+            z.spel.hint(p);
+            moet(rij().contains(hier == eerste ? "Hier" : ZeldaRegels.inZin(eerste.naam())), "hint wijst niet naar het hartstukje " + weg + ": " + rij());
+            ZeldaSpel.Wijzer w = z.spel.wijzer(hier, stand(), p.getLocation().getX(), p.getLocation().getZ());
+            moet(hier == eerste ? w.plek() != null || w.stukje() != null : w.eiland() == eerste, "de kaart zet geen X bij het hartstukje");
+            stand().zet(weg);
+            stil();
+        }, 2, () -> true, 1);
         stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
             ZeldaVoortgang.Stand s = stand();
@@ -1519,6 +1537,9 @@ final class ZeldaTest {
             Bukkit.getPluginManager().callEvent(new org.bukkit.event.player.PlayerItemHeldEvent(p, 8, 0));
             p.getInventory().setHeldItemSlot(0);
             moet(p.getInventory().getItemInOffHand().getType() == Material.SHIELD, "de kaart weg: het schild niet terug");
+            var wissel = new org.bukkit.event.player.PlayerSwapHandItemsEvent(p, p.getInventory().getItemInOffHand(), p.getInventory().getItemInMainHand());
+            Bukkit.getPluginManager().callEvent(wissel);
+            moet(wissel.isCancelled(), "F wisselt in Zelda nog zwaard en schild");
             stand().wis("schild");
             if (uit) stand().zet("o:uitleg-uit");
             sp.uitrusten(p, stand());

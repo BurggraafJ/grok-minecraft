@@ -2329,9 +2329,13 @@ final class ZeldaSpel implements Listener {
         return false;
     }
 
-    /** Het eiland waar het verhaal verder gaat: het eerste dat open is en nog niet af (null = hier, of het verhaal is uit). */
+    /**
+     * Het eiland waar het verhaal verder gaat: het eerste dat open is en nog een doel heeft dat niet klaar is (null = hier, of
+     * het verhaal is uit). Na Zelda's bevrijding is dat het Lindewoud (het feest), niet Nachtrots.
+     */
     private ZeldaEiland verhaal(ZeldaEiland e, ZeldaVoortgang.Stand s) {
-        for (ZeldaEiland o : eilanden) if (o.open(s) && !s.heeft(o.klaar()) && o.aanlegRust() != null) return o == e ? null : o;
+        for (ZeldaEiland o : eilanden)
+            if (o.open(s) && o.aanlegRust() != null && ZeldaRegels.doel(alle(o, h -> h.doelen), s, 0, 0) != null) return o == e ? null : o;
         return null;
     }
 
