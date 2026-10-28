@@ -881,7 +881,7 @@ een eigen tekenaar (`ZeldaKaart`, de tekenregels in `ZeldaKaartBeeld`, unit-test
 - een eiland dat open is maar waar je nog niet was als vorm op perkament;
 - Nachtrots, zolang hij niet open is, als een donkere vlek: Morgals nevel;
 - de **vaarroutes** als stippellijnen, van je eiland naar elk eiland waar Brecht je heen kan varen;
-- jij, je medespelers en de X.
+- jij, je medespelers (op een eiland dat je kent) en de X.
 
 **Op zee** (een overtocht) slaat de kaart vanzelf om: je ziet alleen de route van nu, en je pijl vaart mee van steiger
 naar steiger. Bij aankomst is het weer het eiland.
@@ -1221,6 +1221,14 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
     testronde zonder fouten loopt en de lijst met losse eindjes leeg is.
 
 **Losse eindjes** (gevonden, nog niet opgelost):
+- De kaart (sessie `zelda-kaart`) is niet bekeken met een echte client: hoe de tekens van Minecraft (pijl, groene pijl, rode X,
+  dorp, tempel, landhuis) en de naam op het blad eruitzien, of twee handen (het schild even weg) goed voelt, en of de
+  pagina-geluidjes bij omslaan passen. De plaatjes van `kitpvp zelda kaart` tekenen de tekens na met eenvoudige vormen.
+- De kaart: een vaarroute is een rechte stippellijn en wordt alleen over zee getekend; gaat hij over een eiland (van het
+  Zilverstrand naar de haven van het Lindewoud), dan stopt hij bij de kust.
+- De kaart: zwaaien met de kaart in de hand (linksklik = omslaan) telt in Morgals troonzaal ook als een zwaai tegen een bol
+  (`spel.onZwaai`). Dat is gul, niet fout.
+- Met F wissel je in Zelda nog steeds je zwaard en schild van hand (alleen met de kaart in de hand niet); zo was het al.
 - Nachtrots (5b): `kitpvp zelda lopen` telt een vuurpuzzel (`Reeks`) en een gebarsten muur altijd als open, ook `zonder vuurstaf` /
   `zonder bommen`: of je om de wachtersvuren of het puin heen kunt, zie je daar niet (wel met `dicht trap1`, `dicht trap2`,
   `zonder klauwhaak`, telkens met `dicht torenladder`). Geldt voor alle eilanden; gezien in sessie `zelda-eiland-5b`.

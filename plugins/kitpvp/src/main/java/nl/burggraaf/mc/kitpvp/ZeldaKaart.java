@@ -269,7 +269,7 @@ final class ZeldaKaart {
             k.nieuw = true;
         }
         ZeldaKaartBeeld.Vlak vlak = EILAND.equals(kant) ? basis.vlak() : ZeldaKaartBeeld.Vlak.zee();
-        List<ZeldaKaartBeeld.Merk> merken = EILAND.equals(kant) ? eilandMerken(p, vlak, e, s, ss, k, alles) : zeeMerken(p, vlak, e, ss, k, nu);
+        List<ZeldaKaartBeeld.Merk> merken = EILAND.equals(kant) ? eilandMerken(p, vlak, e, s, ss, k, alles) : zeeMerken(p, vlak, e, s, ss, k, alles, nu);
         k.merken = merken;
         return new Blad(kant, k.sleutel, k.px, merken, vlak);
     }
@@ -345,13 +345,16 @@ final class ZeldaKaart {
         return px;
     }
 
-    private List<ZeldaKaartBeeld.Merk> zeeMerken(Player p, ZeldaKaartBeeld.Vlak v, ZeldaEiland e, ZeldaSpel.Sessie ss, Kijk k, long nu) {
+    private List<ZeldaKaartBeeld.Merk> zeeMerken(Player p, ZeldaKaartBeeld.Vlak v, ZeldaEiland e, ZeldaVoortgang.Stand s, ZeldaSpel.Sessie ss, Kijk k,
+                                                 boolean alles, long nu) {
         List<ZeldaKaartBeeld.Merk> m = new ArrayList<>();
         Location doel = k.doel != null ? k.doel : k.doelEiland != null ? k.doelEiland.aanlegPlek() : null;
         if (doel != null && v.op(doel.getX(), doel.getZ())) m.add(new ZeldaKaartBeeld.Merk("doel", v.px(doel.getX()), v.pz(doel.getZ()), 8));
-        for (Player o : Bukkit.getOnlinePlayers()) {
+        for (Player o : Bukkit.getOnlinePlayers()) {                // medespelers op een eiland dat je kent (niet in lege zee)
             ZeldaSpel.Sessie os = spel.sessie(o);
-            if (o == p || os == null || os.vaart != null || spel.beheer.is(o.getUniqueId())) continue;
+            if (o == p || os == null || os.vaart != null || spel.beheer.is(o.getUniqueId()) || os.h.eiland == null) continue;
+            ZeldaKaartBeeld.Zicht z = zicht(os.h.eiland, s, alles);
+            if (z != ZeldaKaartBeeld.Zicht.KLEUR && z != ZeldaKaartBeeld.Zicht.VORM) continue;
             Location l = o.getLocation();
             if (v.op(l.getX(), l.getZ())) m.add(new ZeldaKaartBeeld.Merk("maat", v.px(l.getX()), v.pz(l.getZ()), ZeldaKaartBeeld.richting(l.getYaw())));
         }
