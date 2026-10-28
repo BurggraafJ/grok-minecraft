@@ -29,6 +29,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
  *   <li>{@code missies}: zijmissies, per id de stap (1 … n bezig, {@link #KLAAR} = klaar).</li>
  *   <li>{@code tellers}: getallen (bv. {@code fles-vol}); {@code dier}: de naam van je huisdier; {@code tijden}: beste
  *       tijden van uitdagingen in ms.</li>
+ *   <li>{@code kaart}: wat je ontdekte (de kaart in vak 9), ingepakt als tekst ({@link ZeldaKaartBeeld#schrijf}).</li>
  * </ul>
  */
 final class ZeldaVoortgang {
@@ -45,6 +46,7 @@ final class ZeldaVoortgang {
         final Map<String, Integer> missies = new LinkedHashMap<>();
         final Map<String, Integer> tellers = new LinkedHashMap<>();
         String dier;                                            // naam van je huisdier (null = nog geen naam)
+        final java.util.BitSet kaart = new java.util.BitSet();  // wat je ontdekte: vakjes van 8 × 8 blokken (ZeldaKaartBeeld.cel)
 
         /** De verste rustplaats in dit hoofdstuk (0 = het begin). */
         int rust(String h) {
@@ -141,6 +143,7 @@ final class ZeldaVoortgang {
             s.missies.putAll(missies);
             s.tellers.putAll(tellers);
             s.dier = dier;
+            s.kaart.or(kaart);
             return s;
         }
     }
@@ -249,6 +252,7 @@ final class ZeldaVoortgang {
             ConfigurationSection n = c.getConfigurationSection("tellers");
             if (n != null) for (String u : n.getKeys(false)) s.tellers.put(u, n.getInt(u));
             s.dier = c.getString("dier");
+            s.kaart.or(ZeldaKaartBeeld.lees(c.getString("kaart")));
             standen.put(id, s);
         }
     }
@@ -270,6 +274,7 @@ final class ZeldaVoortgang {
             for (var m : s.missies.entrySet()) y.set(k + ".missies." + m.getKey(), m.getValue());
             for (var n : s.tellers.entrySet()) y.set(k + ".tellers." + n.getKey(), n.getValue());
             if (s.dier != null) y.set(k + ".dier", s.dier);
+            if (!s.kaart.isEmpty()) y.set(k + ".kaart", ZeldaKaartBeeld.schrijf(s.kaart));
         }
         File map = bestand.getAbsoluteFile().getParentFile();
         if (map != null) map.mkdirs();

@@ -1145,4 +1145,10 @@ final class ZeldaEiland2b extends ZeldaHoofdstuk {
             for (int i = 1; i < 40; i += 2) p.spawnParticle(Particle.DUST, bakenKern.clone().add(0.5, i, 0.5), 1, 0.12, 0.3, 0.12, 0, licht);
         }
     }
+
+    /** Op de kaart: de Getijdentempel. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("kerker", 1300, -330));
+    }
 }

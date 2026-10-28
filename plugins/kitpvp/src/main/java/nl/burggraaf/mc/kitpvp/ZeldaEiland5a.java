@@ -1708,4 +1708,10 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 for (int i = 0; i < 4; i++) p.spawnParticle(Particle.LARGE_SMOKE, 1857.2, P + 1 + r.nextDouble() * 7, -2.5 + r.nextDouble() * 6, 0, 0, 0.03, 0, 1);
         }
     }
+
+    /** Op de kaart: de visserskreek en de kerkers. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("dorp-hout", 1706, 0), new Teken("kerker", 1768, -21));
+    }
 }

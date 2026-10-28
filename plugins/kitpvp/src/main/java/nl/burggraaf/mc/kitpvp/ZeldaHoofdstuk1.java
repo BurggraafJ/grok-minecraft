@@ -2035,4 +2035,10 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         zet(447, G + 46, 0, Material.CRYING_OBSIDIAN);
         zet(447, G + 47, 0, Material.MAGMA_BLOCK);
     }
+
+    /** Op de kaart: Lindedorp, de tempelruïne en de Heksenkring. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("dorp", X0 + 112, 2), new Teken("kerker", X0 + 187, 0), new Teken("kerker", X0 + 213, 62));
+    }
 }

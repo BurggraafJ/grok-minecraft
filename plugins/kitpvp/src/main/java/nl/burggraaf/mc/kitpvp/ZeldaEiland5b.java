@@ -853,4 +853,10 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
                 spel.deeltje(p, Particle.END_ROD, new Location(w, CX + 0.5 + r.nextDouble(-14, 14), P + 30 + r.nextDouble() * 30, CZ + 0.5 + r.nextDouble(-14, 14)), 2, 0.4, 0.4, 0.4, null);
         }
     }
+
+    /** Op de kaart: Morgals toren. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("toren", 1940, 0));
+    }
 }

@@ -1602,4 +1602,10 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
             }
         }
     }
+
+    /** Op de kaart: Sintelgat en de mijnen. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("dorp-as", 1135, 330), new Teken("kerker", 1166, 330));
+    }
 }

@@ -59,8 +59,10 @@ import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.Inventory;
@@ -169,6 +171,8 @@ final class ZeldaSpel implements Listener {
     final Map<UUID, Sessie> sessies = new HashMap<>();
     /** Beheermodus voor OP's (/zelda beheer): vliegen, onkwetsbaar, de wereld reageert niet op je. */
     final ZeldaBeheer beheer = new ZeldaBeheer(this);
+    /** De kaart in vak 9 (het eiland van boven, de zee): {@link ZeldaKaart}. */
+    final ZeldaKaart landkaart;
     ZeldaVoortgang voortgang;
     final NamespacedKey itemKey;
     private final NamespacedKey hartKey;
@@ -193,12 +197,14 @@ final class ZeldaSpel implements Listener {
         voorwerpen.add(new Klauwhaak());
         voorwerpen.add(new Vuurstaf());
         voorwerpen.add(new Lichtpijlen());
+        this.landkaart = new ZeldaKaart(plugin, this);
     }
 
     void aan() {
         voortgang = new ZeldaVoortgang(new java.io.File(plugin.getDataFolder(), "zelda.yml"));
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         taken.add(Bukkit.getScheduler().runTaskTimer(plugin, this::elkeTik, 20L, 1L));
+        landkaart.aan();
     }
 
     void uit() {
@@ -216,6 +222,7 @@ final class ZeldaSpel implements Listener {
         }
         metgezel.weg();
         dier.weg();
+        landkaart.uit();
         if (plugin.w != null) for (Entity e : plugin.w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
         bewaar();
     }
@@ -276,6 +283,7 @@ final class ZeldaSpel implements Listener {
             voortgang.vuil();
         }
         for (ZeldaHoofdstuk d : hoofdstukken) if (d.aanvullen(s)) voortgang.vuil();   // oude standen: wat je al deed
+        if (landkaart.aanvullen(s)) voortgang.vuil();                                    // de kaart: wat je zeker al zag
         // waar je verder gaat: je laatste rustplaats, of (oude stand) de verste van je hoofdstuk
         ZeldaHoofdstuk h = null;
         int r = 0;
@@ -294,8 +302,8 @@ final class ZeldaSpel implements Listener {
         ss.voortgangStand = s.voortgang();
         sessies.put(p.getUniqueId(), ss);
         for (String v : h.rust.get(r).geeft) if (s.zet(v)) voortgang.vuil();
+        p.getInventory().setHeldItemSlot(0);                 // eerst: met de kaart in de hand blijft je schild weg
         uitrusten(p, s);
-        p.getInventory().setHeldItemSlot(0);
         herstel(p);
         Location l = h.rust.get(r).plek;
         p.teleport(l);
@@ -320,6 +328,7 @@ final class ZeldaSpel implements Listener {
         muziek.vergeet(p.getUniqueId());
         metgezel.weg(p.getUniqueId());
         dier.weg(p.getUniqueId());
+        landkaart.weg(p.getUniqueId());
         trekken.remove(p.getUniqueId());
         vlammen.removeIf(v -> v.wie.equals(p.getUniqueId()));
         glijders.remove(p.getUniqueId());
@@ -405,10 +414,9 @@ final class ZeldaSpel implements Listener {
             inv.setItem(1, boog);
             inv.setItem(17, ding(Material.ARROW, "Pijl", "pijl"));
         }
-        if (s.heeft(GLOEDSCHILD)) inv.setItemInOffHand(gloedschild());
-        else if (s.heeft("schild")) inv.setItemInOffHand(ding(Material.SHIELD, "Eikenschild", "schild"));
+        schild(p, s, inv.getHeldItemSlot() == 8);
         for (ZeldaVoorwerp v : voorwerpen) if (v.heeft(s)) vernieuw(p, s, v);
-        inv.setItem(8, ding(Material.MAP, "Kaart", "kaart"));
+        inv.setItem(8, landkaart.item(p));
         inv.setItem(Menus.HUB_VAK, plugin.hubItem());
         harnas(p, ZeldaRegels.harnas(s));
         if (ZeldaRegels.smidshelm(s, ZeldaRegels.harnas(s))) {
@@ -420,6 +428,16 @@ final class ZeldaSpel implements Listener {
 
     /** Het schild van de eerste smeden, door Okker gesmeed (eiland 4b): zwart met gloed; vuur ketst erop af (Asgrims sintels). */
     static final String GLOEDSCHILD = "gloedschild";
+
+    /**
+     * Het schild in je andere hand (uit je voortgang). Met de kaart in je hand ({@code kaart}) is die hand leeg: dan houd je de
+     * kaart met twee handen vast, groot voor je.
+     */
+    void schild(Player p, ZeldaVoortgang.Stand s, boolean kaart) {
+        var inv = p.getInventory();
+        if (kaart || !s.heeft("schild") && !s.heeft(GLOEDSCHILD)) inv.setItemInOffHand(null);
+        else inv.setItemInOffHand(s.heeft(GLOEDSCHILD) ? gloedschild() : ding(Material.SHIELD, "Eikenschild", "schild"));
+    }
 
     private ItemStack gloedschild() {
         ItemStack it = ding(Material.SHIELD, "Gloedschild", "schild");
@@ -635,6 +653,7 @@ final class ZeldaSpel implements Listener {
         ss.h = hier;
         hemel(p, ss, l);
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        landkaart.ontdek(p, s);                              // wat om je heen ligt, staat nu op je kaart
         boolean genees = false, bron = false;
         for (ZeldaHoofdstuk h : ss.h.eiland.delen()) {
             for (ZeldaHoofdstuk.Rust r : h.rust) genees |= r.zone.in(l);
@@ -2179,7 +2198,8 @@ final class ZeldaSpel implements Listener {
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         ZeldaEiland e = ss.h.eiland;
         String vorige = ss.hintDoel;
-        ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(alle(e, h -> h.doelen), s, p.getLocation().getX(), p.getLocation().getZ());
+        Wijzer w = wijzer(e, s, p.getLocation().getX(), p.getLocation().getZ());
+        ZeldaHoofdstuk.Doel d = w.doel();
         if (d != null) {
             boolean nogEens = d.id().equals(vorige) && nu - ss.hintTijd < 120_000L;
             ss.hintDoel = d.id();
@@ -2191,38 +2211,35 @@ final class ZeldaSpel implements Listener {
             return;
         }
         ss.hintDoel = null;
-        List<ZeldaHoofdstuk.Missie> bezig = bezig(e, s);
-        if (!bezig.isEmpty()) {
-            ZeldaHoofdstuk.Missie m = bezig.get(rnd.nextInt(bezig.size()));
+        if (!w.bezig().isEmpty()) {
+            ZeldaHoofdstuk.Missie m = w.bezig().get(rnd.nextInt(w.bezig().size()));
             vertel(p, ZeldaHoofdstuk.r("Wiske", m.naam() + ": " + ZeldaRegels.stap(m, s)));
             return;
         }
-        for (ZeldaEiland o : eilanden)
-            if (o != e && o.open(s) && o.aanlegRust() != null && !s.heeft("e:" + o.id())) {
-                vertel(p, ZeldaHoofdstuk.r("Wiske", "Hier zijn we klaar. Op je kaart (vak 9) kun je naar " + ZeldaRegels.inZin(o.naam()) + " varen."));
-                return;
-            }
-        for (ZeldaHoofdstuk.Persoon pe : alle(e, h -> h.personen))     // iemand met iets nieuws (nog eens vragen = ze wijst), die je ook ziet
-            if (pe.nieuw(s) && (pe.zichtbaar == null || pe.zichtbaar.test(s))) {
-                ss.hintDoel = "p:" + pe.naam;
-                if (ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, pe.plek);
-                ss.hintTijd = nu;
-                vertel(p, ZeldaHoofdstuk.r("Wiske", pe.naam + " wil je iets vertellen."));
-                return;
-            }
-        for (ZeldaHoofdstuk.Vondst v : alle(e, h -> h.vondsten))                // met een nieuw voorwerp kan hier nog iets
-            if (later(v, s)) {
-                ss.hintDoel = "v:" + v.vlag;
-                if (ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, v.plek);
-                ss.hintTijd = nu;
-                vertel(p, ZeldaHoofdstuk.r("Wiske", "Met je nieuwe spullen kun je hier nog iets halen."));
-                return;
-            }
-        for (ZeldaEiland o : eilanden)                                          // … of op een ander eiland
-            if (o != e && o.open(s) && o.aanlegRust() != null && alle(o, h -> h.vondsten).stream().anyMatch(v -> later(v, s))) {
-                vertel(p, ZeldaHoofdstuk.r("Wiske", "Op " + ZeldaRegels.inZin(o.naam()) + " kun je nu iets halen. Vaar er eens heen."));
-                return;
-            }
+        if (w.varen() != null) {
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "Hier zijn we klaar. Op je kaart (vak 9) kun je naar " + ZeldaRegels.inZin(w.varen().naam()) + " varen."));
+            return;
+        }
+        if (w.persoon() != null) {                                              // iemand met iets nieuws (nog eens vragen = ze wijst), die je ook ziet
+            ZeldaHoofdstuk.Persoon pe = w.persoon();
+            ss.hintDoel = "p:" + pe.naam;
+            if (ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, pe.plek);
+            ss.hintTijd = nu;
+            vertel(p, ZeldaHoofdstuk.r("Wiske", pe.naam + " wil je iets vertellen."));
+            return;
+        }
+        if (w.later() != null) {                                                // met een nieuw voorwerp kan hier nog iets
+            ZeldaHoofdstuk.Vondst v = w.later();
+            ss.hintDoel = "v:" + v.vlag;
+            if (ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, v.plek);
+            ss.hintTijd = nu;
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "Met je nieuwe spullen kun je hier nog iets halen."));
+            return;
+        }
+        if (w.elders() != null) {                                               // … of op een ander eiland
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "Op " + ZeldaRegels.inZin(w.elders().naam()) + " kun je nu iets halen. Vaar er eens heen."));
+            return;
+        }
         ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
         if (!s.heeft(e.klaar()) && laatste.wacht() != null) {             // het eiland is nog niet af, maar hier is niets meer
             vertel(p, ZeldaHoofdstuk.r("Wiske", laatste.wacht()));
@@ -2239,6 +2256,41 @@ final class ZeldaSpel implements Listener {
             return;
         }
         vertel(p, ZeldaHoofdstuk.r("Wiske", "Ik weet het ook niet. Kijk eens rond, praat met wie je ziet."));
+    }
+
+    /**
+     * Wat {@code /hint} noemt, in deze volgorde: een doel van het eiland, je zijmissies, een eiland waar je nog niet was, iemand
+     * met iets nieuws, iets dat je met een nieuw voorwerp hier of op een ander eiland kunt halen. Hoogstens één is gezet. De kaart
+     * zet een rode X op dezelfde plek ({@link #plek}) of op het eiland waar je heen moet ({@link #eiland}).
+     */
+    record Wijzer(ZeldaHoofdstuk.Doel doel, List<ZeldaHoofdstuk.Missie> bezig, ZeldaEiland varen, ZeldaHoofdstuk.Persoon persoon,
+                  ZeldaHoofdstuk.Vondst later, ZeldaEiland elders) {
+
+        /** Waar het is (null = nergens: een zijmissie, of niets meer te doen). */
+        Location plek() {
+            return doel != null ? doel.plek() : persoon != null ? persoon.plek : later != null ? later.plek : null;
+        }
+
+        /** Het eiland waar je heen moet varen (null = hier, of niets). */
+        ZeldaEiland eiland() {
+            return varen != null ? varen : elders;
+        }
+    }
+
+    Wijzer wijzer(ZeldaEiland e, ZeldaVoortgang.Stand s, double x, double z) {
+        ZeldaHoofdstuk.Doel d = ZeldaRegels.doel(alle(e, h -> h.doelen), s, x, z);
+        if (d != null) return new Wijzer(d, List.of(), null, null, null, null);
+        List<ZeldaHoofdstuk.Missie> bezig = bezig(e, s);
+        if (!bezig.isEmpty()) return new Wijzer(null, bezig, null, null, null, null);
+        for (ZeldaEiland o : eilanden)
+            if (o != e && o.open(s) && o.aanlegRust() != null && !s.heeft("e:" + o.id())) return new Wijzer(null, List.of(), o, null, null, null);
+        for (ZeldaHoofdstuk.Persoon pe : alle(e, h -> h.personen))
+            if (pe.nieuw(s) && (pe.zichtbaar == null || pe.zichtbaar.test(s))) return new Wijzer(null, List.of(), null, pe, null, null);
+        for (ZeldaHoofdstuk.Vondst v : alle(e, h -> h.vondsten)) if (later(v, s)) return new Wijzer(null, List.of(), null, null, v, null);
+        for (ZeldaEiland o : eilanden)
+            if (o != e && o.open(s) && o.aanlegRust() != null && alle(o, h -> h.vondsten).stream().anyMatch(v -> later(v, s)))
+                return new Wijzer(null, List.of(), null, null, null, o);
+        return new Wijzer(null, List.of(), null, null, null, null);
     }
 
     /** Is Story of Zelda voltooid (de klaar-vlag van het laatste eiland: Zelda is thuis, het feest)? */
@@ -3802,9 +3854,11 @@ final class ZeldaSpel implements Listener {
         }
         ItemStack it = e.getItem();
         String soort = it == null || !it.hasItemMeta() ? null : it.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
-        if ("kaart".equals(soort)) {
+        if ("kaart".equals(soort)) {                          // rechtsklik = het kaartmenu, linksklik = omslaan (eiland of zee)
             e.setCancelled(true);
-            if (e.getHand() == EquipmentSlot.HAND) kaart(p);
+            if (e.getHand() != EquipmentSlot.HAND) return;
+            if (e.getAction() == Action.LEFT_CLICK_AIR || e.getAction() == Action.LEFT_CLICK_BLOCK) landkaart.omslaan(p);
+            else kaart(p);
             return;
         }
         if (soort != null && soort.startsWith("v:")) {             // een voorwerp (flesje, …)
@@ -3814,6 +3868,22 @@ final class ZeldaSpel implements Listener {
                 v.gebruik(this, p, e);
             return;
         }
+    }
+
+    /** De kaart pakken (vak 9): je schild gaat even weg, zodat je hem met twee handen vasthoudt; weer weg = je schild terug. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onVak(PlayerItemHeldEvent e) {
+        Player p = e.getPlayer();
+        if (!speelt(p) || (e.getNewSlot() == 8) == (e.getPreviousSlot() == 8)) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        schild(p, s, e.getNewSlot() == 8);
+        if (e.getNewSlot() == 8) landkaart.vastgepakt(p, s);
+    }
+
+    /** De kaart blijft in vak 9 (niet naar je andere hand). */
+    @EventHandler
+    public void onWissel(PlayerSwapHandItemsEvent e) {
+        if (speelt(e.getPlayer()) && e.getPlayer().getInventory().getHeldItemSlot() == 8) e.setCancelled(true);
     }
 
     @EventHandler

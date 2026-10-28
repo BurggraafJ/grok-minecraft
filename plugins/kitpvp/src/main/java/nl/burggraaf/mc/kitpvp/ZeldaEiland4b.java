@@ -1246,4 +1246,10 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
             if (n == 170) p.playSound(p, org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.6f, 1.2f);
         }, 1L, 1L);
     }
+
+    /** Op de kaart: de Smidse (in de vulkaan). */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("kerker", 1312, 330));
+    }
 }

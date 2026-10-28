@@ -117,7 +117,7 @@ final class ZeldaTest {
             Location r0 = begin != null ? begin.eiland.aanlegPlek() : h.rust.get(0).plek;
             moet(p.getLocation().distanceSquared(r0) < 4, "niet bij het begin: " + xyz(p.getLocation()) + " (verwacht " + xyz(r0) + ")");
             moet(begin != null || p.getInventory().getItem(0) != null && p.getInventory().getItem(0).getType() == Material.WOODEN_SWORD, "geen houten zwaard");
-            moet(p.getInventory().getItem(8) != null && p.getInventory().getItem(8).getType() == Material.MAP, "geen kaart");
+            moet(p.getInventory().getItem(8) != null && p.getInventory().getItem(8).getType() == Material.FILLED_MAP, "geen kaart");
         }, 2, () -> true, 1);
         // alle eilanden in de volgorde van het verhaal: varen (met Brecht: klik in zijn menu), elk deel aflopen, wat nu te
         // halen is (een bom tegen een gebarsten muur), de zijmissies (zonder alles: tot na de eerste kamer)

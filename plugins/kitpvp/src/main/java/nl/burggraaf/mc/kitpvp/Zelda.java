@@ -584,11 +584,12 @@ final class Zelda implements Modus {
             v.van(id).missies.put("proef", 2);
             v.van(id).teller("fles-vol", 1);
             v.van(id).dier = "Pluis";
+            ZeldaKaartBeeld.ontdek(v.van(id).kaart, 1212, 2, ZeldaKaartBeeld.ZICHT);
             v.bewaar();
             ZeldaVoortgang terug = new ZeldaVoortgang(proef);
             ZeldaVoortgang.Stand t = terug.van(id);
             if (t.rust("h1") != 3 || !t.heeft("zwaard") || t.beste("kloof") != 12345L || !"h1:2".equals(t.laatste) || t.missie("proef") != 2
-                    || t.teller("fles-vol") != 1 || !"Pluis".equals(t.dier) || !t.bezocht("h1", 3))
+                    || t.teller("fles-vol") != 1 || !"Pluis".equals(t.dier) || !t.bezocht("h1", 3) || !t.kaart.equals(v.van(id).kaart) || t.kaart.isEmpty())
                 fouten.add("zelda: voortgang komt niet goed terug uit het bestand");
         } catch (Exception e) {
             fouten.add("zelda: voortgang bewaren mislukt: " + e);
@@ -604,6 +605,7 @@ final class Zelda implements Modus {
         if (feeen > spel.sessies.size()) fouten.add("zelda: " + feeen + " feeën voor " + spel.sessies.size() + " spelers");
         if (spel.dier.aantal() > spel.sessies.size()) fouten.add("zelda: " + spel.dier.aantal() + " dieren voor " + spel.sessies.size() + " spelers");
         if (ZeldaDier.AAN) fouten.add("zelda: vrije huisdieren staan aan (ZeldaDier.AAN; Jelle wil ze uit)");
+        spel.landkaart.zelftest(fouten, info);
         for (var e : spel.sessies.entrySet()) {
             Player p = Bukkit.getPlayer(e.getKey());
             if (p != null && !p.isDead() && spel.metgezel.van(p) == null)
@@ -768,6 +770,23 @@ final class Zelda implements Modus {
                         + (spel.speelt(p) ? " · " + spel.sessie(p).h.id() + " " + p.getLocation().getBlockX() + "," + p.getLocation().getBlockY() + "," + p.getLocation().getBlockZ()
                         + " · vliegen=" + p.getAllowFlight() + " onkwetsbaar=" + p.isInvulnerable() : ""));
             }
+            case "kaart" -> {                                // kitpvp zelda kaart [<speler>|opnieuw [eiland]]: plaatjes, of opnieuw meten
+                if (args.length >= 3 && args[2].equalsIgnoreCase("opnieuw")) {
+                    ZeldaEiland e = args.length >= 4 ? spel.eiland(args[3].toLowerCase()) : null;
+                    spel.landkaart.opnieuw(e);
+                    s.sendMessage("zelda kaart: " + (e == null ? "alle eilanden" : e.naam()) + " wordt opnieuw gemeten");
+                    return;
+                }
+                if (args.length >= 3 && (p == null || !spel.speelt(p))) {
+                    s.sendMessage("kitpvp zelda kaart [<speler in Zelda>|opnieuw [eiland]]");
+                    return;
+                }
+                try {
+                    for (String f : spel.landkaart.plaatjes(p)) s.sendMessage("zelda kaart: " + f);
+                } catch (java.io.IOException e) {
+                    s.sendMessage("zelda kaart mislukt: " + e.getMessage());
+                }
+            }
             case "verder" -> {
                 if (p == null) {
                     s.sendMessage("kitpvp zelda verder <speler>: speler niet online");
@@ -781,7 +800,7 @@ final class Zelda implements Modus {
                     sb.append(" · ").append(h.id()).append(":");
                     for (ZeldaHoofdstuk.Kamer k : h.kamers) sb.append(' ').append(k.id).append('=').append(k.fase.name().toLowerCase());
                 }
-                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer <speler> · kitpvp zelda lopen <eiland>");
+                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer|kaart <speler> · kitpvp zelda lopen <eiland> · kitpvp zelda kaart [opnieuw]");
             }
         }
     }

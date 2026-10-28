@@ -1283,4 +1283,10 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
             for (int i = 2; i < 90; i += 3) p.spawnParticle(Particle.DUST, lamp.clone().add(richting.clone().multiply(i)), 1, 0.15, 0.15, 0.15, 0, licht);
         }
     }
+
+    /** Op de kaart: Zoutkom en de vuurtoren. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("dorp-zand", 1148, -296), new Teken("kerker", 1089, -322));
+    }
 }

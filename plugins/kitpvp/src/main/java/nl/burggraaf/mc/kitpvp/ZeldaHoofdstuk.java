@@ -429,6 +429,13 @@ abstract class ZeldaHoofdstuk {
     /** Een zijmissie: per stap een korte zin voor de hint en het opdrachtenlijstje (stap 1 = {@code stappen.get(0)}). */
     record Missie(String id, String naam, List<String> stappen) {}
 
+    /**
+     * Iets op de kaart in vak 9 ({@link ZeldaKaart}): een dorp ({@code dorp}, {@code dorp-zand}, {@code dorp-sneeuw},
+     * {@code dorp-as}, {@code dorp-hout}), een kerker ({@code kerker}) of Morgals toren ({@code toren}), op (x, z). Het staat er
+     * pas als je er in de buurt was. Rustplaatsen komen er vanzelf op.
+     */
+    record Teken(String soort, int x, int z) {}
+
     /** Zo ziet een gebarsten muur eruit (op elk eiland hetzelfde, zodat spelers hem leren herkennen). */
     static final Material BARST = Material.CRACKED_DEEPSLATE_BRICKS;
     /** Zo ziet een haakpunt voor de klauwhaak eruit. */
@@ -872,6 +879,11 @@ abstract class ZeldaHoofdstuk {
      * lichtbundel; op eiland 2b eb en vloed). {@code wie} = de spelers op dit deel.
      */
     void tik(ZeldaSpel spel, List<org.bukkit.entity.Player> wie, long nu) {
+    }
+
+    /** Wat dit deel op de kaart zet: dorpen en kerkers (de zelftest kijkt of ze in het deel liggen). */
+    List<Teken> tekens() {
+        return List.of();
     }
 
     /** Een bom ontploft op dit deel (na de gebarsten muren; bv. een baas verdoven, een ton laten springen). */

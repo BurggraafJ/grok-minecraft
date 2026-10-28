@@ -1398,4 +1398,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
             if (storm && i % 3 == 0) p.spawnParticle(Particle.WHITE_ASH, v.add(0, -3, 0), 2, 1, 1, 1, 0);
         }
     }
+
+    /** Op de kaart: IJshoeve en de Wachterspost. */
+    @Override
+    List<Teken> tekens() {
+        return List.of(new Teken("dorp-sneeuw", 1480, -294), new Teken("kerker", 1504, -443));
+    }
 }
