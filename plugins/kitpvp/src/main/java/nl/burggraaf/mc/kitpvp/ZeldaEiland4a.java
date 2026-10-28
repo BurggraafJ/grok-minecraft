@@ -694,7 +694,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                 }
             }
         // het dak: treden van leisteen naar de nok (oost-west); de gevels van planken
-        int nok = 0;
+        int nok = Integer.MIN_VALUE;                                       // de hoogste trede (G is negatief in een vlakke wereld)
         for (int z = z1 - 1; z <= z2 + 1; z++) {
             int y = D + 5 + Math.min(z - (z1 - 1), z2 + 1 - z);
             nok = Math.max(nok, y);
@@ -1292,6 +1292,9 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         }
         poort(new Poort("daaltrap", deur(tralies(true), 1207, D + 1, 324, 1207, D + 3, 326), Box.van(1202, F2, 322, 1214, D + 5, 328),
                 s -> s.heeft(GLOEDIJZER) || s.heeft(GLOEDHARNAS) || s.heeft("k:askamer")));
+        verhaal(new Verhaal("daaltrap-dicht", Box.van(1203, D, 323, 1206, D + 4, 327), List.of(
+                r("Wiske", "Een hek, en daarachter een trap omlaag."),
+                r("Wiske", "Op slot. Van de andere kant gaat het vast open.")))).als = s -> !s.heeft(GLOEDIJZER) && !s.heeft(GLOEDHARNAS);
         verhaal(new Verhaal("daaltrap", Box.van(1209, D - 6, 323, 1214, D + 4, 327), List.of(
                 r("Wiske", "Een trap omhoog. Naar de Lorriehal!")))).als = s -> s.heeft(GLOEDIJZER);
     }
@@ -1485,7 +1488,9 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         }
         verhaal(new Verhaal("koelgang", Box.van(1194, D, 345, 1198, D + 4, 350), List.of(
                 r("Wiske", "Een muur van ijs, in een warme mijn?"),
-                r("Wiske", "Hier bewaarden ze vast ijs. Smelt het eens!")))).als = s -> !s.heeft("s:koelgang");
+                r("Wiske", "Hier bewaarden ze vast ijs. Daar kom je zo niet door.")))).als = s -> !s.heeft("s:koelgang") && !s.heeft(VUURSTAF);
+        verhaal(new Verhaal("koelgang-staf", Box.van(1194, D, 345, 1198, D + 4, 350), List.of(
+                r("Wiske", "Die muur van ijs… Je vuurstaf!")))).als = s -> !s.heeft("s:koelgang") && s.heeft(VUURSTAF);
         Smelt muur = smelt(new Smelt("koelgang", deur(ZeldaHoofdstuk.Smelt.IJS.createBlockData(), 1194, D + 1, 352, 1198, D + 4, 352),
                 Box.van(1192, D, 344, 1200, D + 6, 364)));
         muur.voor = plek(1196, D + 1, 347, 0f);
