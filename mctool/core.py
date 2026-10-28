@@ -32,8 +32,9 @@ DEFAULT = {
     "motd": "<gold>Burggraaf Craft</gold> <gray>— alleen op uitnodiging</gray>",
     "offline_test": False,
     "gedeeld": False,
-    "backup": {"uur": 24, "dag": 7, "label": 5, "max_gb": 20},
+    "backup": {"uur": 2, "dag": 2, "label": 2, "max_gb": 6},   # lokaal weinig: de echte backups staan op het paneel en GitHub
 }
+OUDE_BACKUP = {"uur": 24, "dag": 7, "label": 5, "max_gb": 20}
 
 LOCALE = ["-Duser.language=en", "-Duser.country=US"]  # vaste taal: de tool leest de uitvoer van commando's
 SMALL_FLAGS = ["-XX:+UseG1GC", "-XX:+ParallelRefProcEnabled", "-XX:MaxGCPauseMillis=200", "-XX:+DisableExplicitGC"]
@@ -60,6 +61,8 @@ def _migreer(cfg):
             cfg[k].setdefault(svc, v)
     if cfg.get("geheugen_mb") and "kitpvp" not in cfg["geheugen_mb"]:
         cfg["geheugen_mb"]["kitpvp"] = 1024
+    if cfg.get("backup") == OUDE_BACKUP:   # oude standaard (24 uur, 7 dagen, 5 labels, 20 GB) liep vol op de box
+        cfg["backup"] = dict(DEFAULT["backup"])
 
 
 def load_or_default():
