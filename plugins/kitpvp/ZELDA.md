@@ -1002,6 +1002,104 @@ Geen nieuwe eilanden; wat er veranderde, en waarom:
   niet meer (een speler kan dat ook niet). Zo bleek dat `nachtrots zonder bommen dicht torenladder` alles haalde: hij liep
   over het muurtje langs het puin. Nu is het puin echt nodig, en zijn alle eilanden nog steeds «alles te belopen».
 
+## Niveaus, samen spelen en meerdere spellen (sessie `zelda-moeilijkheid`, kitpvp 2.16)
+
+Jelle (28-10): "Een grote uitdaging is de difficulty level. En met hoeveel players je hem speelt en of je als één persoon
+meerdere journeys naast elkaar kan hebben. […] Ik wil niet dat je sneller het spel af hebt of sneller door een arena
+komt, maar wel dat je bijvoorbeeld sneller heelt, meer armor hebt, extra potions. […] zodat ik kan managen dat ze
+blijven spelen, want anders wordt het te moeilijk en stoppen we." Het ontwerp in één zin: **een niveau verandert alleen
+hoeveel hulp je krijgt, nooit wat je moet doen**; elk spel heeft zijn eigen niveau, je wisselt wanneer je wilt, en wie
+het lager zet wordt niet gestraft, maar wie het hoog houdt verdient iets om te laten zien.
+
+### Vier niveaus (`ZeldaRegels.Niveau`)
+
+Vijanden, golven, bazen, puzzels en het verhaal zijn op elk niveau precies hetzelfde (geen minder leven, geen minder
+golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
+
+| | **Verhaal** | **Avontuur** (begin, = 2.15) | **Held** | **Legende** |
+|---|---|---|---|---|
+| voor wie | jonge kinderen, wie vooral wil ontdekken | iedereen | wie het spannend wil | wie het al kent |
+| schade die je krijgt | × 0,5 | × 1 | × 1,35 | × 1,75 |
+| schildje van licht (gouden harten bij het begin van elk gevecht) | 4 | — | — | — |
+| op adem komen buiten een gevecht | na 3 s, elke s een half hart | na 6 s, elke 2 s | na 8 s, elke 3 s | na 12 s, elke 4 s |
+| op adem komen ín een gevecht | na 5 s, elke 3 s | nee | nee | nee |
+| flesjes | 2 extra | wat je vond | wat je vond | wat je vond |
+| een flesje geneest | 6 harten (sterk 8) | 5 (7) | 5 (7) | 4 (5½) |
+| een hartje van een vijand | 3 van de 4 keer | 1 van de 2 | 1 van de 3 | 1 van de 5 |
+| adem tussen twee golven | 6 s | 4 s | 4 s | 4 s |
+| hulp na doodgaan in hetzelfde gevecht (gouden harten per keer, hoogstens 3 keer) | 2 | 2 | 1 | — |
+
+- **Kiezen en wisselen**: op de kaart (rechtsklik met vak 9) staat **«Niveau: Avontuur»**. Klik = een klein menu met de vier
+  niveaus, elk met twee korte regels («Wiske helpt veel», «Vijanden slaan harder»). Wisselen kan altijd, ook midden in
+  een gevecht: het geldt meteen. Geen straf, geen bevestiging; één grijze regel «Niveau · Held».
+- **Een nieuw spel** begint met de keuze van het niveau (hetzelfde menu); het eerste spel van een speler (en elke oude
+  stand) is **Avontuur**: dat is precies de balans van 2.15.
+- **Hulp na doodgaan** (doorzetten): ga je dood in een gevecht, dan begint je volgende poging met een schildje van licht
+  (Wiske, één keer: «Ik geef je een schildje van licht.»). Na drie keer dood in hetzelfde gevecht zegt Wiske één keer
+  «Te zwaar? Op de kaart kun je het makkelijker zetten.» (niet op Verhaal, niet als het niveau vaststaat). Winnen zet de
+  teller terug.
+
+### Sterren en de heldenrand (gamification)
+
+- **Sterren**: elk gevecht (kamer of baas) onthoudt het hoogste niveau waarop je het won (teller `ster:<kamer>`, 1 … 4).
+  Telt het laagste niveau dat je **tijdens** dat gevecht had: midden in een gevecht lager zetten mag, de ster is dan van
+  dat lagere niveau. Op de kaart: «Niveau: Held» met «gevechten op Held of hoger: 7 van 24». Win je een gevecht voor het
+  eerst op Held of Legende, dan één grijze regel «Gewonnen op Held».
+- **Heldenrand**: alle vijf bazen (Grauwmoer, Zoutbaard, Grimmel, Asgrim, Morgal) gewonnen op Held of hoger = een gouden
+  rand op je harnas, op Legende een paarse. Iedereen ziet het (ook je vrienden), het doet verder niets. Wiske zegt het één
+  keer. Zo is het hoge niveau iets om trots op te zijn, en het lage niveau nooit een straf.
+- **Records** (de tijden van de uitdagingen) blijven per speler, over al je spellen heen.
+
+### Samen spelen (schaling op het aantal spelers)
+
+- Iedereen in een gevecht heeft **zijn eigen niveau**: een kind op Verhaal en een vader op Held vechten in dezelfde kamer,
+  ieder met zijn eigen schade, schildje en flesjes.
+- **Samen is net iets zwaarder** (`ZeldaRegels.extraVijanden`, `baasLeven`): per extra speler in de kamer één vijand per
+  golf erbij (hoogstens 8), een baas heeft per extra speler meer leven (`levenPerSpeler`) en roept met drie of meer één
+  helper extra. Dat was er al; het staat nu op één plek, met unit-tests.
+- De adem tussen golven is die van het niveau met de meeste hulp in de kamer (wie het het zwaarst heeft, bepaalt de pauze).
+
+### Meerdere spellen (opslagplekken) en een samen-spel
+
+- Elke speler heeft hoogstens **drie spellen** («Spel 1», «Spel 2», «Spel 3»), elk met een eigen voortgang, niveau en
+  kaart. Op de kaart: **«Spellen»** = een klein menu met de drie plekken: waar je bent, harten en niveau; klik = verder in
+  dat spel (je komt binnen op zijn laatste rustplaats), een lege plek = **nieuw spel** (eerst het niveau kiezen),
+  rechtsklik op een ander spel = wissen (met «Ja, wissen» / «Nee»). Het spel waarin je speelt, kun je niet wissen.
+- **Samen-spel**: in «Spellen» staat **«Samen spelen»**: de vrienden die nu in Zelda zijn. Klik = een uitnodiging (zij
+  zien één grijze regel en in hun «Spellen» een glinsterende «Uitnodiging van …»). Wie hem aanneemt, krijgt een nieuw
+  spel (op een vrije plek) dat precies bij jouw voortgang begint, en komt binnen op jouw laatste rustplaats. Vanaf dan is
+  het **één avontuur met twee (of meer) spelers**: wat de één vindt, wint, oplost of hoort, krijgt de ander ook (binnen een
+  seconde, ook als hij er niet is). Zo raakt niemand achter en kun je samen verder waar je gebleven was. Ieder houdt
+  zijn eigen niveau, flesjes, rustplaats, records, de naam van zijn vosje en zijn opties (uitleg aan/uit). Je eigen spel
+  blijft er gewoon naast staan: tegelijk kan de één samen spelen en de ander in zijn eigen spel (iedereen speelt in
+  dezelfde wereld, een kamer is van wie erin staat).
+- Wat er gedeeld wordt (`ZeldaVoortgang.deel`): nieuwe vlaggen (behalve `o:`), de verste rustplaats per deel, bezochte
+  rustplaatsen (reizen kan naar waar een ander was), zijmissies (de verste stap) en wat je op de kaart ontdekte. Alleen
+  **nieuwe** vlaggen gaan over: wie «opnieuw vanaf hier» kiest, krijgt de verhalen erna niet meteen terug. Wie in
+  beheer is, doet even niet mee.
+
+### Bijsturen (Jelle; alleen OP/beheer, `kitpvp.beheer`)
+
+| commando (in de game `/zelda …`, console `kitpvp zelda …`) | wat |
+|---|---|
+| `spelers` | wie er in Zelda is: spel, waar, niveau (en steun), harten, doden in het gevecht waar hij nu vastzit, minuten zonder voortgang; in de game als menu met een hoofd per speler (klik = bijsturen) |
+| `niveau <wie> <verhaal\|avontuur\|held\|legende> [vast]` | het niveau van zijn spel; `vast` = hij kan het zelf niet meer veranderen; `niveau <wie> los` |
+| `steun <wie> <-2 … 2>` | stil bijsturen binnen een niveau: per stap 15 % minder (of meer) schade en bij plus een flesje extra; de speler ziet het niet |
+| `volg` | aan/uit: een grijze regel in jouw chat als iemand drie keer doodgaat in hetzelfde gevecht, of tien minuten niet verder komt |
+| `doden` | de gevechten waar het meest wordt doodgegaan (alle spelers, alle spellen): waar de balans knelt |
+| `spel <speler> [n]` | zijn spellen, of zet hem in spel n |
+| `samen <speler> <met>` / `samen <speler> los` | zet hem in het spel van een ander (zoals een aangenomen uitnodiging), of maak zijn spel weer los |
+| `reset <speler> [n]` | alles wissen (zoals altijd), of alleen spel n |
+
+`<wie>` = een speler, `hier` (iedereen binnen 48 blokken van jou: je groep) of `allen` (iedereen in Zelda).
+
+### Oude voortgang
+
+`zelda.yml` van 2.15 blijft geldig: `spelers.<uuid>` is het spel waarin je nu speelt (met `spel: 1` en `niveau`), de
+andere spellen staan eronder in `spellen.<n>`. Een oude stand is dus zonder omzetten «Spel 1» op **Avontuur**, met alles
+erin (ook midden in het spel). Terug naar 2.15 kan: die leest het spel waarin je het laatst speelde (de andere spellen
+vallen dan weg bij het bewaren).
+
 ## Terugkerende personages
 
 Jelle (27-10): eilanden zo ontwerpen dat je er later naar terug moet of wilt, omdat je bij een bekend karakter iets
