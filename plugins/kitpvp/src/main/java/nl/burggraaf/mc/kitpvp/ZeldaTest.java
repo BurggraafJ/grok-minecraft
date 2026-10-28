@@ -133,6 +133,16 @@ final class ZeldaTest {
                         stil();
                     }, 2, () -> true, 1);
         }
+        // het einde: Story of Zelda voltooid (de klaar-vlag van het laatste eiland), en de kaart zegt het
+        if (alles) stap("voltooid", () -> {
+            stil();
+            ZeldaEiland laatste = z.EILANDEN.get(z.EILANDEN.size() - 1);
+            moet(z.spel.voltooid(stand()), "niet voltooid: geen vlag " + laatste.klaar());
+            z.spel.kaart(p);
+            moet(menuHeeft("niets") && p.getOpenInventory().getTopInventory().getItem(31) != null
+                    && p.getOpenInventory().getTopInventory().getItem(31).getType() == Material.NETHER_STAR, "de kaart zegt niet «voltooid»");
+            p.closeInventory();
+        }, 2, () -> true, 1);
         // een baken dat brandt kondigt het volgende eiland aan: grijs op de kaart («nog even geduld»), en Wiske weet ervan
         if (alles) for (ZeldaEiland.Komt k : z.KOMT) stap("aangekondigd: " + k.id(), () -> {
             stil();
@@ -365,7 +375,8 @@ final class ZeldaTest {
                     moet(ag.dovingen >= 1 && ag.schade(10) >= 10, ag.naam + ": gedoofd doet een klap niet meer pijn");
                     moet(ag.landing.get(0).distanceSquared(ag.ent.getLocation()) < 4, ag.naam + ": niet neergeploft op de rand");
                 }, 2, () -> true, 1);
-                if (k.baas != null) stap("baas " + k.baas.naam, () -> {
+                if (k.baas instanceof Morgal mg) morgal(h, k, mg);
+                if (k.baas != null && !(k.baas instanceof Morgal)) stap("baas " + k.baas.naam, () -> {
                     moet(k.baas.leeft() && k.baas.balk != null, "baas " + k.baas.naam + " is er niet");
                     if (k.baas.leeft()) k.baas.ent.setHealth(k.baas.ent.getHealth() * 0.55);
                 }, 50, () -> k.vijanden.size() >= 1 + Math.max(1, k.baas.oproepen[0]) && k.baas.balk.progress() < 0.6f, 60);
@@ -377,7 +388,7 @@ final class ZeldaTest {
                 stap("kamer " + k.id + " open", () -> {
                     moet(k.in.isOpen && k.uit.isOpen, "kamer " + k.id + ": deuren niet open na winnen");
                     Material m = h.w.getBlockAt(k.uit.blokken.get(0)[0], k.uit.blokken.get(0)[1], k.uit.blokken.get(0)[2]).getType();
-                    moet(m == Material.AIR, "kamer " + k.id + ": uitgang is " + m);
+                    moet(m == k.uit.open.getMaterial(), "kamer " + k.id + ": uitgang is " + m);
                     moet(z.spel.muziek.lus(p) == null, "kamer " + k.id + ": muziek speelt nog");
                 }, 2, () -> true, 1);
                 if (alles && k.bel != null && !belGehad) {                    // terugkomen: vrije doorgang, en de bel voor wie nog eens wil
@@ -507,6 +518,19 @@ final class ZeldaTest {
                 }, 10, () -> nv.nevel.isOpen && stand().heeft("n:" + nv.id), 60);
             } else if (o instanceof ZeldaHoofdstuk.Sluip sl) {                     // sluipen: eerst gezien worden, dan echt langs de wachters
                 sluipen(h, sl);
+            } else if (o instanceof ZeldaHoofdstuk.Val v) {                        // een vangnet: van hoog vallen, de nevel vangt je op (geen schade)
+                final int[] voor = {0};
+                stap("vangnet " + v.id(), () -> {
+                    heel();
+                    voor[0] = z.spel.sessie(p).opgevangen;
+                    p.setVelocity(new org.bukkit.util.Vector());
+                    p.teleport(v.proef());
+                }, 4, () -> z.spel.sessie(p).opgevangen > voor[0] || ((org.bukkit.entity.Entity) p).isOnGround(), 200);
+                stap("vangnet " + v.id() + " zacht", () -> {
+                    var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    moet(max != null && p.getHealth() >= max.getValue() - 0.01, "vangnet " + v.id() + ": vallen deed pijn (" + p.getHealth() + ")");
+                    moet(z.spel.sessie(p).opgevangen > voor[0], "vangnet " + v.id() + ": de nevel ving je niet op (op " + xyz(p.getLocation()) + ")");
+                }, 4, () -> true, 1);
             } else if (o instanceof ZeldaHoofdstuk.Reeks r) {
                 stap("puzzel " + r.id, () -> {
                     if (r.opgelost || !r.isAan.isEmpty()) z.spel.herstel(r);
@@ -518,6 +542,66 @@ final class ZeldaTest {
         return alles;
     }
 
+    /**
+     * Morgal (5b), drie fases zoals een speler: zijn geesten verslaan (echte klappen), een duistere bol terugslaan (een echte zwaai,
+     * vlak voor de bol), versuft = een klap doet alles; dan onder de helft naar zijn nevelhart, en een echte lichtpijl erin. Daarna
+     * verslaat de gewone stap «verslaan» hem.
+     */
+    private void morgal(ZeldaHoofdstuk h, ZeldaHoofdstuk.Kamer k, Morgal mg) {
+        stap(mg.naam + ": geesten", this::heel, 20, () -> {
+            if (mg.fase != ZeldaRegels.MORGAL_GEESTEN) return true;
+            moet(mg.schade(10, p) < 1, mg.naam + ": zijn nevel houdt een klap niet tegen (fase 1)");
+            for (LivingEntity g : new ArrayList<>(mg.geesten)) if (g.isValid()) g.damage(10_000, p);
+            return false;
+        }, 1200);
+        stap(mg.naam + ": even adem", this::heel, 2, () -> mg.fase == ZeldaRegels.MORGAL_BOLLEN, 400);
+        stap(mg.naam + ": een bol terugslaan", this::heel, 4, () -> {
+            if (mg.versuft > 0) return true;
+            Morgal.Bol b = null;
+            for (Morgal.Bol x : mg.bollen) if (!x.terug && b == null && x.leeftijd > 2) b = x;
+            if (b == null) return false;
+            org.bukkit.util.Vector r = b.stap.clone().normalize();
+            Location oog = b.plek.clone().add(r.clone().multiply(2.2));
+            Location staan = oog.clone().subtract(0, p.getEyeHeight(), 0);
+            staan.setDirection(b.plek.toVector().subtract(oog.toVector()));
+            p.setVelocity(new org.bukkit.util.Vector());
+            p.teleport(staan);
+            z.spel.onZwaai(new org.bukkit.event.player.PlayerAnimationEvent(p, org.bukkit.event.player.PlayerAnimationType.ARM_SWING));
+            return false;
+        }, 900);
+        stap(mg.naam + ": versuft", () -> {
+            moet(mg.teruggeslagen >= 1, mg.naam + ": geen bol teruggeslagen");
+            moet(mg.schade(10, p) >= 9.99, mg.naam + ": versuft doet een klap niet alles");
+            var max = mg.ent.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            if (max != null) mg.ent.setHealth(max.getValue() * 0.49);              // de rest van fase 2 slaan we over
+            heel();
+        }, 2, () -> true, 1);
+        stap(mg.naam + ": naar zijn nevelhart", this::heel, 2, () -> mg.fase == ZeldaRegels.MORGAL_HART, 400);
+        final int[] schot = {0};
+        stap(mg.naam + ": licht in zijn nevelhart", () -> {
+            heel();
+            moet(mg.schade(10, p) < 2, mg.naam + ": in zijn nevelhart doet een zwaard toch veel");
+        }, 2, () -> {
+            if (mg.hartTreffers >= 1) return true;
+            if (schot[0]++ % 20 != 0) return false;
+            Location m = mg.midden();
+            Location staan = vrij(new Location(h.w, m.getX() - 5, k.start.y1(), m.getZ()));
+            staan.setDirection(m.toVector().subtract(staan.clone().add(0, p.getEyeHeight(), 0).toVector()));
+            p.setVelocity(new org.bukkit.util.Vector());
+            p.teleport(staan);
+            p.setCooldown(ZeldaSpel.Lichtpijlen.ITEM, 0);
+            z.spel.voorwerp("lichtpijlen").gebruik(z.spel, p, null);
+            return false;
+        }, 600);
+        stap(mg.naam + ": geraakt", () -> moet(mg.hartTreffers >= 1 && mg.leeft(), mg.naam + ": de lichtpijl deed niets"), 2, () -> true, 1);
+    }
+
+    /** Helemaal beter (de test vecht lang). */
+    private void heel() {
+        var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        if (max != null && !p.isDead()) p.setHealth(max.getValue());
+    }
+
     /** Het eiland waar deze persoon staat (null = op geen enkel eiland, bv. een proefpersoon). */
     private ZeldaEiland eilandVan(ZeldaHoofdstuk.Persoon pe) {
         for (ZeldaEiland e : z.EILANDEN) for (ZeldaHoofdstuk d : e.delen()) if (d.personen.contains(pe)) return e;
@@ -527,6 +611,19 @@ final class ZeldaTest {
     /** Schiet een echte lichtpijl (het voorwerp, zoals rechtsklik) op de nevel: vanaf de plek ervoor, op een blok dat je ziet. */
     private void licht(ZeldaHoofdstuk h, ZeldaHoofdstuk.Nevel nv) {
         Location van = nv.voor;
+        if (nv.brug) {                                                          // een nevelbrug: door de nevel heen schieten (hij raakt niets)
+            if (van == null) {
+                fouten.add("nevelbrug " + nv.id + ": geen plek om erop te schieten");
+                return;
+            }
+            Location l = van.clone(), m = nv.nevel.omvang().midden(h.w).add(0, 0.6, 0);
+            l.setDirection(m.toVector().subtract(l.clone().add(0, p.getEyeHeight(), 0).toVector()));
+            p.setVelocity(new org.bukkit.util.Vector());
+            p.teleport(l);
+            p.setCooldown(ZeldaSpel.Lichtpijlen.ITEM, 0);
+            z.spel.voorwerp("lichtpijlen").gebruik(z.spel, p, null);
+            return;
+        }
         if (van == null)
             for (int[] c : nv.nevel.blokken) {
                 van = vanwaar(h.w.getBlockAt(c[0], c[1], c[2]));

@@ -62,7 +62,8 @@ abstract class ZeldaHoofdstuk {
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
     enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF,
-        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT, ASGRIM, NACHTSOLDAAT, NACHTSCHUTTER, NEVELMIJT, WACHTMEESTER }
+        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT, ASGRIM, NACHTSOLDAAT, NACHTSCHUTTER, NEVELMIJT, WACHTMEESTER,
+        NEVELGEEST, MORGAL }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -674,10 +675,15 @@ abstract class ZeldaHoofdstuk {
         static final Material BLOK = Material.TINTED_GLASS;
 
         final String id;
-        final Deur nevel;                                   // dicht = nevel, open = lucht
+        final Deur nevel;                                   // dicht = nevel, open = lucht (een brug: dicht = lucht, open = de brug)
         final Box gebied;
         Location voor;                                      // hier sta je om erop te schieten (de test en de zelftest; null = vanzelf)
         Location binnen;                                    // wie erin staat als hij terugkruipt, komt hier (null = het midden van het gebied)
+        /**
+         * Een nevelbrug (eiland 5b): een brug of trap die in Morgals nevel verstopt zit. Dicht = lucht (je ziet alleen zwarte
+         * mist), open = de brug. Een lichtpijl die er doorheen vliegt, laat hem zien (hij hoeft nergens tegenaan te komen).
+         */
+        boolean brug;
         long leegSinds;
 
         Nevel(String id, Deur nevel, Box gebied) {
@@ -686,6 +692,13 @@ abstract class ZeldaHoofdstuk {
             this.gebied = gebied;
         }
     }
+
+    /**
+     * Een vangnet (eiland 5b, de toren): wie hier valt (meer dan een paar blokken, of in het water onder {@code laag}), vangt de
+     * nevel op: je staat weer waar je het laatst veilig stond, zonder schade. Zo is een hoge trap geen gevaar voor kinderen.
+     * {@code proef}: een plek in de lucht om het te testen (de test laat je daar vallen; null = niet testen).
+     */
+    record Val(String id, Box gebied, int laag, Location proef) {}
 
     /**
      * Sluipen (eiland 5a): wachters met een lantaarn lopen of draaien op een vast ritme ({@code periode}, voor allemaal
@@ -774,6 +787,7 @@ abstract class ZeldaHoofdstuk {
     final List<Ritme> ritmes = new ArrayList<>();
     final List<Nevel> nevels = new ArrayList<>();
     final List<Sluip> sluipen = new ArrayList<>();
+    final List<Val> vallen = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -821,6 +835,19 @@ abstract class ZeldaHoofdstuk {
     /** Achtergrondmuziek op deze plek (nooit null: er is altijd muziek). Een eiland kiest per streek een eigen lied. */
     ZeldaMuziek.Lied muziek(Location l) {
         return ZeldaMuziek.WOUD;
+    }
+
+    /** Achtergrondmuziek voor deze speler op deze plek: standaard die van de plek (het feest op het Lindewoud: alleen voor wie Zelda bevrijdde). */
+    ZeldaMuziek.Lied muziek(Location l, ZeldaVoortgang.Stand s) {
+        return muziek(l);
+    }
+
+    /**
+     * Een bijzondere overtocht naar {@code naar} (de terugvaart met Zelda, 5b): wat er aan dek gezegd wordt, of null (een gewone
+     * overtocht). Het deel zet zelf een vlag als het maar één keer mag.
+     */
+    List<Regel> vaart(ZeldaVoortgang.Stand s, ZeldaEiland naar) {
+        return null;
     }
 
     /**
@@ -937,6 +964,7 @@ abstract class ZeldaHoofdstuk {
         ritmes.clear();
         nevels.clear();
         sluipen.clear();
+        vallen.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -1108,6 +1136,13 @@ abstract class ZeldaHoofdstuk {
         sluipen.add(s);
         volgorde.add(s);
         return s;
+    }
+
+    /** Een vangnet (wie valt, staat weer waar hij veilig stond); met een {@code proef} ook in de volgorde (de test valt erin). */
+    protected Val val(Val v) {
+        vallen.add(v);
+        if (v.proef() != null) volgorde.add(v);
+        return v;
     }
 
     protected Verhaal verhaal(Verhaal v) {

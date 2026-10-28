@@ -1134,6 +1134,22 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "zelda-e5a-kapel-zij", 0, 1, 20, 1700, 1810, zg - 6, w5 + 10, 12, 5));
         f.add(Kaart.voor(w, map, "zelda-e5a-zij", 0, -1, 100, ZeldaEiland5a.X1, ZeldaEiland5a.TX2, g, zg + 80, 200, 2));
         f.add(Kaart.boven(w, map, "zelda-e5a-omgeving", 1560, -260, 2047, 260, g - 2, zg + 80, 1));   // met de randen van het vak (wat je van ver ziet)
+        // eiland 5b, de toren: alles van boven, de nevelbrug en de torenrots, de trap om de toren (net boven elke richel), de
+        // torenhal en de schatkamer, de troonzaal en het dak, en van opzij: de toren van vier kanten en de brug
+        f.add(Kaart.boven(w, map, "zelda-e5b-boven", 1850, -60, 2000, 60, g - 2, zg + 90, 3));
+        f.add(Kaart.boven(w, map, "zelda-e5b-brug", 1855, -12, 1915, 12, g - 2, p5 + 6, 8));
+        for (int[] r : new int[][]{{p5, 1}, {p5 + 10, 2}, {p5 + 20, 3}, {p5 + 30, 4}, {p5 + 40, 5}})
+            f.add(Kaart.boven(w, map, "zelda-e5b-trap" + r[1], 1916, -20, 1964, 20, r[0] - 1, r[0] + 10, 8));
+        f.add(Kaart.boven(w, map, "zelda-e5b-hal", 1926, -12, 1952, 12, p5 - 7, p5 + 4, 10));
+        f.add(Kaart.boven(w, map, "zelda-e5b-schat", 1926, -12, 1952, 12, p5 - 7, p5 - 2, 10));
+        f.add(Kaart.boven(w, map, "zelda-e5b-troon", 1926, -12, 1952, 12, p5 + 40, p5 + 46, 10));
+        f.add(Kaart.boven(w, map, "zelda-e5b-dak", 1926, -12, 1952, 12, p5 + 52, p5 + 62, 10));
+        f.add(Kaart.voor(w, map, "zelda-e5b-west", 1, 0, 1905, -24, 24, zg - 2, p5 + 62, 60, 6));
+        f.add(Kaart.voor(w, map, "zelda-e5b-noord", 0, 1, -30, 1910, 1970, zg - 2, p5 + 62, 60, 6));
+        f.add(Kaart.voor(w, map, "zelda-e5b-oost", -1, 0, 1975, -24, 24, zg - 2, p5 + 62, 60, 6));
+        f.add(Kaart.voor(w, map, "zelda-e5b-zuid", 0, -1, 30, 1910, 1970, zg - 2, p5 + 62, 60, 6));
+        f.add(Kaart.voor(w, map, "zelda-e5b-zij", 0, -1, 40, 1840, 2000, g, zg + 90, 200, 3));
+        f.add(Kaart.boven(w, map, "zelda-feest", 1222, -78, 1258, -42, zg - 2, zg + 12, 10));
         List<String> uit = new ArrayList<>();
         for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;

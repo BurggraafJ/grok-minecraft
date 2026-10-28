@@ -200,9 +200,17 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         };
     }
 
+    /** Op het feest (het einde, eiland 5b) klinkt het lied van thuis als feest, voor wie Zelda bevrijdde. */
+    @Override
+    ZeldaMuziek.Lied muziek(Location l, ZeldaVoortgang.Stand s) {
+        ZeldaMuziek.Lied feest = ZeldaFeest.muziek(l, s);
+        return feest != null ? feest : muziek(l);
+    }
+
     /** Grauwmoers nevel boven zee bij de haven: alleen te zien voor wie haar nog niet versloeg. */
     @Override
     void tik(ZeldaSpel spel, List<Player> wie, long nu) {
+        ZeldaFeest.tik(this, spel, wie);
         java.util.concurrent.ThreadLocalRandom r = java.util.concurrent.ThreadLocalRandom.current();
         Particle.DustOptions nevel = new Particle.DustOptions(org.bukkit.Color.fromRGB(0x1a1622), 4f);
         for (Player p : wie) {                                  // de Nevelring om Nachtrots aan de horizon (tot het Gloedbaken brandt, 4b)
@@ -703,6 +711,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
             zetDeur(r.deur, false);
             for (int[] d : r.dingen) b.zetAltijd(d[0], d[1], d[2], r.uit);
         }
+        ZeldaFeest.bouw(this);                                // het feest op de open plek (het einde, eiland 5b): zonder blokken
         motor();
         b = null;
     }

@@ -23,7 +23,7 @@ import org.bukkit.potion.PotionEffectType;
  * <p>Een andere baas is een subklasse die {@link #beweeg} (wat hij elke seconde doet), {@link #schade} (hoeveel een
  * klap doet), {@link #boem} (een bom in zijn kamer), {@link #geraakt} (een pijl), {@link #raakBlok} (een pijl op een
  * blok in zijn kamer) en {@link #vlam} (de vuurstaf) anders doet, met een eigen {@link #soort} en {@link #helper} (bv.
- * {@link Zoutbaard} op eiland 2b, {@link Asgrim} op eiland 4b).
+ * {@link Zoutbaard} op eiland 2b, {@link Asgrim} op eiland 4b, {@link Morgal} op eiland 5b).
  */
 class ZeldaBaas {
 
@@ -143,6 +143,16 @@ class ZeldaBaas {
     /** Hoeveel een klap van {@code schade} bij deze baas doet (standaard alles). */
     double schade(double schade) {
         return schade;
+    }
+
+    /** Idem, met wat er raakte ({@code door}: een speler, een pijl, een lichtpijl; Morgal: alleen licht komt door zijn nevelhart). */
+    double schade(double schade, org.bukkit.entity.Entity door) {
+        return schade(schade);
+    }
+
+    /** Een speler in de kamer zwaait met zijn zwaard (Morgal: een duistere bol terugslaan). True = de baas deed er iets mee. */
+    boolean zwaai(ZeldaSpel spel, Player p) {
+        return false;
     }
 
     /** Een bom ontploft in de kamer van deze baas (tijdens het gevecht). */

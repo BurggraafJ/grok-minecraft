@@ -99,6 +99,11 @@ final class ZeldaZee extends ZeldaHoofdstuk {
                 Registry.VILLAGER_PROFESSION.get(org.bukkit.NamespacedKey.minecraft("fisherman")), List.of(
                 r("Brecht", "Wind in de zeilen. Zo mag ik het zien."),
                 r("Brecht", "Houd je vast, de Glazen Zee is grillig."))));
+        Persoon zelda = persoon(new Persoon("Zelda", new Location(w, X0 + 18.5, dekY + 1, MZ - 1.5, -90f, 0f), null, List.of(   // de terugvaart (5b)
+                r("Zelda", "De Glazen Zee! Wat heb ik dit gemist."))));
+        zelda.soort = org.bukkit.entity.EntityType.MANNEQUIN;
+        zelda.uiterlijk = e -> ZeldaEiland5b.zelda(e, false);
+        zelda.zichtbaar = s -> s.heeft(ZeldaEiland5b.VRIJ_ZELDA) && !s.heeft("zelda");
         b = null;
     }
 

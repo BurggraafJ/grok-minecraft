@@ -64,6 +64,8 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
     private Location torenTop, raam;
     /** Staat Mira (eiland 2a: het lichtharnas) op het pad? Nee = het Zilverstrand was er niet bij het bouwen (de zelftest meldt het). */
     boolean miraOpPad;
+    /** Tijmen bij de torenpoort (na de binnenplaats): hij breekt Morgals zegel als de toren (5b) er is. */
+    Persoon torenTijmen;
 
     ZeldaEiland5a(Plugin plugin, ZeldaEiland2a zilverstrand) {
         this.plugin = plugin;
@@ -90,9 +92,11 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
 
     // ── tijd, naam en muziek per plek ───────────────────────────────────────────────────────
 
-    /** Op Nachtrots is het altijd nacht (Morgal wil dat): eerst de late avond, dieper in de burcht de nacht. */
+    /** Op Nachtrots is het altijd nacht (Morgal wil dat): eerst de late avond, dieper in de burcht de nacht. Is Morgal weg (5b), dan de ochtend. */
     @Override
     long hemel(Location l, ZeldaVoortgang.Stand s) {
+        if (s.heeft("zelda")) return 1500;
+        if (s.heeft(ZeldaEiland5b.VRIJ_ZELDA) || s.heeft("k:nachttroon")) return 23300;
         if (s.heeft("k:binnenplaats")) return 18000;
         if (s.heeft(LICHTPIJLEN)) return 17000;
         return 14800;
@@ -105,6 +109,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
     @Override
     String plekNaam(Location l) {
         double x = l.getX(), y = l.getY(), z = l.getZ();
+        if (torenErbij() && in(x, y, z, 1859, P, -6, 1879, P + 12, 6)) return "De Nevelbrug";
         if (in(x, y, z, 1764, W - 1, -28, 1776, W + 9, 57)) return "De weergang";
         if (in(x, y, z, 1765, K, -28, 1775, W, -18)) return "De Kerkertoren";
         if (in(x, y, z, 1798, P, -38, 1812, P + 8, -22)) return "Het wachthuis";
@@ -130,6 +135,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         return switch (plekNaam(l)) {
             case "De weergang", "Het wachthuis", "De binnenplaats", "De voorburcht", "De torenpoort" -> ZeldaMuziek.MUREN;
             case "De Kerkertoren", "De kerkertrap", "De wachtkamer", "De cellen", "Het Vissersgat", "De kerkers", "De wapenkamer", "De kapel", "De wachtersgang" -> ZeldaMuziek.KERKERS;
+            case "De Nevelbrug" -> ZeldaMuziek.TOREN;
             default -> ZeldaMuziek.NACHTROTS;
         };
     }
@@ -166,7 +172,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         return d;
     }
 
-    private static BlockData tralies(boolean langsZ) {
+    static BlockData tralies(boolean langsZ) {
         return langsZ ? Bouwer.ruit(Material.IRON_BARS, BlockFace.NORTH, BlockFace.SOUTH) : Bouwer.ruit(Material.IRON_BARS, BlockFace.EAST, BlockFace.WEST);
     }
 
@@ -223,28 +229,28 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
     }
 
     /** De rots van Nachtrots: zwart, met hier en daar wat paars van Morgals nevel. */
-    private static Material rots(int x, int y, int z) {
+    static Material rots(int x, int y, int z) {
         int k = (int) (Bouwer.hash(x, y, z) % 32);
         return k < 11 ? Material.BLACKSTONE : k < 18 ? Material.DEEPSLATE : k < 22 ? Material.BASALT : k < 25 ? Material.COBBLED_DEEPSLATE
                 : k < 28 ? Material.TUFF : k < 30 ? Material.SMOOTH_BASALT : k < 31 ? Material.OBSIDIAN : Material.CRYING_OBSIDIAN;
     }
 
     /** De muren van de burcht: zwarte bakstenen van Morgal. */
-    private static Material zwart(int x, int y, int z) {
+    static Material zwart(int x, int y, int z) {
         int k = (int) (Bouwer.hash(x * 3 + 1, y, z * 5 - 2) % 20);
         return k < 10 ? Material.POLISHED_BLACKSTONE_BRICKS : k < 14 ? Material.CRACKED_POLISHED_BLACKSTONE_BRICKS : k < 17 ? Material.DEEPSLATE_BRICKS
                 : k < 19 ? Material.DEEPSLATE_TILES : Material.BLACKSTONE;
     }
 
     /** De muren van de kerkers: oud, vochtig steen. */
-    private static Material steen(int x, int y, int z) {
+    static Material steen(int x, int y, int z) {
         int k = (int) (Bouwer.hash(x * 5 - 3, y, z * 7 + 1) % 20);
         return k < 9 ? Material.DEEPSLATE_BRICKS : k < 13 ? Material.CRACKED_DEEPSLATE_BRICKS : k < 16 ? Material.COBBLED_DEEPSLATE
                 : k < 18 ? Material.MOSSY_COBBLESTONE : Material.DEEPSLATE_TILES;
     }
 
     /** De vloer van de kerkers en de burcht: tegels. */
-    private static Material vloer(int x, int z) {
+    static Material vloer(int x, int z) {
         return (x + z) % 7 == 0 ? Material.POLISHED_BASALT : (x * 3 + z) % 5 == 0 ? Material.DEEPSLATE_TILES
                 : (x + 2 * z) % 3 == 0 ? Material.POLISHED_DEEPSLATE : Material.POLISHED_BLACKSTONE;
     }
@@ -549,12 +555,24 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         brecht.eenmalig("brecht-kreek", null, List.of(
                         r("Brecht", "Hier legden de vissers vroeger aan. Stil, hè?"),
                         r("Brecht", "Ik wacht met de boot. Wees voorzichtig.")), null)
+                .eenmalig("brecht-zelda", s -> s.heeft(ZeldaEiland5b.VRIJ_ZELDA) && !s.heeft("zelda"), List.of(
+                        r("Brecht", "Prinses Zelda, aan boord! En jij ook."),
+                        r("Brecht", "Iedereen wacht op het Lindewoud.")), (spel, p, s) -> spel.vaar(p, spel.eiland("lindewoud")))
                 .eenmalig("brecht-harnas", s -> s.heeft(ZWARTHARNAS) && !s.heeft("harnas4"), List.of(
                         r("Brecht", "Een zwart harnas? Mira's lamp maakt alles schoon."),
                         r("Brecht", "Zeg maar, dan varen we naar het Zilverstrand.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
         tijmen();
         wolfRaam();
+        if (torenErbij()) {                                                     // Zelda is vrij (5b): ze wacht bij de Zilvermeeuw
+            Persoon zelda = persoon(new Persoon("Zelda", plek(1700, G + 1, -1, -90f), null, List.of(r("Zelda", "Brecht vaart ons naar huis. Kom je?"))));
+            zelda.soort = EntityType.MANNEQUIN;
+            zelda.uiterlijk = e -> ZeldaEiland5b.zelda(e, false);
+            zelda.zichtbaar = s -> s.heeft(ZeldaEiland5b.VRIJ_ZELDA) && !s.heeft("zelda");
+            zelda.eenmalig("zelda-kreek", s -> s.heeft(ZeldaEiland5b.VRIJ_ZELDA) && !s.heeft("zelda"), List.of(
+                    r("Zelda", "Daar ben je! Wat een donkere kreek."),
+                    r("Zelda", "Praat met Brecht. Dan varen we naar huis.")), null);
+        }
     }
 
     /** De Kreektoren: een ronde toren van Morgal op de klif boven de kreek, met een paars raam (Wolfs cel zit eronder, in de rots). */
@@ -1215,6 +1233,9 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 .eenmalig("wolf-binnen", s -> s.heeft("k:binnenplaats"), List.of(
                         r("Wolf", "De binnenplaats is van ons! De wachters zijn gevlucht."),
                         r("Wolf", "Nu de toren nog.")), null)
+                .eenmalig("wolf-zelda", s -> s.heeft(ZeldaEiland5b.VRIJ_ZELDA), List.of(
+                        r("Wolf", "Zelda is vrij! Ik wist het wel."),
+                        r("Wolf", "Een wachter van Zelda zonder werk. Heerlijk.")), null)
                 .gesprek(null, s -> s.heeft(WACHTWOORD) && !s.heeft("harnas4"), List.of(r("Wolf", "Haal eerst het harnas. Dan de binnenpoort.")), null);
         praten(wolf);
     }
@@ -1336,7 +1357,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
     private int[][] VUREN = new int[0][];
 
     /** Het steen van de kapel: wit (calciet en kwarts), met hier en daar zwart van Morgals nevel. */
-    private static Material licht(int x, int y, int z) {
+    static Material licht(int x, int y, int z) {
         int k = (int) (Bouwer.hash(x * 3 - 7, y, z * 11 + 4) % 16);
         return k < 7 ? Material.CALCITE : k < 11 ? Material.SMOOTH_QUARTZ : k < 13 ? Material.QUARTZ_BRICKS : k < 15 ? Material.DIORITE : Material.BLACK_CONCRETE;
     }
@@ -1574,11 +1595,21 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         Persoon tijmen = persoon(new Persoon("Tijmen", plek(1852, P + 1, 2, -90f), null, List.of(r("Tijmen", "Rust eerst. Dit wordt de laatste klim."))));
         tijmen.soort = EntityType.WANDERING_TRADER;
         tijmen.zichtbaar = s -> s.heeft("k:binnenplaats");
+        torenTijmen = tijmen;
         tijmen.eenmalig("tijmen-toren", s -> s.heeft("k:binnenplaats"), List.of(
-                        r("Wiske", "Tijmen! Hoe kom jij hier nou weer?"),
-                        r("Tijmen", "Daar boven is Zelda. En Morgal."),
-                        r("Tijmen", "De poort zit dicht met zijn nevel. Nog even.")), null)
-                .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.wegwijzer(p, "Tijmen"));
+                r("Wiske", "Tijmen! Hoe kom jij hier nou weer?"),
+                r("Tijmen", "Daar boven is Zelda. En Morgal."),
+                r("Tijmen", torenErbij() ? "De poort zit dicht met zijn zegel." : "De poort zit dicht met zijn nevel. Nog even.")), null);
+        if (torenErbij()) tijmen.gesprek("tijmen-zegel", s -> s.heeft("k:binnenplaats") && !s.heeft(ZeldaEiland5b.ZEGEL), List.of(   // de toren (5b): hij breekt het zegel
+                r("Tijmen", "Morgals zegel. Ik ken een oude spreuk."),
+                r("Tijmen", "«Nacht, ga slapen.» Zo. Weg ermee!")), (spel, p, s) -> {
+            if (s.zet(ZeldaEiland5b.ZEGEL)) spel.voortgang.vuil();
+            spel.muziek.speel(p, ZeldaMuziek.OPGELOST);
+            p.getWorld().spawnParticle(Particle.END_ROD, new Location(w, 1857.5, P + 4, 0.5), 40, 0.3, 1.5, 1.5, 0.05);
+            p.getWorld().playSound(new Location(w, 1858, P + 4, 0), org.bukkit.Sound.BLOCK_BEACON_DEACTIVATE, 1f, 1.4f);
+            spel.vertel(p, r("Wiske", "Het zegel breekt! Kom, de toren in."));
+        });
+        tijmen.gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.wegwijzer(p, "Tijmen"));
         Verhaal einde = verhaal(new Verhaal("torenpoort", Box.van(1852, P, -2, 1857, P + 5, 2), List.of(
                 r("Wiske", "De toren van Morgal. Daar is Zelda!"),
                 r("Wiske", "De poort zit dicht. Morgals zegel…"),
@@ -1659,19 +1690,21 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         for (Player p : wie) {
             if (!p.getWorld().equals(w) || spel.beheer.is(p.getUniqueId())) continue;
             Location l = p.getLocation();
+            ZeldaVoortgang.Stand s = spel.voortgang.van(p.getUniqueId());
+            boolean dag = s.heeft("k:nachttroon");                                       // Morgal is weg (5b): geen onweer en geen nevel meer
             boolean buiten = w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) <= l.getBlockY() + 1;
-            if (buiten && r.nextInt(40) == 0) {                                          // onweer in de verte
+            if (buiten && !dag && r.nextInt(40) == 0) {                                  // onweer in de verte
                 Location ver = l.clone().add(r.nextDouble(-60, 60), 30, r.nextDouble(-60, 60));
                 p.playSound(ver, org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, org.bukkit.SoundCategory.WEATHER, 0.25f, 0.6f);
             }
-            if (torenTop != null && buiten)                                             // Morgals nevel om de toren
+            if (torenTop != null && buiten && !dag)                                     // Morgals nevel om de toren
                 for (int i = 0; i < 6; i++) {
-                    double a = r.nextDouble() * Math.PI * 2, rr = 10 + r.nextDouble() * 6;
+                    double a = r.nextDouble() * Math.PI * 2, rr = (torenErbij() ? 19 : 10) + r.nextDouble() * 6;
                     spel.deeltje(p, Particle.DUST, new Location(w, TCX + 0.5 + Math.cos(a) * rr, P + 10 + r.nextDouble() * 54, TCZ + 0.5 + Math.sin(a) * rr), 1, 1.5, 2, 1.5, nevel);
                 }
             if (l.distanceSquared(new Location(w, 1738, K + 1, -11)) < 14 * 14 && r.nextInt(3) == 0)   // de kerkermeester snurkt
                 p.playSound(new Location(w, 1738.5, K + 1.5, -10.5), org.bukkit.Sound.ENTITY_FOX_SLEEP, 0.7f, 0.6f);
-            if (l.distanceSquared(new Location(w, 1858, P + 4, 0)) < 30 * 30)          // nevel voor de torenpoort
+            if (l.distanceSquared(new Location(w, 1858, P + 4, 0)) < 30 * 30 && !s.heeft(ZeldaEiland5b.ZEGEL))   // nevel voor de torenpoort
                 for (int i = 0; i < 4; i++) p.spawnParticle(Particle.LARGE_SMOKE, 1857.2, P + 1 + r.nextDouble() * 7, -2.5 + r.nextDouble() * 6, 0, 0, 0.03, 0, 1);
         }
     }

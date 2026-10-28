@@ -269,6 +269,52 @@ final class ZeldaRegels {
         return schade * (gedoofd ? 1.0 : 0.1);
     }
 
+    // ── Morgal (eiland 5b): drie fases ─────────────────────────────────────────────────────
+
+    /** De fases van Morgal: 1 = zijn nevelgeesten, 2 = zijn duistere bollen, 3 = licht in zijn nevelhart; 0 = even adem ertussen. */
+    static final int MORGAL_ADEM = 0, MORGAL_GEESTEN = 1, MORGAL_BOLLEN = 2, MORGAL_HART = 3;
+
+    /**
+     * Hoeveel een klap doet bij Morgal. Zijn nevel beschermt hem bijna helemaal (fase 1 en tussen de fases); in fase 2 doet een
+     * klap alles als hij versuft is (een teruggeslagen bol), anders weinig (een lichtpijl prikt iets meer); in fase 3 komt licht
+     * dwars door zijn nevelhart (en versuft doet ook een zwaard alles).
+     */
+    static double morgalSchade(double schade, int fase, boolean versuft, boolean licht) {
+        return schade * switch (fase) {
+            case MORGAL_BOLLEN -> versuft ? 1.0 : licht ? 0.25 : 0.12;
+            case MORGAL_HART -> licht || versuft ? 1.0 : 0.12;
+            default -> 0.02;
+        };
+    }
+
+    /** Hoe ver je een duistere bol met je zwaard terugslaat (van je ogen), en hoeveel graden opzij hij mag zijn. */
+    static final double ZWAAI_BEREIK = 3.8, ZWAAI_HOEK = 75;
+
+    /**
+     * Sla je met een zwaai deze bol terug? Hij moet dichtbij zijn ({@code bereik}, vanaf je ogen) en ongeveer voor je
+     * ({@code hoek} graden opzij van waar je kijkt). Heel dichtbij (een blok) altijd: kinderen zwaaien niet precies.
+     */
+    static boolean terugslaan(double[] oog, double[] kijk, double[] bol, double bereik, double hoek) {
+        double vx = bol[0] - oog[0], vy = bol[1] - oog[1], vz = bol[2] - oog[2];
+        double d = Math.sqrt(vx * vx + vy * vy + vz * vz), kl = Math.sqrt(kijk[0] * kijk[0] + kijk[1] * kijk[1] + kijk[2] * kijk[2]);
+        if (d > bereik) return false;
+        if (d < 1.2 || kl < 1e-9) return true;
+        double cos = (vx * kijk[0] + vy * kijk[1] + vz * kijk[2]) / (d * kl);
+        return cos >= Math.cos(Math.toRadians(hoek));
+    }
+
+    /**
+     * Een trap van licht (eiland 5b): {@code n} treden vanaf (x, y, z) in richting (dx, dz), elke trede een blok verder en een
+     * hoger; {@code breed} blokken breed (naar rechts, gezien in de looprichting). Geeft de blokken {x, y, z}.
+     */
+    static List<int[]> trap(int x, int y, int z, int dx, int dz, int n, int breed) {
+        List<int[]> l = new ArrayList<>();
+        int rx = -dz, rz = dx;                                              // rechts van de looprichting
+        for (int k = 0; k < n; k++)
+            for (int b = 0; b < breed; b++) l.add(new int[]{x + dx * k + rx * b, y + k, z + dz * k + rz * b});
+        return l;
+    }
+
     /** Een vakje (x, z) van een glijvloer: ijs? vrij om in te staan? een gewone vloer? */
     @FunctionalInterface
     interface Vak {
