@@ -103,7 +103,7 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
     @Override
     String plekNaam(Location l) {
         double x = l.getX(), y = l.getY(), z = l.getZ();
-        if (in(x, y, z, 1317, KF - 1, 315, 1340, KF + 20, 330) && y >= KF + 6) return "De uitkijk";
+        if (in(x, y, z, 1320, KF + 6, 315, 1340, KF + 20, 327)) return "De uitkijk";
         if (Math.hypot(x - CX - 0.5, z - CZ - 0.5) <= KOM + 1 && y >= KF - 1) return "De krater";
         if (in(x, y, z, 1320, D - 3, 322, 1340, KF + 4, 338)) return "De Schoorsteen";
         if (Math.hypot(x - CX - 0.5, z - CZ - 0.5) <= 15 && y >= D - 2 && y <= D + 18) return "Het Hart van de Smidse";
@@ -1023,24 +1023,24 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
             }
             int py = KF + 10;
             for (int x = 1332; x <= 1338; x++)
-                for (int z = 318; z <= 328; z++) {
+                for (int z = 316; z <= 326; z++) {                       // (niet verder zuid: daar is de schoorsteen)
                     vul(x, G + 40, z, x, py, z, Material.POLISHED_BLACKSTONE_BRICKS);
                     zet(x, py, z, (x + z) % 3 == 0 ? Material.CHISELED_POLISHED_BLACKSTONE : Material.POLISHED_BLACKSTONE);
                     vul(x, py + 1, z, x, py + 8, z, Material.AIR);
-                    boolean rand = x == 1338 || z == 318 || z == 328 || (x == 1332 && (z < 323 || z > 325));
+                    boolean rand = x == 1338 || z == 316 || z == 326 || (x == 1332 && (z < 323 || z > 325));
                     if (rand) {
                         zet(x, py + 1, z, Material.POLISHED_BLACKSTONE_BRICK_WALL);
                         zet(x, py + 2, z, Material.POLISHED_BLACKSTONE_BRICK_WALL);
                     }
                 }
-            for (int[] c : new int[][]{{1338, 318}, {1338, 328}}) {
+            for (int[] c : new int[][]{{1338, 316}, {1338, 326}}) {
                 vul(c[0], py + 1, c[1], c[0], py + 3, c[1], Material.POLISHED_BLACKSTONE_BRICKS);
                 zet(c[0], py + 4, c[1], Material.SOUL_LANTERN);
             }
         }
         bakenKern = new Location(w, CX, KF + 5, CZ);
         bakenVuur = new Location(w, CX, KF + 2, CZ);
-        uitkijk = Box.van(1333, KF + 10, 319, 1337, KF + 16, 327);
+        uitkijk = Box.van(1333, KF + 10, 317, 1337, KF + 16, 325);
         verhaal(new Verhaal("krater", Box.van(1318, KF, 328, 1323, KF + 4, 333), List.of(
                 r("Wiske", "De krater! Daar staat het Gloedbaken."),
                 r("Wiske", "Koud en donker. Jouw vuurstaf!")))).als = s -> !s.heeft("baken4");
