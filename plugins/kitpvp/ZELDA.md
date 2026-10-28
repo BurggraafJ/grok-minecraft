@@ -799,3 +799,8 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
 10. **`zelda-afronding`** — Speel alles na: balans (te veel gevechten? te moeilijk?), alle «later-terug»-plekken
     bereikbaar, twintig hartstukjes, muziek overal, teksten kort, kaartplaatjes. **Klaar als** een volledige
     testronde zonder fouten loopt en de lijst met losse eindjes leeg is.
+
+**Losse eindjes** (gevonden, nog niet opgelost):
+- IJshoeve (3a): de schoorstenen van de huisjes lopen door tot y 1 (in `ZeldaEiland3a.huis` begint `nok` op 0, en in de
+  vlakke wereld is G negatief). Oplossing: `int nok = Integer.MIN_VALUE;` en `zelda-e3a` versie 3 (dan herbouwt 3a).
+  Gezien in sessie `zelda-eiland-4a` (4a had dezelfde code en is opgelost); 3a is niet aangeraakt (buiten het vak).
