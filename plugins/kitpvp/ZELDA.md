@@ -736,7 +736,10 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    roept `boem()` van het deel aan. Klauwhaak (gebouwd in 3a): een `Haakpunt` (blok `HAAKPUNT` + landing) is vanzelf te
    gebruiken; zet het zo dat het van een plek om te staan te raken is (het blok mag niet weggestopt zitten achter een
    rand: `zelda lopen` meldt «nergens vandaan te raken»), en zet een `haak(…)` in de volgorde als je er op het pad
-   langs moet. Graafplekken (`Graaf`) voor het vosje.
+   langs moet. Graafplekken (`Graaf`) voor het vosje. Vuurstaf (gebouwd in 4a): een `Reeks` met `Hoe.VUUR` (dingen die
+   alleen een vlam aansteekt; zet `voor`, de plek om te mikken: de zelftest kijkt of je elk ding ziet) of een gewone
+   vuurschaal (`KLIK`); betoverd ijs is een `Smelt` (blok `ICE`, dicht = ijs, open = lucht of water; `smeltOpPad` als je
+   erdoor moet, met `voor`); hitte is een `Hitte` (met een koelplek erin en `terug`).
 8. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
    test teleporteert, dus deze controle volgt vanaf de steiger elke plek waar een speler kan staan en noemt wat je
    zonder teleporteren niet haalt. Deuren, poorten en bruggen tellen als open (een brug als planken).

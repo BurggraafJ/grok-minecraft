@@ -2944,7 +2944,7 @@ final class ZeldaSpel implements Listener {
             if (nu % 2000 < 500) p.playSound(p, Sound.BLOCK_FIRE_AMBIENT, SoundCategory.AMBIENT, 0.4f, 0.8f);
             if (s.zet("v:hitte")) {
                 voortgang.vuil();
-                uitleg(p, ZeldaHoofdstuk.r("Wiske", "Pff, warm! In water koel je af."));
+                uitleg(p, ZeldaHoofdstuk.r("Wiske", "Pff, warm! De balk onderin loopt vol."), ZeldaHoofdstuk.r("Wiske", "In water koel je af."));
             }
         }
         if (h != null && ss.hitte >= 1) teHeet(p, ss, h, nu);
@@ -2962,7 +2962,7 @@ final class ZeldaSpel implements Listener {
         p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 20, 0, false, false, false));
         p.playSound(p, Sound.ENTITY_PLAYER_HURT_ON_FIRE, 0.4f, 1.3f);
         if (nu - ss.teHeet > 30_000L && ss.rij.isEmpty() && ss.nu == null)
-            vertel(p, ZeldaHoofdstuk.r("Wiske", h.fel ? "Te heet! Zonder harnas kom je hier niet." : "Pff, te heet! Even afkoelen."));
+            vertel(p, ZeldaHoofdstuk.r("Wiske", h.fel ? "Te heet! Zonder harnas kom je hier niet." : "Te heet! Even terug, afkoelen."));
         ss.teHeet = nu;
     }
 
