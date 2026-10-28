@@ -62,7 +62,8 @@ class ZeldaMuziekTest {
     void achtergrondIsAltijdEenLangeLus() {
         for (ZeldaMuziek.Lied l : java.util.List.of(ZeldaMuziek.THUIS, ZeldaMuziek.WOUD, ZeldaMuziek.TEMPEL, ZeldaMuziek.VEEN, ZeldaMuziek.HAVEN, ZeldaMuziek.ZEE,
                 ZeldaMuziek.ZOUTKOM, ZeldaMuziek.DUINEN, ZeldaMuziek.VUURTOREN, ZeldaMuziek.DORP, ZeldaMuziek.WAD, ZeldaMuziek.GETIJDENTEMPEL,
-                ZeldaMuziek.IJSHOEVE, ZeldaMuziek.SNEEUWSTORM, ZeldaMuziek.WACHTERSPOST, ZeldaMuziek.BERGPAD, ZeldaMuziek.IJSPALEIS)) {
+                ZeldaMuziek.IJSHOEVE, ZeldaMuziek.SNEEUWSTORM, ZeldaMuziek.WACHTERSPOST, ZeldaMuziek.BERGPAD, ZeldaMuziek.IJSPALEIS,
+                ZeldaMuziek.SINTELGAT, ZeldaMuziek.MIJNEN, ZeldaMuziek.GLOED)) {
             assertTrue(l.lus(), l.id() + " moet een lus zijn (nooit stilte)");
             assertEquals(0, l.lengte() % l.maat(), l.id() + ": hele maten (wisselen gebeurt op een maatstreep)");
             assertTrue(l.lengte() * l.tik() >= 20 * 14, l.id() + ": te kort, dan wordt hij snel saai (" + l.lengte() * l.tik() / 20.0 + " s)");

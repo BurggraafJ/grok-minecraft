@@ -49,6 +49,8 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
     static final int PX = 1480, PZ = -294, MX = 1432, MZ = -300, EX = 1430, EZ = -300;
     /** De hartstukjes van 3a: de geiten (Saar), verstopt op het eilandje (het vosje), in het ijsblok bij de smidse (vuurstaf). */
     static final String STUKJE_GEITEN = "hs:witte-toppen-1", STUKJE_EILANDJE = "hs:witte-toppen-2", STUKJE_IJS = "hs:witte-toppen-3";
+    /** De boodschap over zee van Hagen (eiland 4a): een gloedkool van Okker, de smid van Sintelgat; de beloning is hier. */
+    static final String GLOEDKOOL = "gloedkool";
     /** De vlag van de deur die het vosje opgraaft (de Wachtersgang). */
     static final String DEUR = "wachtersdeur";
 
@@ -519,6 +521,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         }
         for (Uitdaging u : uitdagingen) zetDeur(u.poort, false);
         for (Poort po : poorten) zetDeur(po.deur, false);
+        for (Smelt sm : smelten) zetDeur(sm.ijs, false);
         motor();
         b = null;
     }
@@ -641,6 +644,14 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         hagen();
         vondst(new Vondst(STUKJE_IJS, "Hartstukje", "", Material.REDSTONE, plek(1501, G + 1.3, -289, 0f),
                 Box.van(1501, G, -289, 1501, G + 2, -289))).voorwerp = "vuurstaf";
+        // het ijsblok zelf: betoverd ijs dat alleen de vuurstaf smelt (eiland 4a); dezelfde blokken als in versie 1, dus geen herbouw
+        Deur ijs = new Deur(ZeldaHoofdstuk.Smelt.IJS.createBlockData(), Material.AIR.createBlockData());
+        for (int x = 1500; x <= 1502; x++)
+            for (int y = G + 1; y <= G + 3; y++)
+                for (int z = -290; z <= -288; z++) if (!(x == 1501 && z == -289 && y <= G + 2)) ijs.blok(x, y, z);
+        Smelt blok = smelt(new Smelt("ijsblok", ijs, Box.van(1496, G, -295, 1506, G + 5, -284)));
+        blok.voor = plek(1501, G + 1, -293, 0f);
+        blok.binnen = plek(1501, G + 1, -292, 0f);
         geit("Sokje", plek(1488, G + 1, -255, 30f));
     }
 
@@ -793,6 +804,22 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                     p.playSound(p, org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6f, 1.1f);
                     spel.beloon(p, "harnas2", "Wachtersharnas", "het harnas van de bergwachters");
                 })
+                // de gloedkool (eiland 4a, een boodschap over zee): Okker in Sintelgat leerde samen met Hagen smeden
+                .gesprek("hagen-kool", s -> s.missie(GLOEDKOOL) == 2, List.of(
+                        r("Hagen", "Een gloedkool van Okker! Ha, die ouwe."),
+                        r("Hagen", "Kijk mijn esse eens branden. Eindelijk warm!"),
+                        r("Hagen", "Hier, een veldfles van de wachters. Voor jou.")), (spel, p, s) -> {
+                    spel.missie(p, GLOEDKOOL, ZeldaVoortgang.KLAAR);
+                    p.playSound(p, org.bukkit.Sound.ITEM_FIRECHARGE_USE, 0.6f, 0.8f);
+                    spel.beloon(p, "fles6", "Veldfles", "nog een flesje");
+                })
+                .gesprek("hagen-gloed", s -> s.heeft("e:gloedberg") && s.missie(GLOEDKOOL) == 0, List.of(
+                        r("Hagen", "Je was op de Gloedberg? Dan ken je Okker, de smid!"),
+                        r("Hagen", "We leerden samen smeden. Lang geleden."),
+                        r("Hagen", "Vraag hem om een gloedkool. Mijn esse wil niet in deze kou.")), (spel, p, s) -> spel.missie(p, GLOEDKOOL, 1))
+                .eenmalig("hagen-staf", s -> s.heeft("vuurstaf") && !s.heeft(STUKJE_IJS), List.of(
+                        r("Hagen", "Is dat een vuurstaf? Van de eerste smeden!"),
+                        r("Hagen", "Richt hem eens op dat ijsblok.")), null)
                 .eenmalig("hagen-1", null, List.of(
                         r("Hagen", "Een reiziger! Kom bij het vuur."),
                         r("Hagen", "Ik smeedde klauwhaken voor de bergwachters."),
@@ -807,6 +834,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 .eenmalig("hagen-grimmel", s -> s.heeft("k:troonzaal"), List.of(
                         r("Hagen", "Grimmel is vrij, hoor ik. En het harnas hield?"),
                         r("Hagen", "Goed staal. Zei ik toch.")), null);
+        missie(GLOEDKOOL, "De gloedkool", "Vraag Okker in Sintelgat om een gloedkool.", "Breng de gloedkool naar Hagen, in IJshoeve.");
     }
 
     /** De smidse van Hagen: open naar de weg, een esse, een aambeeld, een waterbak. */

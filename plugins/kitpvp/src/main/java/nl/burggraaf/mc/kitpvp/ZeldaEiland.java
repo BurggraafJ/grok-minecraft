@@ -26,8 +26,17 @@ record ZeldaEiland(String id, String naam, Material icoon, List<ZeldaHoofdstuk> 
      * Een eiland dat eraan komt maar nog niet gebouwd is: zodra je {@code openNa} hebt (een baken brandt), staat het grijs
      * op de zeekaart en bij Brecht («nog even geduld»), en zegt Wiske dat jullie er straks heen varen. De sessie die het
      * eiland bouwt, haalt het hier weg en zet het echte eiland in {@code Zelda.EILANDEN}.
+     *
+     * <p>Ook een <em>deel</em> van een eiland kan eraan komen ({@code eiland} = het id van dat eiland, bv. de Smidse op de
+     * Gloedberg na {@code e4a}): grijs op de kaart, niet bij Brecht (daar vaar je niet heen), en Wiske zegt dat het straks
+     * opengaat.
      */
-    record Komt(String id, String naam, Material icoon, String openNa) {}
+    record Komt(String id, String naam, Material icoon, String openNa, String eiland) {
+        /** Een eiland dat eraan komt (om naartoe te varen). */
+        Komt(String id, String naam, Material icoon, String openNa) {
+            this(id, naam, icoon, openNa, null);
+        }
+    }
 
     ZeldaEiland {
         if (id == null || !id.matches("[a-z][a-z0-9-]*")) throw new IllegalArgumentException("ongeldig eiland-id: " + id);

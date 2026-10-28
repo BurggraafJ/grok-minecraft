@@ -94,7 +94,7 @@ import org.joml.Vector3f;
  */
 final class ZeldaSpel implements Listener {
 
-    static final String TAG = "zelda", NPC = "zelda-npc";
+    static final String TAG = "zelda", NPC = "zelda-npc", IJS = "zelda-ijs";
     static final TextColor GROEN = TextColor.color(0x8fcf6a);
     /** Na zo lang zonder voortgang biedt Wiske één keer hulp aan (en dan pas weer na {@link #AANBOD_OPNIEUW}). */
     static final long VAST_MS = 6 * 60_000L, AANBOD_OPNIEUW = 10 * 60_000L;
@@ -118,6 +118,10 @@ final class ZeldaSpel implements Listener {
         String hintDoel, tip;
         int voortgangStand;
         boolean inBron, naamGevraagd;
+        double hitte;                                        // hoe warm je bent in de mijn (0 … 1, de balk onderin; eiland 4a)
+        Location koelplek;                                   // waar je in de hitte voor het laatst afkoelde
+        long teHeet;
+        boolean koelt;
         final Map<String, Integer> doden = new HashMap<>();  // kamer → keer doodgegaan (voor tips)
 
         Sessie(ZeldaHoofdstuk h, int rust) {
@@ -179,6 +183,7 @@ final class ZeldaSpel implements Listener {
         voorwerpen.add(new Flesje());
         voorwerpen.add(new Bommen());
         voorwerpen.add(new Klauwhaak());
+        voorwerpen.add(new Vuurstaf());
     }
 
     void aan() {
@@ -306,6 +311,7 @@ final class ZeldaSpel implements Listener {
         metgezel.weg(p.getUniqueId());
         dier.weg(p.getUniqueId());
         trekken.remove(p.getUniqueId());
+        vlammen.removeIf(v -> v.wie.equals(p.getUniqueId()));
         glijders.remove(p.getUniqueId());
         glijVorige.remove(p.getUniqueId());
         if (ss != null) for (ZeldaHoofdstuk.Kamer k : ss.h.kamers) if (k.baas != null && k.baas.balk != null) p.hideBossBar(k.baas.balk);
@@ -525,6 +531,7 @@ final class ZeldaSpel implements Listener {
                 for (ZeldaHoofdstuk.Barst b : h.barsten) barst(b, nu);
                 for (ZeldaHoofdstuk.Poort po : h.poorten) poort(po, nu);
                 for (ZeldaHoofdstuk.Getij g : h.getijden) veilig("getij", () -> getij(g, nu));
+                for (ZeldaHoofdstuk.Smelt sm : h.smelten) veilig("ijs", () -> smelt(sm, nu));
             }
         }
         if (tikken % 10 == 5) for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) veilig("spiegels", () -> spiegels(sp, nu));
@@ -535,8 +542,10 @@ final class ZeldaSpel implements Listener {
             for (Player p : spelers) wie.put(p, voortgang.van(p.getUniqueId()));
             veilig("huisdier", () -> dier.tik(wie, neus));
             veilig("bronnen", this::bronnen);
+            for (Player p : spelers) veilig("hitte", () -> hitte(p, sessie(p), nu));
         }
         if (!trekken.isEmpty()) veilig("klauwhaak", this::trekken);
+        if (!vlammen.isEmpty()) veilig("vuurstaf", this::vlammen);
         veilig("glijden", () -> glijden(spelers));
         if (tikken % 20 == 0) {
             for (Player p : spelers) veilig("seconde", () -> seconde(p, sessie(p), nu));
@@ -778,7 +787,9 @@ final class ZeldaSpel implements Listener {
         int[] m = d.blokken.get(d.blokken.size() / 2);
         Location ml = new Location(w, m[0] + 0.5, m[1] + 0.5, m[2] + 0.5);
         w.playSound(ml, open ? Sound.BLOCK_IRON_DOOR_OPEN : Sound.BLOCK_PISTON_EXTEND, 1f, open ? 0.8f : 0.6f);
-        w.spawnParticle(Particle.BLOCK, ml, 30, 0.5, 1, 1, data.getMaterial().isAir() ? Material.STONE.createBlockData() : data);
+        BlockData ander = open ? d.dicht : d.open;                  // lucht of water: de stukjes van het andere blok (ijs dat smelt)
+        BlockData stukjes = data.getMaterial().isSolid() ? data : ander.getMaterial().isSolid() ? ander : Material.STONE.createBlockData();
+        w.spawnParticle(Particle.BLOCK, ml, 30, 0.5, 1, 1, stukjes);
     }
 
     // ── kamers ──────────────────────────────────────────────────────────────────────────────
@@ -1012,6 +1023,9 @@ final class ZeldaSpel implements Listener {
             case IJSKNECHT, IJSKOBOLD -> org.bukkit.entity.Zombie.class;
             case VORSTSCHUTTER -> org.bukkit.entity.Stray.class;
             case GRIMMEL -> org.bukkit.entity.PolarBear.class;
+            case ASKNECHT -> org.bukkit.entity.Zombie.class;
+            case VONKSCHUTTER -> org.bukkit.entity.Skeleton.class;
+            case SINTELMIJT -> org.bukkit.entity.MagmaCube.class;
         };
         w.spawnParticle(Particle.SOUL, l.clone().add(0, 0.5, 0), 20, 0.4, 0.2, 0.4, 0.03);
         w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.8, 0), 10, 0.3, 0.5, 0.3, 0.01);
@@ -1021,6 +1035,8 @@ final class ZeldaSpel implements Listener {
             m.setRemoveWhenFarAway(false);
             m.setCanPickupItems(false);
             m.addScoreboardTag(TAG);
+            if (s == ZeldaHoofdstuk.Soort.IJSKNECHT || s == ZeldaHoofdstuk.Soort.IJSKOBOLD || s == ZeldaHoofdstuk.Soort.VORSTSCHUTTER || s == ZeldaHoofdstuk.Soort.GRIMMEL)
+                m.addScoreboardTag(IJS);                             // de vuurstaf doet hier meer
             var eq = m.getEquipment();
             double hp, dmg = -1, schaal = 1;
             switch (s) {
@@ -1112,6 +1128,24 @@ final class ZeldaSpel implements Listener {
                     schaal = 2.0;
                     zetAttr(m, Attribute.KNOCKBACK_RESISTANCE, 1.0);
                     zetAttr(m, Attribute.MOVEMENT_SPEED, 0.2);
+                }
+                case ASKNECHT -> {                                   // een asknecht van de Gloedberg (4a): zwart als roet, een houweel
+                    hp = 18;
+                    dmg = 3;
+                    eq.setHelmet(new ItemStack(Material.BLACKSTONE));
+                    eq.setChestplate(gekleurd(Material.LEATHER_CHESTPLATE, 0x3b3633));
+                    eq.setLeggings(gekleurd(Material.LEATHER_LEGGINGS, 0x2a2624));
+                    eq.setItemInMainHand(new ItemStack(Material.STONE_PICKAXE));
+                }
+                case VONKSCHUTTER -> {                               // schiet van een afstand, een oranje kap
+                    hp = 14;
+                    eq.setHelmet(gekleurd(Material.LEATHER_HELMET, 0xd9682b));
+                    eq.setItemInMainHand(new ItemStack(Material.BOW));
+                }
+                case SINTELMIJT -> {                                 // een klein gloeiend klodder: snel, niet taai (splitst niet)
+                    if (m instanceof org.bukkit.entity.MagmaCube mc) mc.setSize(1);
+                    hp = 6;
+                    dmg = 2;
                 }
                 case KAPITEIN -> {                                   // Kapitein Zoutbaard: groot, staat bij zijn ton, gooit drietanden
                     hp = 60;
@@ -1240,8 +1274,9 @@ final class ZeldaSpel implements Listener {
         Block b = w.getBlockAt(d[0], d[1], d[2]);
         b.setBlockData(r.aan, false);
         Location l = b.getLocation().add(0.5, 0.8, 0.5);
-        w.playSound(l, r.hoe == ZeldaHoofdstuk.Reeks.Hoe.KLIK ? Sound.ITEM_FIRECHARGE_USE : Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 0.9f + 0.15f * r.isAan.size());
-        w.spawnParticle(r.hoe == ZeldaHoofdstuk.Reeks.Hoe.KLIK ? Particle.FLAME : Particle.HAPPY_VILLAGER, l, 20, 0.3, 0.3, 0.3, 0.02);
+        boolean vuur = r.hoe != ZeldaHoofdstuk.Reeks.Hoe.PIJL;
+        w.playSound(l, vuur ? Sound.ITEM_FIRECHARGE_USE : Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 0.9f + 0.15f * r.isAan.size());
+        w.spawnParticle(vuur ? Particle.FLAME : Particle.HAPPY_VILLAGER, l, 20, 0.3, 0.3, 0.3, 0.02);
         if (r.isAan.size() < r.dingen.size()) return;
         r.opgelost = true;
         r.leegSinds = 0;
@@ -1293,7 +1328,7 @@ final class ZeldaSpel implements Listener {
                 p.setLevel(0);
                 p.setExp(0f);
                 muziek.speel(p, ZeldaMuziek.MISLUKT);
-                p.playSound(p, r.hoe == ZeldaHoofdstuk.Reeks.Hoe.KLIK ? Sound.BLOCK_FIRE_EXTINGUISH : Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 1f);
+                p.playSound(p, r.hoe != ZeldaHoofdstuk.Reeks.Hoe.PIJL ? Sound.BLOCK_FIRE_EXTINGUISH : Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 1f);
             }
             return;
         }
@@ -1846,14 +1881,16 @@ final class ZeldaSpel implements Listener {
     /** Een eiland dat er al aankomt (een baken brandt) maar nog niet te bezoeken is: grijs, «nog even geduld». */
     private ItemStack komtItem(ZeldaEiland.Komt k) {
         ItemStack it = ding(k.icoon(), k.naam(), "komt:" + k.id());
-        lore(it, "nog even geduld");
+        ZeldaEiland op = k.eiland() == null ? null : eiland(k.eiland());
+        lore(it, op == null ? "nog even geduld" : "op " + ZeldaRegels.inZin(op.naam()) + " · nog even geduld");
         return it;
     }
 
-    /** Wat Wiske (of de wegwijzer) zegt over een eiland dat eraan komt (null = er komt niets). */
+    /** Wat Wiske (of de wegwijzer) zegt over een eiland (of een deel ervan) dat eraan komt (null = er komt niets). */
     String komt(ZeldaVoortgang.Stand s) {
         for (ZeldaEiland.Komt k : modus.KOMT)
-            if (s.heeft(k.openNa())) return "Straks varen we naar " + ZeldaRegels.inZin(k.naam()) + ". Nog even geduld.";
+            if (s.heeft(k.openNa())) return k.eiland() == null ? "Straks varen we naar " + ZeldaRegels.inZin(k.naam()) + ". Nog even geduld."
+                    : k.naam() + " gaat straks open. Nog even geduld.";
         return null;
     }
 
@@ -1940,7 +1977,7 @@ final class ZeldaSpel implements Listener {
         m.inv = Bukkit.createInventory(m, 9, Component.text("Waarheen?", NamedTextColor.DARK_GRAY));
         int slot = 0;
         for (ZeldaEiland e : open) if (slot < 9) m.inv.setItem(slot++, eilandItem(e, ss.h.eiland));
-        for (ZeldaEiland.Komt k : modus.KOMT) if (s.heeft(k.openNa()) && slot < 9) m.inv.setItem(slot++, komtItem(k));
+        for (ZeldaEiland.Komt k : modus.KOMT) if (k.eiland() == null && s.heeft(k.openNa()) && slot < 9) m.inv.setItem(slot++, komtItem(k));   // een deel van een eiland: daar vaar je niet heen
         p.openInventory(m.inv);
     }
 
@@ -2594,6 +2631,292 @@ final class ZeldaSpel implements Listener {
                 && (e.getCause() == EntityDamageEvent.DamageCause.FALL || e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION)) e.setCancelled(true);
     }
 
+    // ── de vuurstaf (voorwerp in vak 6, eiland 4a) ──────────────────────────────────────────
+
+    /**
+     * De vuurstaf van de eerste smeden (de Gloedberg): rechtsklik = een vlam die rechtdoor vliegt, tot
+     * {@link ZeldaRegels#VUUR_BEREIK} blokken. Mik je op een vuurschaal of lamp (een paar graden ernaast mag), dan gaat hij
+     * aan ({@link #activeer}); op betoverd ijs, dan smelt het ({@link #smelt}); een vijand krijgt een tik. Werkt op elk
+     * eiland: ook de vuurschalen van het Lindewoud en het ijsblok bij de smidse van Hagen.
+     */
+    final class Vuurstaf implements ZeldaVoorwerp {
+        static final Material ITEM = Material.BLAZE_ROD;
+
+        public String id() { return "vuurstaf"; }
+        public String vlag() { return "vuurstaf"; }
+        public int vak() { return 5; }
+
+        public ItemStack item(ZeldaSpel spel, Player p, ZeldaVoortgang.Stand s) {
+            ItemStack it = ding(ITEM, "Vuurstaf", "vuurstaf");
+            lore(it, "rechtsklik: een vlam", "steekt vuur aan, smelt ijs");
+            return it;
+        }
+
+        public void gebruik(ZeldaSpel spel, Player p, PlayerInteractEvent e) {
+            vlam(p);
+        }
+    }
+
+    /** Een vlam onderweg (een paar tikken), en wat hij raakt als hij aankomt (een vuurschaal, ijs, een vijand of niets). */
+    private static final class Vlam {
+        final UUID wie;
+        final Location van, naar;
+        final int duur;
+        final ZeldaHoofdstuk.Reeks reeks;
+        final int ding;
+        final ZeldaHoofdstuk.Smelt ijs;
+        final LivingEntity vijand;
+        int tik;
+
+        Vlam(UUID wie, Location van, Location naar, int duur, ZeldaHoofdstuk.Reeks reeks, int ding, ZeldaHoofdstuk.Smelt ijs, LivingEntity vijand) {
+            this.wie = wie;
+            this.van = van;
+            this.naar = naar;
+            this.duur = duur;
+            this.reeks = reeks;
+            this.ding = ding;
+            this.ijs = ijs;
+            this.vijand = vijand;
+        }
+    }
+
+    final List<Vlam> vlammen = new ArrayList<>();
+
+    /** Heeft deze speler een vlam onderweg (de test wacht erop)? */
+    boolean vlamOnderweg(Player p) {
+        for (Vlam v : vlammen) if (v.wie.equals(p.getUniqueId())) return true;
+        return false;
+    }
+
+    /** Het midden van wat je in dit blok raakt (een vuurschaal is lager dan een heel blok). */
+    static Location raakpunt(Block b) {
+        var box = b.getBoundingBox();
+        if (box.getVolume() <= 0) return b.getLocation().add(0.5, 0.5, 0.5);
+        return box.getCenter().toLocation(b.getWorld());
+    }
+
+    /** Ziet je oog dit blok (zit er niets tussen)? */
+    boolean zicht(Location oog, Block b) {
+        Location m = raakpunt(b);
+        org.bukkit.util.Vector v = m.toVector().subtract(oog.toVector());
+        double d = v.length();
+        if (d < 0.1 || d > ZeldaRegels.VUUR_BEREIK + 1) return false;
+        var r = oog.getWorld().rayTraceBlocks(oog, v.normalize(), d + 0.4, org.bukkit.FluidCollisionMode.NEVER, true);
+        return r != null && r.getHitBlock() != null && r.getHitBlock().equals(b);
+    }
+
+    /**
+     * De vuurstaf: een vlam waar je op mikt. Raakt hij een vuurschaal of lamp die nog uit is (of mik je er net naast), dan
+     * gaat die aan als de vlam aankomt; betoverd ijs smelt; een vijand krijgt een tik.
+     */
+    void vlam(Player p) {
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null || p.isDead() || p.hasCooldown(Vuurstaf.ITEM)) return;
+        p.setCooldown(Vuurstaf.ITEM, 12);
+        var w = p.getWorld();
+        Location oog = p.getEyeLocation();
+        org.bukkit.util.Vector kijk = oog.getDirection();
+        // wat je met een vlam kunt aansteken of smelten (op dit eiland): {reeks, ding} of {ijs}, met het blok
+        List<Object[]> doelen = new ArrayList<>();
+        List<double[]> punten = new ArrayList<>();
+        for (ZeldaHoofdstuk h : ss.h.eiland != null ? ss.h.eiland.delen() : List.of(ss.h)) {
+            for (ZeldaHoofdstuk.Reeks r : h.reeksen) {
+                if (r.hoe == ZeldaHoofdstuk.Reeks.Hoe.PIJL || r.opgelost) continue;
+                for (int i = 0; i < r.dingen.size(); i++) {
+                    if (r.isAan.contains(i)) continue;
+                    int[] c = r.dingen.get(i);
+                    doelen.add(new Object[]{r, i, w.getBlockAt(c[0], c[1], c[2])});
+                }
+            }
+            for (ZeldaHoofdstuk.Smelt sm : h.smelten) {
+                if (sm.ijs.isOpen) continue;
+                for (int[] c : sm.ijs.blokken) doelen.add(new Object[]{sm, -1, w.getBlockAt(c[0], c[1], c[2])});
+            }
+        }
+        for (Object[] d : doelen) {
+            Location m = raakpunt((Block) d[2]);
+            punten.add(new double[]{m.getX(), m.getY(), m.getZ()});
+        }
+        var raak = w.rayTrace(oog, kijk, ZeldaRegels.VUUR_BEREIK, org.bukkit.FluidCollisionMode.NEVER, true, 0.3,
+                e -> e instanceof LivingEntity && !e.equals(p) && isVijand(e) && !e.getScoreboardTags().contains(NPC));
+        Object[] doel = null;
+        LivingEntity vijand = null;
+        if (raak != null && raak.getHitBlock() != null)
+            for (Object[] d : doelen) if (((Block) d[2]).equals(raak.getHitBlock())) doel = d;
+        if (doel == null && raak != null && raak.getHitEntity() instanceof LivingEntity le) vijand = le;
+        if (doel == null && vijand == null) {                               // net ernaast gemikt: het dichtstbijzijnde doel in die richting
+            int i = ZeldaRegels.mik(new double[]{oog.getX(), oog.getY(), oog.getZ()}, new double[]{kijk.getX(), kijk.getY(), kijk.getZ()},
+                    punten, ZeldaRegels.VUUR_BEREIK, ZeldaRegels.VUUR_HOEK);
+            if (i >= 0 && zicht(oog, (Block) doelen.get(i)[2])) doel = doelen.get(i);
+        }
+        Location naar = doel != null ? raakpunt((Block) doel[2])
+                : vijand != null ? vijand.getLocation().add(0, vijand.getHeight() / 2, 0)
+                : raak != null ? raak.getHitPosition().toLocation(w) : oog.clone().add(kijk.clone().multiply(ZeldaRegels.VUUR_BEREIK));
+        Location van = oog.clone().add(kijk.clone().multiply(0.6)).add(0, -0.25, 0);
+        int duur = Math.max(2, (int) Math.ceil(naar.distance(van) / 3.0));
+        vlammen.add(new Vlam(p.getUniqueId(), van, naar, duur, doel != null && doel[0] instanceof ZeldaHoofdstuk.Reeks r ? r : null,
+                doel != null ? (int) doel[1] : -1, doel != null && doel[0] instanceof ZeldaHoofdstuk.Smelt sm ? sm : null, vijand));
+        w.playSound(oog, Sound.ENTITY_BLAZE_SHOOT, 0.5f, 1.3f);
+        w.playSound(oog, Sound.ITEM_FIRECHARGE_USE, 0.4f, 1.6f);
+    }
+
+    /** Elke tik: de vlammen onderweg (een spoor van vuur), en wat ze raken als ze aankomen. */
+    private void vlammen() {
+        for (var it = vlammen.iterator(); it.hasNext(); ) {
+            Vlam v = it.next();
+            Player p = Bukkit.getPlayer(v.wie);
+            if (p == null || !speelt(p)) {
+                it.remove();
+                continue;
+            }
+            v.tik++;
+            var w = v.naar.getWorld();
+            org.bukkit.util.Vector weg = v.naar.toVector().subtract(v.van.toVector());
+            for (int i = 0; i < 3; i++) {
+                double f = Math.min(1, (v.tik - 1 + i / 3.0) / v.duur);
+                Location l = v.van.clone().add(weg.clone().multiply(f));
+                w.spawnParticle(Particle.FLAME, l, 2, 0.05, 0.05, 0.05, 0.005);
+                if (i == 0) w.spawnParticle(Particle.SMALL_FLAME, l, 1, 0.1, 0.1, 0.1, 0.01);
+            }
+            if (v.tik < v.duur) continue;
+            it.remove();
+            if (v.reeks != null) activeer(p, v.reeks, v.ding);
+            else if (v.ijs != null) smelt(p, v.ijs);
+            else if (v.vijand != null && v.vijand.isValid() && !v.vijand.isDead()) {
+                v.vijand.damage(ZeldaRegels.VUUR_SCHADE * (v.vijand.getScoreboardTags().contains(IJS) ? 2 : 1), p);
+                w.spawnParticle(Particle.FLAME, v.vijand.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.02);
+                var duw = v.vijand.getLocation().toVector().subtract(v.van.toVector()).setY(0);
+                if (duw.lengthSquared() > 0.01) v.vijand.setVelocity(duw.normalize().multiply(0.35).setY(0.2));
+            } else {
+                w.spawnParticle(Particle.LAVA, v.naar, 3, 0.1, 0.1, 0.1, 0);
+                w.spawnParticle(Particle.SMOKE, v.naar, 6, 0.15, 0.15, 0.15, 0.01);
+                w.playSound(v.naar, Sound.BLOCK_FIRE_EXTINGUISH, 0.3f, 1.6f);
+            }
+        }
+    }
+
+    // ── betoverd ijs (smelt met de vuurstaf, eiland 4a) ─────────────────────────────────────
+
+    /** De vuurstaf smelt betoverd ijs: lucht of water. Wie erbij is, onthoudt het ({@code s:<id>}) en vindt het voortaan gesmolten. */
+    void smelt(Player p, ZeldaHoofdstuk.Smelt s) {
+        if (s.ijs.isOpen) return;
+        var w = p.getWorld();
+        Location m = s.ijs.omvang().midden(w).add(0, 1, 0);
+        deur(s.ijs, true, binnen(s));
+        s.leegSinds = 0;
+        w.playSound(m, Sound.BLOCK_FIRE_EXTINGUISH, 1f, 0.8f);
+        w.playSound(m, Sound.BLOCK_GLASS_BREAK, 0.5f, 1.5f);
+        w.spawnParticle(Particle.CLOUD, m, 25, 0.8, 0.6, 0.8, 0.03);
+        List<Player> wie = in(s.gebied);
+        if (!wie.contains(p)) wie.add(p);
+        for (Player q : wie) if (voortgang.van(q.getUniqueId()).zet("s:" + s.id)) voortgang.vuil();
+        muziek.speel(p, ZeldaMuziek.OPGELOST);
+    }
+
+    private Location binnen(ZeldaHoofdstuk.Smelt s) {
+        return s.binnen != null ? s.binnen : s.gebied.midden(plugin.w).add(0, 1, 0);
+    }
+
+    /** Betoverd ijs weer dicht (bevroren). */
+    void herstel(ZeldaHoofdstuk.Smelt s) {
+        s.leegSinds = 0;
+        deur(s.ijs, false, binnen(s));
+    }
+
+    /**
+     * Elke vijf tikken: gesmolten en een minuut niemand in de buurt = weer bevroren; wie het ooit smolt, vindt het
+     * gesmolten. In rust zet de motor het ijs terug als fel licht het toch liet smelten (gewoon ijs smelt bij licht).
+     */
+    private void smelt(ZeldaHoofdstuk.Smelt s, long nu) {
+        if (s.ijs.isOpen) {
+            if (!in(s.gebied.groter(6)).isEmpty()) s.leegSinds = 0;
+            else if (s.leegSinds == 0) s.leegSinds = nu;
+            else if (nu - s.leegSinds > 60_000L) herstel(s);
+            return;
+        }
+        for (Player p : in(s.gebied))
+            if (voortgang.van(p.getUniqueId()).heeft("s:" + s.id)) {
+                s.leegSinds = 0;
+                deur(s.ijs, true, binnen(s));
+                return;
+            }
+        if (tikken % 100 == 0 && !in(s.gebied.groter(24)).isEmpty())
+            for (int[] c : s.ijs.blokken) {
+                Block b = plugin.w.getBlockAt(c[0], c[1], c[2]);
+                if (b.getType() != s.ijs.dicht.getMaterial()) b.setBlockData(s.ijs.dicht, false);
+            }
+    }
+
+    // ── hitte in de mijn (eiland 4a) ────────────────────────────────────────────────────────
+
+    /** De hitte waar deze speler in staat (op zijn eiland), of null. */
+    ZeldaHoofdstuk.Hitte hitteBij(Player p, Sessie ss) {
+        if (ss == null || ss.h.eiland == null) return null;
+        Location l = p.getLocation();
+        for (ZeldaHoofdstuk h : ss.h.eiland.delen()) for (ZeldaHoofdstuk.Hitte x : h.hitten) if (x.gebied.in(l)) return x;
+        return null;
+    }
+
+    /** Koelt deze speler hier af: in water, bij een zielvuur of in een bron (van zijn eiland)? */
+    boolean koelplek(Player p, Sessie ss) {
+        if (p.isInWater()) return true;
+        Location l = p.getLocation();
+        if (ss.h.eiland != null) for (ZeldaHoofdstuk h : ss.h.eiland.delen()) {
+            for (ZeldaHoofdstuk.Rust r : h.rust) if (r.zone.in(l)) return true;
+            for (ZeldaHoofdstuk.Bron b : h.bronnen) if (b.zone.in(l)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Twee keer per seconde: in de hitte word je warm (de balk onderin), in water, bij een zielvuur of in een bron koel je
+     * af, en met het gloedharnas deert het je niet. Te heet = terug naar waar je het laatst afkoelde. Geen schade.
+     */
+    private void hitte(Player p, Sessie ss, long nu) {
+        if (ss == null || ss.vaart != null || p.isDead() || beheer.is(p.getUniqueId()) || ss.h.eiland == null) return;
+        ZeldaHoofdstuk.Hitte h = hitteBij(p, ss);
+        if (h == null && ss.hitte <= 0) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        boolean koel = koelplek(p, ss);
+        double oud = ss.hitte;
+        ss.hitte = ZeldaRegels.hitte(oud, 0.5, h != null, h == null ? 0 : h.snel, h == null ? 0 : h.koel, h != null && h.fel,
+                s.heeft("koelsteen"), ZeldaRegels.hittevast(s), koel);
+        if (h != null && koel && !h.fel) ss.koelplek = p.getLocation().clone();
+        boolean race = false;
+        for (ZeldaHoofdstuk d : ss.h.eiland.delen()) for (ZeldaHoofdstuk.Uitdaging u : d.uitdagingen) race |= u.loopt.containsKey(p.getUniqueId());
+        if (!race) p.setExp((float) Math.min(0.999, ss.hitte));
+        if (h != null && !h.fel && koel && !ss.koelt && oud > 0.2) {          // afkoelen: het sist even
+            p.playSound(p, Sound.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.3f);
+            p.spawnParticle(Particle.CLOUD, p.getLocation().add(0, 0.8, 0), 8, 0.3, 0.3, 0.3, 0.02);
+        }
+        ss.koelt = koel && h != null;
+        if (h != null && ss.hitte > 0.6) {
+            p.spawnParticle(Particle.SMOKE, p.getLocation().add(0, 1.1, 0), 3, 0.3, 0.4, 0.3, 0.01);
+            if (nu % 2000 < 500) p.playSound(p, Sound.BLOCK_FIRE_AMBIENT, SoundCategory.AMBIENT, 0.4f, 0.8f);
+            if (s.zet("v:hitte")) {
+                voortgang.vuil();
+                uitleg(p, ZeldaHoofdstuk.r("Wiske", "Pff, warm! In water koel je af."));
+            }
+        }
+        if (h != null && ss.hitte >= 1) teHeet(p, ss, h, nu);
+    }
+
+    /** Te heet: even terug naar waar je afkoelde (of de koele plek van deze hitte), zonder schade. */
+    private void teHeet(Player p, Sessie ss, ZeldaHoofdstuk.Hitte h, long nu) {
+        Location naar = h.terug;
+        if (!h.fel && ss.koelplek != null && h.gebied.groter(12).in(ss.koelplek) && ss.koelplek.getBlock().isPassable()
+                && ss.koelplek.clone().add(0, 1, 0).getBlock().isPassable()) naar = ss.koelplek;
+        if (naar == null) naar = ss.rustplaats().plek;
+        ss.hitte = 0.4;
+        p.setFallDistance(0);
+        p.teleport(naar);
+        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 20, 0, false, false, false));
+        p.playSound(p, Sound.ENTITY_PLAYER_HURT_ON_FIRE, 0.4f, 1.3f);
+        if (nu - ss.teHeet > 30_000L && ss.rij.isEmpty() && ss.nu == null)
+            vertel(p, ZeldaHoofdstuk.r("Wiske", h.fel ? "Te heet! Zonder harnas kom je hier niet." : "Pff, te heet! Even afkoelen."));
+        ss.teHeet = nu;
+    }
+
     // ── glijvloeren (eiland 3b) ─────────────────────────────────────────────────────────────
 
     /** Iemand die over een glijvloer glijdt: vanaf het midden van een vakje, in een richting, tot een ander vakje. */
@@ -2945,6 +3268,8 @@ final class ZeldaSpel implements Listener {
             p.setExp(0f);
             Sessie ss = sessie(p);
             ss.h = ss.rh;
+            ss.hitte = 0;
+            ss.koelplek = null;
             ss.laatsteHemel = -1;
             hemel(p, ss, p.getLocation());
             p.playSound(p, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 0.4f, 1.4f);

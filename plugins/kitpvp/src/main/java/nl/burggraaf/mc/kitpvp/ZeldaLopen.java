@@ -16,7 +16,8 @@ import org.bukkit.World;
  * Kun je er lopen? Volgt vanaf de aanleg van een eiland alle plekken waar een speler kan staan: een stap omhoog van
  * hoogstens één blok (springen), omlaag hoogstens drie, over een gat van één blok springen, ladders en water op en neer.
  * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel, een poort voor wie iets
- * heeft, een brug die komt, de sluizen van eb en vloed) tellen als open en het water van een getij als water: in het spel gaan ze open.
+ * heeft, een brug die komt, de sluizen van eb en vloed, en met de vuurstaf betoverd ijs) tellen als open en het water van
+ * een getij als water: in het spel gaan ze open.
  * Met de klauwhaak: een haakpunt dat je ergens vandaan kunt raken (binnen bereik, niets ertussen) brengt je naar zijn
  * landing, en daar loop je verder. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
  * kan dat er nog niet is, zoals de klauwhaak), kamers, uitdagingen, verhalen, bronnen, spiegels, bellen en de plek vóór
@@ -236,6 +237,7 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Barst b : h.barsten) l.opening(b.muur);
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels) l.opening(s.deur);
             for (ZeldaHoofdstuk.Poort p : h.poorten) if (!dicht.contains(p.id)) l.opening(p.deur);
+            if (voorwerpen.contains("vuurstaf")) for (ZeldaHoofdstuk.Smelt sm : h.smelten) l.opening(sm.ijs);   // betoverd ijs: gesmolten (lucht of water)
             for (ZeldaHoofdstuk.Getij g : h.getijden) {                  // eb en vloed: het water telt als water (zwemmen), de deuren als open
                 for (ZeldaHoofdstuk.Deur d : g.lagen) for (int[] c : d.blokken) l.open.put(sleutel(c[0], c[1], c[2]), Material.WATER);
                 for (ZeldaHoofdstuk.Deur d : g.sluizen) l.opening(d);
@@ -279,6 +281,8 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels)
                 for (int[] c : s.spiegels) if (!l.bij(c, 3)) niet.add(d + "spiegels " + s.id + ": spiegel op " + c[0] + "," + c[1] + "," + c[2]);
             for (ZeldaHoofdstuk.Barst b : h.barsten) if (b.voor != null && !l.bij(b.voor, 1)) niet.add(d + "voor de gebarsten muur " + b.id);
+            for (ZeldaHoofdstuk.Smelt sm : h.smelten) if (sm.voor != null && !l.bij(sm.voor, 1)) niet.add(d + "voor het ijs " + sm.id);
+            for (ZeldaHoofdstuk.Reeks r : h.reeksen) if (r.voor != null && !l.bij(r.voor, 1)) niet.add(d + "puzzel " + r.id + ": de plek om te mikken");
             for (ZeldaHoofdstuk.Getij g : h.getijden)
                 for (ZeldaHoofdstuk.Getij.Hendel hd : g.hendels) if (!l.bij(new int[]{hd.x(), hd.y(), hd.z()}, 2)) niet.add(d + "getij " + g.id + ": hendel op " + hd.x() + "," + hd.y() + "," + hd.z());
             for (ZeldaHoofdstuk.Graaf g : h.graven) if (!l.bij(g.plek(), 1)) niet.add(d + "graafplek " + g.id() + " " + xyz(g.plek()));

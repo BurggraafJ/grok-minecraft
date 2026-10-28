@@ -1103,6 +1103,17 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.boven(w, map, "zelda-e3b-troon", 1676, -320, 1712, -280, f3 - 2, f3 + 10, 8));
         f.add(Kaart.voor(w, map, "zelda-e3b-zij", 0, -1, -250, 1578, 1718, g, zg + 64, 120, 3));
         f.add(Kaart.voor(w, map, "zelda-e3b-toren-zij", 0, -1, -300, 1676, 1712, f3 - 2, zg + 64, 30, 6));
+        // eiland 4a, de Gloedberg (Sintelgat en de mijnen): alles van boven, het dorp, de bovenmijn en de gloed (net onder de
+        // plafonds), de hete gangen en de Gloedader, de mijn van opzij (door de Lorriehal en door de Vonkkamer), en het geheel
+        int d4 = zg + 2, f4 = zg - 5;
+        f.add(Kaart.boven(w, map, "zelda-e4a-boven", ZeldaEiland4a.X1, ZeldaEiland4a.Z1, ZeldaEiland4a.VX2, ZeldaEiland4a.Z2, g - 2, zg + 72, 2));
+        f.add(Kaart.boven(w, map, "zelda-e4a-dorp", 1098, 296, 1172, 362, g - 2, d4 + 14, 7));
+        f.add(Kaart.boven(w, map, "zelda-e4a-baai", 1058, 316, 1110, 352, g - 2, zg + 16, 8));
+        f.add(Kaart.boven(w, map, "zelda-e4a-mijn", 1162, 254, 1262, 368, d4 - 1, d4 + 5, 5));
+        f.add(Kaart.boven(w, map, "zelda-e4a-hete-gangen", 1204, 256, 1262, 336, f4 - 1, f4 + 4, 8));
+        f.add(Kaart.voor(w, map, "zelda-e4a-mijn-zij", 0, 1, 325, 1160, 1262, g, zg + 40, 14, 5));      // van binnen, door de Daaltrap en de Gloedader
+        f.add(Kaart.voor(w, map, "zelda-e4a-vonk-zij", 1, 0, 1197, 252, 300, g, zg + 34, 12, 8));       // door de Schachtput en de Vonkkamer
+        f.add(Kaart.voor(w, map, "zelda-e4a-zij", 0, -1, 470, 1060, 1400, g, zg + 72, 300, 2));
         List<String> uit = new ArrayList<>();
         for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;

@@ -41,6 +41,7 @@ final class ZeldaTest {
     private final Deque<Stap> rij = new ArrayDeque<>();
     private BukkitTask taak;
     private boolean belGehad;                               // de bel is één keer getest (in de eerste kamer met een bel)
+    private boolean hitteTest;                              // nu wordt de hitte getest (anders houdt de test je koel: hij teleporteert)
     private String geklikt;                                 // het eiland waarheen Brecht vaart na een klik in zijn menu
 
     ZeldaTest(KitPvP pl, Zelda z, Player p, CommandSender aan) {
@@ -420,6 +421,32 @@ final class ZeldaTest {
                             moet(e.isCancelled(), "spiegels " + sp.id + ": spiegel " + i + " reageert niet op een klik");
                         }
                 }, 4, () -> sp.opgelost && sp.deur.isOpen && stand().heeft("r:" + sp.id), 20);
+            } else if (o instanceof ZeldaHoofdstuk.Reeks r && r.hoe == ZeldaHoofdstuk.Reeks.Hoe.VUUR) {   // vuurschalen op afstand: echte vlammen
+                final int[] i = {0};
+                stap("vuurpuzzel " + r.id, () -> {
+                    moet(stand().heeft("vuurstaf"), "geen vuurstaf voor de puzzel " + r.id);
+                    if (r.opgelost || !r.isAan.isEmpty()) z.spel.herstel(r);
+                    i[0] = 0;
+                    p.teleport(r.voor != null ? r.voor : vrij(r.gebied.midden(h.w).add(0, 1, 0)));
+                }, 4, () -> {
+                    if (z.spel.vlamOnderweg(p)) return false;
+                    if (r.opgelost) return r.deur.isOpen && stand().heeft("r:" + r.id);
+                    if (i[0] >= r.dingen.size()) {
+                        fouten.add("vuurpuzzel " + r.id + ": alles geraakt, maar niet opgelost (" + r.isAan.size() + " van " + r.dingen.size() + " aan)");
+                        return true;
+                    }
+                    int[] c = r.dingen.get(i[0]++);
+                    vuur(h.w.getBlockAt(c[0], c[1], c[2]));
+                    return false;
+                }, 200);
+            } else if (o instanceof ZeldaHoofdstuk.Smelt sm) {                     // betoverd ijs op het pad: een echte vlam van de vuurstaf
+                stap("smelt " + sm.id, () -> {
+                    moet(stand().heeft("vuurstaf"), "geen vuurstaf voor het ijs " + sm.id);
+                    if (sm.ijs.isOpen) z.spel.herstel(sm);
+                    smelt(h, sm);
+                }, 10, () -> sm.ijs.isOpen && stand().heeft("s:" + sm.id) && !z.spel.vlamOnderweg(p), 60);
+            } else if (o instanceof ZeldaHoofdstuk.Hitte ht) {                     // hitte: warm worden, terug, de koelsteen, afkoelen, het gloedharnas
+                hitte(h, ht);
             } else if (o instanceof ZeldaHoofdstuk.Reeks r) {
                 stap("puzzel " + r.id, () -> {
                     if (r.opgelost || !r.isAan.isEmpty()) z.spel.herstel(r);
@@ -445,6 +472,117 @@ final class ZeldaTest {
         p.setCooldown(ZeldaSpel.Klauwhaak.ITEM, 0);
         z.spel.voorwerp("klauwhaak").gebruik(z.spel, p, null);
         moet(z.spel.haaktNaar(p) == hp, "haakpunt " + hp.id() + ": de klauwhaak grijpt " + (z.spel.haaktNaar(p) == null ? "niets" : z.spel.haaktNaar(p).id()));
+    }
+
+    /** Richt de vuurstaf (het voorwerp, zoals rechtsklik) vanaf waar je staat op dit blok. */
+    private void vuur(org.bukkit.block.Block b) {
+        Location l = p.getLocation().clone();
+        l.setDirection(ZeldaSpel.raakpunt(b).toVector().subtract(l.toVector().add(new org.bukkit.util.Vector(0, p.getEyeHeight(), 0))));
+        p.setVelocity(new org.bukkit.util.Vector());
+        p.teleport(l);
+        p.setCooldown(ZeldaSpel.Vuurstaf.ITEM, 0);
+        z.spel.voorwerp("vuurstaf").gebruik(z.spel, p, null);
+    }
+
+    /** Smelt betoverd ijs met een echte vlam: vanaf de plek ervoor (of een plek waar je het ziet) op een blok dat je ziet. */
+    private void smelt(ZeldaHoofdstuk h, ZeldaHoofdstuk.Smelt sm) {
+        Location van = sm.voor;
+        org.bukkit.block.Block doel = null;
+        if (van == null)
+            for (int[] c : sm.ijs.blokken) {
+                van = vanwaar(h.w.getBlockAt(c[0], c[1], c[2]));
+                if (van != null) break;
+            }
+        if (van == null) {
+            fouten.add("ijs " + sm.id + ": nergens een plek om het te zien");
+            return;
+        }
+        for (int[] c : sm.ijs.blokken)
+            if (doel == null && z.spel.zicht(van.clone().add(0, p.getEyeHeight(), 0), h.w.getBlockAt(c[0], c[1], c[2]))) doel = h.w.getBlockAt(c[0], c[1], c[2]);
+        if (doel == null) {
+            fouten.add("ijs " + sm.id + ": niet te zien vanaf " + xyz(van));
+            return;
+        }
+        p.teleport(van);
+        vuur(doel);
+    }
+
+    /** Een plek om te staan (op 5 … 14 blokken) van waaruit je oog dit blok ziet: om er met de vuurstaf op te mikken. */
+    private Location vanwaar(org.bukkit.block.Block b) {
+        Location best = null;
+        double bd = Double.MAX_VALUE;
+        for (int x = b.getX() - 14; x <= b.getX() + 14; x++)
+            for (int y = b.getY() - 8; y <= b.getY() + 4; y++)
+                for (int zz = b.getZ() - 14; zz <= b.getZ() + 14; zz++) {
+                    Location l = new Location(b.getWorld(), x + 0.5, y, zz + 0.5);
+                    double d = l.distanceSquared(b.getLocation().add(0.5, 0.5, 0.5));
+                    if (d < 25 || d >= bd || !staan(l) || !z.spel.zicht(l.clone().add(0, p.getEyeHeight(), 0), b)) continue;
+                    bd = d;
+                    best = l;
+                }
+        return best;
+    }
+
+    /**
+     * Hitte (eiland 4a): zonder koelsteen en harnas word je snel te heet en kom je terug op de koele plek; met de koelsteen
+     * gaat het langzamer, bij een koelplek koel je af, en met het gloedharnas deert het je niet. Daarna weer zoals het was.
+     */
+    private void hitte(ZeldaHoofdstuk h, ZeldaHoofdstuk.Hitte ht) {
+        Location proef = ht.proef != null ? ht.proef : vrij(ht.gebied.midden(h.w).add(0, 1, 0));
+        final boolean[] had = new boolean[3];                                   // koelsteen, harnas3, harnas4
+        final long[] t0 = {0};
+        stap("hitte " + ht.id + ": te heet", () -> {
+            hitteTest = true;
+            ZeldaVoortgang.Stand s = stand();
+            had[0] = s.heeft("koelsteen");
+            had[1] = s.heeft("harnas3");
+            had[2] = s.heeft("harnas4");
+            for (String v : new String[]{"koelsteen", "harnas3", "harnas4"}) s.wis(v);
+            z.spel.uitrusten(p, s);
+            z.spel.sessie(p).hitte = 0;
+            z.spel.sessie(p).koelplek = null;
+            p.teleport(proef);
+            t0[0] = System.currentTimeMillis();
+        }, 2, () -> p.getLocation().distanceSquared(proef) > 9, 200);
+        stap("hitte " + ht.id + ": terug", () -> {
+            moet(ht.terug != null && p.getLocation().distanceSquared(ht.terug) < 4, "hitte " + ht.id + ": te heet, maar niet terug bij " + (ht.terug == null ? "?" : xyz(ht.terug)) + " (op " + xyz(p.getLocation()) + ")");
+            long ms = System.currentTimeMillis() - t0[0];
+            moet(ms < 1000 / ht.snel + 2500, "hitte " + ht.id + ": pas na " + ms + " ms te heet");
+            moet(z.spel.sessie(p).hitte < 1, "hitte " + ht.id + ": nog steeds te heet na het terugkomen");
+        }, 2, () -> true, 1);
+        if (!ht.fel) {
+            stap("hitte " + ht.id + ": koelsteen", () -> {
+                stand().zet("koelsteen");
+                z.spel.sessie(p).hitte = 0;
+                p.teleport(proef);
+            }, 22, () -> {
+                double hit = z.spel.sessie(p).hitte;
+                moet(hit > 0 && hit < ht.snel * 0.9, "hitte " + ht.id + ": met de koelsteen niet langzamer warm (" + hit + " na een seconde)");
+                return true;
+            }, 1);
+            stap("hitte " + ht.id + ": afkoelen", () -> {
+                z.spel.sessie(p).hitte = 0.8;
+                p.teleport(ht.terug);
+            }, 32, () -> {
+                moet(z.spel.sessie(p).hitte < 0.2, "hitte " + ht.id + ": niet afgekoeld bij " + xyz(ht.terug) + " (" + z.spel.sessie(p).hitte + ")");
+                return true;
+            }, 1);
+        }
+        stap("hitte " + ht.id + ": gloedharnas", () -> {
+            stand().zet("harnas3");
+            z.spel.uitrusten(p, stand());
+            moet(p.getInventory().getBoots() != null && p.getInventory().getBoots().getType() == Material.IRON_BOOTS, "het gloedharnas is geen ijzer");
+            z.spel.sessie(p).hitte = 0;
+            p.teleport(proef);
+        }, 30, () -> {
+            moet(z.spel.sessie(p).hitte == 0, "hitte " + ht.id + ": met het gloedharnas toch warm (" + z.spel.sessie(p).hitte + ")");
+            ZeldaVoortgang.Stand s = stand();
+            String[] v = {"koelsteen", "harnas3", "harnas4"};
+            for (int i = 0; i < 3; i++) if (had[i]) s.zet(v[i]); else s.wis(v[i]);
+            z.spel.uitrusten(p, s);
+            hitteTest = false;
+            return true;
+        }, 1);
     }
 
     /** Een plek om te staan van waaruit je oog dit haakpunt ziet, binnen het bereik van de klauwhaak (zo dichtbij mogelijk, niet op de landing). */
@@ -560,6 +698,7 @@ final class ZeldaTest {
                 if (v.voorwerp == null) continue;
                 final ZeldaHoofdstuk.Barst[] muur = {null};
                 final ZeldaHoofdstuk.Haakpunt[] hp = {null};
+                final ZeldaHoofdstuk.Smelt[] ijs = {null};
                 final boolean[] kan = {false};
                 stap("later " + v.vlag, () -> {
                     ZeldaVoortgang.Stand s = stand();
@@ -568,6 +707,11 @@ final class ZeldaTest {
                     for (ZeldaHoofdstuk x : e.delen())
                         for (ZeldaHoofdstuk.Barst b : x.barsten) if (b.gebied.in(v.plek) && !b.muur.isOpen) muur[0] = b;
                     if (muur[0] != null) gooi(d, muur[0]);
+                    if (v.voorwerp.equals("vuurstaf")) {                             // een echte vlam op het ijs eromheen
+                        for (ZeldaHoofdstuk x : e.delen())
+                            for (ZeldaHoofdstuk.Smelt sm : x.smelten) if (sm.gebied.in(v.plek) && !sm.ijs.isOpen) ijs[0] = sm;
+                        if (ijs[0] != null) smelt(d, ijs[0]);
+                    }
                     if (v.voorwerp.equals("klauwhaak")) {                            // een echte haak naar het haakpunt bij de vondst
                         double bd = 10 * 10;
                         for (ZeldaHoofdstuk x : e.delen())
@@ -579,7 +723,7 @@ final class ZeldaTest {
                         if (hp[0] == null) fouten.add("later " + v.vlag + ": geen haakpunt in de buurt");
                         else haak(hp[0], vanwaar(hp[0]));
                     }
-                }, 50, () -> !kan[0] || (muur[0] == null || muur[0].muur.isOpen)
+                }, 50, () -> !kan[0] || (muur[0] == null || muur[0].muur.isOpen) && (ijs[0] == null || ijs[0].ijs.isOpen && !z.spel.vlamOnderweg(p))
                         && (hp[0] == null || !z.spel.aanHetHaken(p) && p.getLocation().distanceSquared(hp[0].landing()) < 2), 80);
                 stap("pak " + v.vlag, () -> {
                     if (kan[0]) p.teleport(vrij(v.zone.midden(d.w).add(0, 1, 0)));
@@ -606,6 +750,14 @@ final class ZeldaTest {
             for (ZeldaHoofdstuk d : e.delen())
                 for (ZeldaHoofdstuk.Vondst v : d.vondsten)
                     if (!s.heeft(v.vlag) && v.vereist != null && s.heeft(v.vereist) && (v.voorwerp == null || s.heeft(v.voorwerp))) {
+                        if (z.spel.vlamOnderweg(p)) return false;
+                        ZeldaHoofdstuk.Smelt dicht = null;                          // betoverd ijs ervoor: eerst smelten (een echte vlam)
+                        for (ZeldaHoofdstuk x : e.delen()) for (ZeldaHoofdstuk.Smelt sm : x.smelten) if (sm.gebied.in(v.plek) && !sm.ijs.isOpen) dicht = sm;
+                        if (dicht != null && "vuurstaf".equals(v.voorwerp)) {
+                            smelt(d, dicht);
+                            wacht[0] = 12;
+                            return false;
+                        }
                         p.teleport(v.zone.midden(d.w).add(0, 1, 0));
                         wacht[0] = 8;
                         return false;
@@ -876,6 +1028,30 @@ final class ZeldaTest {
                 sp.uitrusten(p, stand());
             }, 2, () -> true, 1);
         }
+        ZeldaHoofdstuk.Reeks vuren = h.reeksen.stream().filter(r -> r.hoe == ZeldaHoofdstuk.Reeks.Hoe.KLIK).findFirst().orElse(null);
+        if (vuren != null) {                                                       // de vuurstaf (vak 6): een vuurschaal op afstand aansteken
+            stap("vuurstaf", () -> {
+                stil();
+                stand().zet("vuurstaf");
+                sp.uitrusten(p, stand());
+                moet(item(5) == ZeldaSpel.Vuurstaf.ITEM, "vuurstaf niet in vak 6 maar " + item(5));
+                if (vuren.opgelost || !vuren.isAan.isEmpty()) sp.herstel(vuren);
+                int[] c = vuren.dingen.get(0);
+                org.bukkit.block.Block b = h.w.getBlockAt(c[0], c[1], c[2]);
+                Location van = vanwaar(b);
+                if (van == null) {
+                    fouten.add("vuurstaf: geen plek om de vuurschaal te zien");
+                    return;
+                }
+                p.teleport(van);
+                vuur(b);
+            }, 4, () -> !sp.vlamOnderweg(p) && vuren.isAan.contains(0), 60);
+            stap("vuurstaf weg", () -> {
+                sp.herstel(vuren);
+                stand().wis("vuurstaf");
+                sp.uitrusten(p, stand());
+            }, 2, () -> true, 1);
+        }
         ZeldaEiland e = h.eiland;
         stap("varen", () -> {
             stil();
@@ -985,6 +1161,7 @@ final class ZeldaTest {
                 }
                 return;
             }
+            if (!hitteTest && z.spel.sessie(p) != null) z.spel.sessie(p).hitte = 0;   // de test teleporteert: niet te heet worden
             if (!gedaanDoe[0]) {
                 gedaanDoe[0] = true;
                 gewacht[0] = 0;

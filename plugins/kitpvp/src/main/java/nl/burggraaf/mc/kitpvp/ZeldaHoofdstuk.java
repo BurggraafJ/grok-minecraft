@@ -62,7 +62,7 @@ abstract class ZeldaHoofdstuk {
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
     enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF,
-        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL }
+        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -196,12 +196,13 @@ abstract class ZeldaHoofdstuk {
     }
 
     /**
-     * Puzzel: zet alle dingen aan binnen de tijd (vanaf het eerste). {@code KLIK} = rechtsklikken (vuurschalen),
-     * {@code PIJL} = raak ze met een pijl (doelwitten). Opgelost = de deur gaat open (of de brug komt), tot er een
-     * minuut niemand meer in het gebied is.
+     * Puzzel: zet alle dingen aan binnen de tijd (vanaf het eerste). {@code KLIK} = rechtsklikken (vuurschalen; de
+     * vuurstaf steekt ze ook op afstand aan), {@code PIJL} = raak ze met een pijl (doelwitten), {@code VUUR} = alleen
+     * met de vuurstaf (eiland 4a: lampen hoog aan de wand, vuren boven op een rots). Opgelost = de deur gaat open (of de
+     * brug komt), tot er een minuut niemand meer in het gebied is.
      */
     static final class Reeks {
-        enum Hoe { KLIK, PIJL }
+        enum Hoe { KLIK, PIJL, VUUR }
 
         final String id, naam;
         final Hoe hoe;
@@ -211,6 +212,7 @@ abstract class ZeldaHoofdstuk {
         final Box gebied;
         final int seconden;
         final List<Regel> bijOplossen = new ArrayList<>();
+        Location voor;                                      // VUUR: hier sta je om ze aan te steken (de test; null = het midden van het gebied)
         // tijdens het spel
         final Set<Integer> isAan = new HashSet<>();
         long tot, leegSinds;
@@ -585,6 +587,54 @@ abstract class ZeldaHoofdstuk {
         }
     }
 
+    /**
+     * Betoverd ijs (eiland 4a): dicht tot de vuurstaf het smelt ({@link ZeldaSpel#smelt}); dan wordt het lucht (een
+     * doorgang, een vondst erin) of water (een koelplek in de hete mijn). Altijd hetzelfde blok ({@link #IJS}), zodat
+     * spelers het leren herkennen. Wie het smolt ({@code s:<id>}) vindt het gesmolten; zonder iemand in de buurt bevriest
+     * het na een minuut weer. Let op: gewoon ijs smelt ook bij fel licht (lichtniveau 11 of meer): houd lampen en lava
+     * minstens vijf blokken weg (de motor zet het in rust weer terug).
+     */
+    static final class Smelt {
+        static final Material IJS = Material.ICE;
+
+        final String id;
+        final Deur ijs;                                     // dicht = ijs, open = lucht of water
+        final Box gebied;
+        Location voor;                                      // hier sta je om de vuurstaf erop te richten (de test; null = vanzelf)
+        Location binnen;                                    // wie erin staat als het weer bevriest, komt hier (null = boven het gebied)
+        long leegSinds;
+
+        Smelt(String id, Deur ijs, Box gebied) {
+            this.id = id;
+            this.ijs = ijs;
+            this.gebied = gebied;
+        }
+    }
+
+    /**
+     * Hitte (eiland 4a, de mijn): in dit gebied word je warm, {@code snel} per seconde (0 … 1), met de koelsteen van Tijmen
+     * maar {@code koel}. In water, bij een zielvuur of in een bron koel je af. Is het vol, dan is het te heet: je komt terug
+     * bij de laatste plek waar je afkoelde (of {@code terug}). {@code fel}: de gloed bij de kern van de berg; daar helpt
+     * alleen het gloedharnas, en niets koelt er. Het gloedharnas houdt alle hitte tegen. Geen schade: een rustige druk.
+     */
+    static final class Hitte {
+        final String id, naam;
+        final Box gebied;
+        final double snel, koel;
+        final boolean fel;
+        Location terug;                                     // waar je heen gaat als het te heet wordt (en je nergens afkoelde)
+        Location proef;                                     // een plek in de hitte waar het niet koelt (de test)
+
+        Hitte(String id, String naam, Box gebied, double snel, double koel, boolean fel) {
+            this.id = id;
+            this.naam = naam;
+            this.gebied = gebied;
+            this.snel = snel;
+            this.koel = koel;
+            this.fel = fel;
+        }
+    }
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -604,6 +654,8 @@ abstract class ZeldaHoofdstuk {
     final List<Getij> getijden = new ArrayList<>();
     final List<Graaf> graven = new ArrayList<>();
     final List<Glij> glijvloeren = new ArrayList<>();
+    final List<Smelt> smelten = new ArrayList<>();
+    final List<Hitte> hitten = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -686,13 +738,16 @@ abstract class ZeldaHoofdstuk {
             String i = o instanceof Rust r ? r.id : o instanceof Kamer k ? k.id : o instanceof Uitdaging u ? u.id
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
                     : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id
-                    : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : o instanceof Glij gl ? gl.id : null;
+                    : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : o instanceof Glij gl ? gl.id
+                    : o instanceof Smelt sm ? sm.id : o instanceof Hitte ht ? ht.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
         for (Persoon p : personen) if (p.naam.equals(id)) return p;
         for (Barst b : barsten) if (b.id.equals(id)) return b;
         for (Getij g : getijden) if (g.id.equals(id)) return g;
+        for (Smelt sm : smelten) if (sm.id.equals(id)) return sm;
+        for (Hitte ht : hitten) if (ht.id.equals(id)) return ht;
         return null;
     }
 
@@ -713,6 +768,8 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Getij g) return g.gebied.midden(w);
         if (o instanceof Graaf gr) return gr.plek();
         if (o instanceof Glij gl) return new Location(w, gl.start[0] + 0.5, gl.y + 1, gl.start[1] + 0.5);
+        if (o instanceof Smelt sm) return sm.voor != null ? sm.voor : sm.ijs.omvang().midden(w);
+        if (o instanceof Hitte ht) return ht.proef != null ? ht.proef : ht.gebied.midden(w);
         return null;
     }
 
@@ -750,6 +807,8 @@ abstract class ZeldaHoofdstuk {
         getijden.clear();
         graven.clear();
         glijvloeren.clear();
+        smelten.clear();
+        hitten.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -874,6 +933,26 @@ abstract class ZeldaHoofdstuk {
         glijvloeren.add(g);
         volgorde.add(g);
         return g;
+    }
+
+    /** Betoverd ijs (niet in de volgorde: iets voor later, of een zijpad). */
+    protected Smelt smelt(Smelt s) {
+        smelten.add(s);
+        return s;
+    }
+
+    /** Betoverd ijs óp het pad (je moet het smelten): telt mee in de volgorde (de test richt er een echte vuurstaf op). */
+    protected Smelt smeltOpPad(Smelt s) {
+        smelt(s);
+        volgorde.add(s);
+        return s;
+    }
+
+    /** Een gebied met hitte, op het pad (de test kijkt hier of je warm wordt, afkoelt en terugkomt). */
+    protected Hitte hitte(Hitte h) {
+        hitten.add(h);
+        volgorde.add(h);
+        return h;
     }
 
     protected Verhaal verhaal(Verhaal v) {

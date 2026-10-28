@@ -33,10 +33,11 @@ final class Zelda implements Modus {
     /** De eilanden in de volgorde van het verhaal (zie ZELDA.md). Een nieuw eiland = één regel erbij. */
     final List<ZeldaEiland> EILANDEN;
     /**
-     * Eilanden die eraan komen (nog niet gebouwd): grijs op de kaart zodra hun {@code openNa} er is. De Gloedberg (eiland 4)
-     * gaat open als het Vorstbaken ({@code baken3}, sessie 3b) brandt; de sessie die hem bouwt, haalt hem hier weg.
+     * Eilanden (of delen ervan) die eraan komen, nog niet gebouwd: grijs op de kaart zodra hun {@code openNa} er is. De Smidse
+     * (4b, het tweede deel van de Gloedberg) gaat open na Sintelgat en de mijnen ({@code e4a}); de sessie die hem bouwt, haalt
+     * hem hier weg en zet het deel in de regel van de Gloedberg.
      */
-    final List<ZeldaEiland.Komt> KOMT = List.of(new ZeldaEiland.Komt("gloedberg", "De Gloedberg", Material.MAGMA_BLOCK, "baken3"));
+    final List<ZeldaEiland.Komt> KOMT = List.of(new ZeldaEiland.Komt("smidse", "De Smidse", Material.ANVIL, "e4a", "gloedberg"));
     /** Alle delen van alle eilanden. */
     final List<ZeldaHoofdstuk> HOOFDSTUKKEN;
     final ZeldaZee zee;
@@ -53,7 +54,11 @@ final class Zelda implements Modus {
                 new ZeldaEiland("witte-toppen", "De Witte Toppen", Material.SNOW_BLOCK, List.of(new ZeldaEiland3a(plugin), new ZeldaEiland3b(plugin)), "steiger", "baken2", "baken3", List.of(
                         ZeldaHoofdstuk.r("Brecht", "Het wordt kouder. Kijk, ijsschotsen."),
                         ZeldaHoofdstuk.r("Brecht", "Op de Witte Toppen woont een oude vriend van Teun."),
-                        ZeldaHoofdstuk.r("Wiske", "Bergen met sneeuw erop! Zo hoog!"))));
+                        ZeldaHoofdstuk.r("Wiske", "Bergen met sneeuw erop! Zo hoog!"))),
+                new ZeldaEiland("gloedberg", "De Gloedberg", Material.MAGMA_BLOCK, List.of(new ZeldaEiland4a(plugin)), "baai", "baken3", "baken4", List.of(
+                        ZeldaHoofdstuk.r("Brecht", "Ruik je dat? Rook. We zijn er bijna."),
+                        ZeldaHoofdstuk.r("Brecht", "Op de Gloedberg wonen mijnwerkers. Taaie lui."),
+                        ZeldaHoofdstuk.r("Wiske", "Die berg rookt! Is dat… een vulkaan?"))));
         List<ZeldaHoofdstuk> alle = new ArrayList<>();
         for (ZeldaEiland e : EILANDEN) alle.addAll(e.delen());
         HOOFDSTUKKEN = List.copyOf(alle);
@@ -146,7 +151,7 @@ final class Zelda implements Modus {
         YamlConfiguration gebouwd = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gebouwd.yml"));
         Bouwer b = plugin.bouwer();
         boolean klaar = b == null || !b.bezig();
-        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0, graven = 0, glij = 0;
+        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0, graven = 0, glij = 0, ijs = 0, hitten = 0;
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
             String hid = "zelda " + h.id();
             if (klaar && gebouwd.getInt("delen." + h.deelId(), -1) != h.versie())
@@ -270,6 +275,48 @@ final class Zelda implements Modus {
                 int[] c = gl.start.clone();
                 for (int i = 0; i < gl.oplossing.size(); i++) c = spel.glijNaar(gl, c[0], c[1], gl.oplossing.get(i));
                 if (c[0] != gl.doel[0] || c[1] != gl.doel[1]) fouten.add(gid + ": met de oplossing kom je op " + c[0] + "," + c[1] + " (doel " + gl.doel[0] + "," + gl.doel[1] + ")");
+            }
+            // vuurpuzzels (eiland 4a): van de plek om te mikken zie je elke vuurschaal of lamp, binnen het bereik van de vuurstaf
+            for (ZeldaHoofdstuk.Reeks r : h.reeksen) {
+                if (r.hoe != ZeldaHoofdstuk.Reeks.Hoe.VUUR) continue;
+                if (r.voor == null) {
+                    fouten.add(hid + ": puzzel " + r.id + ": geen plek om te mikken (voor)");
+                    continue;
+                }
+                if (!klaar) continue;
+                if (!vrij(r.voor)) fouten.add(hid + ": puzzel " + r.id + ": de plek om te mikken is niet vrij op " + xyz(r.voor));
+                for (int[] d : r.dingen)
+                    if (!spel.zicht(r.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(d[0], d[1], d[2])))
+                        fouten.add(hid + ": puzzel " + r.id + ": " + d[0] + "," + d[1] + "," + d[2] + " niet te zien (of te ver) vanaf " + xyz(r.voor));
+            }
+            // betoverd ijs (eiland 4a): in zijn gebied, dicht in rust, van de plek ervoor te zien
+            for (ZeldaHoofdstuk.Smelt sm : h.smelten) {
+                ijs++;
+                String sid = hid + ": ijs " + sm.id;
+                if (!inGebied(sm.gebied) || !sm.ijs.omvang().binnen(sm.gebied)) fouten.add(sid + " ligt niet in zijn gebied");
+                if (sm.ijs.dicht.getMaterial() != ZeldaHoofdstuk.Smelt.IJS) fouten.add(sid + " is geen " + ZeldaHoofdstuk.Smelt.IJS);
+                if (!klaar) continue;
+                if (!sm.ijs.isOpen && !deurKlopt(h, sm.ijs, false)) fouten.add(sid + " is gesmolten terwijl niemand het smolt");
+                if (sm.voor != null) {
+                    boolean zien = false;
+                    for (int[] c : sm.ijs.blokken) zien |= spel.zicht(sm.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(c[0], c[1], c[2]));
+                    if (!vrij(sm.voor) || !sm.gebied.in(sm.voor)) fouten.add(sid + ": de plek ervoor is niet vrij of ligt niet in het gebied");
+                    else if (!zien && !sm.ijs.isOpen) fouten.add(sid + ": van de plek ervoor niet te zien");
+                }
+            }
+            // hitte (eiland 4a): een plek om heen te gaan als het te heet wordt, en een koelplek erin (water, zielvuur of bron)
+            for (ZeldaHoofdstuk.Hitte ht : h.hitten) {
+                hitten++;
+                String hd = hid + ": hitte " + ht.id;
+                if (!inGebied(ht.gebied) || ht.terug == null || ht.snel <= 0) fouten.add(hd + ": buiten het gebied, zonder plek om terug te gaan of zonder hitte");
+                if (!ht.fel && (ht.koel <= 0 || ht.koel >= ht.snel)) fouten.add(hd + ": de koelsteen helpt niet");
+                boolean koel = ht.fel;
+                for (ZeldaHoofdstuk.Rust r : h.rust) koel |= ht.gebied.in(r.plek);
+                for (ZeldaHoofdstuk.Bron br : h.bronnen) koel |= ht.gebied.in(br.midden);
+                for (ZeldaHoofdstuk.Smelt sm : h.smelten) koel |= sm.ijs.open.getMaterial() == Material.WATER && ht.gebied.in(sm.ijs.omvang().midden(h.w));
+                if (!koel) fouten.add(hd + ": geen koelplek (water, zielvuur of bron) in de hitte");
+                if (klaar && ht.terug != null && !vrij(ht.terug)) fouten.add(hd + ": de plek om terug te gaan is niet vrij op " + xyz(ht.terug));
+                if (ht.proef != null && (!ht.gebied.in(ht.proef) || klaar && !vrij(ht.proef))) fouten.add(hd + ": de proefplek ligt niet vrij in de hitte");
             }
             // een baas met ijszuilen (Grimmel): de zuilen staan er als er niet gevochten wordt, in zijn kamer
             for (ZeldaHoofdstuk.Kamer k : h.kamers) {
@@ -424,7 +471,8 @@ final class Zelda implements Modus {
         info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
                 + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
                 + " personen=" + personen + " missies=" + missies + " hartstukjes=" + stukjes + " barsten=" + barsten + " haakpunten=" + haken
-                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " graafplekken=" + graven + " glijvloeren=" + glij + " voorwerpen=" + spel.voorwerpen.size()
+                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " graafplekken=" + graven + " glijvloeren=" + glij + " ijs=" + ijs + " hitte=" + hitten
+                + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
     }

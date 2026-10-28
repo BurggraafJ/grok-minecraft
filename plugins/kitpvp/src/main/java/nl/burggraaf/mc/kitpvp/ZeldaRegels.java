@@ -358,6 +358,33 @@ final class ZeldaRegels {
         return best;
     }
 
+    /** Hoe ver de vuurstaf reikt (blokken), en hoeveel graden ernaast mag (net als de klauwhaak). */
+    static final double VUUR_BEREIK = 24, VUUR_HOEK = 6;
+    /** Wat een vlam van de vuurstaf doet bij een vijand (halve harten); een vijand van ijs krijgt het dubbele. */
+    static final double VUUR_SCHADE = 4;
+
+    /** Vanaf dit harnas deert de hitte je niet meer: het gloedharnas ({@code harnas3}, eiland 4a). */
+    static final int GLOEDHARNAS = 3;
+    /** Zo snel koel je af (per seconde) in water, bij een zielvuur of een bron, en buiten de hitte. */
+    static final double AFKOELEN = 0.6;
+
+    /** Deert de hitte je niet meer (het gloedharnas, of beter)? */
+    static boolean hittevast(ZeldaVoortgang.Stand s) {
+        return harnas(s) >= GLOEDHARNAS;
+    }
+
+    /**
+     * De hitte van een speler (0 … 1) na {@code dt} seconden. Buiten de hitte, of met het gloedharnas, koel je af. In de
+     * hitte word je warm: {@code snel} per seconde, met de koelsteen {@code koel}; in water, bij een zielvuur of in een
+     * bron ({@code koelplek}) koel je af. In de felle gloed ({@code fel}) helpen de koelsteen en de koelplekken niet.
+     */
+    static double hitte(double oud, double dt, boolean inHitte, double snel, double koel, boolean fel, boolean koelsteen, boolean hittevast, boolean koelplek) {
+        double d;
+        if (!inHitte || hittevast || (koelplek && !fel)) d = -AFKOELEN * dt;
+        else d = (fel || !koelsteen ? snel : koel) * dt;
+        return Math.max(0, Math.min(1, oud + d));
+    }
+
     /** Een eilandnaam midden in een zin: «Het Lindewoud» → «het Lindewoud». */
     static String inZin(String naam) {
         return naam.startsWith("Het ") ? "het " + naam.substring(4) : naam.startsWith("De ") ? "de " + naam.substring(3) : naam;
