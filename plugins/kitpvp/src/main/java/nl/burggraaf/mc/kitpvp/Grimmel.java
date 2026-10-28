@@ -32,7 +32,7 @@ import org.bukkit.util.Vector;
 final class Grimmel extends ZeldaBaas {
 
     /** Zo lang duizelt hij na een zuil (seconden), en zo lang is een zuil weg (ms). */
-    static final int VERSUFT = 6;
+    static final int VERSUFT = 5;
     static final long ZUIL_WEG = 20_000L;
     /** Zo lang staat hij op zijn achterpoten voor hij stormt (tikken), zo snel stormt hij (blokken per tik) en zo ver. */
     static final int AANLOOP = 30;

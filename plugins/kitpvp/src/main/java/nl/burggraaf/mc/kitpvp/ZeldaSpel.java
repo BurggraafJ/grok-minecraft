@@ -2652,10 +2652,7 @@ final class ZeldaSpel implements Listener {
         if (naar[0] == van[0] && naar[1] == van[1]) return false;
         glijders.put(p.getUniqueId(), new Glijden(g, van, r, naar));
         p.getWorld().playSound(l, Sound.BLOCK_POWDER_SNOW_STEP, 0.8f, 1.4f);
-        if (voortgang.van(p.getUniqueId()).zet("v:glij")) {
-            voortgang.vuil();
-            uitleg(p, ZeldaHoofdstuk.r("Wiske", "Wiiie! Je glijdt tot je ergens tegenaan botst."));
-        }
+        if (voortgang.van(p.getUniqueId()).zet("v:glij")) voortgang.vuil();   // je gleed al eens (de uitleg bij het ijs zwijgt dan)
         return true;
     }
 
@@ -2696,7 +2693,8 @@ final class ZeldaSpel implements Listener {
             Location l = p.getLocation();
             double[] v = glijVorige.get(id);
             glijVorige.put(id, new double[]{l.getX(), l.getZ(), v == null ? 0 : v[2]});
-            if (v == null || tikken < v[2] || !g.isIjs(l.getBlockX(), l.getBlockZ()) || Math.abs(l.getY() - (g.y + 1)) > 0.7) continue;
+            // op het ijs (ook in de lucht: springen helpt niet, je glijdt meteen)
+            if (v == null || tikken < v[2] || !g.isIjs(l.getBlockX(), l.getBlockZ()) || l.getY() < g.y + 0.6 || l.getY() > g.y + 3.5) continue;
             double dx = l.getX() - v[0], dz = l.getZ() - v[1];
             if (dx * dx + dz * dz < 0.0025) continue;                         // stil (een klein beetje schuiven telt niet)
             BlockFace r = Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? BlockFace.EAST : BlockFace.WEST) : (dz > 0 ? BlockFace.SOUTH : BlockFace.NORTH);

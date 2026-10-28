@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.8.2, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.9.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -470,14 +470,29 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   haakpunt, een donker blok met een ring, binnen 24 blokken; een paar graden ernaast mag; hij trekt je erheen; werkt
   ook op de oude haakpunten in de Kloof van het Lindewoud en op de Meeuwenrots). Drie haakpunten in de kloofwand zijn
   de les; zo kom je op de Uitkijk en loop je terug naar het dorp. Bij de ingestorte trap van de **Bergpoort** haak je
-  je omhoog: het begin van het bergpad (einde `e3a`), nog dicht door een lawine tot 3b het IJspaleis bouwt.
+  je omhoog: het begin van het bergpad (einde `e3a`; sinds 3b is de lawine weg: `zelda-e3a` versie 2).
   Zijmissies: **Saar en Sven** (*Zoekgeraakte geiten*: Bles, Mekker en Sokje, verspreid over het dal; wie thuis is
   staat in de stal → `hs:witte-toppen-1`) en **Grootvader Ys** aan zijn wak op het bevroren meer (*De brief van Ys*:
   een opdracht terug naar Zoutkom, **Teun** geeft het vierde flesje `fles4`). Verder **Noor** (de ijsbaan om het
   eilandje: een tijdrace op blauw ijs), **Hagen** de smid, een hartstukje dat het vosje onder de spar op het eilandje
   vindt, en een hartstukje in betoverd ijs bij de smidse (pas met de vuurstaf, eiland 4a). Muziek *IJshoeve*,
-  *Sneeuwstorm*, *Wachterspost*. Volgende delen (het IJspaleis, Gloedberg, Nachtrots) komen in losse sessies (lijst
-  in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  *Sneeuwstorm*, *Wachterspost*. **Eiland 3b, de Witte Toppen: het IJspaleis** (sessie zelda-eiland-3b, kitpvp 2.9,
+  deel `zelda-e3b`, x 1580…1720): het bergpad naar de **berghut** (klimster **Ida**), met de klauwhaak de ijswand op
+  en over de ijskloof naar het **voorplein** (zielvuur, bron; de hub van het paleis). Daar de **IJstuin** (achter een
+  gebarsten muur: een tweede **glijvloer**, de sneeuwbloem en de hoorn van Ys) en de oude **sleebaan** terug naar de
+  berghut (tijdrace). De valbrug is op: haak je naar de poorttoren en trek aan de hendel. In de Poortzaal zit
+  **Tijmen** opgesloten (een bom): hij geeft de **zonnesteen**. Vanuit de **Kristalzaal** (hub binnen) in elke
+  volgorde: de **Glijzaal** (glad ijs: een stap = glijden tot je ergens tegenaan botst; motor `ZeldaHoofdstuk.Glij`) met
+  het Noorderkristal en daarna de **Wachtzaal** (het enige gevecht: ijsknechten, vorstschutters, ijskobolden in drie
+  gemengde golven), en de **Spiegelzaal** (licht alleen met de zonnesteen) met een kloof naar de **Wapenkamer**: het
+  Zuiderkristal en het **bevroren harnas**, dat **Hagen** in IJshoeve warmt: het **wachtersharnas** (`harnas2`). Met
+  twee kristallen en het harnas gaat de troondeur open: **Grimmel**, de reuzenijsbeer van de wachters (`Grimmel`): hij
+  gaat staan en stormt; ga opzij of haak je weg (de klauwhaak werkt in zijn zaal), dan loopt hij tegen een ijszuil en
+  duizelt hij (dan doet een klap veel meer). Bevrijd sjokt hij naar zijn hol. Dan `hart3` en de toren op naar het
+  **Vorstbaken** (`baken3`, einde `e3b`): het wordt ochtend, Wiske wordt feller en **de Gloedberg** staat aangekondigd
+  (`Zelda.KOMT`). Zijmissies: *De hoorn van Ys* (→ `hs:witte-toppen-4`) en de boodschap over zee *De sneeuwbloem*
+  (Hanne op het Lindewoud → een vijfde flesje `fles5`). Muziek *Bergpad*, *IJspaleis*, baas *Grimmel*. Volgende delen
+  (Gloedberg, Nachtrots) komen in losse sessies (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).
@@ -488,10 +503,13 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   een uniek begin is genoeg) = erheen, zet beheer zo nodig aan: eiland (`lindewoud`), deel (`h1`), rustplaats (`thuis`,
   `dorp`, `eik`, `ruine`, `kloofrand`, `moerashut`, `haven`), kamer (`open-plek`, `veen`, `heksenkring`, `kade`), persoon
   (`tijmen`, `kees`, `bram`, `fien`, `sem`, `wout`, `gerrit`, `hanne`, `brecht`, `lotje`, `roos`, `lorre`, `saar`,
-  `sven`, `ys`, `hagen`, `noor`, `vosje`, en `tijmen-e2b`/`tijmen-e3a` voor de andere Tijmens), puzzel of uitdaging
-  (`vuren`, `kloof`, `doelen`, `spiegels`, `parelduik`, `ijsbaan`), poort (`doornen`, `ankerpoort`, `luik`,
-  `wachtersdeur`), getij en zijn hendels (`getij`, `hendel1`, `hendel2`), gebarsten muur (`muur-pijpgang`, …),
-  haakpunt (`haak-richel`, `haak-rots`, `haak-kloof1`…`3`, `haak-bergpoort`), graafplek (`graaf-deur`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
+  `sven`, `ys`, `hagen`, `noor`, `vosje`, `ida`, `grimmel`, en `tijmen-e2b`/`tijmen-e3a`/`tijmen-e3b` voor de andere
+  Tijmens), puzzel of uitdaging (`vuren`, `kloof`, `doelen`, `spiegels`, `parelduik`, `ijsbaan`, `valbrug`, `sleebaan`,
+  `spiegelzaal`), poort (`doornen`, `ankerpoort`, `luik`, `wachtersdeur`, `troonpoort`), getij en zijn hendels (`getij`,
+  `hendel1`, `hendel2`), gebarsten muur (`muur-pijpgang`, `muur-wachtkamer`, `muur-ijstuin`, …), haakpunt
+  (`haak-richel`, `haak-rots`, `haak-kloof1`…`3`, `haak-bergpoort`, `haak-ijswand`, `haak-poort`, `haak-balkon`, …),
+  graafplek (`graaf-deur`), glijvloer (`glijzaal`, `glijtuin`), rustplaats van 3b (`berghut`, `voorplein`,
+  `kristalzaal`, `troondrempel`, `vorstbaken`), kamer (`wachtzaal`, `troonzaal`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
   zijn) = Zelda-voortgang terug naar het begin; zit hij in Zelda, dan eerst naar de hub (spullen weg, beheer uit) en
   opnieuw naar binnen bij het begin. Console: `kitpvp zelda reset <speler>`. Raakt alleen zelda.yml van die speler. Console:
   `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
@@ -499,12 +517,13 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   echte speler; wist eerst diens voortgang; `alles` loopt alle eilanden af, vaart heen en weer voor boodschappen en
   controleert of alles te belopen is), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp zelda lopen
   <eiland> [zonder <voorwerp>] [dicht <poort>]` (is alles te belopen? en wat ligt er achter een poort of voorwerp?),
-  `kitpvp bouw zelda`, `kitpvp bouw zelda-e2a`, `kitpvp bouw zelda-e2b`, `kitpvp bouw zelda-e3a`.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 4, `zelda-e2a` 2, `zelda-e2b` 5, `zelda-e3a` 1, `zelda-zee` 1;
+  `kitpvp bouw zelda`, `kitpvp bouw zelda-e2a`, `kitpvp bouw zelda-e2b`, `kitpvp bouw zelda-e3a`, `kitpvp bouw zelda-e3b`.
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 4, `zelda-e2a` 2, `zelda-e2b` 5, `zelda-e3a` 2, `zelda-e3b` 1, `zelda-zee` 1;
   `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
   over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
   eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,
-  `kitpvp kaart` (plaatjes van wat er staat, `plugins/KitPvP/kaart/*.png`), `kitpvp test <speler>` (loopt de hele route
+  `kitpvp kaart [begin]` (plaatjes van wat er staat, `plugins/KitPvP/kaart/*.png`; met `begin` alleen die plaatjes, bv.
+  `zelda-e3b`), `kitpvp test <speler>` (loopt de hele route
   met een online speler: poorten, deuren, kits, `/arena`, gevecht-tag; niet bij spelers die aan het spelen zijn);
   `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor Zelda: x 1024…2047,
   z −512…511.

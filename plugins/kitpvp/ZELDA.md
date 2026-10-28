@@ -403,14 +403,14 @@ IJshoeve (3a) blijft de hub van het eiland; het voorplein is de hub van het pale
 | 1629 … 1640, −300 … −288 | **de gracht en de poort**: de valbrug is op; haak je naar de poorttoren (haakpunt boven de poort), binnen een hendel: de brug zakt (en blijft voortaan zakken voor wie hem neerliet) | haakpunt `poort`, puzzel `valbrug` |
 | 1635 … 1645, −306 … −289 | **de Poortzaal**; achter een gebarsten muur de wachtkamer met **Tijmen** (opgesloten: «ik was er te vroeg») → de **zonnesteen** | barst `wachtkamer`, persoon |
 | 1647 … 1669, −305 … −283 | **de Kristalzaal** (de hub van het paleis): een bevroren fontein, zuilen van ijs, deuren noord, zuid en oost | rust 2 `kristalzaal`, bron |
-| 1647 … 1669, −333 … −309 | **de Glijzaal**: glad ijs (5 zetten); aan de overkant kun je niet meer terug over het ijs, een kuil met het **Noorderkristal** en een bron, een trap naar de Wachtzaal | glijvloer `glijzaal`, vondst `kristal-noord` |
+| 1647 … 1669, −333 … −309 | **de Glijzaal**: glad ijs (5 zetten); aan de overkant kun je niet meer terug over het ijs, een kuil met het **Noorderkristal**, een zielvuur en een bron, een trap naar de Wachtzaal | glijvloer `glijzaal`, vondst `kristal-noord`, rust 3 `kristalkuil` |
 | 1671 … 1685, −333 … −319 | **de Wachtzaal**: ijsknechten (drie gemengde golven; de bel = nog eens) — het enige gevecht, daarna de Oostgang in | kamer `wachtzaal` |
-| 1671 … 1677, −317 … −283 | **de Oostgang**: rustplaats, bron, de **troondeur** van blauw ijs (open met twee kristallen én het wachtersharnas) | rust 3 `troondrempel`, poort `troonpoort` |
+| 1671 … 1677, −317 … −283 | **de Oostgang**: rustplaats, bron, de **troondeur** van blauw ijs (open met twee kristallen én het wachtersharnas) | rust 4 `troondrempel`, poort `troonpoort` |
 | 1647 … 1669, −280 … −258 | **de Spiegelzaal**: donker tot iemand met de zonnesteen binnen is; vier draaispiegels (een lokspiegel), het licht smelt de ijsdeur | spiegels `spiegelzaal` |
 | 1671 … 1689, −279 … −263 | **een kloof in het paleis** (haakpunten heen en terug) naar de **Wapenkamer**: het **Zuiderkristal** en het **bevroren harnas** | haakpunten `wapenkamer`, `spiegelzaal`, vondsten |
 | 1500, −300 (3a) | **Hagen** in IJshoeve warmt het harnas: het **wachtersharnas** (`harnas2`); terug naar de hub (de kaart reist van zielvuur naar zielvuur) | praten (Hagen) |
 | 1681 … 1709, −305 … −283 | **de Troonzaal** (een achthoek, vier ijszuilen, vier haakpunten aan de muren): **Grimmel**; in het oosten zijn hol | kamer + baas, vondst `hart3`, persoon Grimmel |
-| 1690 … 1700, −319 … −307 | **de toren**: een wenteltrap naar het platform (F+28) met **het Vorstbaken** | rust 4 `vorstbaken`, vondst `baken3`, verhaal: einde (`e3b`) |
+| 1690 … 1700, −319 … −307 | **de toren**: een wenteltrap naar het platform (F+28) met **het Vorstbaken** | rust 5 `vorstbaken`, vondst `baken3`, verhaal: einde (`e3b`) |
 
 - **Hoofdlijn** (elf doelen voor `/hint` en Tijmen, na die van 3a): het bergpad op (ijswand, ijskloof) → de poort
   (haakpunt, hendel) → Tijmen (een bom tegen de muur: de zonnesteen) → **in elke volgorde** (doelgroep `kristal`) de
@@ -419,21 +419,23 @@ IJshoeve (3a) blijft de hub van het eiland; het voorplein is de hub van het pale
 - **Rondjes**: dorp → Bergpoort → bergpad → voorplein → sleebaan → berghut; in het paleis Kristalzaal → Glijzaal →
   Wachtzaal → Oostgang → Kristalzaal; de valbrug is na de eerste keer een kortere weg naar buiten; de kaart reist tussen
   de zielvuren (IJshoeve ↔ Kristalzaal). Wie de Glijzaal deed, gaat daarna vrij door de Wachtzaal (de bel = nog eens).
-- **Glijvloeren** (motor, nieuw): op glad ijs (blauw ijs) loop je niet: zet je een stap, dan glijd je rechtdoor tot je
-  ergens tegenaan botst (een rots van pakijs, een muur) of van het ijs af bent. Geen tijd, geen vlag. De Glijzaal is
+- **Glijvloeren** (motor, nieuw): op glad ijs (blauw ijs) loop je niet: zet je een stap (of spring je), dan glijd je
+  rechtdoor tot je ergens tegenaan botst (een rots van pakijs, een muur) of van het ijs af bent. Geen tijd, geen vlag;
+  Wiske legt het één keer uit, bij het eerste ijs waar je komt. De Glijzaal is
   verplicht en eenrichting (de kuil erachter ligt drie lager), de IJstuin is moeilijker en optioneel.
 - **Grimmel** (`Grimmel`, een `ZeldaBaas`): de reuzenijsbeer van de wachters, betoverd. Hij sjokt en slaat; om de acht
   tellen (onder een derde om de zes) gaat hij op zijn achterpoten staan (dan ligt de richting vast) en stormt hij rechtdoor.
   Wie opzij gaat of zich wegtrekt met de klauwhaak (werkt in zijn zaal: `Kamer.haken`), laat hem tegen een ijszuil lopen:
-  de zuil breekt (20 s later terug) en hij duizelt zes tellen; dan doet een klap anderhalf keer zoveel, anders maar
-  0,3 (dikke vacht: `ZeldaRegels.grimmelSchade`). Tegen een muur schudt hij alleen zijn kop. Wie hij raakt krijgt een duw
+  de zuil breekt (20 s later terug) en hij duizelt vijf tellen; dan doet een klap 1,2 keer zoveel, anders maar een
+  kwart (dikke vacht: `ZeldaRegels.grimmelSchade`): zo duurt het een paar zuilen lang. Tegen een muur schudt hij alleen zijn kop. Wie hij raakt krijgt een duw
   (en weinig schade: de balans en het wachtersharnas). 60 leven (+30 per extra speler, ×1,5 balans), een ijskobold bij
   twee derde en bij een derde. Ys en Hagen verklappen het («recht tegen de zuilen»), Wiske zegt het bij het begin en na
   doodgaan. Bevrijd = de nevel trekt uit hem weg en hij sjokt naar zijn hol (daar slaapt hij voortaan: aaien mag).
 - **Vechten**: alleen de Wachtzaal (ijsknecht, vorstschutter, ijskobold: drie gemengde golven) en Grimmel. Pijlen van
   vorstschutters maken je in Zelda niet traag.
-- **Genezen en bescherming**: vijf rustplaatsen, bronnen op het voorplein, in de Kristalzaal, in de kuil (bij de
-  Wachtzaal) en in de Oostgang (vlak voor Grimmel); het **wachtersharnas** moet je hebben voor de troondeur open gaat.
+- **Genezen en bescherming**: zes rustplaatsen (ook in de kristalkuil: wie in de Wachtzaal valt, hoeft niet opnieuw
+  te glijden), bronnen op het voorplein, in de Kristalzaal, in de kuil (bij de Wachtzaal) en in de Oostgang (vlak voor
+  Grimmel); het **wachtersharnas** moet je hebben voor de troondeur opengaat.
 - **Personen**: **Ida** (berghut: de wand, de sleebaan), **Tijmen** (opgesloten in de wachtkamer: de zonnesteen, daarna de
   wegwijzer van het paleis; na het baken «Op de Gloedberg zien we elkaar weer»), **Grimmel** (na de strijd, in zijn hol).
   Op 3a praten mee: **Ys** (de hoorn, zijn oude harnas, de zuilen, Grimmel, het baken), **Hagen** (het harnas, eerst),

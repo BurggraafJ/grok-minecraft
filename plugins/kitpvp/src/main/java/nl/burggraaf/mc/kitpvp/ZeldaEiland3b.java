@@ -736,7 +736,12 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
                 r("Wiske", "Weer zo'n gebarsten muur. Wat zit erachter?")))).als = s -> !s.heeft("b:ijstuin");
         na("ijstuin-muur", muur);
         verhaal(new Verhaal("ijstuin", Box.van(1615, F, -312, 1623, F + 4, -310), List.of(
-                r("Wiske", "Een tuin onder glas! En weer glad ijs."))));
+                r("Wiske", "Een tuin onder glas! Wat warm hier."))));
+        Verhaal ijs = verhaal(new Verhaal("uitleg-tuinijs", Box.van(1617, F, -313, 1621, F + 4, -311), List.of(
+                r("Wiske", "Glad ijs! Daarop glijd je tot je ergens tegenaan botst."),
+                r("Wiske", "Kijk goed welke rots je tegenhoudt."))));
+        ijs.uitleg = true;
+        ijs.als = s -> !s.heeft("v:glij");
         glij(glijvloer("glijtuin", "De IJstuin", TUIN, 1612, -324, Box.van(1611, F, -334, 1628, F + 8, -310), "NESWSEN"));
         verhaal(new Verhaal("bloemen", Box.van(1612, F, -328, 1620, F + 4, -325), List.of(
                 r("Wiske", "Sneeuwbloemen! Ze bloeien in de kou."))));
@@ -1015,16 +1020,20 @@ final class ZeldaEiland3b extends ZeldaHoofdstuk {
             for (int x : new int[]{1652, 1664}) zet(x, F + 4, -309, Bouwer.gericht(Material.SOUL_WALL_TORCH, BlockFace.NORTH));
             vul(1647, F, -312, 1669, F, -309, Material.POLISHED_ANDESITE);
         }
-        verhaal(new Verhaal("uitleg-glij", Box.van(1653, F, -312, 1663, F + 4, -309), List.of(
+        Verhaal ijs = verhaal(new Verhaal("uitleg-glij", Box.van(1653, F, -312, 1663, F + 4, -309), List.of(
                 r("Wiske", "Glad ijs! Daarop glijd je tot je ergens tegenaan botst."),
-                r("Wiske", "Kijk goed welke rots je tegenhoudt.")))).uitleg = true;
+                r("Wiske", "Kijk goed welke rots je tegenhoudt."))));
+        ijs.uitleg = true;
+        ijs.als = s -> !s.heeft("v:glij");                                 // wie al eens gleed (de IJstuin), weet het
         glij(glijvloer("glijzaal", "De Glijzaal", ZAAL, 1650, -325, Box.van(1647, F - 3, -333, 1669, F + 9, -309), "NENWN"));
         verhaal(new Verhaal("kuil3b", Box.van(1654, F - 3, -330, 1660, F, -327), List.of(
                 r("Wiske", "Over! Terug kan niet meer."),
                 r("Wiske", "Kijk, een kristal. En een trap omhoog."))));
         vondst(new Vondst(NOORD, "Noorderkristal", "past in de troondeur", Material.PRISMARINE_CRYSTALS, plek(1651, F - 0.6, -330, 0f),
                 Box.van(1650, F - 2, -331, 1652, F, -329)));
-        bron("bron-kuil", plek(1660, F - 2, -331, 0f));
+        rustvuur(1656, F - 3, -331);                                        // wie in de Wachtzaal valt, begint hier (niet weer glijden)
+        rust(new Rust("kristalkuil", "De kristalkuil", plek(1659, F - 2, -328, 90f), Box.van(1648, F - 3, -333, 1663, F, -327), List.of()));
+        bron("bron-kuil", plek(1661, F - 2, -331, 0f));
     }
 
     // ── 9. de Wachtzaal: ijsknechten (het enige gevecht, drie gemengde golven) ──────────────

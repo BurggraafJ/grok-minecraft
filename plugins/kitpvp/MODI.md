@@ -245,10 +245,10 @@ Zie de tabel in `ZELDA.md` («3b · berg en paleis: het IJspaleis»). Kort: het 
 haak je de ijswand op en over de ijskloof → het voorplein (rust 1; de IJstuin achter een gebarsten muur: glijvloer,
 sneeuwbloem, de hoorn van Ys; de sleebaan terug naar de berghut) → haak je naar de poorttoren, de hendel: de valbrug →
 de Poortzaal: een bom bevrijdt Tijmen (de zonnesteen) → de Kristalzaal (rust 2) → in elke volgorde: de Glijzaal (glad
-ijs, het Noorderkristal) en de Wachtzaal (het enige gevecht), en de Spiegelzaal (licht van de zonnesteen) met de kloof
-naar de Wapenkamer (het Zuiderkristal, het bevroren harnas) → Hagen in IJshoeve warmt het harnas (`harnas2`) → de
-Oostgang (rust 3) en de troondeur → Grimmel → `hart3` → de toren op naar het Vorstbaken (rust 4, `baken3`, einde
-`e3b`): de Gloedberg is aangekondigd (`Zelda.KOMT`). Boodschap over zee: de sneeuwbloem voor Hanne → `fles5`.
+ijs, het Noorderkristal, de kristalkuil: rust 3) en de Wachtzaal (het enige gevecht), en de Spiegelzaal (licht van de
+zonnesteen) met de kloof naar de Wapenkamer (het Zuiderkristal, het bevroren harnas) → Hagen in IJshoeve warmt het harnas
+(`harnas2`) → de Oostgang (rust 4) en de troondeur → Grimmel → `hart3` → de toren op naar het Vorstbaken (rust 5,
+`baken3`, einde `e3b`): de Gloedberg is aangekondigd (`Zelda.KOMT`). Boodschap over zee: de sneeuwbloem voor Hanne → `fles5`.
 
 ### Eiland 2b: «Het Zilverstrand» oost, de Getijdentempel (`e2b`, deel `zelda-e2b`, x 1230 … 1360, z −480 … −180)
 

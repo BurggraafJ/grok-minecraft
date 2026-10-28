@@ -254,11 +254,11 @@ final class ZeldaRegels {
     }
 
     /**
-     * Hoeveel een klap doet bij Grimmel, de reuzenijsbeer van het IJspaleis: zijn vacht is dik (een klein beetje), maar
-     * versuft (hij stormde tegen een ijszuil) anderhalf keer zoveel.
+     * Hoeveel een klap doet bij Grimmel, de reuzenijsbeer van het IJspaleis: zijn vacht is dik (een kwart), maar
+     * versuft (hij stormde tegen een ijszuil) iets meer dan gewoon. Zo duurt het gevecht een paar zuilen lang.
      */
     static double grimmelSchade(double schade, boolean versuft) {
-        return schade * (versuft ? 1.5 : 0.3);
+        return schade * (versuft ? 1.2 : 0.25);
     }
 
     /** Een vakje (x, z) van een glijvloer: ijs? vrij om in te staan? een gewone vloer? */
