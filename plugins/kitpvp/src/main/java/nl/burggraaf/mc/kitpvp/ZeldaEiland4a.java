@@ -792,7 +792,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                         r("Tijmen", "Daar ben je. Warm, hè?"),
                         r("Wiske", "Hij is er alwéér! Hoe doet hij dat?"),
                         r("Tijmen", "Een koelsteen, uit het hart van een gletsjer."),
-                        r("Tijmen", "In de hete mijn houdt hij je koel. Even.")), (spel, p, s) -> spel.beloon(p, KOELSTEEN, "Koelsteen", "houdt je koel in de hitte"))
+                        r("Tijmen", "Diep in de mijn zul je hem nodig hebben.")), (spel, p, s) -> spel.beloon(p, KOELSTEEN, "Koelsteen", "houdt je koel in de hitte"))
                 .eenmalig("tijmen-staf", s -> s.heeft(VUURSTAF), List.of(
                         r("Tijmen", "De vuurstaf van de eerste smeden. Hij past je goed.")), null)
                 .eenmalig("tijmen-harnas", s -> s.heeft(GLOEDHARNAS), List.of(
@@ -810,14 +810,14 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
     private void okker() {
         okker = persoon(new Persoon("Okker", plek(1145, D + 1, 317, 135f), beroep("armorer"), List.of(
                 r("Okker", "Heet, hè? Hier word je taai van."))));
-        okker.gesprek("okker-harnas", s -> s.heeft(GLOEDIJZER) && s.heeft("r:esse") && !s.heeft(GLOEDHARNAS), List.of(
+        okker.gesprek("okker-harnas", s -> s.heeft(GLOEDIJZER) && esse(s) && !s.heeft(GLOEDHARNAS), List.of(
                         r("Okker", "Gloedijzer én vuur. Even smeden…"),
-                        r("Okker", "Hier: het gloedharnas. De hitte deert je niet meer."),
+                        r("Okker", "Hier: het gloedharnas. Zoals de eerste smeden het droegen."),
                         r("Okker", "Achter de Gloedader is het het heetst. Pas op daar.")), (spel, p, s) -> {
                     p.playSound(p, org.bukkit.Sound.BLOCK_ANVIL_USE, 0.7f, 0.9f);
                     spel.beloon(p, GLOEDHARNAS, "Gloedharnas", "tegen de hitte");
                 })
-                .gesprek("okker-hagen", s -> s.missie(ZeldaEiland3a.GLOEDKOOL) == 1, List.of(
+                .gesprek("okker-hagen", s -> s.missie(ZeldaEiland3a.GLOEDKOOL) == 1 && s.heeft("g:okker-1"), List.of(
                         r("Okker", "Hagen?! Die ouwe brombeer leeft nog!"),
                         r("Okker", "Hier, een gloedkool. Die gaat nooit uit.")), (spel, p, s) -> {
                     spel.missie(p, ZeldaEiland3a.GLOEDKOOL, 2);
@@ -828,16 +828,21 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                         r("Okker", "Mijn esse is koud. De berg ademt slecht sinds de nevel."),
                         r("Okker", "Zonder vuur geen harnas. En zonder harnas niet de diepte in."),
                         r("Okker", "In de oude mijn ligt de vuurstaf van de eerste smeden.")), null)
-                .eenmalig("okker-esse", s -> s.heeft("r:esse") && !s.heeft(GLOEDIJZER), List.of(
+                .eenmalig("okker-esse", s -> esse(s) && !s.heeft(GLOEDIJZER), List.of(
                         r("Okker", "Het vuur brandt weer! Mooi werk."),
                         r("Okker", "Nu nog gloedijzer, uit de Gloedader. Diep in de mijn.")), null)
-                .eenmalig("okker-ijzer", s -> s.heeft(GLOEDIJZER) && !s.heeft("r:esse"), List.of(
+                .eenmalig("okker-ijzer", s -> s.heeft(GLOEDIJZER) && !esse(s), List.of(
                         r("Okker", "Gloedijzer! Maar mijn esse is nog koud."),
                         r("Okker", "Steek hem aan met die staf van je.")), null)
                 .eenmalig("okker-as", s -> s.heeft("k:askamer"), List.of(
                         r("Okker", "Je stond voor de Smidsepoort? Daar smeedden de eersten."),
                         r("Okker", "Asgrim, de Gloedwachter, laat niemand binnen.")), null);
         praten(okker);
+    }
+
+    /** Brandt de esse van Okker voor deze speler (hij stak hem ooit aan; {@code r:esse} vergeet «opnieuw vanaf hier», {@code esse} niet)? */
+    static boolean esse(ZeldaVoortgang.Stand s) {
+        return s.heeft("esse") || s.heeft("r:esse");
     }
 
     /** Dina, mijnwerker: hun lorrie vol erts rolde de Zijgang in, en daar is alles bevroren (zijmissie, een hartstukje). */
@@ -1192,6 +1197,8 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                 zet(1220, F2 + 1, z, Material.BLACKSTONE_WALL);
                 lava.add(new Location(w, 1221.5, F2 + 1, z + 0.5));
             }
+            zet(1221, F2 + 1, 273, Material.BLACKSTONE_WALL);                 // ook de uiteinden dicht: niet langs de wand de lava in
+            zet(1221, F2 + 1, 281, Material.BLACKSTONE_WALL);
             for (int x = 1236; x <= 1236; x++)
                 for (int z = 296; z <= 299; z++) {
                     zet(x, F2 - 1, z, Material.DEEPSLATE);
@@ -1199,6 +1206,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                     zet(x - 1, F2 + 1, z, Material.BLACKSTONE_WALL);
                 }
             zet(1236, F2, 300, Material.BLACKSTONE);
+            zet(1236, F2 + 1, 300, Material.BLACKSTONE_WALL);
             // zielslampen (zacht licht: daar smelt geen ijs van)
             for (int[] l : new int[][]{{1218, 263}, {1218, 284}, {1225, 298}, {1234, 306}}) zet(l[0], F2 + 4, l[1], Bouwer.hangend(Material.SOUL_LANTERN));
         }
@@ -1208,7 +1216,10 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         ht.proef = plek(1218, F2 + 1, 282, 180f);
         verhaal(new Verhaal("hetegangen", Box.van(1214, F2, 265, 1221, F2 + 4, 269), List.of(
                 r("Wiske", "Wat een warmte hier beneden!"),
-                r("Wiske", "Gelukkig heb je de koelsteen van Tijmen."))));
+                r("Wiske", "Gelukkig heb je de koelsteen van Tijmen.")))).als = s -> s.heeft(KOELSTEEN);
+        verhaal(new Verhaal("hetegangen-heet", Box.van(1214, F2, 265, 1221, F2 + 4, 269), List.of(
+                r("Wiske", "Wat een warmte hier beneden!"),
+                r("Wiske", "Zou Tijmen hier iets tegen hebben?")))).als = s -> !s.heeft(KOELSTEEN);
         Verhaal uitleg = verhaal(new Verhaal("uitleg-koel", Box.van(1216, F2, 282, 1221, F2 + 4, 288), List.of(
                 r("Wiske", "Bevroren water, in een warme mijn?"),
                 r("Wiske", "Smelt het met de vuurstaf. Dan koel je af!"))));
@@ -1260,7 +1271,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         lava.add(new Location(w, x2 + 1.5, F2 + 2, 329.5));
         verhaal(new Verhaal("gloedader", Box.van(1230, F2, 314, 1237, F2 + 5, 319), List.of(
                 r("Wiske", "Kijk hoe de muren gloeien!"),
-                r("Wiske", "Dat is gloedijzer. Voor Okker!")))).als = s -> !s.heeft(GLOEDIJZER);
+                r("Wiske", "Daar, in de ader: iets dat gloeit.")))).als = s -> !s.heeft(GLOEDIJZER);
         rustvuur(1226, F2, 328, true);
         rust(new Rust("gloedader", "De Gloedader", plek(1228, F2 + 1, 325, -90f), Box.van(x1, F2, 320, 1233, F2 + 6, z2), List.of()));
         bron("bron-gloedader", plek(1232, F2 + 1, 330, 0f));
@@ -1524,7 +1535,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         doel("lampen", "Drie lampen, hoog en ver weg.", "Richt de vuurstaf op de lampen, snel na elkaar.",
                 plekVan("lampen"), s -> s.heeft("r:lampen") || s.heeft(GLOEDIJZER));
         doel("smeden", "esse", "De esse van Okker is koud.", "Richt de vuurstaf op de esse, in de smidse.",
-                plekVan("esse"), s -> s.heeft("r:esse"));
+                plekVan("esse"), ZeldaEiland4a::esse);
         doel("smeden", "gloedijzer", "Diep in de mijn ligt gloedijzer.", "Achter de lampen gaat een trap omlaag. Smelt het ijs: daar koel je af.",
                 plekVan(GLOEDIJZER), s -> s.heeft(GLOEDIJZER));
         doel("harnas4", "Gloedijzer én vuur. Naar Okker!", "Okker smeedt je een gloedharnas.",
@@ -1544,17 +1555,25 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
             if (!p.getWorld().equals(w) || spel.beheer.is(p.getUniqueId())) continue;
             ZeldaVoortgang.Stand s = spel.voortgang.van(p.getUniqueId());
             if (s.missie("mijnvuren") == 1 && s.heeft("r:mijnvuren")) spel.missie(p, "mijnvuren", 2);   // de vuren branden: terug naar Kobus
+            if (s.heeft("r:esse") && s.zet("esse")) spel.voortgang.vuil();                               // de esse brandt: dat blijft zo
             Location l = p.getLocation();
             boolean buiten = w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) <= l.getBlockY() + 1;
             if (buiten) {
                 for (int i = 0; i < 8; i++) p.spawnParticle(Particle.WHITE_ASH, l.clone().add(r.nextDouble(-10, 10), r.nextDouble(2, 8), r.nextDouble(-10, 10)), 2, 0.5, 0.5, 0.5, 0);
                 if (krater != null) Particle.CAMPFIRE_SIGNAL_SMOKE.builder().location(krater.clone().add(r.nextDouble(-3, 3), 0, r.nextDouble(-3, 3)))
                         .offset(0.6, 0.4, 0.6).speed(0.02).count(2).receivers(p).force(true).spawn();
-            } else for (Location v : lava)                                           // binnen: lava die sputtert, als je in de buurt bent
-                if (v.distanceSquared(l) < 18 * 18 && r.nextInt(3) == 0) {
-                    p.spawnParticle(Particle.LAVA, v, 1, 0.3, 0.1, 0.3, 0);
-                    if (r.nextInt(4) == 0) p.playSound(v, org.bukkit.Sound.BLOCK_LAVA_POP, org.bukkit.SoundCategory.AMBIENT, 0.4f, 0.9f + r.nextFloat() * 0.3f);
+            } else {
+                for (Location v : lava)                                              // binnen: lava die sputtert, als je in de buurt bent
+                    if (v.distanceSquared(l) < 18 * 18 && r.nextInt(3) == 0) {
+                        p.spawnParticle(Particle.LAVA, v, 1, 0.3, 0.1, 0.3, 0);
+                        if (r.nextInt(4) == 0) p.playSound(v, org.bukkit.Sound.BLOCK_LAVA_POP, org.bukkit.SoundCategory.AMBIENT, 0.4f, 0.9f + r.nextFloat() * 0.3f);
+                    }
+                if (plekNaam(l).equals("De mijn") && r.nextInt(3) == 0) {           // in de bovenmijn druppelt het
+                    Location d = l.clone().add(r.nextDouble(-4, 4), 3.2, r.nextDouble(-4, 4));
+                    p.spawnParticle(Particle.FALLING_WATER, d, 1, 0, 0, 0, 0);
+                    if (r.nextInt(3) == 0) p.playSound(d, org.bukkit.Sound.BLOCK_POINTED_DRIPSTONE_DRIP_WATER, org.bukkit.SoundCategory.AMBIENT, 0.5f, 0.8f + r.nextFloat() * 0.4f);
                 }
+            }
         }
     }
 }

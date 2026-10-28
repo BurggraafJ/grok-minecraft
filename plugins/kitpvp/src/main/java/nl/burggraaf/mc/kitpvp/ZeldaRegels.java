@@ -61,7 +61,7 @@ final class ZeldaRegels {
 
     static final String[] HARNAS_NAAM = {"Groene tuniek", "Maliënhemd", "Wachtersharnas", "Gloedharnas", "Lichtharnas"};
 
-    /** Hoeveel flesjes je hebt ({@code fles1} … {@code fles8}; nu zijn er vijf: tot en met de sneeuwbloem van Hanne). */
+    /** Hoeveel flesjes je hebt ({@code fles1} … {@code fles8}; nu zijn er zes: tot en met de veldfles van Hagen, eiland 4a). */
     static int flessen(ZeldaVoortgang.Stand s) {
         int n = 0;
         for (int i = 1; i <= 8; i++) if (s.heeft("fles" + i)) n++;
@@ -360,7 +360,7 @@ final class ZeldaRegels {
 
     /** Hoe ver de vuurstaf reikt (blokken), en hoeveel graden ernaast mag (net als de klauwhaak). */
     static final double VUUR_BEREIK = 24, VUUR_HOEK = 6;
-    /** Wat een vlam van de vuurstaf doet bij een vijand (halve harten); een vijand van ijs krijgt het dubbele. */
+    /** Wat een vlam van de vuurstaf doet bij een vijand (halve harten); een vijand van ijs krijgt anderhalf keer zoveel. */
     static final double VUUR_SCHADE = 4;
 
     /** Vanaf dit harnas deert de hitte je niet meer: het gloedharnas ({@code harnas3}, eiland 4a). */

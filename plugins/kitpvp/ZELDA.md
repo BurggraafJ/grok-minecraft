@@ -638,7 +638,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | Wiske | `ZeldaMetgezel` | kleine allay, alleen voor jou zichtbaar, vliegt naast je schouder, komt voor je zweven als ze praat, wijst bij een tweede hint |
 | dier | `ZeldaDier` | vlag `dier:<soort>`; alleen het **sneeuwvosje** (`VERHAAL`) loopt mee, vrije huisdieren staan uit (`AAN = false`); naam kiezen (menu), loopt mee (eigen pad, geen eigen wil), gaat in een gevecht opzij, snuffelt verborgen vondsten op, graaft graafplekken op |
 | bronnen | `ZeldaHoofdstuk.Bron` | feeënkring (licht, geen blokken): geneest snel, vult flesjes; ook zielvuren vullen flesjes |
-| flesjes | `ZeldaSpel.Flesje` | vak 3, rechtsklik = vijf harten; `fles1` … `fles4` (elk flesje telt, `ZeldaVoorwerp.heeft`: Tijmens `fles2` staat er ook zonder `fles1`) |
+| flesjes | `ZeldaSpel.Flesje` | vak 3, rechtsklik = vijf harten; `fles1` … `fles6` (elk flesje telt, `ZeldaVoorwerp.heeft`: Tijmens `fles2` staat er ook zonder `fles1`) |
 | harnas | `ZeldaSpel.harnas` | vlaggen `harnas1` … `harnas4`, zichtbaar, met versiering vanaf trap 3 |
 | personen | `ZeldaHoofdstuk.Persoon` + `Gesprek` | gesprek per voorwaarde (eerste dat klopt), `Actie` daarna (missie, beloning); glinstert zacht als er iets nieuws is; elk wezen kan (dorpeling met streek, of `soort`) |
 | zijmissies | `ZeldaHoofdstuk.Missie`, `spel.missie`, `spel.beloon` | stappen 1 … n, `KLAAR`; staan op de kaart onder «Opdrachten» en in `/hint` |

@@ -1307,7 +1307,9 @@ final class ZeldaSpel implements Listener {
             return;
         }
         List<Player> in = in(r.gebied);
-        for (Player p : in)                                  // wie hem al eens oploste, hoeft dat niet opnieuw
+        List<Player> bij = new ArrayList<>(in);                 // ook wie bij de deur staat (aan de andere kant, terug)
+        for (Player p : in(r.deur.omvang().groter(3))) if (!bij.contains(p)) bij.add(p);
+        for (Player p : bij)                                 // wie hem al eens oploste, hoeft dat niet opnieuw
             if (voortgang.van(p.getUniqueId()).heeft("r:" + r.id)) {
                 r.opgelost = true;
                 r.leegSinds = 0;
@@ -1890,7 +1892,7 @@ final class ZeldaSpel implements Listener {
     String komt(ZeldaVoortgang.Stand s) {
         for (ZeldaEiland.Komt k : modus.KOMT)
             if (s.heeft(k.openNa())) return k.eiland() == null ? "Straks varen we naar " + ZeldaRegels.inZin(k.naam()) + ". Nog even geduld."
-                    : k.naam() + " gaat straks open. Nog even geduld.";
+                    : k.naam() + (eiland(k.eiland()) == null ? "" : " op " + ZeldaRegels.inZin(eiland(k.eiland()).naam())) + " gaat straks open. Nog even geduld.";
         return null;
     }
 
@@ -1939,6 +1941,11 @@ final class ZeldaSpel implements Listener {
         boolean eerste = !s.heeft("e:" + naar.id());
         long nu = System.currentTimeMillis();
         ss.vaart = new Vaart(naar, nu + (eerste && !naar.overtocht().isEmpty() ? 16_000L : 9_000L), eerste);
+        if (ss.hitte > 0) {                                                  // aan boord is het koel
+            ss.hitte = 0;
+            ss.koelplek = null;
+            p.setExp(0f);
+        }
         ss.rij.clear();
         ss.nu = null;
         ss.tot = 0;
@@ -2746,7 +2753,7 @@ final class ZeldaSpel implements Listener {
     void vlam(Player p) {
         Sessie ss = sessie(p);
         if (ss == null || ss.vaart != null || p.isDead() || p.hasCooldown(Vuurstaf.ITEM)) return;
-        p.setCooldown(Vuurstaf.ITEM, 12);
+        p.setCooldown(Vuurstaf.ITEM, 16);
         var w = p.getWorld();
         Location oog = p.getEyeLocation();
         org.bukkit.util.Vector kijk = oog.getDirection();
@@ -2779,10 +2786,15 @@ final class ZeldaSpel implements Listener {
         if (raak != null && raak.getHitBlock() != null)
             for (Object[] d : doelen) if (((Block) d[2]).equals(raak.getHitBlock())) doel = d;
         if (doel == null && raak != null && raak.getHitEntity() instanceof LivingEntity le) vijand = le;
-        if (doel == null && vijand == null) {                               // net ernaast gemikt: het dichtstbijzijnde doel in die richting
+        while (doel == null && vijand == null && !punten.isEmpty()) {       // net ernaast gemikt: het best passende doel dat je ziet
             int i = ZeldaRegels.mik(new double[]{oog.getX(), oog.getY(), oog.getZ()}, new double[]{kijk.getX(), kijk.getY(), kijk.getZ()},
                     punten, ZeldaRegels.VUUR_BEREIK, ZeldaRegels.VUUR_HOEK);
-            if (i >= 0 && zicht(oog, (Block) doelen.get(i)[2])) doel = doelen.get(i);
+            if (i < 0) break;
+            if (zicht(oog, (Block) doelen.get(i)[2])) doel = doelen.get(i);
+            else {
+                doelen.remove(i);
+                punten.remove(i);
+            }
         }
         Location gezien = doel != null ? zichtpunt(oog, (Block) doel[2]) : null;
         Location naar = doel != null ? (gezien != null ? gezien : raakpunt((Block) doel[2]))
@@ -2819,7 +2831,7 @@ final class ZeldaSpel implements Listener {
             if (v.reeks != null) activeer(p, v.reeks, v.ding);
             else if (v.ijs != null) smelt(p, v.ijs);
             else if (v.vijand != null && v.vijand.isValid() && !v.vijand.isDead()) {
-                v.vijand.damage(ZeldaRegels.VUUR_SCHADE * (v.vijand.getScoreboardTags().contains(IJS) ? 2 : 1), p);
+                v.vijand.damage(ZeldaRegels.VUUR_SCHADE * (v.vijand.getScoreboardTags().contains(IJS) ? 1.5 : 1), p);
                 w.spawnParticle(Particle.FLAME, v.vijand.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.02);
                 var duw = v.vijand.getLocation().toVector().subtract(v.van.toVector()).setY(0);
                 if (duw.lengthSquared() > 0.01) v.vijand.setVelocity(duw.normalize().multiply(0.35).setY(0.2));
@@ -2911,6 +2923,7 @@ final class ZeldaSpel implements Listener {
     private void hitte(Player p, Sessie ss, long nu) {
         if (ss == null || ss.vaart != null || p.isDead() || beheer.is(p.getUniqueId()) || ss.h.eiland == null) return;
         ZeldaHoofdstuk.Hitte h = hitteBij(p, ss);
+        if (h == null) ss.koelplek = null;                                   // buiten de hitte: een nieuwe keer begint bij een nieuwe koelplek
         if (h == null && ss.hitte <= 0) return;
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         boolean koel = koelplek(p, ss);

@@ -813,7 +813,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                     p.playSound(p, org.bukkit.Sound.ITEM_FIRECHARGE_USE, 0.6f, 0.8f);
                     spel.beloon(p, "fles6", "Veldfles", "nog een flesje");
                 })
-                .gesprek("hagen-gloed", s -> s.heeft("e:gloedberg") && s.missie(GLOEDKOOL) == 0, List.of(
+                .gesprek("hagen-gloed", s -> s.heeft("e:gloedberg") && s.missie(GLOEDKOOL) == 0 && s.heeft("g:hagen-1"), List.of(
                         r("Hagen", "Je was op de Gloedberg? Dan ken je Okker, de smid!"),
                         r("Hagen", "We leerden samen smeden. Lang geleden."),
                         r("Hagen", "Vraag hem om een gloedkool. Mijn esse wil niet in deze kou.")), (spel, p, s) -> spel.missie(p, GLOEDKOOL, 1))
