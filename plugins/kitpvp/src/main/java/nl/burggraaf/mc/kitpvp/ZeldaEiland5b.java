@@ -271,6 +271,7 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
         g = bouwer.g;
         G = g + 8;
         P = G + 14;
+        if (morgal != null) morgal.stop();                                     // een herbouw midden in een gevecht: de oude Morgal ruimt op
         leeg(bouwer.w);
         feestOpPad = false;
         zegelOpPad = false;
@@ -639,7 +640,7 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
             for (int z = 9; z <= 17; z += 4) zet(1919, P + 39, z, Bouwer.gericht(Material.PURPLE_WALL_BANNER, BlockFace.WEST));
         }
         rustvuur(1924, P + 40, 12);
-        rust(new Rust("balkon", "Het torenbalkon", plek(1926, P + 41, 11, 90f), Box.van(1921, P + 40, 9, 1929, P + 45, 17), List.of()));
+        rust(new Rust("balkon", "Het torenbalkon", plek(1926, P + 41, 11, 90f), Box.van(1921, P + 40, 9, 1937, P + 45, 17), List.of()));   // ook de richel voor de deur
         bron("bron-balkon", plek(1923, P + 41, 15, 0f));
         verhaal(new Verhaal("balkon", Box.van(1921, P + 40, 9, 1936, P + 45, 17), List.of(
                 r("Wiske", "Het torenbalkon. Wat ben je hoog!"),

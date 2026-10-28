@@ -559,6 +559,11 @@ final class ZeldaTest {
                     return z.spel.sessie(p).opgevangen > voor[0] || ((org.bukkit.entity.Entity) p).isOnGround();
                 }, 200);
                 stap("vangnet " + v.id() + " zacht", () -> {
+                    p.teleport(v.proef());                                              // en wie toch landt: vallen doet daar geen pijn
+                    var val = valSchade();
+                    Bukkit.getPluginManager().callEvent(val);
+                    moet(val.isCancelled(), "vangnet " + v.id() + ": vallen doet daar toch pijn");
+                    p.teleport(z.spel.sessie(p).veilig != null ? z.spel.sessie(p).veilig : z.spel.sessie(p).rustplaats().plek);
                     var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
                     moet(max != null && p.getHealth() >= max.getValue() - 0.01, "vangnet " + v.id() + ": vallen deed pijn (" + p.getHealth() + ")");
                     moet(z.spel.sessie(p).opgevangen > voor[0], "vangnet " + v.id() + ": de nevel ving je niet op (op " + xyz(p.getLocation()) + ")");
@@ -598,7 +603,7 @@ final class ZeldaTest {
             staan.setDirection(b.plek.toVector().subtract(oog.toVector()));
             p.setVelocity(new org.bukkit.util.Vector());
             p.teleport(staan);
-            z.spel.onZwaai(new org.bukkit.event.player.PlayerAnimationEvent(p, org.bukkit.event.player.PlayerAnimationType.ARM_SWING));
+            Bukkit.getPluginManager().callEvent(new org.bukkit.event.player.PlayerAnimationEvent(p, org.bukkit.event.player.PlayerAnimationType.ARM_SWING));   // een echte zwaai (via de listener)
             return false;
         }, 900);
         stap(mg.naam + ": versuft", () -> {
@@ -626,6 +631,13 @@ final class ZeldaTest {
             return false;
         }, 600);
         stap(mg.naam + ": geraakt", () -> moet(mg.hartTreffers >= 1 && mg.leeft(), mg.naam + ": de lichtpijl deed niets"), 2, () -> true, 1);
+    }
+
+    /** Vallen (zoals de server het meldt): voor de test van het vangnet. */
+    @SuppressWarnings("removal")
+    private org.bukkit.event.entity.EntityDamageEvent valSchade() {
+        return new org.bukkit.event.entity.EntityDamageEvent(p, org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.FALL).build(), 6);
     }
 
     /** Helemaal beter (de test vecht lang). */

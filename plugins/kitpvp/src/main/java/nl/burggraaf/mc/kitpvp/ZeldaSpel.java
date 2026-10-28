@@ -3429,7 +3429,8 @@ final class ZeldaSpel implements Listener {
         for (ZeldaHoofdstuk h : hoofdstukken)
             for (ZeldaHoofdstuk.Nevel nv : h.nevels) {
                 if (!nv.brug || nv.nevel.isOpen) continue;
-                ZeldaHoofdstuk.Box om = nv.nevel.omvang().groter(1);
+                ZeldaHoofdstuk.Box b = nv.nevel.omvang();                             // de nevel hangt tot een paar blokken boven de brug (waar je hem ziet)
+                ZeldaHoofdstuk.Box om = new ZeldaHoofdstuk.Box(b.x1() - 1, b.y1() - 1, b.z1() - 1, b.x2() + 1, b.y2() + 4, b.z2() + 1);
                 for (int i = 0; i <= n; i++) {
                     double f = i / (double) n;
                     if (om.in(van.getX() + d.getX() * f, van.getY() + d.getY() * f, van.getZ() + d.getZ() * f)) return nv;
@@ -3498,6 +3499,9 @@ final class ZeldaSpel implements Listener {
             int[] c = blokken.get(i);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!d.isOpen) return;
+                for (Player p : w.getPlayers())                                      // wie er net middenin hangt, komt erop te staan
+                    if (p.getLocation().getBlockX() == c[0] && p.getLocation().getBlockZ() == c[2] && p.getLocation().getY() >= c[1] - 1.8 && p.getLocation().getY() < c[1] + 1)
+                        p.teleport(p.getLocation().clone().add(0, c[1] + 1 - p.getLocation().getY(), 0));
                 w.getBlockAt(c[0], c[1], c[2]).setBlockData(d.open, false);
                 w.spawnParticle(Particle.END_ROD, c[0] + 0.5, c[1] + 1.1, c[2] + 0.5, 2, 0.25, 0.1, 0.25, 0.01);
             }, 1L + i / 3);
@@ -3535,7 +3539,7 @@ final class ZeldaSpel implements Listener {
         Particle.DustOptions zwart = new Particle.DustOptions(Color.fromRGB(0x15121c), 2.4f);
         for (int[] c : n.nevel.blokken) {
             if (rnd.nextInt(3) != 0) continue;
-            double x = c[0] + 0.5 + rnd.nextDouble(-1.1, 1.1), y = c[1] + rnd.nextDouble(), z = c[2] + 0.5 + rnd.nextDouble(-1.1, 1.1);
+            double x = c[0] + 0.5 + rnd.nextDouble(-1.1, 1.1), y = c[1] + (n.brug ? 0.6 + rnd.nextDouble() * 2.2 : rnd.nextDouble()), z = c[2] + 0.5 + rnd.nextDouble(-1.1, 1.1);
             for (Player p : bij) {
                 p.spawnParticle(Particle.DUST, x, y, z, 1, 0.1, 0.15, 0.1, 0, zwart);
                 if (rnd.nextInt(6) == 0) p.spawnParticle(Particle.LARGE_SMOKE, x, y, z, 0, 0, 0.02, 0, 1);

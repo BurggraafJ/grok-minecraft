@@ -174,6 +174,8 @@ final class Morgal extends ZeldaBaas {
         }
         switch (fase) {
             case ZeldaRegels.MORGAL_GEESTEN -> {
+                ZeldaHoofdstuk.Kamer k = kamer();                                // met meer spelers geeft de kamer er een geest bij: die hoort bij de eerste golf
+                if (k != null) for (LivingEntity e : k.vijanden) if (e != ent && !geesten.contains(e)) geesten.add(e);
                 geesten.removeIf(g -> !g.isValid() || g.isDead());
                 if (!geesten.isEmpty()) return;
                 if (wacht > 0) wacht--;

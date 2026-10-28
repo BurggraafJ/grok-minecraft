@@ -1040,7 +1040,9 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    lava die stijgt en zakt is een `Ritme` (dicht = lava, open = de stenen); houd hout drie blokken bij lava vandaan.
    Lichtpijlen (gebouwd in 5a): Morgals nevel is een `Nevel` (blok `Nevel.BLOK`; `nevelOpPad` met `voor` als je erdoor moet).
    Sluipen is een `Sluip` met wachters (`Sluip.wachter(naam, standen)`, of `ZeldaEiland5a.standen` voor heen-en-weer), een
-   `pad` met `schuil`-punten, een `hek` en `terug`: de zelftest controleert of het te doen is.
+   `pad` met `schuil`-punten, een `hek` en `terug`: de zelftest controleert of het te doen is. Een brug of trap die een
+   lichtpijl laat zien is een `Nevel` met `brug = true` (dicht = lucht, open = de brug; `ZeldaRegels.trap` voor treden), en
+   een plek waar je hoog loopt krijgt een vangnet (`val(new Val(…))`: wie valt, staat weer waar hij veilig stond).
 8. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
    test teleporteert, dus deze controle volgt vanaf de steiger elke plek waar een speler kan staan en noemt wat je
    zonder teleporteren niet haalt. Deuren, poorten en bruggen tellen als open (een brug als planken).
@@ -1110,6 +1112,13 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
     testronde zonder fouten loopt en de lijst met losse eindjes leeg is.
 
 **Losse eindjes** (gevonden, nog niet opgelost):
+- Nachtrots (5b): `kitpvp zelda lopen` telt een vuurpuzzel (`Reeks`) en een gebarsten muur altijd als open, ook `zonder vuurstaf` /
+  `zonder bommen`: of je om de wachtersvuren of het puin heen kunt, zie je daar niet (wel met `dicht trap1`, `dicht trap2`,
+  `zonder klauwhaak`, telkens met `dicht torenladder`). Geldt voor alle eilanden; gezien in sessie `zelda-eiland-5b`.
+- Nachtrots (5b): een `Poort` is van iedereen: gaat de ladder voor één speler open (die boven was), dan kan een ander er die
+  minuut ook langs omhoog. Samen spelen mag dat; wie alleen speelt merkt het niet.
+- Zelda is een mannequin met de gewone huid (zoals een speler zonder eigen huid) en een witte jurk; of dat er in een echte
+  client mooi uitziet (en of er geen naam of «NPC» onder staat) is niet bekeken (sessie `zelda-eiland-5b`, geen client).
 - IJshoeve (3a): de schoorstenen van de huisjes lopen door tot y 1 (in `ZeldaEiland3a.huis` begint `nok` op 0, en in de
   vlakke wereld is G negatief). Oplossing: `int nok = Integer.MIN_VALUE;` en `zelda-e3a` versie 3 (dan herbouwt 3a).
   Gezien in sessie `zelda-eiland-4a` (4a had dezelfde code en is opgelost); 3a is niet aangeraakt (buiten het vak).
