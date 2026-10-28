@@ -66,6 +66,7 @@ final class ZeldaKaart {
     private Meting meting;
     private BukkitTask taak;
     private int versie;                                        // telt op als er een blad bij komt: dan tekent iedereen opnieuw
+    private boolean gemeten;                                   // alle eilanden zijn gemeten: niets meer na te kijken
 
     /** Wat er nu op de kaart van één speler staat. */
     static final class Kijk {
@@ -497,6 +498,7 @@ final class ZeldaKaart {
     void opnieuw(ZeldaEiland alleen) {
         for (ZeldaEiland e : spel.eilanden) if (alleen == null || e == alleen) sleutels.remove(e.id());
         meting = null;
+        gemeten = false;
     }
 
     /** Is er een eiland dat nog gemeten moet worden (of wordt)? */
@@ -608,11 +610,14 @@ final class ZeldaKaart {
     private void tik() {
         if (Bukkit.getCurrentTick() % 1200 == 0) bewaar();
         if (meting == null) {
-            if (Bukkit.getCurrentTick() % 40 != 0) return;
+            if (gemeten || Bukkit.getCurrentTick() % 40 != 0) return;
             Bouwer b = plugin.bouwer();
             if (b != null && b.bezig()) return;
+            gemeten = true;
             for (ZeldaEiland e : spel.eilanden) {
-                if (e.delen().get(0).w == null || vlak(e) == null || sleutel(e).equals(sleutels.get(e.id()))) continue;
+                if (vlak(e) == null || sleutel(e).equals(sleutels.get(e.id()))) continue;
+                gemeten = false;
+                if (e.delen().get(0).w == null) continue;
                 meting = new Meting(e);
                 break;
             }

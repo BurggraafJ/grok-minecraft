@@ -514,47 +514,31 @@ final class ZeldaKaartBeeld {
                 int rgb = c == null || c.getAlpha() == 0 ? 0xdcd9d3 : c.getRGB() & 0xffffff;
                 for (int a = 0; a < maal; a++) for (int b = 0; b < maal; b++) img.setRGB(i * maal + a, j * maal + b, rgb);
             }
-        java.awt.Graphics2D g = img.createGraphics();
-        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-        double s = maal;                                             // een merk is 8 × 8 pixels van het blad, zoals in Minecraft
-        for (Merk m : merken) {
-            double x = m.i() * s, y = m.j() * s, r = 3.2 * s;
-            switch (m.soort()) {
-                case "jij", "maat" -> {
-                    double hoek = m.richting() * Math.PI / 8;            // 0 = zuid (omlaag)
-                    double[][] p = {{0, 1.1}, {-0.7, -0.8}, {0, -0.4}, {0.7, -0.8}};
-                    java.awt.geom.Path2D pad = new java.awt.geom.Path2D.Double();
-                    for (int k = 0; k < p.length; k++) {
-                        double px2 = x + r * (p[k][0] * Math.cos(hoek) - p[k][1] * Math.sin(hoek));
-                        double py2 = y + r * (p[k][0] * Math.sin(hoek) + p[k][1] * Math.cos(hoek));
-                        if (k == 0) pad.moveTo(px2, py2);
-                        else pad.lineTo(px2, py2);
-                    }
-                    pad.closePath();
-                    g.setColor(m.soort().equals("jij") ? Color.WHITE : new Color(0x55cc55));
-                    g.fill(pad);
-                    g.setColor(Color.DARK_GRAY);
-                    g.draw(pad);
+        for (Merk m : merken) {                                      // een merk is 8 × 8 pixels van het blad, zoals in Minecraft
+            double x = m.i() * maal, y = m.j() * maal, r = 3.2 * maal;
+            int x1 = (int) (x - r - 2), x2 = (int) (x + r + 2), y1 = (int) (y - r - 2), y2 = (int) (y + r + 2);
+            for (int py = y1; py <= y2; py++)
+                for (int px2 = x1; px2 <= x2; px2++) {
+                    if (px2 < 0 || py < 0 || px2 >= N * maal || py >= N * maal) continue;
+                    double dx = (px2 + 0.5 - x) / r, dy = (py + 0.5 - y) / r;
+                    int c = switch (m.soort()) {
+                        case "jij", "maat" -> {                      // een pijl; richting 0 = zuid (omlaag), 8 = noord
+                            double hoek = m.richting() * Math.PI / 8, u = dx * Math.cos(hoek) + dy * Math.sin(hoek), v = -dx * Math.sin(hoek) + dy * Math.cos(hoek);
+                            boolean in = v <= 1.0 && v >= -0.8 && Math.abs(u) <= (1.0 - v) * 0.4;
+                            boolean rand = !in && v <= 1.15 && v >= -0.95 && Math.abs(u) <= (1.15 - v) * 0.45;
+                            yield in ? (m.soort().equals("jij") ? 0xffffff : 0x55cc55) : rand ? 0x333333 : -1;
+                        }
+                        case "doel" -> Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.25 && Math.abs(dx) < 0.85 ? 0xcc2222 : -1;
+                        default -> {
+                            boolean dorp = m.soort().startsWith("dorp");
+                            boolean in = dorp ? dy >= -0.8 && dy <= 0.6 && Math.abs(dx) <= (dy + 0.8) * 0.6 : Math.abs(dx) <= 0.6 && Math.abs(dy) <= 0.7;
+                            boolean rand = !in && (dorp ? dy >= -0.95 && dy <= 0.75 && Math.abs(dx) <= (dy + 0.95) * 0.65 : Math.abs(dx) <= 0.75 && Math.abs(dy) <= 0.85);
+                            yield in ? (dorp ? 0x9c6b3c : m.soort().equals("toren") ? 0x3b2a4a : 0x6f6f5a) : rand ? 0x111111 : -1;
+                        }
+                    };
+                    if (c >= 0) img.setRGB(px2, py, c);
                 }
-                case "doel" -> {
-                    g.setStroke(new java.awt.BasicStroke((float) (0.9 * s)));
-                    g.setColor(new Color(0xcc2222));
-                    g.drawLine((int) (x - r * 0.8), (int) (y - r * 0.8), (int) (x + r * 0.8), (int) (y + r * 0.8));
-                    g.drawLine((int) (x - r * 0.8), (int) (y + r * 0.8), (int) (x + r * 0.8), (int) (y - r * 0.8));
-                    g.setStroke(new java.awt.BasicStroke(1f));
-                }
-                default -> {
-                    boolean dorp = m.soort().startsWith("dorp");
-                    g.setColor(dorp ? new Color(0x9c6b3c) : m.soort().equals("toren") ? new Color(0x3b2a4a) : new Color(0x6f6f5a));
-                    if (dorp) g.fillPolygon(new int[]{(int) (x - r * 0.8), (int) x, (int) (x + r * 0.8)}, new int[]{(int) (y + r * 0.6), (int) (y - r * 0.8), (int) (y + r * 0.6)}, 3);
-                    else g.fillRect((int) (x - r * 0.6), (int) (y - r * 0.7), (int) (r * 1.2), (int) (r * 1.4));
-                    g.setColor(Color.BLACK);
-                    if (dorp) g.drawPolygon(new int[]{(int) (x - r * 0.8), (int) x, (int) (x + r * 0.8)}, new int[]{(int) (y + r * 0.6), (int) (y - r * 0.8), (int) (y + r * 0.6)}, 3);
-                    else g.drawRect((int) (x - r * 0.6), (int) (y - r * 0.7), (int) (r * 1.2), (int) (r * 1.4));
-                }
-            }
         }
-        g.dispose();
         return img;
     }
 }
