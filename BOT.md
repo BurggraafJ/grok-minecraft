@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.11.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.12.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -406,7 +406,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   gezondheid + gouden appel.
   **Story of Zelda** (`Zelda*.java`; plan en bouwsessies in `ZELDA.md`, techniek in `MODI.md`): avontuur over de
   eilanden van de Glazen Zee, alleen of samen. Door de poort = naar je **laatste rustplaats** (voortgang per speler in
-  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu vier eilanden. **Eiland 1, «Het Lindewoud»**
+  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Nu vijf eilanden (Nachtrots half: de muren). **Eiland 1, «Het Lindewoud»**
   (deel `zelda` versie 4, sessie zelda-lindewoud-v2, kitpvp 2.6; Jelle 27-10: "te veel vechten, te moeilijk, je moet kunnen
   rehealen, kunnen teruglopen"): een **open eiland** (bouwvak x 1024…1639, z −179…179; land x 1045…1492, z −105…105).
   Je wordt wakker in je huisje aan de bosrand (west); het pad brengt je naar **Lindedorp** in het midden (grote linde,
@@ -517,8 +517,24 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   **Nevelring** (ook op het Lindewoud is de zwarte nevel om Nachtrots dan weg). **Nachtrots** staat aangekondigd
   (`Zelda.KOMT`). **Lava doet in Zelda geen echte schade**: wie erin stapt, springt terug naar waar hij veilig stond
   (één hart). Boodschap over zee: Kees op het Lindewoud wil een bijlblad uit de Smidse → `fles7`; een hartstukje in een
-  nevelnis wacht op de lichtpijlen (Nachtrots). Muziek *Smidse*, baas *Asgrim*. Volgend eiland (Nachtrots) komt in
-  losse sessies (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  nevelnis wacht op de lichtpijlen (Nachtrots). Muziek *Smidse*, baas *Asgrim*. **Eiland 5a, Nachtrots: de muren**
+  (sessie zelda-eiland-5a, kitpvp 2.12, deel `zelda-e5a`, x 1640…1879, z −150…150; open na `baken4`; tot 5b er is ook de
+  rots met de toren in x 1880…2000 als decor): altijd nacht. Brecht legt aan in de oude **visserskreek** (hub; Tijmen zit
+  er verstopt); achter een raampje in de rots zit **Wolf**, een gevangen wachter van Zelda: de muursleutel. Over de klippen
+  (haak, bom) naar de muurvoet, dan **sluipen** over de weergang langs vier nachtwachten met een lantaarn (motor
+  `ZeldaHoofdstuk.Sluip`: een vast ritme, de lichtkegel als stipjes op de vloer, balkonnetjes om je te verstoppen; gezien =
+  het hek even dicht en terug naar het zielvuur, geen gevecht). De Kerkertoren omlaag naar de **kerkers** (hub binnen):
+  nog een sluipstuk in de cellengang (drie cipiers, nissen) naar de slapende kerkermeester met de **sleutelbos**; in de cellen
+  **gevangenen van alle eilanden** (Wolkje, het schaap van Gerrit; Bas, de leerjongen van Hendrik; Kiek, een geitje van Saar
+  en Sven; Joppe, de zoon van Dina: bevrijd staan ze weer thuis) en Wolf (daarna in de kreek: het wachtwoord). In de
+  **kapel** van Zelda's wachters (bom, haak, drie vuren met de vuurstaf) de **lichtpijlen** (vak 7, en de boog schiet licht):
+  **Morgals nevel** verdwijnt waar een lichtpijl hem raakt (motor `ZeldaHoofdstuk.Nevel`; ook de nevelnis in de Smidse,
+  `hs:gloedberg-4`). In de wapenkamer het **zwarte harnas**: Mira maakt het in het licht van haar vuurtoren weer schoon (het
+  **lichtharnas**, `harnas4`; terug naar het Zilverstrand). De kerkertrap op, het wachthuis (rust, bron), de binnenpoort
+  (wachtwoord + lichtharnas) en het enige gevecht: de **binnenplaats** (nachtsoldaat, nachtschutter, nevelmijt; drie gemengde
+  golven). Dan de **torenpoort**: de toren en Morgal (5b) staan aangekondigd (`Zelda.KOMT`). Boodschap over zee: Hanne wil
+  maanmos uit de kerkers → een achtste flesje (`fles8`). Muziek *Nachtrots*, *Muren*, *Kerkers*, gevecht *Nachtwacht*. De
+  toren (5b) komt in een volgende sessie (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).
@@ -535,7 +551,9 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   `hendel1`, `hendel2`), gebarsten muur (`muur-pijpgang`, `muur-wachtkamer`, `muur-ijstuin`, …), haakpunt
   (`haak-richel`, `haak-rots`, `haak-kloof1`…`3`, `haak-bergpoort`, `haak-ijswand`, `haak-poort`, `haak-balkon`, …),
   graafplek (`graaf-deur`), glijvloer (`glijzaal`, `glijtuin`), rustplaats van 3b (`berghut`, `voorplein`,
-  `kristalzaal`, `troondrempel`, `vorstbaken`), kamer (`wachtzaal`, `troonzaal`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
+  `kristalzaal`, `troondrempel`, `vorstbaken`), kamer (`wachtzaal`, `troonzaal`), Nachtrots (`kreek`, `muurvoet`, `kerkerhal`,
+  `wachthuis`, `torenpoort`, `binnenplaats`, sluipstukken `weergang` en `kerkerwacht`, `wolf-e5a`, nevel `nevel-<id>`, cellen
+  `cel-<naam>`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
   zijn) = Zelda-voortgang terug naar het begin; zit hij in Zelda, dan eerst naar de hub (spullen weg, beheer uit) en
   opnieuw naar binnen bij het begin. Console: `kitpvp zelda reset <speler>`. Raakt alleen zelda.yml van die speler. Console:
   `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`

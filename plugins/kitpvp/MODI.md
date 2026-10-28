@@ -75,7 +75,7 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 |---|---|
 | `Zelda` | de modus: poort, `EILANDEN`, `delen()` (één bouwdeel per eilanddeel + de zee), join/leave/respawn/stand/plek, zelftest, `kitpvp zelda …` |
 | `ZeldaEiland` | een eiland: id, naam, icoon, delen, aanleg-rustplaats (steiger), `openNa`-vlag, `klaar`-vlag, overtochtregels |
-| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks` (ook `VUUR`: met de vuurstaf), `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Barst` (gebarsten muur), `Haakpunt`, `Spiegels` (draaispiegels), `Poort` (opent voor wie iets heeft), `Praten` (praten op het pad), `Glij` (glijvloer), `Smelt` (betoverd ijs), `Hitte`, `Box`; haken per deel: `tik`, `boem`, `wacht`, `hemel(plek, stand)` |
+| `ZeldaHoofdstuk` | basis van een eilanddeel + de onderdelen: `Rust`, `Bron`, `Kamer`, `Deur`, `Uitdaging`, `Reeks` (ook `VUUR`: met de vuurstaf), `Vondst`, `Verhaal`, `Persoon` (+ `Gesprek`), `Missie`, `Doel`, `Barst` (gebarsten muur), `Haakpunt`, `Spiegels` (draaispiegels), `Poort` (opent voor wie iets heeft), `Praten` (praten op het pad), `Glij` (glijvloer), `Smelt` (betoverd ijs), `Hitte`, `Ritme`, `Nevel` (weg met een lichtpijl), `Sluip` (wachters met een lantaarn), `Box`; haken per deel: `tik`, `boem`, `wacht`, `hemel(plek, stand)` |
 | `ZeldaHoofdstuk1` | «Het Lindewoud» (eiland 1, versie 4: een open eiland): Thuis, Lindedorp in het midden, drie wegen (noord, oost, zuid), de Heksenkring en de haven; Tijmen, Kees, Fien, Sem, Bram, Wout, Gerrit, Hanne, Brecht, Lotje; de oude stukken staan verschoven (`op(dx, dz)`); `motor()` = tips en doelen; `aanvullen` = oude standen (één keer omzetten) |
 | `ZeldaEiland2a` | «Het Zilverstrand» west (eiland 2a, deel `zelda-e2a`): steiger, Zoutkom, de vuurtoren met de spiegelkelder, de duinen, de Meeuwenrots, de dijk; Brecht, Teun (ook de ankersleutel voor 2b), Mira, Hendrik, Pim en Tijmen; zeekraal voor Hanne; de vlieger en het licht van de vuurtoren in `tik()` |
 | `ZeldaEiland2b` | «Het Zilverstrand» oost, de Getijdentempel (eiland 2b, deel `zelda-e2b`): de dijk, het Getijdenplein (hub, Tijmen: de maanparel), het wad met het wrak (Lorre), de getijdenpoelen (Roos, de parelduik), de Getijdenzaal met eb en vloed, de Spoelkamer, de pijpgang, het raderwerk, de Ankerpoort, de Draaikolk (Zoutbaard), de toren met het Getijdenbaken; de kolk en het baken in `tik()` |
@@ -85,12 +85,13 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 | `Grimmel` | de baas van 3b (subklasse van `ZeldaBaas`): een reuzenijsbeer die stormt; tegen een ijszuil = duizelig (dan doet een klap veel), de zuil groeit terug; sjokt na afloop naar zijn hol |
 | `ZeldaEiland4a` | «De Gloedberg», Sintelgat en de mijnen (eiland 4a, deel `zelda-e4a`): de Zwarte Baai, Sintelgat (hub: Tijmen met de koelsteen, Okker, Dina, Fenna, Kobus; de mijnvuren), de Laadkade (de race), de mijn (de Lorriehal, de Oude Gang, de Schachtput, de Vonkkamer met de vuurstaf en de lampen, de hete gangen met koelplekken en betoverd ijs, de Gloedader, de Daaltrap, de gloed, de Askamer, de Smidsepoort, de Asgang), het Uitzicht (Ida), de Zijgang (de lorrie); de kegel van de vulkaan in het vak van 4b zolang 4b er niet is (nu niet meer); as, rook en lava in `tik()` |
 | `ZeldaEiland4b` | «De Gloedberg», de Smidse (eiland 4b, deel `zelda-e4b`): de kegel en de krater (elke kolom van x 1260 … 1400, een wand rond de top), de Smidsepoort (een `Poort` in de wand van 4a), de Smidsehal (hub: Tijmen, de schildplaat), de Kettingzaal (klauwhaak, kettingbrug), de Stuwdam (bom: water op lava wordt steen), de Gietzaal (ovens, lava op een ritme), de Hartdeur (drie vonken + het Gloedschild van Okker), de voorkamer (nevelnis), het Hart (Asgrim), de Schoorsteen (vier haakpunten), de krater (het Gloedbaken) en de uitkijk (de Nevelring breekt); vuurschalen, water, nevel en het baken in `tik()` |
+| `ZeldaEiland5a` | «Nachtrots», de muren (eiland 5a, deel `zelda-e5a`): de visserskreek (hub: Brecht, Tijmen verstopt, Wolf achter zijn raampje met de muursleutel), het klifpad (haak, bom), de muurvoet, de weergang (sluipen langs vier nachtwachten), de Kerkertoren, de kerkers (hub binnen), de cellengang (sluipen langs drie cipiers; gevangenen van alle eilanden, de slapende kerkermeester met de sleutelbos, Wolfs cel), het Vissersgat, de kapel (de lichtpijlen), de wachtersgang, de wapenkamer (het zwarte harnas), de kerkertrap, het wachthuis, de binnenplaats (het enige gevecht), de voorburcht en de hoofdpoort, de torenpoort; tot 5b er is ook de rots met de toren (x 1880 … 2000) als decor; onweer en nevel in `tik()` |
 | `Asgrim` | de baas van 4b (subklasse van `ZeldaBaas`): zweeft onder vier koelkuipen, gooit sintels; een pijl of bom kantelt de kuip boven hem = gedoofd (dan doet een klap alles), de kuip loopt weer vol |
 | `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
 | `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
 | `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
 | `ZeldaDier` | een dier dat meeloopt (vlag `dier:<soort>`): alleen het sneeuwvosje uit het verhaal (`VERHAAL`), vrije huisdieren uit (`AAN`); snuffelt verborgen vondsten op, graaft graafplekken op, gaat in een gevecht opzij |
-| `ZeldaVoorwerp` | een voorwerp in de hotbar (nu: het flesje, de bommen, de klauwhaak en de vuurstaf; later de lichtpijlen) |
+| `ZeldaVoorwerp` | een voorwerp in de hotbar: het flesje, de bommen, de klauwhaak, de vuurstaf en de lichtpijlen |
 | `ZeldaRegels` | regels zonder wereld (unit-tests): harten, hartstukjes, harnas, flesjes, welk doel, opnieuw vanaf hier, glijden over een glijvloer (en de kortste oplossing), de schade bij Zoutbaard en Grimmel, de hitte in de mijn |
 | `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk); een andere baas = een subklasse met eigen `soort`, `helper`, `beweeg`, `schade`, `boem`, `weg` |
 | `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; drie lagen: achtergrond (altijd), lus (gevecht, baas), deuntjes; categorie «Nootblokken» |
@@ -190,6 +191,19 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   op de grond, geen lava vlakbij), met één hart schade (`ZeldaSpel.LAVA_SCHADE`), nooit dood en zonder brand; Wiske zegt
   het één keer. **Lava op een ritme** (`Ritme`): stenen die `laag` ms droog liggen en `hoog` ms onder de lava staan; een tel
   ervoor borrelt het; alleen als er iemand in de buurt is. `zelda lopen`: in lava sta je niet, de stenen tellen als droog.
+- **Lichtpijlen** (vlag `lichtpijlen`, vak 7, eiland 5a): rechtsklik = een pijl van licht (zo hard als een volle boog); ook de
+  boog schiet nu licht (hij heet dan Lichtboog). Elke pijl van wie de lichtpijlen heeft, is een lichtpijl (`ZeldaSpel.LICHT`,
+  een spoor van licht): raakt hij **Morgals nevel** (`Nevel`, blok `TINTED_GLASS` met zwarte deeltjes; binnen een blok ernaast
+  telt ook), dan verdwijnt die (`spel.verdrijf`); wie erbij was (`n:<id>`) vindt hem voortaan weg, een minuut niemand in de
+  buurt = hij kruipt terug. Vijanden met de tag `zelda-nevel` (de nevelmijt) krijgen van licht het dubbele. Verder doet een
+  lichtpijl wat een pijl doet (een kuip van Asgrim, een doelwit). Pijlen pak je in Zelda niet op.
+- **Sluipen** (`Sluip`, eiland 5a): wachters met een lantaarn (een pillager zonder AI, onkwetsbaar) lopen of draaien op een vast
+  ritme (`periode`, standen {fractie, x, y, z, yaw}, `ZeldaRegels.pose`); hun lichtkegel (`bereik` 6, `hoek` 32°, niets
+  ertussen: `spel.ziet`) staat als warme stipjes op de vloer. Wie erin komt (in het `gebied`) is gezien: een alarm, het `hek`
+  gaat vier tellen dicht, je staat weer bij `terug` (het zielvuur) en Wiske zegt één regel (`gezien`: de eerste, tweede, …
+  keer). Bukken (shift): ze zien je pas van dichtbij. Wie de `finish` haalt, krijgt `l:<id>`. Het ritme loopt alleen als er
+  iemand in de buurt is (anders geen wachters in de wereld); `actief` = voor wie ze er zijn (op Nachtrots: tot de
+  binnenplaats). `pad` (rechte stukken) en `schuil` (de punten waar niemand je ooit ziet) zijn voor de test en de zelftest.
 - **Gloedschild** (vlag `gloedschild`, eiland 4b): het schild heet zo (zwart met gloed); Asgrims sintels ketsen erop af als
   je het omhoog houdt (een gewoon schild houdt de helft tegen).
 - **Persoon voor sommigen** (`Persoon.zichtbaar`): alleen te zien (en dus te praten) voor wie het klopt; bv. een geit in
@@ -198,7 +212,7 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   Geen titels, geen chat. 
 - **Muziek, altijd**: een achtergrondlied per streek (`muziek(Location)`: Thuis, Woud, Tempel, Veen, Haven, Zee,
   Zoutkom, Duinen, Vuurtoren, Lindedorp, Wad, Getijdentempel, IJshoeve, Sneeuwstorm, Wachterspost, Bergpad, IJspaleis,
-  Sintelgat, Mijnen, Gloed, Smidse; bazen Zoutbaard, Grimmel en Asgrim),
+  Sintelgat, Mijnen, Gloed, Smidse, Nachtrots, Muren, Kerkers; bazen Zoutbaard, Grimmel en Asgrim; gevecht Nachtwacht),
   daarboven de gevechts- of baaslus en losse deuntjes. Zachter met de schuif «Nootblokken».
 - **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen gewoon
   bijkomen door eten); genezen bij rustplaatsen, bronnen, flesjes, gewonnen kamers, de bakker in Lindedorp, de helft
@@ -292,6 +306,19 @@ Asgrim (kantel de kuip boven hem) → `hart4` → de Schoorsteen (rust 2; vier h
 Gloedbaken (vuurstaf) → `baken4` → de uitkijk: de Nevelring breekt (einde `e4b`); Nachtrots staat in `Zelda.KOMT`.
 Boodschap over zee: Kees (Lindewoud) en het bijlblad → `fles7`.
 
+### Eiland 5a: «Nachtrots», de muren (`e5a`, deel `zelda-e5a`, x 1640 … 1879, z −150 … 150; het vak van 5b x 1880 … 2000)
+
+Zie de tabel in `ZELDA.md` («5a · de muren»). Kort: de visserskreek (rust 0, Brecht; Tijmen verstopt) → Wolf achter zijn
+raampje (de muursleutel) → de klippen (een haak over de kloof, een bom in de smokkelgang) → de muurvoet (rust 1, de muurdeur)
+→ de weergang: sluipen langs vier nachtwachten (balkonnetjes om je te verstoppen) → de Kerkertoren omlaag → de kerkers (rust
+2) → in elke volgorde: de cellengang (sluipen langs drie cipiers, nissen) naar de wachtkamer (de sleutelbos van de slapende
+kerkermeester; de cellen open: Wolf, Wolkje, Bas, Kiek, Joppe), en de kapel (een bom, een haak over de put, drie vuren met de
+vuurstaf: de lichtpijlen; nevel voor de deur) → de wapenkamer (nevel; het zwarte harnas) → Wolf in de kreek (het wachtwoord
+«Maanloos»; het Vissersgat is de korte weg) → Mira op het Zilverstrand: het lichtharnas → de kerkertrap (nevel) → het
+wachthuis (rust 3) → de binnenpoort → de binnenplaats (het enige gevecht) → de torenpoort (rust 4, einde `e5a`): de toren
+(5b) staat in `Zelda.KOMT`. Boodschap over zee: Hanne en het maanmos → `fles8`. Na de binnenplaats zijn de wachters weg en
+gaan de westpoort en de hoofdpoort open (een rondje terug naar de muurvoet).
+
 ### Eiland 2b: «Het Zilverstrand» oost, de Getijdentempel (`e2b`, deel `zelda-e2b`, x 1230 … 1360, z −480 … −180)
 
 Zie de tabel in `ZELDA.md` («2b · oost, de Getijdentempel»). Kort: de dijk → het Getijdenplein (rust 0, Tijmen: de
@@ -376,7 +403,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.
 - `kitpvp bouw zelda` — het Lindewoud opnieuw bouwen, `kitpvp bouw zelda-e2a` het Zilverstrand west, `kitpvp bouw
   zelda-e2b` de Getijdentempel, `kitpvp bouw zelda-e3a` het dal van de Witte Toppen, `kitpvp bouw zelda-e3b` het
-  IJspaleis, `kitpvp bouw zelda-e4a` Sintelgat en de mijnen, `kitpvp bouw zelda-e4b` de Smidse, `kitpvp bouw zelda-zee` de zee. `kitpvp kaart [begin]` maakt ook `zelda-*.png` (met `begin` alleen de plaatjes
+  IJspaleis, `kitpvp bouw zelda-e4a` Sintelgat en de mijnen, `kitpvp bouw zelda-e4b` de Smidse, `kitpvp bouw zelda-e5a` Nachtrots, `kitpvp bouw zelda-zee` de zee. `kitpvp kaart [begin]` maakt ook `zelda-*.png` (met `begin` alleen de plaatjes
   waarvan de naam zo begint, bv. `zelda-e3b`: lichter) (het Lindewoud: boven, thuis, dorp, noord, tempel, veen,
   haven en zijaanzichten; `zelda-e2a-*`: boven, dorp, kelder, kaap, duinen, rots; `zelda-e2b-*`: boven, tempel, kelders
   (en van opzij), de zaal van opzij, wrak, poelen, de duikgang van opzij; `zelda-e3a-*`: boven, dorp, meer, bos, kuil,
@@ -384,15 +411,21 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   (net onder de plafonds), glijzaal, tuin, troon, het geheel en de toren van opzij; `zelda-e4a-*`: boven (met de kegel
   van 4b), dorp, baai, mijn (de bovenmijn en de gloed, net onder de plafonds), hete gangen, de mijn van opzij (door de
   Daaltrap), de Vonkkamer van opzij en het geheel van opzij; `zelda-e4b-*`: boven, de zalen (net boven de vloer), de kloof
-  van de Kettingzaal, de krater, het Hart en de schoorsteen van opzij, de Smidsehal en de Kettingzaal van opzij).
+  van de Kettingzaal, de krater, het Hart en de schoorsteen van opzij, de Smidsehal en de Kettingzaal van opzij; `zelda-e5a-*`:
+  boven (met de toren van 5b), de kreek, de weergang, de burcht (op het plateau), de kerkers, en van opzij door de cellengang,
+  door de kapel en het geheel).
 - `/zelda ga <plek>` kent ook puzzels, uitdagingen en poorten (`vuren`, `kloof`, `doelen`, `spiegels`, `doornen`,
   `parelduik`, `ankerpoort`, `ijsbaan`, `wachtersdeur`, `luik`, `valbrug`, `sleebaan`, `troonpoort`, `spiegelzaal`,
   `lampen`, `esse`, `mijnvuren`, `sporen`, `daaltrap`, `asgang`, `smidsepoort`, `kettingbrug`, `koelpad`, `ovens`,
-  `hartdeur`, `gloedbaken`), lava op een ritme (`gietvloer`), betoverd ijs (`ijs-<id>`: `ijs-ijsblok`, `ijs-koel1`,
+  `hartdeur`, `gloedbaken`, `muurdeur`, `vissersgat`, `cel-wolf`, `cel-wolkje`, `cel-bas`, `cel-kiek`, `cel-joppe`, `cel-mos`,
+  `binnenpoort`, `westpoort`, `hoofdpoort`, `kapelvuren`), sluipstukken (`weergang`, `kerkerwacht`: bij het begin), Morgals
+  nevel (`nevel-<id>`: `nevel-kapeldeur`, `nevel-wapenkamer`, `nevel-wapenkist`, `nevel-nevelgang`, `nevel-kerkertrap`,
+  `nevel-nevelnis`; voor de nevel), lava op een ritme (`gietvloer`), betoverd ijs (`ijs-<id>`: `ijs-ijsblok`, `ijs-koel1`,
   `ijs-koel2`, `ijs-koelgang`; voor het ijs),
   getijden en hun hendels (`getij`, `hendel1`, `hendel2`), gebarsten muren (`muur-<id>`), haakpunten (`haak-<id>`, bij de
   landing), graafplekken (`graaf-<id>`), glijvloeren (`glijzaal`, `glijtuin`: voor het ijs), en een persoon die op meer
-  delen staat met het deel erbij (`tijmen-e2b`, `tijmen-e3a`, `tijmen-e3b`, `tijmen-e4a`, `tijmen-e4b`, `tijmen-e4b-2` (op de uitkijk),
+  delen staat met het deel erbij (`tijmen-e2b`, `tijmen-e3a`, `tijmen-e3b`, `tijmen-e4a`, `tijmen-e4b`, `tijmen-e4b-2` (op de uitkijk), `tijmen-e5a`, `tijmen-e5a-2` (bij de torenpoort), `wolf-e5a` (in de kreek),
+  `brecht-e5a`,
   `brecht-e3a`, `brecht-e4a`, `ida-e4a`; de geiten in de stal: `bles-e3a`); het zoekt daar een plek om te staan.
 
 ## Ruimte in de wereld
@@ -403,7 +436,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 | colosseum + kitruimte | −50 … 50 | −60 … 50 | midden 0/0, kitruimte boven de noordmuur (z −57 … −35) |
 | oefenarena + kitruimte | −24 … 24 | 51 … 134 | midden 0/110, kitruimte z 63 … 87 |
 | kasteel + kitruimte | −42 … 42 | −188 … −94 | midden 0/−150, gracht rondom, kitruimte z −119 … −95 |
-| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); het Lindewoud bouwt x 1024 … 1639, z −179 … 179 (land x 1045 … 1492, z −105 … 105, de rest zee); het Zilverstrand x 1060 … 1360, z −480 … −180 (2a tot 1229, 2b vanaf 1230); de Witte Toppen x 1400 … 1720, z −480 … −180 (3a tot 1579, 3b vanaf 1580); de Gloedberg x 1060 … 1400, z 180 … 480 (4a tot 1259, 4b vanaf 1260: de kegel en de krater); de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
+| **Zelda** | **1024 … 2047** | **−512 … 511** | gereserveerd (`Zelda.GEBIED`); het Lindewoud bouwt x 1024 … 1639, z −179 … 179 (land x 1045 … 1492, z −105 … 105, de rest zee); het Zilverstrand x 1060 … 1360, z −480 … −180 (2a tot 1229, 2b vanaf 1230); de Witte Toppen x 1400 … 1720, z −480 … −180 (3a tot 1579, 3b vanaf 1580); de Gloedberg x 1060 … 1400, z 180 … 480 (4a tot 1259, 4b vanaf 1260: de kegel en de krater); Nachtrots x 1640 … 2000, z −150 … 150 (5a tot 1879, 5b vanaf 1880: de toren); de zee (overtocht) x 1840 … 2040, z −510 … −330; de vakken van de andere eilanden: tabel in `ZELDA.md` |
 
 Alle huidige gebieden liggen in de chunks die de plugin geladen houdt (`onEnable`). Het Zelda-gebied niet: alleen
 tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze zien (de server heeft 1–2 GB).
@@ -411,7 +444,7 @@ tijdens het bouwen staan er tijdelijk tickets, verder laden spelers zelf wat ze 
 ## Bouwen en beheer
 
 - `plugins/KitPvP/gebouwd.yml`: `grond` (vloerhoogte) en per deel de gebouwde versie (`hub`, `arena`, `kasteel`,
-  `zelda`, `zelda-e2a`, `zelda-e2b`, `zelda-e3a`, `zelda-e3b`, `zelda-e4a`, `zelda-e4b`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
+  `zelda`, `zelda-e2a`, `zelda-e2b`, `zelda-e3a`, `zelda-e3b`, `zelda-e4a`, `zelda-e4b`, `zelda-e5a`, `zelda-zee`). Een oude `gebouwd.txt` (tot versie 3) wordt gelezen voor de grondhoogte en daarna vervangen.
   `plugins/KitPvP/zelda.yml`: voortgang in Story of Zelda.
 - Console: `kitpvp zelftest`, `kitpvp bouw [hub|arena|kasteel|zelda|alles]`, `kitpvp status`, `kitpvp aftellen <s>`,
   `kitpvp zelda …` (zie hierboven), `kitpvp kaart` (PNG's van hub, arena's, kasteel en Zelda in

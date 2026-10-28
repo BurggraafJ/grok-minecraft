@@ -1641,10 +1641,6 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                     spel.missie(p, MAANMOS, ZeldaVoortgang.KLAAR);
                     spel.beloon(p, "fles8", "Flesje van maanglas", "een flesje erbij");
                 })
-                .gesprek(null, s -> s.missie(MAANMOS) == 1, List.of(r("Hanne", "Maanmos groeit in de kerkers van Nachtrots. In het donker.")), null)
-                .gesprek("hanne-mos", s -> s.missieKlaar("moeraskruid") && s.heeft("e:nachtrots") && s.missie(MAANMOS) == 0, List.of(
-                        r("Hanne", "Was je op Nachtrots? Daar groeit maanmos."),
-                        r("Hanne", "Daarmee brouw ik nog een flesje. Breng je wat?")), (spel, p, s) -> spel.missie(p, MAANMOS, 1))
                 .gesprek("hanne-1", s -> s.missie("moeraskruid") == 0, List.of(
                         r("Hanne", "Een bezoeker! Pas op, de ketel is heet."),
                         r("Hanne", "Ik brouw bronwater, maar mijn kruiden zijn op."),
@@ -1665,7 +1661,11 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                         r("Hanne", "Zo. Nu geneest je flesje meer.")), (spel, p, s) -> {
                     spel.missie(p, "zeekraal", ZeldaVoortgang.KLAAR);
                     spel.beloon(p, "sterkwater", "Sterk bronwater", "je flesjes genezen meer");
-                });
+                })
+                .gesprek("hanne-mos", s -> s.missieKlaar("moeraskruid") && s.heeft("e:nachtrots") && s.missie(MAANMOS) == 0, List.of(   // achteraan: na de oudere opdrachten
+                        r("Hanne", "Was je op Nachtrots? Daar groeit maanmos."),
+                        r("Hanne", "Daarmee brouw ik nog een flesje. Breng je wat?")), (spel, p, s) -> spel.missie(p, MAANMOS, 1))
+                .gesprek(null, s -> s.missie(MAANMOS) == 1, List.of(r("Hanne", "Maanmos groeit in de kerkers van Nachtrots. In het donker.")), null);
     }
 
     // ── 11. de doelen: raak ze alle drie, dan komt de brug ──────────────────────────────────

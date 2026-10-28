@@ -117,7 +117,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         if (in(x, y, z, 1702, G, -22, 1707, K + 5, -12)) return "Het Vissersgat";
         if (in(x, y, z, 1759, K - 1, -31, 1777, K + 10, -11)) return "De kerkers";
         if (in(x, y, z, 1781, K - 1, -20, 1794, K + 7, -3)) return "De wapenkamer";
-        if (in(x, y, z, 1760, G - 4, -12, 1790, K + 12, 32)) return "De kapel";
+        if (in(x, y, z, 1760, G - 4, -12, 1790, K + 11, 32)) return "De kapel";
         if (in(x, y, z, 1777, K - 1, -25, 1808, K + 6, 28)) return "De wachtersgang";
         if (in(x, y, z, 1640, g, -14, 1729, P + 8, 14)) return "De visserskreek";
         if (in(x, y, z, 1720, g, 12, 1760, P + 3, 46)) return "De klippen";
@@ -1117,7 +1117,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
             spel.vertel(p, r("Wiske", "Nu de cellen. Wolf zit helemaal aan het eind."));
         };
         // Wolfs cel (zuid, aan het eind): open met de sleutelbos
-        wolfCel = poort(new Poort("cel-wolf", deur(tralies(false), 1712, K + 1, -18, 1713, K + 3, -18), Box.van(1710, K, -21, 1715, K + 4, -19), s -> s.heeft(SLEUTELBOS)));
+        wolfCel = poort(new Poort("cel-wolf", deur(tralies(false), 1712, K + 1, -18, 1713, K + 3, -18), Box.van(1710, K, -21, 1715, K + 4, -18), s -> s.heeft(SLEUTELBOS)));
         praten((Persoon) onderdeel("Wolf"));
         // de andere gevangenen (een zijmissie: «De gevangenen»)
         missie(GEVANGENEN, "De gevangenen", "Zoek de sleutels van de kerkermeester.", "Open de cellen: wie zit er nog vast?",
@@ -1133,7 +1133,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 List.of(r("Joppe", "Vrij! Dank je wel!"), r("Joppe", "Ik ben Joppe, uit Sintelgat. Naar mama Dina!")));
         wolfKreek();
         // het maanmos voor Hanne (een boodschap over zee): in een lege cel, achter tralies
-        poorten.add(new Poort("cel-mos", deur(tralies(false), 1729, K + 1, -22, 1730, K + 3, -22), Box.van(1727, K, -21, 1732, K + 4, -19), s -> s.heeft(SLEUTELBOS)));
+        poorten.add(new Poort("cel-mos", deur(tralies(false), 1729, K + 1, -22, 1730, K + 3, -22), Box.van(1727, K, -22, 1732, K + 4, -19), s -> s.heeft(SLEUTELBOS)));
         Vondst mos = vondst(new Vondst(MAANMOS, "Maanmos", "voor Hanne, op het Lindewoud", Material.GLOW_LICHEN, plek(1729, K + 1.4, -25, 0f), Box.van(1728, K + 1, -26, 1731, K + 3, -24)));
         mos.vereist = "g:hanne-mos";
         mos.daarna = (spel, p, s) -> {
@@ -1168,7 +1168,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
      */
     private void gevangene(String id, String naam, EntityType soort, boolean kind, int x, int z, int dx, int dx2, int dz, List<Regel> eerst, List<Regel> vrij) {
         String vlag = "vrij:" + id;
-        Poort cel = poort(new Poort("cel-" + id, deur(tralies(false), dx, K + 1, dz, dx2, K + 3, dz), Box.van(dx - 2, K, -21, dx2 + 2, K + 4, -19), s -> s.heeft(SLEUTELBOS)));
+        Poort cel = poort(new Poort("cel-" + id, deur(tralies(false), dx, K + 1, dz, dx2, K + 3, dz), Box.van(dx - 2, K, dz == -18 ? -21 : -22, dx2 + 2, K + 4, dz == -18 ? -18 : -19), s -> s.heeft(SLEUTELBOS)));
         cellen.put(id, cel);
         Persoon pe = persoon(new Persoon(naam, plek(x, K + 1, z, dz == -18 ? 180f : 0f), null, List.of(eerst.get(0))));
         pe.soort = soort;
@@ -1256,8 +1256,8 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
             for (int x = 1761; x <= 1789; x++)
                 for (int z = 5; z <= 31; z++) {
                     boolean rand = x == 1761 || x == 1789 || z == 5 || z == 31;
-                    for (int y = G - 4; y <= K + 12; y++) {
-                        if (rand || y == K + 12 || y == G - 4) {
+                    for (int y = G - 4; y <= K + 11; y++) {                      // het dak (K+11) ligt onder het plateau (P)
+                        if (rand || y == K + 11 || y == G - 4) {
                             if (!uitgehakt(x, y, z)) zet(x, y, z, licht(x, y, z));
                             continue;
                         }
@@ -1269,11 +1269,11 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                         zet(x, y, z, y < K ? licht(x, y, z) : y == K ? (z % 4 == 0 || x % 4 == 0 ? Material.CHISELED_QUARTZ_BLOCK : Material.SMOOTH_QUARTZ) : Material.AIR);
                     }
                 }
-            holte(1762, G - 3, 6, 1788, K + 11, 30);
+            holte(1762, G - 3, 6, 1788, K + 10, 30);
             for (int y = G - 2; y <= K; y++) zet(1775, y, 11, Bouwer.gericht(Material.LADDER, BlockFace.SOUTH));   // uit de put terug
             for (int x : new int[]{1764, 1770, 1780, 1786}) {                         // zuilen langs de randen van de put (niet in de lijn van de haak)
-                vul(x, K + 1, 10, x, K + 11, 10, Material.QUARTZ_PILLAR);
-                vul(x, K + 1, 22, x, K + 11, 22, Material.QUARTZ_PILLAR);
+                vul(x, K + 1, 10, x, K + 10, 10, Material.QUARTZ_PILLAR);
+                vul(x, K + 1, 22, x, K + 10, 22, Material.QUARTZ_PILLAR);
             }
             for (int x = 1762; x <= 1788; x++) {                                        // hekjes: niet per ongeluk de put in (bij de ladder open)
                 if (x == 1764 || x == 1770 || x == 1780 || x == 1786) continue;
@@ -1296,7 +1296,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 zet(1788, K + 4, z, Bouwer.gericht(Material.WHITE_WALL_BANNER, BlockFace.WEST));
             }
             for (int[] l : new int[][]{{1768, 8}, {1782, 8}, {1768, 26}, {1782, 26}}) {
-                vul(l[0], K + 9, l[1], l[0], K + 11, l[1], Material.IRON_CHAIN);
+                vul(l[0], K + 9, l[1], l[0], K + 10, l[1], Material.IRON_CHAIN);
                 zet(l[0], K + 8, l[1], Bouwer.hangend(Material.SOUL_LANTERN));
             }
             for (int z = 25; z <= 27; z++) zet(1788, K + 4, z, Material.CHISELED_QUARTZ_BLOCK);   // de lijst om de deur (oost)
@@ -1317,7 +1317,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         vuren.als = s -> !s.heeft("r:kapelvuren") && !s.heeft(LICHTPIJLEN);
         Reeks reeks = reeks(new Reeks("kapelvuren", "De kapelvuren", Reeks.Hoe.VUUR, ZeldaEiland4a.vuur(Material.CAMPFIRE, false), ZeldaEiland4a.vuur(Material.CAMPFIRE, true),
                 new Deur(Material.POLISHED_DEEPSLATE.createBlockData(), Material.SEA_LANTERN.createBlockData()).blok(1774, K + 1, 28).blok(1776, K + 1, 28).blok(1775, K + 1, 29),
-                Box.van(1762, K - 1, 22, 1788, K + 11, 30), 20));
+                Box.van(1762, K - 1, 22, 1788, K + 10, 30), 20));
         for (int[] v : VUREN) reeks.dingen.add(new int[]{v[0], v[1], v[2]});
         reeks.voor = plek(1775, K + 1, 24, 0f);
         reeks.bijOplossen.add(r("Wiske", "Het altaar licht op! Daar, op het altaar…"));
@@ -1500,7 +1500,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
             vul(1841, P + 1, -2, 1841, P + 4, 2, Material.AIR);                         // de oostpoort (de uitgang)
             vul(1799, P + 1, -2, 1799, P + 4, 2, Material.AIR);                         // de westpoort (na de binnenplaats)
         }
-        Kamer k = kamer(new Kamer("binnenplaats", "De binnenplaats", Box.van(1800, P, -20, 1840, P + 10, 20), Box.van(1801, P, -18, 1839, P + 6, 18),
+        Kamer k = kamer(new Kamer("binnenplaats", "De binnenplaats", Box.van(1800, P, -20, 1840, P + 10, 20), Box.van(1801, P, -18, 1839, P + 6, 12),
                 deur(tralies(false), 1804, P + 1, -21, 1806, P + 4, -21), deur(tralies(true), 1841, P + 1, -2, 1841, P + 4, 2)));
         k.muziek = ZeldaMuziek.NACHTWACHT;
         k.hemel = 18000;
@@ -1515,7 +1515,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
         k.bijStart.add(r("Wiske", "Je harnas glanst. Daar schrikken ze van!"));
         k.tips.addAll(List.of(r("Wiske", "De schutters eerst! Die blijven achteraan."),
                 r("Wiske", "Zwarte mijtjes? Een lichtpijl doet ze dubbel pijn.")));
-        poort(new Poort("westpoort", deur(tralies(true), 1799, P + 1, -2, 1799, P + 4, 2), Box.van(1792, P, -4, 1806, P + 5, 4), s -> s.heeft("k:binnenplaats")));
+        poort(new Poort("westpoort", deur(tralies(true), 1799, P + 1, -2, 1799, P + 4, 2), Box.van(1790, P, -4, 1806, P + 5, 4), s -> s.heeft("k:binnenplaats")));
     }
 
     // ── 10. de voorburcht en de hoofdpoort (na de binnenplaats: een rondje terug) ───────────
@@ -1542,7 +1542,7 @@ final class ZeldaEiland5a extends ZeldaHoofdstuk {
                 for (int z = -5; z <= 5; z++) if (kans(x, z, 4) == 0) zet(x, P, z, Material.COBBLED_DEEPSLATE);
             paalbord(1765, P + 1, -5, BlockFace.WEST, "De muurvoet");
         }
-        poort(new Poort("hoofdpoort", deur(tralies(true), 1768, P + 1, -2, 1768, P + 5, 2), Box.van(1760, P, -5, 1776, P + 6, 5), s -> s.heeft("k:binnenplaats")));
+        poort(new Poort("hoofdpoort", deur(tralies(true), 1768, P + 1, -2, 1768, P + 5, 2), Box.van(1759, P, -5, 1776, P + 6, 5), s -> s.heeft("k:binnenplaats")));
     }
 
     // ── 11. de torenpoort: het einde van 5a ─────────────────────────────────────────────────

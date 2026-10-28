@@ -143,9 +143,10 @@ final class ZeldaTest {
             moet(!stand().heeft(k.openNa()) || z.spel.komt(stand()) != null, "Wiske weet niet dat " + k.naam() + " eraan komt");
             stil();
         }, 2, () -> true, 1);
-        // boodschappen over zee (Hanne vraagt zeekraal van het Zilverstrand): twee rondes langs alle eilanden, dan alles klaar
+        // boodschappen over zee (Hanne vraagt zeekraal van het Zilverstrand, later maanmos van Nachtrots): drie rondes langs alle
+        // eilanden (een opdracht van Hanne begint pas als de vorige klaar is), dan alles klaar
         if (alles && z.EILANDEN.size() > 1) {
-            for (int ronde = 0; ronde < 2; ronde++)
+            for (int ronde = 0; ronde < 3; ronde++)
                 for (ZeldaEiland e : z.EILANDEN) {
                     stap("boodschap: naar " + e.id(), () -> {
                         stil();
@@ -566,19 +567,18 @@ final class ZeldaTest {
             p.teleport(sl.pad.get(0));
         }, 6, () -> {
             if (sl.begin == 0) return false;                                       // het ritme loopt pas als er iemand is
-            if (proef[0] == null) {
-                ZeldaHoofdstuk.Sluip.Wachter wa = sl.wachters.get(0);
-                ZeldaRegels.Pose po = z.spel.stand(sl, wa, System.currentTimeMillis());
-                double kx = -Math.sin(Math.toRadians(po.yaw())), kz = Math.cos(Math.toRadians(po.yaw()));
-                for (double d = 2.5; d <= wa.bereik - 1 && proef[0] == null; d += 0.5) {
-                    Location l = new Location(h.w, Math.floor(po.x() + kx * d) + 0.5, Math.floor(po.y()), Math.floor(po.z() + kz * d) + 0.5);
-                    if (staan(l) && z.spel.ziet(wa, po, l.getX(), l.getY(), l.getZ())) proef[0] = l;
+            if (proef[0] == null) {                                                // een plek vóór een wachter (die niet net draait)
+                long nu = System.currentTimeMillis();
+                for (ZeldaHoofdstuk.Sluip.Wachter wa : sl.wachters) {
+                    ZeldaRegels.Pose po = z.spel.stand(sl, wa, nu);
+                    double kx = -Math.sin(Math.toRadians(po.yaw())), kz = Math.cos(Math.toRadians(po.yaw()));
+                    for (double d = 2; d <= wa.bereik - 1 && proef[0] == null; d += 0.5) {
+                        Location l = new Location(h.w, Math.floor(po.x() + kx * d) + 0.5, Math.floor(po.y()), Math.floor(po.z() + kz * d) + 0.5);
+                        if (staan(l) && z.spel.ziet(wa, po, l.getX(), l.getY(), l.getZ()) && z.spel.ziet(wa, z.spel.stand(sl, wa, nu + 300), l.getX(), l.getY(), l.getZ())) proef[0] = l;
+                    }
+                    if (proef[0] != null) break;
                 }
-                if (proef[0] == null) {
-                    fouten.add("sluipen " + sl.id + ": geen plek voor " + wa.naam + " om de test te zien");
-                    return true;
-                }
-                p.teleport(proef[0]);
+                if (proef[0] != null) p.teleport(proef[0]);
                 return false;
             }
             return p.getLocation().distanceSquared(sl.terug) < 4;
@@ -622,10 +622,10 @@ final class ZeldaTest {
                     break;
                 }
                 if (volgende < 0) return false;
-                for (int k = 1; k <= volgende - cel[0]; k++) {
+                for (int k = 1; k <= volgende - cel[0]; k++) {                      // cel k staat hij op van (k−1)·250 tot k·250 ms
                     int[] c = cellen.get(cel[0] + k);
-                    for (long m : new long[]{-100, 0, 100, 200, 300})
-                        if (z.spel.gezien(sl, c[0] + 0.5, c[1], c[2] + 0.5, nu + k * 250L + m)) return false;
+                    for (long m : new long[]{-150, -50, 50, 150, 250, 350})
+                        if (z.spel.gezien(sl, c[0] + 0.5, c[1], c[2] + 0.5, nu + (k - 1) * 250L + m)) return false;
                 }
                 doel[0] = volgende;
             }
