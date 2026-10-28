@@ -61,11 +61,17 @@ final class ZeldaRegels {
 
     static final String[] HARNAS_NAAM = {"Groene tuniek", "Maliënhemd", "Wachtersharnas", "Gloedharnas", "Lichtharnas"};
 
-    /** Hoeveel flesjes je hebt ({@code fles1} … {@code fles8}; nu zijn er zes: tot en met de veldfles van Hagen, eiland 4a). */
-    static int flessen(ZeldaVoortgang.Stand s) {
+    /** Hoeveel flesjes je vond ({@code fles1} … {@code fles8}). */
+    static int gevonden(ZeldaVoortgang.Stand s) {
         int n = 0;
         for (int i = 1; i <= 8; i++) if (s.heeft("fles" + i)) n++;
         return n;
+    }
+
+    /** Hoeveel flesjes je hebt: wat je vond, en (als je er een hebt) de extra van je niveau en je steun ({@link #extraFlessen}). */
+    static int flessen(ZeldaVoortgang.Stand s) {
+        int n = gevonden(s);
+        return n == 0 ? 0 : n + extraFlessen(s);
     }
 
     /** Hoeveel daarvan vol zijn (teller {@code fles-vol}, nooit meer dan je hebt). */
@@ -83,7 +89,7 @@ final class ZeldaRegels {
 
     /** Hoeveel een flesje van deze speler geneest (halve harten). */
     static double flesHp(ZeldaVoortgang.Stand s) {
-        return s.heeft("sterkwater") ? FLES_HP_STERK : FLES_HP;
+        return (s.heeft("sterkwater") ? FLES_HP_STERK : FLES_HP) * niveau(s).fles;
     }
 
     /** Eén flesje leegdrinken; false als je geen vol flesje hebt. */
@@ -538,5 +544,171 @@ final class ZeldaRegels {
             return null;
         }
         return new String[]{laatste.substring(0, i), laatste.substring(i + 1)};
+    }
+
+    // ── niveaus: alleen de steun voor de speler verschilt, nooit wat je moet doen ──────────────────────
+
+    /**
+     * Een niveau (Jelle 28-10: "niet sneller door een arena, wel sneller helen, meer harnas, extra flesjes"). Vijanden,
+     * golven, bazen en puzzels zijn op elk niveau hetzelfde; dit is alleen de hulp. {@link #AVONTUUR} is de balans van 2.15
+     * (oude standen en elk nieuw spel beginnen daar).
+     *
+     * @param schade       factor op wat vijanden doen (bovenop {@link #SCHADE})
+     * @param schild       gouden harten (een schildje van licht) bij het begin van elk gevecht
+     * @param na           op adem komen buiten een gevecht: zo lang na de laatste klap (ms) …
+     * @param elk          … elke zoveel ms een half hart
+     * @param gevechtNa    op adem komen ín een gevecht (0 = nooit)
+     * @param gevechtElk   idem, elke zoveel ms
+     * @param flessen      extra flesjes (als je er een hebt)
+     * @param fles         factor op wat een flesje geneest
+     * @param hartKans     kans op een hartje als je een vijand verslaat
+     * @param pauze        adem tussen twee golven (ms)
+     * @param hulp         gouden harten per keer dat je in hetzelfde gevecht doodging (hoogstens {@link #HULP_KEER} keer)
+     */
+    enum Niveau {
+        VERHAAL("Verhaal", 0.5, 4, 3_000, 1_000, 5_000, 3_000, 2, 1.2, 0.75, 6_000, 2, "Wiske helpt veel", "voor wie vooral wil ontdekken"),
+        AVONTUUR("Avontuur", 1.0, 0, 6_000, 2_000, 0, 0, 0, 1.0, 0.5, 4_000, 2, "zoals het spel bedoeld is", "voor iedereen"),
+        HELD("Held", 1.35, 0, 8_000, 3_000, 0, 0, 0, 1.0, 1.0 / 3, 4_000, 1, "vijanden slaan harder", "langzamer op adem"),
+        LEGENDE("Legende", 1.75, 0, 12_000, 4_000, 0, 0, 0, 0.8, 0.2, 4_000, 0, "voor wie het al kent", "bijna geen hulp");
+
+        final String naam;
+        final double schade, fles, hartKans;
+        final int schild, flessen, hulp;
+        final long na, elk, gevechtNa, gevechtElk, pauze;
+        final String[] uitleg;
+
+        Niveau(String naam, double schade, int schild, long na, long elk, long gevechtNa, long gevechtElk, int flessen, double fles,
+               double hartKans, long pauze, int hulp, String... uitleg) {
+            this.naam = naam;
+            this.schade = schade;
+            this.schild = schild;
+            this.na = na;
+            this.elk = elk;
+            this.gevechtNa = gevechtNa;
+            this.gevechtElk = gevechtElk;
+            this.flessen = flessen;
+            this.fles = fles;
+            this.hartKans = hartKans;
+            this.pauze = pauze;
+            this.hulp = hulp;
+            this.uitleg = uitleg;
+        }
+
+        /** Op naam (hoofdletters maken niet uit, het begin mag), of null. */
+        static Niveau van(String naam) {
+            if (naam == null || naam.isEmpty()) return null;
+            for (Niveau n : values()) if (n.naam.toLowerCase(java.util.Locale.ROOT).startsWith(naam.toLowerCase(java.util.Locale.ROOT))) return n;
+            return null;
+        }
+    }
+
+    /** Hoe vaak doodgaan in hetzelfde gevecht hoogstens meetelt voor de hulp. */
+    static final int HULP_KEER = 3;
+    /** Bijsturen door beheer ({@code steun}): hoogstens zoveel stappen, elk 15 % schade minder (of meer). */
+    static final int STEUN_MAX = 2;
+    static final double STEUN_STAP = 0.15;
+
+    /** Het niveau van dit spel ({@link Niveau#AVONTUUR} als het iets vreemds is). */
+    static Niveau niveau(ZeldaVoortgang.Stand s) {
+        return s.niveau >= 0 && s.niveau < Niveau.values().length ? Niveau.values()[s.niveau] : Niveau.AVONTUUR;
+    }
+
+    static int steun(ZeldaVoortgang.Stand s) {
+        return Math.max(-STEUN_MAX, Math.min(STEUN_MAX, s.steun));
+    }
+
+    /** Wat een klap van een vijand bij deze speler doet, als factor (balans × niveau × steun). */
+    static double schade(ZeldaVoortgang.Stand s) {
+        return SCHADE * niveau(s).schade * (1 - STEUN_STAP * steun(s));
+    }
+
+    /** Extra flesjes: van je niveau, en één per stap steun omhoog. */
+    static int extraFlessen(ZeldaVoortgang.Stand s) {
+        return niveau(s).flessen + Math.max(0, steun(s));
+    }
+
+    /** Gouden harten bij het begin van een gevecht: het schildje van je niveau, en hulp als je er al doodging ({@code doden}). */
+    static int schildje(ZeldaVoortgang.Stand s, int doden) {
+        Niveau n = niveau(s);
+        return n.schild + n.hulp * Math.max(0, Math.min(HULP_KEER, doden));
+    }
+
+    /** Op adem komen: {na, elk} in ms, of null als het niet mag (in een gevecht, behalve op Verhaal). */
+    static long[] bijkomen(ZeldaVoortgang.Stand s, boolean gevecht) {
+        Niveau n = niveau(s);
+        if (!gevecht) return new long[]{n.na, n.elk};
+        return n.gevechtNa > 0 ? new long[]{n.gevechtNa, n.gevechtElk} : null;
+    }
+
+    /** De adem tussen twee golven: die van het niveau met de meeste hulp in de kamer. */
+    static long golfPauze(java.util.Collection<ZeldaVoortgang.Stand> binnen) {
+        long p = GOLF_PAUZE;
+        for (ZeldaVoortgang.Stand s : binnen) p = Math.max(p, niveau(s).pauze);
+        return p;
+    }
+
+    // ── samen: per extra speler net iets zwaarder ─────────────────────────────────────────────────────
+
+    /** Hoeveel vijanden een golf hoogstens heeft (ook samen). */
+    static final int GOLF_MAX = 8;
+
+    /**
+     * Een golf voor {@code spelers} spelers: per extra speler één vijand erbij (de soorten van de golf om de beurt; voor een
+     * baas zijn helper), hoogstens {@link #GOLF_MAX}.
+     */
+    static List<ZeldaHoofdstuk.Soort> samen(List<ZeldaHoofdstuk.Soort> golf, int spelers, ZeldaHoofdstuk.Soort baas, ZeldaHoofdstuk.Soort helper) {
+        List<ZeldaHoofdstuk.Soort> l = new ArrayList<>(golf);
+        for (int i = 1; i < spelers && l.size() < GOLF_MAX && !golf.isEmpty(); i++) {
+            ZeldaHoofdstuk.Soort s = golf.get((i - 1) % golf.size());
+            l.add(baas != null && s == baas ? helper : s);
+        }
+        return l;
+    }
+
+    /** Het leven van een baas: zijn leven, per extra speler meer, en de balans ({@link #BAAS_LEVEN}). */
+    static double baasLeven(double leven, double perSpeler, int spelers) {
+        return (leven + perSpeler * Math.max(0, spelers - 1)) * BAAS_LEVEN;
+    }
+
+    /** Roept een baas hulp, dan met drie of meer spelers één helper extra. */
+    static int extraHelpers(int spelers) {
+        return spelers > 2 ? 1 : 0;
+    }
+
+    // ── sterren en de heldenrand ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Een gevecht gewonnen op {@code niveau} (het laagste dat je tijdens het gevecht had): de ster van die kamer (teller
+     * {@code ster:<kamer>} = niveau + 1) gaat omhoog als dit beter is. True als het een nieuwe beste is.
+     */
+    static boolean ster(ZeldaVoortgang.Stand s, String kamer, Niveau niveau) {
+        int oud = s.teller("ster:" + kamer), nieuw = niveau.ordinal() + 1;
+        if (nieuw <= oud) return false;
+        s.teller("ster:" + kamer, nieuw);
+        return true;
+    }
+
+    /** Het beste niveau waarop je deze kamer won (null = nog niet gewonnen sinds 2.16). */
+    static Niveau ster(ZeldaVoortgang.Stand s, String kamer) {
+        int n = s.teller("ster:" + kamer);
+        return n >= 1 && n <= Niveau.values().length ? Niveau.values()[n - 1] : null;
+    }
+
+    /** Hoeveel van deze kamers je won op {@code minstens} of hoger. */
+    static int sterren(ZeldaVoortgang.Stand s, java.util.Collection<String> kamers, Niveau minstens) {
+        int n = 0;
+        for (String k : kamers) if (s.teller("ster:" + k) >= minstens.ordinal() + 1) n++;
+        return n;
+    }
+
+    /**
+     * De heldenrand: alle bazen gewonnen op Held of hoger = {@link Niveau#HELD} (een gouden rand op je harnas), allemaal op
+     * Legende = {@link Niveau#LEGENDE} (paars); anders null.
+     */
+    static Niveau heldenrand(ZeldaVoortgang.Stand s, java.util.Collection<String> bazen) {
+        if (bazen.isEmpty()) return null;
+        int laagste = Integer.MAX_VALUE;
+        for (String b : bazen) laagste = Math.min(laagste, s.teller("ster:" + b));
+        return laagste >= Niveau.LEGENDE.ordinal() + 1 ? Niveau.LEGENDE : laagste >= Niveau.HELD.ordinal() + 1 ? Niveau.HELD : null;
     }
 }
