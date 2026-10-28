@@ -393,6 +393,89 @@ final class ZeldaRegels {
         return Math.max(0, Math.min(1, oud + d));
     }
 
+    // ── sluipen (eiland 5a): wachters met een lantaarn ──────────────────────────────────────
+
+    /** Waar een wachter staat en waar hij heen kijkt (yaw zoals in Minecraft: 0 = zuid, 90 = west, 180 = noord, −90 = oost). */
+    record Pose(double x, double y, double z, double yaw) {}
+
+    /**
+     * De stand van een wachter op {@code f} (0 … 1) van zijn ritme: tussen twee standen ({fractie, x, y, z, yaw}, oplopend)
+     * loopt en draait hij gelijkmatig (de kortste kant op); na de laatste gaat hij terug naar de eerste.
+     */
+    static Pose pose(double[][] standen, double f) {
+        f = f - Math.floor(f);
+        if (standen.length == 1) return new Pose(standen[0][1], standen[0][2], standen[0][3], standen[0][4]);
+        int n = standen.length;
+        for (int i = 0; i < n; i++) {
+            double[] a = standen[i], b = standen[(i + 1) % n];
+            double fa = a[0], fb = i + 1 < n ? b[0] : b[0] + 1;
+            double ff = f < standen[0][0] ? f + 1 : f;
+            if (ff < fa || ff > fb) continue;
+            double t = fb - fa <= 1e-9 ? 0 : (ff - fa) / (fb - fa);
+            double dy = ((b[4] - a[4]) % 360 + 540) % 360 - 180;
+            return new Pose(a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t, a[4] + dy * t);
+        }
+        return new Pose(standen[0][1], standen[0][2], standen[0][3], standen[0][4]);
+    }
+
+    /**
+     * Valt punt (x, y, z) in de lichtkegel van een wachter: hoogstens {@code bereik} blokken (gemeten over de grond), niet
+     * meer dan drie blokken hoger of lager, en hoogstens {@code hoek} graden opzij van waar hij heen kijkt? (Of er iets
+     * tussen zit, kijkt de wereld daarna.) Vlak bij hem (een blok) ziet hij je altijd.
+     */
+    static boolean inKegel(Pose w, double bereik, double hoek, double x, double y, double z) {
+        double dx = x - w.x(), dz = z - w.z(), d = Math.sqrt(dx * dx + dz * dz);
+        if (Math.abs(y - w.y()) > 3 || d > bereik) return false;
+        if (d < 1.0) return true;
+        double kx = -Math.sin(Math.toRadians(w.yaw())), kz = Math.cos(Math.toRadians(w.yaw()));
+        double cos = (dx * kx + dz * kz) / d;
+        return cos >= Math.cos(Math.toRadians(hoek));
+    }
+
+    /**
+     * Kun je over een stuk pad sluipen? {@code gezien[t][c]} = cel {@code c} wordt gezien op tijdstap {@code t} (het ritme
+     * loopt rond: t modulo het aantal tijdstappen). Je begint op tijdstap {@code start} op cel {@code van} en zet elke
+     * {@code stap} tijdstappen een cel verder tot je op {@code tot} staat. Een cel mag ook een tijdstap ervoor en erna niet
+     * gezien worden (speling: zo haalt een kind het ook).
+     */
+    static boolean sluipt(boolean[][] gezien, int van, int tot, int start, int stap) {
+        int n = gezien.length, r = tot >= van ? 1 : -1;
+        for (int k = 1; k <= Math.abs(tot - van); k++) {
+            int c = van + r * k, t = start + k * stap;
+            for (int s = -1; s <= 1; s++) if (gezien[Math.floorMod(t + s, n)][c]) return false;
+        }
+        return true;
+    }
+
+    /** Op hoeveel van de tijdstappen kun je dit stuk pad beginnen zonder gezien te worden (0 = het kan nooit)? */
+    static int vensters(boolean[][] gezien, int van, int tot, int stap) {
+        int v = 0;
+        for (int t = 0; t < gezien.length; t++) if (sluipt(gezien, van, tot, t, stap)) v++;
+        return v;
+    }
+
+    /**
+     * De cellen van een pad: van punt naar punt in rechte stukken (langs x of langs z), elk blok één cel; {@code index[i]} =
+     * de cel van punt {@code i}. Null als een stuk niet recht is.
+     */
+    static List<int[]> cellen(List<int[]> punten, int[] index) {
+        List<int[]> l = new ArrayList<>();
+        for (int i = 0; i < punten.size(); i++) {
+            int[] p = punten.get(i);
+            if (i == 0) {
+                l.add(p.clone());
+                if (index != null) index[0] = 0;
+                continue;
+            }
+            int[] v = punten.get(i - 1);
+            if (v[0] != p[0] && v[2] != p[2]) return null;
+            int dx = Integer.signum(p[0] - v[0]), dz = Integer.signum(p[2] - v[2]), n = Math.max(Math.abs(p[0] - v[0]), Math.abs(p[2] - v[2]));
+            for (int k = 1; k <= n; k++) l.add(new int[]{v[0] + dx * k, v[1] + (k == n ? p[1] - v[1] : 0), v[2] + dz * k});
+            if (index != null) index[i] = l.size() - 1;
+        }
+        return l;
+    }
+
     /** Een eilandnaam midden in een zin: «Het Lindewoud» → «het Lindewoud». */
     static String inZin(String naam) {
         return naam.startsWith("Het ") ? "het " + naam.substring(4) : naam.startsWith("De ") ? "de " + naam.substring(3) : naam;

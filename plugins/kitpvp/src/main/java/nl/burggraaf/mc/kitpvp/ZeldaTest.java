@@ -42,6 +42,7 @@ final class ZeldaTest {
     private BukkitTask taak;
     private boolean belGehad;                               // de bel is één keer getest (in de eerste kamer met een bel)
     private boolean hitteTest;                              // nu wordt de hitte getest (anders houdt de test je koel: hij teleporteert)
+    private boolean sluipTest;                              // nu wordt er gesloten (anders zien de wachters je niet: de test teleporteert)
     private String geklikt;                                 // het eiland waarheen Brecht vaart na een klik in zijn menu
 
     ZeldaTest(KitPvP pl, Zelda z, Player p, CommandSender aan) {
@@ -215,6 +216,13 @@ final class ZeldaTest {
                 else stap("vondst " + v.vlag, () -> p.teleport(v.zone.midden(h.w).add(0, 1, 0)), 8, () -> stand().heeft(v.vlag), 40);
             } else if (o instanceof ZeldaHoofdstuk.Praten pr) {               // praten met wie op het pad staat (Tijmen, Bram)
                 ZeldaHoofdstuk.Persoon pe = pr.wie();
+                ZeldaEiland thuis = h.eiland, daar = eilandVan(pe);
+                boolean over = daar != null && thuis != null && daar != thuis;   // iemand op een ander eiland (Mira, 5a): eerst varen
+                if (over) stap("varen naar " + daar.id() + " (" + pe.naam + ")", () -> {
+                    stil();
+                    z.spel.kaart(p);
+                    moet(klik("eiland:" + daar.id()), "kaart: " + daar.naam() + " staat er niet op");
+                }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == daar, 600);
                 stap("praten met " + pe.naam, () -> {
                     p.teleport(vrij(pe.plek.clone().add(1.5, 0, 0)));
                     moet(pe.nieuw(stand()), pe.naam + " heeft niets nieuws te zeggen");
@@ -230,6 +238,11 @@ final class ZeldaTest {
                     if (menuHeeft("naam:1")) klik("naam:1");
                     return stand().dier != null;
                 }, 400);
+                if (over) stap("terug naar " + thuis.id(), () -> {
+                    stil();
+                    z.spel.kaart(p);
+                    moet(klik("eiland:" + thuis.id()), "kaart: " + thuis.naam() + " staat er niet op");
+                }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == thuis, 600);
             } else if (o instanceof ZeldaHoofdstuk.Haak hk) {                 // de klauwhaak: een echte haak vanaf de plek ervoor
                 stap("haak " + hk.hp().id(), () -> haak(hk.hp(), hk.van()), 4,
                         () -> !z.spel.aanHetHaken(p) && p.getLocation().distanceSquared(hk.hp().landing()) < 2, 80);
@@ -485,6 +498,14 @@ final class ZeldaTest {
                 }, 1);
             } else if (o instanceof ZeldaHoofdstuk.Hitte ht) {                     // hitte: warm worden, terug, de koelsteen, afkoelen, het gloedharnas
                 hitte(h, ht);
+            } else if (o instanceof ZeldaHoofdstuk.Nevel nv) {                     // Morgals nevel op het pad: een echte lichtpijl
+                stap("nevel " + nv.id, () -> {
+                    moet(stand().heeft("lichtpijlen"), "geen lichtpijlen voor de nevel " + nv.id);
+                    if (nv.nevel.isOpen) z.spel.herstel(nv);
+                    licht(h, nv);
+                }, 10, () -> nv.nevel.isOpen && stand().heeft("n:" + nv.id), 60);
+            } else if (o instanceof ZeldaHoofdstuk.Sluip sl) {                     // sluipen: eerst gezien worden, dan echt langs de wachters
+                sluipen(h, sl);
             } else if (o instanceof ZeldaHoofdstuk.Reeks r) {
                 stap("puzzel " + r.id, () -> {
                     if (r.opgelost || !r.isAan.isEmpty()) z.spel.herstel(r);
@@ -494,6 +515,130 @@ final class ZeldaTest {
             }
         }
         return alles;
+    }
+
+    /** Het eiland waar deze persoon staat (null = op geen enkel eiland, bv. een proefpersoon). */
+    private ZeldaEiland eilandVan(ZeldaHoofdstuk.Persoon pe) {
+        for (ZeldaEiland e : z.EILANDEN) for (ZeldaHoofdstuk d : e.delen()) if (d.personen.contains(pe)) return e;
+        return null;
+    }
+
+    /** Schiet een echte lichtpijl (het voorwerp, zoals rechtsklik) op de nevel: vanaf de plek ervoor, op een blok dat je ziet. */
+    private void licht(ZeldaHoofdstuk h, ZeldaHoofdstuk.Nevel nv) {
+        Location van = nv.voor;
+        if (van == null)
+            for (int[] c : nv.nevel.blokken) {
+                van = vanwaar(h.w.getBlockAt(c[0], c[1], c[2]));
+                if (van != null) break;
+            }
+        if (van == null) {
+            fouten.add("nevel " + nv.id + ": nergens een plek om hem te zien");
+            return;
+        }
+        org.bukkit.block.Block doel = null;
+        for (int[] c : nv.nevel.blokken)
+            if (doel == null && z.spel.zicht(van.clone().add(0, p.getEyeHeight(), 0), h.w.getBlockAt(c[0], c[1], c[2]))) doel = h.w.getBlockAt(c[0], c[1], c[2]);
+        if (doel == null) {
+            fouten.add("nevel " + nv.id + ": niet te zien vanaf " + xyz(van));
+            return;
+        }
+        Location l = van.clone();
+        Location oog = l.clone().add(0, p.getEyeHeight(), 0);
+        l.setDirection(doel.getLocation().add(0.5, 0.75, 0.5).toVector().subtract(oog.toVector()));
+        p.setVelocity(new org.bukkit.util.Vector());
+        p.teleport(l);
+        p.setCooldown(ZeldaSpel.Lichtpijlen.ITEM, 0);
+        z.spel.voorwerp("lichtpijlen").gebruik(z.spel, p, null);
+    }
+
+    /**
+     * Sluipen: eerst wordt de test gezien (in de lichtkegel van een wachter: terug bij het zielvuur, het hek even dicht,
+     * Wiske zegt iets), dan sluipt hij écht: van schuilplek naar schuilplek over het pad, en hij gaat pas als hij weet dat
+     * niemand hem onderweg ziet (het ritme van de wachters ligt vast). Zo blijkt dat het kan.
+     */
+    private void sluipen(ZeldaHoofdstuk h, ZeldaHoofdstuk.Sluip sl) {
+        final Location[] proef = {null};
+        stap("sluipen " + sl.id + ": gezien", () -> {
+            sluipTest = true;
+            z.spel.sessie(p).ongezien = false;
+            z.spel.sessie(p).gezienTot = 0;
+            stil();
+            p.teleport(sl.pad.get(0));
+        }, 6, () -> {
+            if (sl.begin == 0) return false;                                       // het ritme loopt pas als er iemand is
+            if (proef[0] == null) {
+                ZeldaHoofdstuk.Sluip.Wachter wa = sl.wachters.get(0);
+                ZeldaRegels.Pose po = z.spel.stand(sl, wa, System.currentTimeMillis());
+                double kx = -Math.sin(Math.toRadians(po.yaw())), kz = Math.cos(Math.toRadians(po.yaw()));
+                for (double d = 2.5; d <= wa.bereik - 1 && proef[0] == null; d += 0.5) {
+                    Location l = new Location(h.w, Math.floor(po.x() + kx * d) + 0.5, Math.floor(po.y()), Math.floor(po.z() + kz * d) + 0.5);
+                    if (staan(l) && z.spel.ziet(wa, po, l.getX(), l.getY(), l.getZ())) proef[0] = l;
+                }
+                if (proef[0] == null) {
+                    fouten.add("sluipen " + sl.id + ": geen plek voor " + wa.naam + " om de test te zien");
+                    return true;
+                }
+                p.teleport(proef[0]);
+                return false;
+            }
+            return p.getLocation().distanceSquared(sl.terug) < 4;
+        }, 80);
+        stap("sluipen " + sl.id + ": terug", () -> {
+            moet(p.getLocation().distanceSquared(sl.terug) < 4, "sluipen " + sl.id + ": gezien, maar niet terug bij " + xyz(sl.terug) + " (op " + xyz(p.getLocation()) + ")");
+            moet(!sl.hek.isOpen, "sluipen " + sl.id + ": het hek ging niet dicht");
+            moet(sl.gezien.isEmpty() || rij().contains(sl.gezien.get(0).tekst()), "sluipen " + sl.id + ": Wiske zegt niets: " + rij());
+        }, 2, () -> true, 1);
+        int[] index = new int[sl.pad.size()];
+        List<int[]> cellen = ZeldaSpel.cellen(sl, index);
+        if (cellen == null) {
+            stap("sluipen " + sl.id, () -> fouten.add("sluipen " + sl.id + ": geen recht pad"), 1, () -> true, 1);
+            return;
+        }
+        List<Integer> rust = new ArrayList<>();                                     // de cellen waar je mag wachten
+        rust.add(0);
+        for (int i = 1; i < sl.pad.size(); i++) if (sl.schuil.contains(i) || i == sl.pad.size() - 1) rust.add(index[i]);
+        final int[] cel = {0}, doel = {-1}, wacht = {0};
+        stap("sluipen " + sl.id, () -> {
+            stil();
+            cel[0] = 0;
+            doel[0] = -1;
+            p.teleport(sl.pad.get(0));
+        }, 4, () -> {
+            if (stand().heeft("l:" + sl.id)) {
+                sluipTest = false;
+                return true;
+            }
+            if (cel[0] > 0 && p.getLocation().distanceSquared(sl.terug) < 4) {
+                fouten.add("sluipen " + sl.id + ": gezien op " + xyz(new Location(h.w, cellen.get(cel[0])[0], cellen.get(cel[0])[1], cellen.get(cel[0])[2])));
+                sluipTest = false;
+                return true;
+            }
+            if (sl.begin == 0 || wacht[0]-- > 0) return false;
+            long nu = System.currentTimeMillis();
+            if (doel[0] < 0) {                                                       // op een schuilplek: gaan als het hele stuk veilig is
+                int volgende = -1;
+                for (int r : rust) if (r > cel[0]) {
+                    volgende = r;
+                    break;
+                }
+                if (volgende < 0) return false;
+                for (int k = 1; k <= volgende - cel[0]; k++) {
+                    int[] c = cellen.get(cel[0] + k);
+                    for (long m : new long[]{-100, 0, 100, 200, 300})
+                        if (z.spel.gezien(sl, c[0] + 0.5, c[1], c[2] + 0.5, nu + k * 250L + m)) return false;
+                }
+                doel[0] = volgende;
+            }
+            cel[0]++;
+            int[] c = cellen.get(cel[0]), v = cellen.get(cel[0] - 1);
+            Location l = new Location(h.w, c[0] + 0.5, c[1], c[2] + 0.5);
+            l.setDirection(new org.bukkit.util.Vector(c[0] - v[0], 0, c[2] - v[2]));
+            p.setVelocity(new org.bukkit.util.Vector());
+            p.teleport(l);
+            wacht[0] = 4;
+            if (cel[0] >= doel[0]) doel[0] = -1;
+            return false;
+        }, 1400);
     }
 
     /** Schiet de klauwhaak (het voorwerp, zoals rechtsklik) vanaf {@code van} naar haakpunt {@code hp}. */
@@ -738,6 +883,7 @@ final class ZeldaTest {
                 final ZeldaHoofdstuk.Barst[] muur = {null};
                 final ZeldaHoofdstuk.Haakpunt[] hp = {null};
                 final ZeldaHoofdstuk.Smelt[] ijs = {null};
+                final ZeldaHoofdstuk.Nevel[] nevel = {null};
                 final boolean[] kan = {false};
                 stap("later " + v.vlag, () -> {
                     ZeldaVoortgang.Stand s = stand();
@@ -751,6 +897,11 @@ final class ZeldaTest {
                             for (ZeldaHoofdstuk.Smelt sm : x.smelten) if (sm.gebied.in(v.plek) && !sm.ijs.isOpen) ijs[0] = sm;
                         if (ijs[0] != null) smelt(d, ijs[0]);
                     }
+                    if (v.voorwerp.equals("lichtpijlen")) {                          // een echte lichtpijl op de nevel ervoor
+                        for (ZeldaHoofdstuk x : e.delen())
+                            for (ZeldaHoofdstuk.Nevel nv : x.nevels) if (nv.gebied.in(v.plek) && !nv.nevel.isOpen) nevel[0] = nv;
+                        if (nevel[0] != null) licht(d, nevel[0]);
+                    }
                     if (v.voorwerp.equals("klauwhaak")) {                            // een echte haak naar het haakpunt bij de vondst
                         double bd = 10 * 10;
                         for (ZeldaHoofdstuk x : e.delen())
@@ -763,6 +914,7 @@ final class ZeldaTest {
                         else haak(hp[0], vanwaar(hp[0]));
                     }
                 }, 50, () -> !kan[0] || (muur[0] == null || muur[0].muur.isOpen) && (ijs[0] == null || ijs[0].ijs.isOpen && !z.spel.vlamOnderweg(p))
+                        && (nevel[0] == null || nevel[0].nevel.isOpen)
                         && (hp[0] == null || !z.spel.aanHetHaken(p) && p.getLocation().distanceSquared(hp[0].landing()) < 2), 80);
                 stap("pak " + v.vlag, () -> {
                     if (kan[0]) p.teleport(vrij(v.zone.midden(d.w).add(0, 1, 0)));
@@ -794,6 +946,13 @@ final class ZeldaTest {
                         for (ZeldaHoofdstuk x : e.delen()) for (ZeldaHoofdstuk.Smelt sm : x.smelten) if (sm.gebied.in(v.plek) && !sm.ijs.isOpen) dicht = sm;
                         if (dicht != null && "vuurstaf".equals(v.voorwerp)) {
                             smelt(d, dicht);
+                            wacht[0] = 12;
+                            return false;
+                        }
+                        ZeldaHoofdstuk.Nevel nevel = null;                          // Morgals nevel ervoor: eerst wegschieten (een echte lichtpijl)
+                        for (ZeldaHoofdstuk x : e.delen()) for (ZeldaHoofdstuk.Nevel nv : x.nevels) if (nv.gebied.in(v.plek) && !nv.nevel.isOpen) nevel = nv;
+                        if (nevel != null && s.heeft("lichtpijlen")) {
+                            licht(d, nevel);
                             wacht[0] = 12;
                             return false;
                         }
@@ -1091,6 +1250,33 @@ final class ZeldaTest {
                 sp.uitrusten(p, stand());
             }, 2, () -> true, 1);
         }
+        ZeldaHoofdstuk.Nevel nevel = null;
+        for (ZeldaHoofdstuk d : z.HOOFDSTUKKEN) if (nevel == null && !d.nevels.isEmpty()) nevel = d.nevels.get(0);
+        if (nevel != null) {                                                       // de lichtpijlen (vak 7): een pijl van licht, en Morgals nevel verdwijnt
+            ZeldaHoofdstuk.Nevel nv = nevel;
+            stap("lichtpijlen", () -> {
+                stil();
+                stand().zet("lichtpijlen");
+                sp.uitrusten(p, stand());
+                moet(item(6) == ZeldaSpel.Lichtpijlen.ITEM, "lichtpijlen niet in vak 7 maar " + item(6));
+                var boog = p.getInventory().getItem(1);
+                moet(boog == null || boog.getType() != Material.BOW || boog.getItemMeta().displayName() != null, "de boog heeft geen naam");
+                p.setCooldown(ZeldaSpel.Lichtpijlen.ITEM, 0);
+                int voor = sp.lichtpijlen.size();
+                sp.voorwerp("lichtpijlen").gebruik(sp, p, null);
+                moet(sp.lichtpijlen.size() > voor, "de lichtpijlen schieten geen pijl van licht");
+                if (nv.nevel.isOpen) sp.herstel(nv);
+                sp.verdrijf(p, nv);
+                moet(nv.nevel.isOpen && stand().heeft("n:" + nv.id), "nevel " + nv.id + " verdwijnt niet");
+            }, 4, () -> true, 1);
+            stap("lichtpijlen weg", () -> {
+                sp.herstel(nv);
+                moet(!nv.nevel.isOpen, "nevel " + nv.id + " komt niet terug");
+                stand().wis("lichtpijlen");
+                stand().wis("n:" + nv.id);
+                sp.uitrusten(p, stand());
+            }, 2, () -> true, 1);
+        }
         ZeldaEiland e = h.eiland;
         stap("varen", () -> {
             stil();
@@ -1191,6 +1377,7 @@ final class ZeldaTest {
             Stap s = rij.peek();
             if (s == null) {
                 taak.cancel();
+                if (z.spel.sessie(p) != null) z.spel.sessie(p).ongezien = false;
                 String uit = titel + ": " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" → ", gedaan);
                 aan.sendMessage(uit);
                 pl.getLogger().info(uit);
@@ -1201,6 +1388,7 @@ final class ZeldaTest {
                 return;
             }
             if (!hitteTest && z.spel.sessie(p) != null) z.spel.sessie(p).hitte = 0;   // de test teleporteert: niet te heet worden
+            if (!sluipTest && z.spel.sessie(p) != null) z.spel.sessie(p).ongezien = true;   // … en niet gezien worden (behalve bij het sluipen)
             if (!gedaanDoe[0]) {
                 gedaanDoe[0] = true;
                 gewacht[0] = 0;

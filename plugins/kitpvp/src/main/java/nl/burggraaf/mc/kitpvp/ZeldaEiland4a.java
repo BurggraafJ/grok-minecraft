@@ -584,7 +584,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                         r("Brecht", "De hele berg gloeit vanavond. Dat was jij, hè?")), null)
                 .eenmalig("brecht-nevel", s -> s.heeft("baken4"), List.of(
                         r("Brecht", "De nevel in het noorden is weg! Ik zag het vanaf het water."),
-                        r("Brecht", "Nachtrots… Zodra de Zilvermeeuw klaar is, varen we.")), null)
+                        r("Brecht", "Nachtrots! Zeg maar wanneer, dan varen we.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
         verhaal(new Verhaal("weg4", Box.van(1108, G, 326, 1114, G + 6, 338), List.of(
                 r("Wiske", "Huisjes tegen de berg. Daar wonen vast mijnwerkers."))));
@@ -864,7 +864,11 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                 r("Dina", "Erts, erts, erts. Daar draait het om in Sintelgat."))));
         stukje(STUKJE_LORRIE);
         missie("lorrie", "De verdwaalde lorrie", "Zoek de lorrie van Dina, in de Zijgang van de mijn.", "Vertel Dina dat je hem vond.");
-        dina.eenmalig("dina-1", null, List.of(
+        dina.eenmalig("dina-joppe", s -> s.heeft("vrij:joppe"), List.of(              // eerst: haar zoon is terug (van Nachtrots, 5a)
+                        r("Dina", "Joppe! Daar ben je!"),
+                        r("Dina", "Ik zocht je overal in de mijn."),
+                        r("Dina", "Dank je. Hier, eet een warm broodje.")), (spel, p, s) -> spel.genees(p))
+                .eenmalig("dina-1", null, List.of(
                         r("Dina", "Ben jij die reiziger? Ik ben Dina."),
                         r("Dina", "Onze lorrie rolde de Zijgang in. Vol erts!"),
                         r("Dina", "Daar is nu alles bevroren. Rare boel, in een warme mijn.")), (spel, p, s) -> spel.missie(p, "lorrie", s.heeft("lorrie") ? 2 : 1))
@@ -875,6 +879,9 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                     spel.beloon(p, STUKJE_LORRIE, "Hartstukje", null);
                 })
                 .gesprek(null, s -> s.missie("lorrie") == 1, List.of(r("Dina", "De Zijgang is ten zuiden van de Lorriehal.")), null);
+        Persoon joppe = persoon(new Persoon("Joppe", plek(1120, D + 1, 342, 90f), null, List.of(r("Joppe", "Mama zegt: nooit meer alleen naar het strand."))));
+        joppe.kind = true;
+        joppe.zichtbaar = s -> s.heeft("vrij:joppe");                   // de zoon van Dina, die op Nachtrots in een cel zat
     }
 
     /** Fenna de koerier: elke dag rent ze over de sporen naar de Laadkade (een tijdrace, een hartstukje). */

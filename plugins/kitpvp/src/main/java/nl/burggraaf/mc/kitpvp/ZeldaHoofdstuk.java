@@ -62,7 +62,7 @@ abstract class ZeldaHoofdstuk {
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
     enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF,
-        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT, ASGRIM }
+        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT, ASGRIM, NACHTSOLDAAT, NACHTSCHUTTER, NEVELMIJT, WACHTMEESTER }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -663,6 +663,93 @@ abstract class ZeldaHoofdstuk {
         }
     }
 
+    /**
+     * Morgals nevel (eiland 5a): een muur van zwarte mist die een doorgang dichtzet. Een lichtpijl (de lichtpijlen, of een
+     * pijl van de boog als je ze hebt) die hem raakt, laat hem verdwijnen ({@link ZeldaSpel#verdrijf}). Wie hem wegschoot
+     * ({@code n:<id>}) vindt hem weg; zonder iemand in de buurt kruipt hij na een minuut terug. Altijd hetzelfde blok
+     * ({@link #BLOK}) met zwarte deeltjes ervoor, zodat spelers hem leren herkennen. {@code kitpvp zelda lopen} telt hem als
+     * open met de lichtpijlen.
+     */
+    static final class Nevel {
+        static final Material BLOK = Material.TINTED_GLASS;
+
+        final String id;
+        final Deur nevel;                                   // dicht = nevel, open = lucht
+        final Box gebied;
+        Location voor;                                      // hier sta je om erop te schieten (de test en de zelftest; null = vanzelf)
+        Location binnen;                                    // wie erin staat als hij terugkruipt, komt hier (null = het midden van het gebied)
+        long leegSinds;
+
+        Nevel(String id, Deur nevel, Box gebied) {
+            this.id = id;
+            this.nevel = nevel;
+            this.gebied = gebied;
+        }
+    }
+
+    /**
+     * Sluipen (eiland 5a): wachters met een lantaarn lopen of draaien op een vast ritme ({@code periode}, voor allemaal
+     * hetzelfde). Wat in hun lichtkegel komt (binnen {@code bereik}, hoogstens {@code hoek} graden opzij, en niets ertussen)
+     * zien ze. Gezien = het {@code hek} gaat even dicht en je staat weer bij {@code terug} (het zielvuur): geen gevecht. Wie
+     * de {@code finish} haalt, is erlangs geslopen ({@code l:<id>}). {@code pad} is een weg erdoorheen (rechte stukken; voor
+     * de test en de zelftest), {@code schuil} de punten op dat pad waar niemand je ooit ziet (het eerste punt telt ook). De
+     * wachters zijn er alleen voor wie {@code actief} klopt (na de binnenplaats zijn ze gevlucht).
+     */
+    static final class Sluip {
+        /**
+         * Een wachter: zijn standen over één ritme, elk {fractie (0 … 1), x, y, z, kijkrichting (yaw)}; ertussen loopt en
+         * draait hij gelijkmatig, na de laatste stand gaat hij terug naar de eerste.
+         */
+        static final class Wachter {
+            final String naam;
+            final double[][] standen;
+            double bereik = 7, hoek = 35;
+            LivingEntity ent;
+
+            Wachter(String naam, double[][] standen) {
+                this.naam = naam;
+                this.standen = standen;
+            }
+        }
+
+        final String id, naam;
+        final Box gebied, finish;
+        final Deur hek;                                     // in rust open; gaat even dicht als iemand gezien wordt
+        final Location terug;
+        final long periode;
+        final List<Wachter> wachters = new ArrayList<>();
+        final List<Location> pad = new ArrayList<>();
+        final Set<Integer> schuil = new HashSet<>();
+        final List<Regel> gezien = new ArrayList<>();       // wat Wiske zegt (de 1e, 2e, … keer gezien; daarna de laatste)
+        Predicate<ZeldaVoortgang.Stand> actief;             // null = altijd
+        // tijdens het spel
+        long begin;                                         // wanneer het ritme begon (0 = in rust: niemand in de buurt)
+        long hekOpen;                                       // wanneer het hek weer opengaat (0 = het is open)
+
+        Sluip(String id, String naam, Box gebied, Box finish, Deur hek, Location terug, long periode) {
+            this.id = id;
+            this.naam = naam;
+            this.gebied = gebied;
+            this.finish = finish;
+            this.hek = hek;
+            this.terug = terug;
+            this.periode = periode;
+        }
+
+        Wachter wachter(String naam, double[]... standen) {
+            Wachter w = new Wachter(naam, standen);
+            wachters.add(w);
+            return w;
+        }
+
+        /** Een punt van het pad erbij; {@code schuilplek} = hier ziet niemand je ooit (daar wacht je). */
+        Sluip punt(Location l, boolean schuilplek) {
+            if (schuilplek) schuil.add(pad.size());
+            pad.add(l);
+            return this;
+        }
+    }
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -685,6 +772,8 @@ abstract class ZeldaHoofdstuk {
     final List<Smelt> smelten = new ArrayList<>();
     final List<Hitte> hitten = new ArrayList<>();
     final List<Ritme> ritmes = new ArrayList<>();
+    final List<Nevel> nevels = new ArrayList<>();
+    final List<Sluip> sluipen = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -768,7 +857,8 @@ abstract class ZeldaHoofdstuk {
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
                     : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id
                     : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : o instanceof Glij gl ? gl.id
-                    : o instanceof Smelt sm ? sm.id : o instanceof Hitte ht ? ht.id : o instanceof Ritme rt ? rt.id : null;
+                    : o instanceof Smelt sm ? sm.id : o instanceof Hitte ht ? ht.id : o instanceof Ritme rt ? rt.id
+                    : o instanceof Nevel nv ? nv.id : o instanceof Sluip sl ? sl.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
@@ -777,6 +867,8 @@ abstract class ZeldaHoofdstuk {
         for (Getij g : getijden) if (g.id.equals(id)) return g;
         for (Smelt sm : smelten) if (sm.id.equals(id)) return sm;
         for (Hitte ht : hitten) if (ht.id.equals(id)) return ht;
+        for (Nevel nv : nevels) if (nv.id.equals(id)) return nv;
+        for (Sluip sl : sluipen) if (sl.id.equals(id)) return sl;
         return null;
     }
 
@@ -800,6 +892,8 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Smelt sm) return sm.voor != null ? sm.voor : sm.ijs.omvang().midden(w);
         if (o instanceof Hitte ht) return ht.proef != null ? ht.proef : ht.gebied.midden(w);
         if (o instanceof Ritme rt) return rt.voor != null ? rt.voor : rt.gebied.midden(w);
+        if (o instanceof Nevel nv) return nv.voor != null ? nv.voor : nv.nevel.omvang().midden(w);
+        if (o instanceof Sluip sl) return sl.pad.isEmpty() ? sl.gebied.midden(w) : sl.pad.get(0);
         return null;
     }
 
@@ -820,6 +914,7 @@ abstract class ZeldaHoofdstuk {
         for (Vondst v : vondsten) if (v.toon != null) v.toon.remove();
         for (Persoon p : personen) if (p.ent != null) p.ent.remove();
         for (Uitdaging u : uitdagingen) if (u.bordTekst != null) u.bordTekst.remove();
+        for (Sluip sl : sluipen) for (Sluip.Wachter wa : sl.wachters) if (wa.ent != null) wa.ent.remove();
         rust.clear();
         kamers.clear();
         uitdagingen.clear();
@@ -840,6 +935,8 @@ abstract class ZeldaHoofdstuk {
         smelten.clear();
         hitten.clear();
         ritmes.clear();
+        nevels.clear();
+        sluipen.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -991,6 +1088,26 @@ abstract class ZeldaHoofdstuk {
         ritmes.add(r);
         volgorde.add(r);
         return r;
+    }
+
+    /** Morgals nevel (niet in de volgorde: iets voor later, of een zijpad). */
+    protected Nevel nevel(Nevel n) {
+        nevels.add(n);
+        return n;
+    }
+
+    /** Nevel óp het pad (je moet erdoor): telt mee in de volgorde (de test schiet er een echte lichtpijl op). */
+    protected Nevel nevelOpPad(Nevel n) {
+        nevel(n);
+        volgorde.add(n);
+        return n;
+    }
+
+    /** Een stuk om te sluipen, op het pad (de test wordt eerst gezien, en sluipt dan langs de wachters naar de finish). */
+    protected Sluip sluip(Sluip s) {
+        sluipen.add(s);
+        volgorde.add(s);
+        return s;
     }
 
     protected Verhaal verhaal(Verhaal v) {

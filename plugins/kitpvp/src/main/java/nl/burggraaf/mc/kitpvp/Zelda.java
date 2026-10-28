@@ -33,11 +33,11 @@ final class Zelda implements Modus {
     /** De eilanden in de volgorde van het verhaal (zie ZELDA.md). Een nieuw eiland = één regel erbij. */
     final List<ZeldaEiland> EILANDEN;
     /**
-     * Eilanden (of delen ervan) die eraan komen, nog niet gebouwd: grijs op de kaart zodra hun {@code openNa} er is. Nachtrots
-     * (eiland 5) gaat open als het Gloedbaken brandt ({@code baken4}: de Nevelring is gebroken); de sessie die het bouwt,
-     * haalt het hier weg en zet het eiland in {@link #EILANDEN}.
+     * Eilanden (of delen ervan) die eraan komen, nog niet gebouwd: grijs op de kaart zodra hun {@code openNa} er is. De toren
+     * van Nachtrots (5b, Morgal) gaat open na de muren ({@code e5a}); de sessie die hem bouwt, haalt hem hier weg en zet het
+     * deel bij Nachtrots in {@link #EILANDEN}.
      */
-    final List<ZeldaEiland.Komt> KOMT = List.of(new ZeldaEiland.Komt("nachtrots", "Nachtrots", Material.CRYING_OBSIDIAN, "baken4"));
+    final List<ZeldaEiland.Komt> KOMT = List.of(new ZeldaEiland.Komt("toren", "De toren", Material.CRYING_OBSIDIAN, "e5a", "nachtrots"));
     /** Alle delen van alle eilanden. */
     final List<ZeldaHoofdstuk> HOOFDSTUKKEN;
     final ZeldaZee zee;
@@ -45,9 +45,10 @@ final class Zelda implements Modus {
 
     Zelda(KitPvP plugin) {
         this.plugin = plugin;
+        ZeldaEiland2a zilverstrand = new ZeldaEiland2a(plugin);
         EILANDEN = List.of(
                 new ZeldaEiland("lindewoud", "Het Lindewoud", Material.OAK_SAPLING, List.of(new ZeldaHoofdstuk1(plugin)), "haven", null, "h1", List.of()),
-                new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(new ZeldaEiland2a(plugin), new ZeldaEiland2b(plugin)), "steiger", "h1", "baken2", List.of(
+                new ZeldaEiland("zilverstrand", "Het Zilverstrand", Material.SAND, List.of(zilverstrand, new ZeldaEiland2b(plugin)), "steiger", "h1", "baken2", List.of(
                         ZeldaHoofdstuk.r("Brecht", "Op het Zilverstrand woont mijn zus Mira."),
                         ZeldaHoofdstuk.r("Brecht", "Zij past op de vuurtoren. Al twintig jaar."),
                         ZeldaHoofdstuk.r("Wiske", "Een vuurtoren wijst de weg. Precies wat we zoeken!"))),
@@ -58,7 +59,11 @@ final class Zelda implements Modus {
                 new ZeldaEiland("gloedberg", "De Gloedberg", Material.MAGMA_BLOCK, List.of(new ZeldaEiland4a(plugin), new ZeldaEiland4b(plugin)), "baai", "baken3", "baken4", List.of(
                         ZeldaHoofdstuk.r("Brecht", "Ruik je dat? Rook. We zijn er bijna."),
                         ZeldaHoofdstuk.r("Brecht", "Op de Gloedberg wonen mijnwerkers. Taaie lui."),
-                        ZeldaHoofdstuk.r("Wiske", "Die berg rookt! Is dat… een vulkaan?"))));
+                        ZeldaHoofdstuk.r("Wiske", "Die berg rookt! Is dat… een vulkaan?"))),
+                new ZeldaEiland("nachtrots", "Nachtrots", Material.CRYING_OBSIDIAN, List.of(new ZeldaEiland5a(plugin, zilverstrand)), "kreek", "baken4", "zelda", List.of(
+                        ZeldaHoofdstuk.r("Brecht", "Daar ligt hij. Nachtrots, zonder Nevelring."),
+                        ZeldaHoofdstuk.r("Brecht", "Ik vaar je naar de oude visserskreek. Daar kijkt niemand."),
+                        ZeldaHoofdstuk.r("Wiske", "Brr. Hier is het altijd nacht."))));
         List<ZeldaHoofdstuk> alle = new ArrayList<>();
         for (ZeldaEiland e : EILANDEN) alle.addAll(e.delen());
         HOOFDSTUKKEN = List.copyOf(alle);
@@ -151,7 +156,7 @@ final class Zelda implements Modus {
         YamlConfiguration gebouwd = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gebouwd.yml"));
         Bouwer b = plugin.bouwer();
         boolean klaar = b == null || !b.bezig();
-        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0, graven = 0, glij = 0, ijs = 0, hitten = 0, ritmes = 0;
+        int kamers = 0, uitd = 0, puz = 0, vond = 0, barsten = 0, haken = 0, spieg = 0, poorten = 0, getijden = 0, graven = 0, glij = 0, ijs = 0, hitten = 0, ritmes = 0, nevels = 0, sluipen = 0;
         for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
             String hid = "zelda " + h.id();
             if (klaar && gebouwd.getInt("delen." + h.deelId(), -1) != h.versie())
@@ -254,6 +259,7 @@ final class Zelda implements Modus {
             if (h instanceof ZeldaEiland2b e2b && !e2b.teunOpPad) fouten.add(hid + ": Teun (2a, de ankersleutel) staat niet op het pad");
             if (h instanceof ZeldaEiland3b e3b && !e3b.hagenOpPad) fouten.add(hid + ": Hagen (3a, het wachtersharnas) staat niet op het pad");
             if (h instanceof ZeldaEiland4b e4b && !e4b.okkerOpPad) fouten.add(hid + ": Okker (4a, het Gloedschild) staat niet op het pad");
+            if (h instanceof ZeldaEiland5a e5a && !e5a.miraOpPad) fouten.add(hid + ": Mira (2a, het lichtharnas) staat niet op het pad");
             // glijvloeren (eiland 3b): start en doel om te staan, ijs onder het ijs, en met de oplossing kom je aan de overkant
             for (ZeldaHoofdstuk.Glij gl : h.glijvloeren) {
                 glij++;
@@ -356,6 +362,70 @@ final class Zelda implements Modus {
                     if (!a.grond.get(i).getBlock().isPassable()) fouten.add(hid + ": kamer " + k.id + ": zweefplek " + i + " zit vast");
                     Location l = a.landing.get(i);
                     if (!vrij(l) || !l.clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add(hid + ": kamer " + k.id + ": landing " + i + " niet vrij of zonder vloer");
+                }
+            }
+            // Morgals nevel (eiland 5a): in zijn gebied, dicht in rust, en te zien (te raken) vanaf de plek ervoor
+            for (ZeldaHoofdstuk.Nevel nv : h.nevels) {
+                nevels++;
+                String nid = hid + ": nevel " + nv.id;
+                if (!inGebied(nv.gebied) || !nv.nevel.omvang().binnen(nv.gebied)) fouten.add(nid + " ligt niet in zijn gebied");
+                if (nv.nevel.dicht.getMaterial() != ZeldaHoofdstuk.Nevel.BLOK) fouten.add(nid + " is geen " + ZeldaHoofdstuk.Nevel.BLOK);
+                if (!klaar) continue;
+                if (!nv.nevel.isOpen && !deurKlopt(h, nv.nevel, false)) fouten.add(nid + " is weg terwijl niemand hem wegschoot");
+                if (nv.voor != null) {
+                    boolean zien = false;
+                    for (int[] c : nv.nevel.blokken) zien |= laad(nv.voor, c) && spel.zicht(nv.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(c[0], c[1], c[2]));
+                    if (!vrij(nv.voor) || !nv.gebied.in(nv.voor)) fouten.add(nid + ": de plek ervoor is niet vrij of ligt niet in het gebied");
+                    else if (!zien && !nv.nevel.isOpen) fouten.add(nid + ": van de plek ervoor niet te zien");
+                }
+            }
+            // sluipen (eiland 5a): het hek open in rust, een pad om te staan, schuilplekken die niemand ziet, en elk stuk tussen
+            // twee schuilplekken is op een deel van het ritme te sluipen (met wat speling, zoals een kind loopt)
+            for (ZeldaHoofdstuk.Sluip sl : h.sluipen) {
+                sluipen++;
+                String sid = hid + ": sluipen " + sl.id;
+                if (!inGebied(sl.gebied) || !sl.finish.binnen(sl.gebied.groter(2)) || sl.wachters.isEmpty() || sl.periode < 4000) fouten.add(sid + ": buiten het gebied, zonder wachters of een te snel ritme");
+                int[] index = new int[sl.pad.size()];
+                List<int[]> cellen = ZeldaSpel.cellen(sl, index);
+                if (sl.pad.size() < 2 || cellen == null) {
+                    fouten.add(sid + ": geen pad (rechte stukken, langs x of z)");
+                    continue;
+                }
+                if (!sl.finish.in(sl.pad.get(sl.pad.size() - 1))) fouten.add(sid + ": het pad eindigt niet in de finish");
+                if (!klaar) continue;
+                if (!vrij(sl.terug) || !sl.terug.clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add(sid + ": de plek terug (" + xyz(sl.terug) + ") is niet om te staan");
+                if (sl.hekOpen == 0 && !sl.hek.isOpen) fouten.add(sid + ": het hek is dicht in rust");
+                for (int[] c : cellen) laad(sl.pad.get(0), c);
+                for (int[] c : cellen) {
+                    Location l = new Location(h.w, c[0] + 0.5, c[1], c[2] + 0.5);
+                    if (!vrij(l) || !l.clone().add(0, -1, 0).getBlock().getType().isSolid()) {
+                        fouten.add(sid + ": het pad gaat over " + xyz(l) + " (niet om te staan)");
+                        break;
+                    }
+                }
+                for (ZeldaHoofdstuk.Sluip.Wachter wa : sl.wachters)
+                    for (double[] st : wa.standen) {
+                        Location l = new Location(h.w, st[1], st[2], st[3]);
+                        if (!vrij(l) || !sl.gebied.groter(2).in(l)) fouten.add(sid + ": " + wa.naam + " staat vast op " + xyz(l));
+                    }
+                int stappen = (int) (sl.periode / 100);
+                boolean[][] tabel = spel.zichtTabel(sl, cellen, stappen);
+                List<Integer> rust = new ArrayList<>();
+                rust.add(0);
+                for (int i = 1; i < sl.pad.size(); i++) if (sl.schuil.contains(i) || i == sl.pad.size() - 1) rust.add(i);
+                for (int i : rust) {
+                    if (i == sl.pad.size() - 1) continue;
+                    for (int t = 0; t < stappen; t++)
+                        if (tabel[t][index[i]]) {
+                            fouten.add(sid + ": schuilplek " + xyz(sl.pad.get(i)) + " wordt gezien");
+                            break;
+                        }
+                }
+                for (int r = 0; r + 1 < rust.size(); r++) {
+                    int van = index[rust.get(r)], tot = index[rust.get(r + 1)];
+                    int v = ZeldaRegels.vensters(tabel, van, tot, 3);
+                    if (v * 20 < stappen) fouten.add(sid + ": van " + xyz(sl.pad.get(rust.get(r))) + " naar " + xyz(sl.pad.get(rust.get(r + 1)))
+                            + " kom je " + (v == 0 ? "nooit" : "bijna nooit (" + v + " van " + stappen + ")") + " ongezien");
                 }
             }
             // een baas met kruittonnen (Zoutbaard): de tonnen staan er als er niet gevochten wordt, en hij kan bij elke ton staan
@@ -503,7 +573,7 @@ final class Zelda implements Modus {
         info.add("zelda=" + status().name().toLowerCase() + " eilanden=" + EILANDEN.size() + " delen=" + HOOFDSTUKKEN.size() + " rust=" + HOOFDSTUKKEN.get(0).rust.size()
                 + " kamers=" + kamers + " uitdagingen=" + uitd + " puzzels=" + puz + " vondsten=" + vond + " bronnen=" + bronnen + " doelen=" + doelen
                 + " personen=" + personen + " missies=" + missies + " hartstukjes=" + stukjes + " barsten=" + barsten + " haakpunten=" + haken
-                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " graafplekken=" + graven + " glijvloeren=" + glij + " ijs=" + ijs + " hitte=" + hitten + " ritmes=" + ritmes
+                + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " graafplekken=" + graven + " glijvloeren=" + glij + " ijs=" + ijs + " hitte=" + hitten + " ritmes=" + ritmes + " nevel=" + nevels + " sluipen=" + sluipen
                 + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());

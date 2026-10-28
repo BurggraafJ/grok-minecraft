@@ -734,7 +734,11 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 r("Hendrik", "Kapot? Breng het maar. Ik maak alles."))));
         hendrik.streek = Villager.Type.DESERT;
         missie("schelpen", "Zilverschelpen", "Zoek vijf zilverschelpen langs het strand.", "Breng de schelpen naar Hendrik.");
-        hendrik.gesprek("hendrik-1", s -> s.missie("schelpen") == 0, List.of(
+        hendrik.eenmalig("hendrik-bas", s -> s.heeft("vrij:bas"), List.of(            // eerst: zijn leerjongen is terug (van Nachtrots, 5a)
+                        r("Hendrik", "Bas! Mijn leerjongen! Waar zat je?"),
+                        r("Hendrik", "Op Nachtrots? Dan krijg jij een week geen vrij."),
+                        r("Hendrik", "Grapje. Dank je dat je hem terugbracht.")), null)
+                .gesprek("hendrik-1", s -> s.missie("schelpen") == 0, List.of(
                         r("Hendrik", "Zo, in een tuniek? Daar komt een rover zo doorheen."),
                         r("Hendrik", "Ik smeed je een maliënhemd. Maar ik mis zilver."),
                         r("Hendrik", "Vijf zilverschelpen, langs het strand. Breng je ze?")), (spel, p, s) -> spel.missie(p, "schelpen", 1))
@@ -745,6 +749,9 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                     spel.missie(p, "schelpen", ZeldaVoortgang.KLAAR);
                     spel.beloon(p, "harnas1", "Maliënhemd", "klappen doen minder pijn");
                 });
+        Persoon bas = persoon(new Persoon("Bas", plek(1157, G + 1, -294, 90f), null, List.of(r("Bas", "Nooit meer naar Nachtrots. Nooit!"))));
+        bas.kind = true;
+        bas.zichtbaar = s -> s.heeft("vrij:bas");                       // de leerjongen die op Nachtrots in een cel zat
         int[][] schelpen = {{1152, -260}, {1112, -275}, {1117, -355}, {1172, -253}, {1207, -336}};
         for (int i = 0; i < schelpen.length; i++) {
             int x = schelpen[i][0], z = schelpen[i][1];
@@ -895,7 +902,15 @@ final class ZeldaEiland2a extends ZeldaHoofdstuk {
                 r("Wiske", "Er zit hier iemand. Praat eens met haar."))));
         Persoon mira = persoon(new Persoon("Mira", plek(LX - 3, TOP + 1, LZ, -90f), beroep("cartographer"), List.of(
                 r("Mira", "Het licht brandt. Brecht ziet het vast al."))));
-        mira.eenmalig("mira-1", null, List.of(
+        // het zwarte harnas uit de wapenkamer van Nachtrots (5a): in het licht van de lamp wordt het weer het lichtharnas
+        mira.gesprek("mira-harnas", s -> s.heeft(ZeldaEiland5a.ZWARTHARNAS) && !s.heeft("harnas4"), List.of(
+                        r("Mira", "Een harnas, zwart als de nacht?"),
+                        r("Mira", "Even in het licht van mijn lamp…"),
+                        r("Mira", "Kijk! Het glanst weer. Zoals vroeger.")), (spel, p, s) -> {
+                    spel.missie(p, ZeldaEiland5a.LICHTHARNAS, ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "harnas4", "Lichtharnas", "het harnas van Zelda's wachters");
+                })
+                .eenmalig("mira-1", null, List.of(
                         r("Mira", "Gered! Die rovers sloten me op in mijn toren."),
                         r("Mira", "Hun meeuwen pikten mijn lamp, het Zeelicht."),
                         r("Mira", "In de kelder liggen mijn oude bommen."),

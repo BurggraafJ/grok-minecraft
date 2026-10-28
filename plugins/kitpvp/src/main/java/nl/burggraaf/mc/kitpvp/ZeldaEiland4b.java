@@ -69,6 +69,7 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
     private Barst stuwdam;
     private Poort koelpad;
     private Box hal, uitkijk, nis;
+    private Nevel nevelnis;
     /** Voor wie de Nevelring nu breekt (het duurt een paar tellen). */
     private final java.util.Set<java.util.UUID> breekt = new java.util.HashSet<>();
     /** Staat Okker (eiland 4a: het Gloedschild) op het pad? Nee = 4a was er niet bij het bouwen (de zelftest meldt het). */
@@ -416,6 +417,7 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
         }
         for (Barst br : barsten) zetDeur(br.muur, false);
         for (Poort po : poorten) zetDeur(po.deur, false);
+        for (Nevel nv : nevels) zetDeur(nv.nevel, false);
         for (Ritme rt : ritmes) {
             zetDeur(rt.lava, true);
             rt.isHoog = false;
@@ -819,9 +821,17 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
         nis = Box.van(1279, D, 341, 1281, D + 3, 343);
         Vondst stukje = vondst(new Vondst(STUKJE_NEVEL, "Hartstukje", null, Material.RED_DYE, plek(1280, D + 1.4, 343, 0f), Box.van(1279, D + 1, 342, 1281, D + 3, 343)));
         stukje.voorwerp = "lichtpijlen";                                   // achter Morgals nevel: pas met de lichtpijlen (Nachtrots)
+        // Morgals nevel voor de nis (5a): een lichtpijl laat hem verdwijnen (de blokken zet de begintoestand, zonder herbouw)
+        nevelnis = nevel(new Nevel("nevelnis", new Deur(Nevel.BLOK.createBlockData(), Material.AIR.createBlockData()).vlak(1279, D + 1, 341, 1281, D + 3, 341),
+                Box.van(1276, D, 334, 1284, D + 4, 343)));
+        nevelnis.voor = plek(1280, D + 1, 336, 0f);
         verhaal(new Verhaal("nevelnis", Box.van(1276, D, 336, 1284, D + 4, 340), List.of(
                 r("Wiske", "Zwarte nevel, in die nis. Brr."),
                 r("Wiske", "Daar glinstert iets. Nu nog niet.")))).als = s -> !s.heeft("lichtpijlen");
+        Verhaal licht = verhaal(new Verhaal("nevelnis-licht", Box.van(1276, D, 334, 1284, D + 4, 340), List.of(
+                r("Wiske", "Die nevel! Nu heb je lichtpijlen."))));
+        licht.vereist = "lichtpijlen";
+        licht.als = s -> !s.heeft(STUKJE_NEVEL) && !s.heeft("n:nevelnis");
     }
 
     // ── 8. het Hart van de Smidse: Asgrim de Gloedwachter ──────────────────────────────────
@@ -1132,7 +1142,7 @@ final class ZeldaEiland4b extends ZeldaHoofdstuk {
                 if (koelpad != null && koelpad.deur.isOpen) p.spawnParticle(Particle.CLOUD, 1316.5, D + 1.2, 252 + r.nextDouble() * 10, 2, 0.6, 0.1, 0.3, 0.01);
                 if (r.nextInt(3) == 0) p.playSound(new Location(w, 1316.5, D + 1, 249.5), org.bukkit.Sound.BLOCK_WATER_AMBIENT, org.bukkit.SoundCategory.AMBIENT, 0.6f, 1f);
             }
-            if (nis != null && !s.heeft("lichtpijlen") && nis.groter(10).in(l))         // Morgals nevel in de nis
+            if (nis != null && nevelnis != null && !nevelnis.nevel.isOpen && nis.groter(10).in(l))   // Morgals nevel in de nis (tot een lichtpijl hem wegschiet)
                 for (int i = 0; i < 6; i++) p.spawnParticle(Particle.LARGE_SMOKE, nis.x1() + r.nextDouble() * 3, D + 1 + r.nextDouble() * 2.5, nis.z1() + 1 + r.nextDouble() * 2, 1, 0, 0.02, 0, 0.005);
             boolean buiten = w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) <= l.getBlockY() + 1;
             if (buiten) {

@@ -48,6 +48,8 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     /** De vier hartstukjes van het Lindewoud. */
     /** De boodschap over zee van Kees (eiland 4b): een bijlblad van de eerste smeden uit de Smidse; de beloning is hier. */
     static final String BIJLBLAD = "bijlblad";
+    /** De boodschap over zee van Hanne (eiland 5a): maanmos uit de kerkers van Nachtrots; de beloning (een achtste flesje) is hier. */
+    static final String MAANMOS = "maanmos";
     static final String STUKJE_EIK = "hs:lindewoud-1", STUKJE_KEES = "hs:lindewoud-2", STUKJE_RICHEL = "hs:lindewoud-3", STUKJE_TEMPEL = "hs:lindewoud-4";
     /** Het bouwvak (rx, z): zee tot aan de vakken van de buren; het oude vak (x 1092 … 1592, z −64 … 64) valt erin. */
     static final int RX1 = -76, RX2 = 539, Z1 = -179, Z2 = 179;
@@ -1477,9 +1479,16 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         Persoon gerrit = persoon(new Persoon("Gerrit", plek(287, G + 1, -12, 0f), beroep("shepherd"), List.of(
                 r("Gerrit", "De schapen komen terug als de nevel weg is."))));
         gerrit.streek = Villager.Type.PLAINS;
-        gerrit.eenmalig("gerrit-1", null, List.of(
-                r("Gerrit", "Goeiedag! Pas op bij de Kloof, hij is diep."),
-                r("Gerrit", "Die richel in de wand? Daar kom je met een haak.")), null);
+        gerrit.eenmalig("gerrit-wolkje", s -> s.heeft("vrij:wolkje"), List.of(       // eerst: zijn schaap is terug (van Nachtrots, 5a)
+                        r("Gerrit", "Wolkje! Waar was jij nou?"),
+                        r("Gerrit", "Op Nachtrots? In een cel? Arm beest."),
+                        r("Gerrit", "Dank je wel. Echt.")), null)
+                .eenmalig("gerrit-1", null, List.of(
+                        r("Gerrit", "Goeiedag! Pas op bij de Kloof, hij is diep."),
+                        r("Gerrit", "Die richel in de wand? Daar kom je met een haak.")), null);
+        Persoon wolkje = persoon(new Persoon("Wolkje", plek(286, G + 1, -16, 30f), null, List.of(r("Wolkje", "Bèèh."))));
+        wolkje.soort = EntityType.SHEEP;
+        wolkje.zichtbaar = s -> s.heeft("vrij:wolkje");                // het schaap dat op Nachtrots in een cel zat
     }
 
     // ── 9. zuid: het Veen (de boog; vechten alleen met de bel) ──────────────────────────────
@@ -1618,6 +1627,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         missie("moeraskruid", "Moeraskruid", "Zoek veenbes, zonnedauw en moerasmunt in het Veen.", "Breng de kruiden naar Hanne.");
         missie("zeekraal", "Zeekraal", "Zoek zeekraal aan de dijk op het Zilverstrand.", "Breng de zeekraal naar Hanne, op het Lindewoud.");
         missie("sneeuwbloem", "De sneeuwbloem", "Breng de sneeuwbloem naar Hanne, op het Lindewoud.");   // begint in de IJstuin (eiland 3b)
+        missie(MAANMOS, "Het maanmos", "Zoek maanmos in de kerkers van Nachtrots.", "Breng het maanmos naar Hanne, op het Lindewoud.");
         hanne.gesprek("hanne-bloem", s -> s.missie("sneeuwbloem") == 1, List.of(       // eerst: wie een sneeuwbloem bij zich heeft
                         r("Hanne", "Een sneeuwbloem! Van de Witte Toppen?"),
                         r("Hanne", "Die bloeit in de kou. Even in de ketel…"),
@@ -1625,6 +1635,16 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                     spel.missie(p, "sneeuwbloem", ZeldaVoortgang.KLAAR);
                     spel.beloon(p, "fles5", "Flesje van bergkristal", "een flesje erbij");
                 })
+                .gesprek("hanne-mos-2", s -> s.missie(MAANMOS) == 2, List.of(                // het maanmos van Nachtrots (5a)
+                        r("Hanne", "Maanmos! Dat glimt in het donker."),
+                        r("Hanne", "Even roeren… zo. Een flesje van maanglas.")), (spel, p, s) -> {
+                    spel.missie(p, MAANMOS, ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "fles8", "Flesje van maanglas", "een flesje erbij");
+                })
+                .gesprek(null, s -> s.missie(MAANMOS) == 1, List.of(r("Hanne", "Maanmos groeit in de kerkers van Nachtrots. In het donker.")), null)
+                .gesprek("hanne-mos", s -> s.missieKlaar("moeraskruid") && s.heeft("e:nachtrots") && s.missie(MAANMOS) == 0, List.of(
+                        r("Hanne", "Was je op Nachtrots? Daar groeit maanmos."),
+                        r("Hanne", "Daarmee brouw ik nog een flesje. Breng je wat?")), (spel, p, s) -> spel.missie(p, MAANMOS, 1))
                 .gesprek("hanne-1", s -> s.missie("moeraskruid") == 0, List.of(
                         r("Hanne", "Een bezoeker! Pas op, de ketel is heet."),
                         r("Hanne", "Ik brouw bronwater, maar mijn kruiden zijn op."),

@@ -745,7 +745,11 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         Persoon saar = persoon(new Persoon("Saar", plek(1465, G + 1, -288, 90f), beroep("shepherd"), List.of(
                 r("Saar", "Geiten klimmen overal op. Zelfs op het dak."))));
         saar.streek = Villager.Type.SNOW;
-        saar.gesprek("saar-1", s -> s.missie("geiten") == 0, List.of(
+        saar.eenmalig("saar-kiek", s -> s.heeft("vrij:kiek"), List.of(               // eerst: het kleinste geitje is terug (van Nachtrots, 5a)
+                        r("Saar", "Kiek! Ons kleinste geitje!"),
+                        r("Saar", "We dachten dat hij in de sneeuw verdwaald was."),
+                        r("Saar", "Dank je wel. Sven, wakker worden!")), null)
+                .gesprek("saar-1", s -> s.missie("geiten") == 0, List.of(
                         r("Saar", "Hoi! Ik ben Saar. Dat is Sven, hij slaapt."),
                         r("Saar", "Onze geiten zijn weg. Gevlucht voor de storm."),
                         r("Saar", "Bles, Mekker en Sokje. Zie jij ze?")), (spel, p, s) -> spel.missie(p, "geiten", 1))
@@ -775,6 +779,10 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
             thuis.soort = EntityType.GOAT;
             thuis.zichtbaar = s -> s.heeft("g:geit-" + n.toLowerCase());
         }
+        Persoon kiek = persoon(new Persoon("Kiek", plek(1459, G + 1, -287, -90f), null, List.of(r("Kiek", "Mèh!"))));
+        kiek.soort = EntityType.GOAT;
+        kiek.kind = true;
+        kiek.zichtbaar = s -> s.heeft("vrij:kiek");                       // het geitje dat op Nachtrots in een cel zat
     }
 
     /** Een zoekgeraakte geit: te vinden als Saar het vroeg; gevonden = naar huis (dan staat hij in de stal). */

@@ -16,7 +16,8 @@ import org.bukkit.World;
  * Kun je er lopen? Volgt vanaf de aanleg van een eiland alle plekken waar een speler kan staan: een stap omhoog van
  * hoogstens één blok (springen), omlaag hoogstens drie, over een gat van één blok springen, ladders en water op en neer.
  * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel, een poort voor wie iets
- * heeft, een brug die komt, de sluizen van eb en vloed, met de vuurstaf betoverd ijs, en de stenen van lava op een ritme)
+ * heeft, een brug die komt, de sluizen van eb en vloed, met de vuurstaf betoverd ijs, met de lichtpijlen Morgals nevel, het hek
+ * van een sluipstuk, en de stenen van lava op een ritme)
  * tellen als open en het water van een getij als water: in het spel gaan ze open. In lava sta je niet (je springt er
  * meteen uit), maar over een gat met lava kun je springen.
  * Met de klauwhaak: een haakpunt dat je ergens vandaan kunt raken (binnen bereik, niets ertussen) brengt je naar zijn
@@ -241,6 +242,8 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Ritme r : h.ritmes) l.opening(r.lava);              // lava op een ritme: de stenen liggen af en toe droog
             for (ZeldaHoofdstuk.Poort p : h.poorten) if (!dicht.contains(p.id)) l.opening(p.deur);
             if (voorwerpen.contains("vuurstaf")) for (ZeldaHoofdstuk.Smelt sm : h.smelten) l.opening(sm.ijs);   // betoverd ijs: gesmolten (lucht of water)
+            if (voorwerpen.contains("lichtpijlen")) for (ZeldaHoofdstuk.Nevel nv : h.nevels) if (!dicht.contains(nv.id)) l.opening(nv.nevel);   // Morgals nevel: weggeschoten
+            for (ZeldaHoofdstuk.Sluip sl : h.sluipen) l.opening(sl.hek);            // het hek van een sluipstuk staat open (alleen even dicht als je gezien wordt)
             for (ZeldaHoofdstuk.Getij g : h.getijden) {                  // eb en vloed: het water telt als water (zwemmen), de deuren als open
                 for (ZeldaHoofdstuk.Deur d : g.lagen) for (int[] c : d.blokken) l.open.put(sleutel(c[0], c[1], c[2]), Material.WATER);
                 for (ZeldaHoofdstuk.Deur d : g.sluizen) l.opening(d);
@@ -285,6 +288,11 @@ final class ZeldaLopen {
                 for (int[] c : s.spiegels) if (!l.bij(c, 3)) niet.add(d + "spiegels " + s.id + ": spiegel op " + c[0] + "," + c[1] + "," + c[2]);
             for (ZeldaHoofdstuk.Barst b : h.barsten) if (b.voor != null && !l.bij(b.voor, 1)) niet.add(d + "voor de gebarsten muur " + b.id);
             for (ZeldaHoofdstuk.Smelt sm : h.smelten) if (sm.voor != null && !l.bij(sm.voor, 1)) niet.add(d + "voor het ijs " + sm.id);
+            for (ZeldaHoofdstuk.Nevel nv : h.nevels) if (nv.voor != null && !l.bij(nv.voor, 1)) niet.add(d + "voor de nevel " + nv.id);
+            for (ZeldaHoofdstuk.Sluip sl : h.sluipen) {
+                if (!l.in(sl.finish)) niet.add(d + "sluipen " + sl.id + ": de finish");
+                if (!l.bij(sl.terug, 1)) niet.add(d + "sluipen " + sl.id + ": terug bij het zielvuur");
+            }
             for (ZeldaHoofdstuk.Reeks r : h.reeksen) if (r.voor != null && !l.bij(r.voor, 1)) niet.add(d + "puzzel " + r.id + ": de plek om te mikken");
             for (ZeldaHoofdstuk.Getij g : h.getijden)
                 for (ZeldaHoofdstuk.Getij.Hendel hd : g.hendels) if (!l.bij(new int[]{hd.x(), hd.y(), hd.z()}, 2)) niet.add(d + "getij " + g.id + ": hendel op " + hd.x() + "," + hd.y() + "," + hd.z());

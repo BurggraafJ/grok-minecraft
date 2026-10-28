@@ -1122,6 +1122,17 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.boven(w, map, "zelda-e4b-krater", 1296, 312, 1342, 346, zg + 48, zg + 62, 8));
         f.add(Kaart.voor(w, map, "zelda-e4b-hart-zij", 0, 1, 330, 1256, 1342, zg - 4, zg + 66, 8, 5));
         f.add(Kaart.voor(w, map, "zelda-e4b-hal-zij", 1, 0, 1262, 236, 346, zg - 8, zg + 20, 14, 5));
+        // eiland 5a, Nachtrots (de muren): alles van boven (met de toren van 5b), de kreek en de klippen, de weergang, de burcht
+        // (op het plateau), de kerkers (net boven de vloer), en van opzij: door de cellengang, door de kapel en de burcht
+        int k5 = zg + 2, p5 = zg + 14, w5 = p5 + 10;
+        f.add(Kaart.boven(w, map, "zelda-e5a-boven", ZeldaEiland5a.X1, -110, ZeldaEiland5a.TX2, 110, g - 2, zg + 80, 2));
+        f.add(Kaart.boven(w, map, "zelda-e5a-kreek", 1660, -30, 1765, 62, g - 2, p5 + 8, 5));
+        f.add(Kaart.boven(w, map, "zelda-e5a-weergang", 1750, -32, 1790, 60, w5 - 1, w5 + 3, 6));
+        f.add(Kaart.boven(w, map, "zelda-e5a-burcht", 1738, -66, 1872, 66, p5 - 1, p5 + 4, 4));
+        f.add(Kaart.boven(w, map, "zelda-e5a-kerkers", 1700, -38, 1810, 34, k5 - 1, k5 + 3, 5));
+        f.add(Kaart.voor(w, map, "zelda-e5a-cellen-zij", 0, 1, -24, 1700, 1810, zg - 6, w5 + 10, 8, 5));
+        f.add(Kaart.voor(w, map, "zelda-e5a-kapel-zij", 0, 1, 20, 1700, 1810, zg - 6, w5 + 10, 12, 5));
+        f.add(Kaart.voor(w, map, "zelda-e5a-zij", 0, -1, 100, ZeldaEiland5a.X1, ZeldaEiland5a.TX2, g, zg + 80, 200, 2));
         List<String> uit = new ArrayList<>();
         for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;

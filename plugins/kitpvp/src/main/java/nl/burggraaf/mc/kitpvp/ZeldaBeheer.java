@@ -95,7 +95,7 @@ final class ZeldaBeheer {
 
     // ── plekken ─────────────────────────────────────────────────────────────────────────────
 
-    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren, betoverd ijs, haakpunten, graafplekken, glijvloeren, lava op een ritme. */
+    /** Alle plekken om heen te gaan, op naam (kleine letters): eilanden, delen, rustplaatsen, kamers, personen, puzzels, poorten, getijden en hun hendels, gebarsten muren, betoverd ijs, haakpunten, graafplekken, glijvloeren, lava op een ritme, nevel, sluipstukken. */
     Map<String, Location> plekken() {
         Map<String, Location> m = new LinkedHashMap<>();
         for (ZeldaEiland e : spel.eilanden) {
@@ -126,6 +126,8 @@ final class ZeldaBeheer {
                 for (ZeldaHoofdstuk.Graaf gr : h.graven) zet(m, "graaf-" + gr.id(), gr.plek());
                 for (ZeldaHoofdstuk.Glij gl : h.glijvloeren) zet(m, gl.id, h.plekVan(gl.id));                  // bij de start, voor het ijs
                 for (ZeldaHoofdstuk.Ritme rt : h.ritmes) zet(m, rt.id, h.plekVan(rt.id));                       // voor de stenen
+                for (ZeldaHoofdstuk.Nevel nv : h.nevels) zet(m, "nevel-" + nv.id, h.plekVan(nv.id));             // voor de nevel
+                for (ZeldaHoofdstuk.Sluip sl : h.sluipen) zet(m, sl.id, h.plekVan(sl.id));                      // het begin van het sluipstuk
             }
         }
         if (spel.zee.w != null && !spel.zee.dek.isEmpty()) zet(m, "zee", spel.zee.dek.get(0));
