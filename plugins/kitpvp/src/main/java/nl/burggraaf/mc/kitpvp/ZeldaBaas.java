@@ -21,8 +21,9 @@ import org.bukkit.potion.PotionEffectType;
  * naam) zien alleen de spelers in de kamer.
  *
  * <p>Een andere baas is een subklasse die {@link #beweeg} (wat hij elke seconde doet), {@link #schade} (hoeveel een
- * klap doet), {@link #boem} (een bom in zijn kamer) en {@link #geraakt} (een pijl) anders doet, met een eigen
- * {@link #soort} en {@link #helper} (bv. {@link Zoutbaard} op eiland 2b).
+ * klap doet), {@link #boem} (een bom in zijn kamer), {@link #geraakt} (een pijl), {@link #raakBlok} (een pijl op een
+ * blok in zijn kamer) en {@link #vlam} (de vuurstaf) anders doet, met een eigen {@link #soort} en {@link #helper} (bv.
+ * {@link Zoutbaard} op eiland 2b, {@link Asgrim} op eiland 4b).
  */
 class ZeldaBaas {
 
@@ -146,6 +147,19 @@ class ZeldaBaas {
 
     /** Een bom ontploft in de kamer van deze baas (tijdens het gevecht). */
     void boem(ZeldaSpel spel, Player p, Location l) {
+    }
+
+    /**
+     * Een pijl raakt een blok in de kamer van deze baas, tijdens het gevecht (Asgrim: de kuip boven hem). True = de baas
+     * deed er iets mee (dan verdwijnt de pijl).
+     */
+    boolean raakBlok(ZeldaSpel spel, Player p, org.bukkit.block.Block b) {
+        return false;
+    }
+
+    /** Een vlam van de vuurstaf raakt deze baas. True = hij doet er zelf iets mee (dan geen gewone tik). */
+    boolean vlam(ZeldaSpel spel, Player p) {
+        return false;
     }
 
     /** De baas is verslagen (hij lost op in licht). */

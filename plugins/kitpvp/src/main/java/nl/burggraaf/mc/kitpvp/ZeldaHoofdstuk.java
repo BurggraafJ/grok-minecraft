@@ -62,7 +62,7 @@ abstract class ZeldaHoofdstuk {
 
     /** Vijanden (zie {@link ZeldaSpel#spawn}). */
     enum Soort { VEENLOPER, SPIN, MOSSCHUTTER, VEENREUS, SOLDAAT, KRUISBOOG, HEKS, ROVER, ROVERSCHUTTER, MATROOS, HARPOENIER, KAPITEIN, NEVELWOLF,
-        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT }
+        IJSKNECHT, VORSTSCHUTTER, IJSKOBOLD, GRIMMEL, ASKNECHT, VONKSCHUTTER, SINTELMIJT, ASGRIM }
 
     /** Een regel van een personage: {@code spreker} (mag null: verteller) en tekst. */
     record Regel(String spreker, String tekst) {}
@@ -635,6 +635,34 @@ abstract class ZeldaHoofdstuk {
         }
     }
 
+    /**
+     * Lava die op een ritme stijgt en zakt (eiland 4b, de Gietzaal): {@code laag} ms liggen de stenen droog
+     * ({@code lava.open}), dan staat de lava {@code hoog} ms over de stenen ({@code lava.dicht}). Een tel voor het stijgen
+     * borrelt het (zo zie je het aankomen). Alleen als er iemand in de buurt is; anders liggen de stenen droog (rust). Wie
+     * in de lava stapt, springt er meteen uit, terug naar waar hij veilig stond ({@link ZeldaSpel}: lava doet geen echte
+     * schade). {@code kitpvp zelda lopen} telt de stenen als droog.
+     */
+    static final class Ritme {
+        final String id, naam;
+        final Deur lava;                                    // dicht = hoog (lava), open = laag (de stenen)
+        final Box gebied;
+        final long laag, hoog;
+        Location voor;                                      // hier sta je ervoor (de test; null = het midden van het gebied)
+        // tijdens het spel
+        long begin;                                         // wanneer deze rondes begonnen (0 = in rust)
+        boolean isHoog;
+        int keren;                                          // hoe vaak hij al steeg (de test kijkt ernaar)
+
+        Ritme(String id, String naam, Deur lava, Box gebied, long laag, long hoog) {
+            this.id = id;
+            this.naam = naam;
+            this.lava = lava;
+            this.gebied = gebied;
+            this.laag = laag;
+            this.hoog = hoog;
+        }
+    }
+
     // ── de onderdelen, in de volgorde van het pad ───────────────────────────────────────────
 
     final List<Rust> rust = new ArrayList<>();
@@ -656,6 +684,7 @@ abstract class ZeldaHoofdstuk {
     final List<Glij> glijvloeren = new ArrayList<>();
     final List<Smelt> smelten = new ArrayList<>();
     final List<Hitte> hitten = new ArrayList<>();
+    final List<Ritme> ritmes = new ArrayList<>();
     final java.util.Set<String> stukjes = new java.util.LinkedHashSet<>();   // de hartstukjes van dit deel (vondst of beloning)
     final List<Object> volgorde = new ArrayList<>();
     ZeldaEiland eiland;                                     // gezet door ZeldaEiland
@@ -739,7 +768,7 @@ abstract class ZeldaHoofdstuk {
                     : o instanceof Reeks r ? r.id : o instanceof Verhaal v ? v.id : o instanceof Vondst v ? v.vlag
                     : o instanceof Spiegels sp ? sp.id : o instanceof Barst b ? b.id : o instanceof Poort po ? po.id
                     : o instanceof Getij g ? g.id : o instanceof Graaf gr ? gr.id() : o instanceof Glij gl ? gl.id
-                    : o instanceof Smelt sm ? sm.id : o instanceof Hitte ht ? ht.id : null;
+                    : o instanceof Smelt sm ? sm.id : o instanceof Hitte ht ? ht.id : o instanceof Ritme rt ? rt.id : null;
             if (id.equals(i)) return o;
         }
         for (Bron b : bronnen) if (b.id.equals(id)) return b;
@@ -770,6 +799,7 @@ abstract class ZeldaHoofdstuk {
         if (o instanceof Glij gl) return new Location(w, gl.start[0] + 0.5, gl.y + 1, gl.start[1] + 0.5);
         if (o instanceof Smelt sm) return sm.voor != null ? sm.voor : sm.ijs.omvang().midden(w);
         if (o instanceof Hitte ht) return ht.proef != null ? ht.proef : ht.gebied.midden(w);
+        if (o instanceof Ritme rt) return rt.voor != null ? rt.voor : rt.gebied.midden(w);
         return null;
     }
 
@@ -809,6 +839,7 @@ abstract class ZeldaHoofdstuk {
         glijvloeren.clear();
         smelten.clear();
         hitten.clear();
+        ritmes.clear();
         stukjes.clear();
         volgorde.clear();
     }
@@ -953,6 +984,13 @@ abstract class ZeldaHoofdstuk {
         hitten.add(h);
         volgorde.add(h);
         return h;
+    }
+
+    /** Lava die op een ritme stijgt en zakt, op het pad (de test kijkt of hij stijgt, zakt en of je er veilig uit springt). */
+    protected Ritme ritme(Ritme r) {
+        ritmes.add(r);
+        volgorde.add(r);
+        return r;
     }
 
     protected Verhaal verhaal(Verhaal v) {

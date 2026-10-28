@@ -261,6 +261,14 @@ final class ZeldaRegels {
         return schade * (versuft ? 1.2 : 0.25);
     }
 
+    /**
+     * Hoeveel een klap doet bij Asgrim, de Gloedwachter van de Smidse (eiland 4b): door zijn vlammenschild komt bijna
+     * niets heen (een tiende), maar gedoofd (water uit een kuip over hem heen) gewoon alles. Zo duurt het een paar kuipen.
+     */
+    static double asgrimSchade(double schade, boolean gedoofd) {
+        return schade * (gedoofd ? 1.0 : 0.1);
+    }
+
     /** Een vakje (x, z) van een glijvloer: ijs? vrij om in te staan? een gewone vloer? */
     @FunctionalInterface
     interface Vak {

@@ -89,6 +89,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
     /** De dag schuift op met wat je deed: een gouden middag, later de avond; na de Smidsepoort gloeit de berg in de schemer. */
     @Override
     long hemel(Location l, ZeldaVoortgang.Stand s) {
+        if (s.heeft(ZeldaEiland4b.NEVELRING)) return 1000;                // de Nevelring is gebroken (4b): de ochtend
         if (s.heeft(id())) return 13000;
         if (s.heeft(GLOEDHARNAS)) return 12300;
         if (s.heeft(VUURSTAF)) return 11300;
@@ -581,6 +582,9 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                         r("Brecht", "Ik wacht hier op je. Pas op voor die berg.")), null)
                 .eenmalig("brecht-poort", s -> s.heeft(id()), List.of(
                         r("Brecht", "De hele berg gloeit vanavond. Dat was jij, hè?")), null)
+                .eenmalig("brecht-nevel", s -> s.heeft("baken4"), List.of(
+                        r("Brecht", "De nevel in het noorden is weg! Ik zag het vanaf het water."),
+                        r("Brecht", "Nachtrots… Zodra de Zilvermeeuw klaar is, varen we.")), null)
                 .gesprek(null, s -> true, List.of(), (spel, p, s) -> spel.varen(p));
         verhaal(new Verhaal("weg4", Box.van(1108, G, 326, 1114, G + 6, 338), List.of(
                 r("Wiske", "Huisjes tegen de berg. Daar wonen vast mijnwerkers."))));
@@ -810,7 +814,14 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
     private void okker() {
         okker = persoon(new Persoon("Okker", plek(1145, D + 1, 317, 135f), beroep("armorer"), List.of(
                 r("Okker", "Heet, hè? Hier word je taai van."))));
-        okker.gesprek("okker-harnas", s -> s.heeft(GLOEDIJZER) && esse(s) && !s.heeft(GLOEDHARNAS), List.of(
+        okker.gesprek("okker-schild", s -> s.heeft(ZeldaEiland4b.SCHILDPLAAT) && !s.heeft(ZeldaSpel.GLOEDSCHILD), List.of(   // 4b
+                        r("Okker", "Een schild van de eerste smeden! Kapot, maar nog goed."),
+                        r("Okker", "Even in het vuur… en op het aambeeld…"),
+                        r("Okker", "Hier: het Gloedschild. Vuur ketst er gewoon op af.")), (spel, p, s) -> {
+                    p.playSound(p, org.bukkit.Sound.BLOCK_ANVIL_USE, 0.7f, 1.1f);
+                    spel.beloon(p, ZeldaSpel.GLOEDSCHILD, "Gloedschild", "vuur ketst erop af");
+                })
+                .gesprek("okker-harnas", s -> s.heeft(GLOEDIJZER) && esse(s) && !s.heeft(GLOEDHARNAS), List.of(
                         r("Okker", "Gloedijzer én vuur. Even smeden…"),
                         r("Okker", "Hier: het gloedharnas. Zoals de eerste smeden het droegen."),
                         r("Okker", "Achter de Gloedader is het het heetst. Pas op daar.")), (spel, p, s) -> {
@@ -834,6 +845,8 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                 .eenmalig("okker-ijzer", s -> s.heeft(GLOEDIJZER) && !esse(s), List.of(
                         r("Okker", "Gloedijzer! Maar mijn esse is nog koud."),
                         r("Okker", "Steek hem aan met die staf van je.")), null)
+                .eenmalig("okker-asgrim", s -> s.heeft("k:smidshart"), List.of(
+                        r("Okker", "Asgrim is vrij? Dan gloeit de Smidse weer!")), null)
                 .eenmalig("okker-as", s -> s.heeft("k:askamer"), List.of(
                         r("Okker", "Je stond voor de Smidsepoort? Daar smeedden de eersten."),
                         r("Okker", "Asgrim, de Gloedwachter, laat niemand binnen.")), null);
@@ -911,6 +924,9 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                 .eenmalig("kobus-staf", s -> s.heeft(VUURSTAF), List.of(
                         r("Kobus", "Een vuurstaf! Daarmee kom je overal bij."),
                         r("Kobus", "Diep in de berg ligt de Smidse. Al eeuwen dicht.")), null)
+                .eenmalig("kobus-asgrim", s -> s.heeft("k:smidshart"), List.of(
+                        r("Kobus", "Asgrim, vrij? Mijn opa zei: hij kan niet tegen water."),
+                        r("Kobus", "Een beetje laat, hè, dat ik dat nu pas zeg.")), null)
                 .eenmalig("kobus-as", s -> s.heeft("k:askamer"), List.of(
                         r("Kobus", "Je zag de Smidsepoort? Mijn opa zag hem ook, één keer.")), null);
     }
@@ -1473,7 +1489,10 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                         r("Wiske", "Ida! Van de Witte Toppen!"),
                         r("Ida", "Hoi! Ik klim alle bergen. Deze is wel warm."),
                         r("Ida", "Boven is de krater. Er zit iets in dat gloeit.")), null)
-                .eenmalig("ida-poort", s -> s.heeft(id()), List.of(
+                .eenmalig("ida-baken", s -> s.heeft("baken4"), List.of(
+                        r("Ida", "Ik zag een vuur boven de krater!"),
+                        r("Ida", "En in het noorden: de zwarte nevel is weg.")), null)
+                .eenmalig("ida-poort", s -> s.heeft(id()) && !s.heeft("baken4"), List.of(
                         r("Ida", "Een poort in de berg? Die klim ik niet. Jij wel.")), null);
     }
 

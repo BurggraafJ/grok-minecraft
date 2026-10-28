@@ -486,6 +486,36 @@ final class ZeldaMuziek {
             spoor(Instr.BELL, 0.08f, "e4+g4+b4 . . . . . . . | . . . . . . . . | f4+a4+c5 . . . . . . . | e4+g4+b4 . . . . . . . "
                     + "| e4+g4+b4 . . . . . . . | . . . . . . . . | d4+f4+a4 . . . . . . . | e4+g4+b4 . . . . . . ."));
 
+    // ── de Gloedberg: de Smidse (eiland 4b) ────────────────────────────────────────────────
+
+    /** De Smidse van de eerste smeden: een dreun als van een hamer, een lage bas en een aambeeld dat ver weg tinkelt, in d-klein. */
+    static final Lied SMIDSE = lied("smidse", 5, true,
+            spoor(Instr.BASS, 0.2f, "d4 . . . d4 . . . | a#3 . . . a#3 . . . | c4 . . . c4 . . . | a3 . . . a3 . a3 . "
+                    + "| d4 . . . d4 . . . | f4 . . . f4 . . . | e4 . . . c4 . . . | a3 . . . . . . ."),
+            spoor(Instr.KICK, 0.2f, "x . . . . . x . | x . . . . . x . | x . . . . . x . | x . . . x . x . "
+                    + "| x . . . . . x . | x . . . . . x . | x . . . . . x . | x . . . x . x ."),
+            spoor(Instr.IRON, 0.12f, "d5 . . . . . c5 . | a#4 . . . a4 . . . | g4 . . . a4 . c5 . | a4 . . . . . . . "
+                    + "| d5 . . . f5 . e5 . | d5 . . . a4 . . . | g4 . f4 . e4 . c#5 . | d5 . . . . . . ."),
+            spoor(Instr.DIDGE, 0.12f, "d4 . . . . . . . | a#3 . . . . . . . | c4 . . . . . . . | a3 . . . . . . . "
+                    + "| d4 . . . . . . . | f4 . . . . . . . | e4 . . . . . . . | a3 . . . . . . ."),
+            spoor(Instr.BELL, 0.07f, "d4+f4+a4 . . . . . . . | a#3+d4+f4 . . . . . . . | c4+e4+g4 . . . . . . . | a3+c#4+e4 . . . . . . . "
+                    + "| d4+f4+a4 . . . . . . . | f4+a4+c5 . . . . . . . | c4+e4+g4 . . . . . . . | a3+c#4+e4 . . . . . . ."));
+
+    /** Asgrim de Gloedwachter: een vlammend baslijntje, slagen als hamers op een aambeeld en een ijzeren melodie, in a-klein. */
+    static final Lied ASGRIM = lied("asgrim", 2, true,
+            spoor(Instr.BASS, 0.85f, "a3 . a3 . e4 . a3 . | a3 . a3 . e4 . a3 . | f4 . f4 . c4 . f4 . | g4 . g4 . d4 . g4 . "
+                    + "| a3 . a3 . e4 . a3 . | a3 . a3 . e4 . a3 . | f4 . f4 . g4 . g4 . | e4 . f4 . g4 . g#4 ."),
+            spoor(Instr.KICK, 0.65f, "x . . . x . x . | x . . . x . x . | x . . . x . x . | x . . . x . x . "
+                    + "| x . . . x . x . | x . . . x . x . | x . . . x . x . | x . x . x x x x"),
+            spoor(Instr.SNARE, 0.4f, ". . x . . . x . | . . x . . . x . | . . x . . . x . | . . x . . . x . "
+                    + "| . . x . . . x . | . . x . . . x . | . . x . . . x . | . x . x . x x x"),
+            spoor(Instr.IRON, 0.45f, "e5 . a4 . c5 . e5 . | d5 . c5 . b4 . a4 . | f5 . . . e5 . d5 . | d5 . . . b4 . g4 . "
+                    + "| e5 . a4 . c5 . e5 . | f5 . e5 . d5 . c5 . | c5 . d5 . e5 . f5 . | e5 . . . d5 . . ."),
+            spoor(Instr.DIDGE, 0.5f, "a3 . . . . . . . | a3 . . . . . . . | f4 . . . . . . . | g4 . . . . . . . "
+                    + "| a3 . . . . . . . | a3 . . . . . . . | f4 . . . g4 . . . | e4 . . . . . . ."),
+            spoor(Instr.BELL, 0.3f, "a3+c4+e4 . . . . . . . | . . . . . . . . | f4+a4+c5 . . . . . . . | g4+b4+d5 . . . . . . . "
+                    + "| a3+c4+e4 . . . . . . . | . . . . . . . . | f4+a4+c5 . . . g4+b4+d5 . . . | e4+g#4+b4 . . . . . . ."));
+
     /** Een bron (feeënkring): genezen, flesjes vol. */
     static final Lied BRON = lied("bron", 2, false,
             spoor(Instr.CHIME, 0.35f, "d4 f#4 a4 d5 f#5 d5 a4 f#4 | e4 g4 b4 e5 . . . ."),
@@ -506,7 +536,7 @@ final class ZeldaMuziek {
         return List.of(GEVECHT, BAAS, DICHT, GEWONNEN, VONDST, RUST, OPGELOST, MISLUKT, BEGIN, KLAAR,
                 THUIS, WOUD, TEMPEL, VEEN, HAVEN, ZEE, BRON, HINT, OPDRACHT, ZOUTKOM, DUINEN, VUURTOREN, DORP,
                 WAD, GETIJDENTEMPEL, ZOUTBAARD, IJSHOEVE, SNEEUWSTORM, WACHTERSPOST, BERGPAD, IJSPALEIS, GRIMMEL,
-                SINTELGAT, MIJNEN, GLOED);
+                SINTELGAT, MIJNEN, GLOED, SMIDSE, ASGRIM);
     }
 
     // ── afspelen ────────────────────────────────────────────────────────────────────────────

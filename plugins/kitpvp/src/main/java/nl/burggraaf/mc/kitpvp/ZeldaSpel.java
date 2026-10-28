@@ -122,6 +122,8 @@ final class ZeldaSpel implements Listener {
         Location koelplek;                                   // waar je in de hitte voor het laatst afkoelde
         long teHeet;
         boolean koelt;
+        Location veilig;                                     // waar je het laatst veilig stond (geen lava vlakbij): daar spring je heen uit de lava
+        long lavaTijd;
         final Map<String, Integer> doden = new HashMap<>();  // kamer → keer doodgegaan (voor tips)
 
         Sessie(ZeldaHoofdstuk h, int rust) {
@@ -394,7 +396,8 @@ final class ZeldaSpel implements Listener {
             inv.setItem(1, boog);
             inv.setItem(17, ding(Material.ARROW, "Pijl", "pijl"));
         }
-        if (s.heeft("schild")) inv.setItemInOffHand(ding(Material.SHIELD, "Eikenschild", "schild"));
+        if (s.heeft(GLOEDSCHILD)) inv.setItemInOffHand(gloedschild());
+        else if (s.heeft("schild")) inv.setItemInOffHand(ding(Material.SHIELD, "Eikenschild", "schild"));
         for (ZeldaVoorwerp v : voorwerpen) if (v.heeft(s)) vernieuw(p, s, v);
         inv.setItem(8, ding(Material.MAP, "Kaart", "kaart"));
         inv.setItem(Menus.HUB_VAK, plugin.hubItem());
@@ -404,6 +407,22 @@ final class ZeldaSpel implements Listener {
             if (p.getInventory().getLeggings() == null) p.getInventory().setLeggings(ding(Material.LEATHER_LEGGINGS, "Broek", "broek"));
         }
         harten(p, ZeldaRegels.harten(s));
+    }
+
+    /** Het schild van de eerste smeden, door Okker gesmeed (eiland 4b): zwart met gloed; vuur ketst erop af (Asgrims sintels). */
+    static final String GLOEDSCHILD = "gloedschild";
+
+    private ItemStack gloedschild() {
+        ItemStack it = ding(Material.SHIELD, "Gloedschild", "schild");
+        if (it.getItemMeta() instanceof org.bukkit.inventory.meta.ShieldMeta sm) {
+            sm.setBaseColor(org.bukkit.DyeColor.BLACK);
+            sm.addPattern(new org.bukkit.block.banner.Pattern(org.bukkit.DyeColor.ORANGE, org.bukkit.block.banner.PatternType.GRADIENT_UP));
+            sm.addPattern(new org.bukkit.block.banner.Pattern(org.bukkit.DyeColor.YELLOW, org.bukkit.block.banner.PatternType.CIRCLE));
+            sm.addPattern(new org.bukkit.block.banner.Pattern(org.bukkit.DyeColor.BLACK, org.bukkit.block.banner.PatternType.BORDER));
+            it.setItemMeta(sm);
+        }
+        lore(it, "vuur ketst erop af");
+        return it;
     }
 
     /** Zet één voorwerp opnieuw in zijn vak (bv. na drinken). */
@@ -532,6 +551,7 @@ final class ZeldaSpel implements Listener {
                 for (ZeldaHoofdstuk.Poort po : h.poorten) poort(po, nu);
                 for (ZeldaHoofdstuk.Getij g : h.getijden) veilig("getij", () -> getij(g, nu));
                 for (ZeldaHoofdstuk.Smelt sm : h.smelten) veilig("ijs", () -> smelt(sm, nu));
+                for (ZeldaHoofdstuk.Ritme rt : h.ritmes) veilig("ritme", () -> ritme(rt, nu));
             }
         }
         if (tikken % 10 == 5) for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Spiegels sp : h.spiegels) veilig("spiegels", () -> spiegels(sp, nu));
@@ -672,6 +692,7 @@ final class ZeldaSpel implements Listener {
         Location l = p.getLocation();
         ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
         if (ss.h.eiland == null) return;
+        if (veiligeGrond(p)) ss.veilig = l.clone();
         for (ZeldaHoofdstuk h : ss.h.eiland.delen()) {
             for (ZeldaHoofdstuk.Rust r : h.rust) if (r.zone.in(l)) rust(p, ss, s, h, r);
             for (ZeldaHoofdstuk.Verhaal v : h.verhalen)
@@ -1026,6 +1047,7 @@ final class ZeldaSpel implements Listener {
             case ASKNECHT -> org.bukkit.entity.Zombie.class;
             case VONKSCHUTTER -> org.bukkit.entity.Skeleton.class;
             case SINTELMIJT -> org.bukkit.entity.MagmaCube.class;
+            case ASGRIM -> org.bukkit.entity.Blaze.class;
         };
         w.spawnParticle(Particle.SOUL, l.clone().add(0, 0.5, 0), 20, 0.4, 0.2, 0.4, 0.03);
         w.spawnParticle(Particle.LARGE_SMOKE, l.clone().add(0, 0.8, 0), 10, 0.3, 0.5, 0.3, 0.01);
@@ -1146,6 +1168,11 @@ final class ZeldaSpel implements Listener {
                     if (m instanceof org.bukkit.entity.MagmaCube mc) mc.setSize(1);
                     hp = 6;
                     dmg = 2;
+                }
+                case ASGRIM -> {                                     // Asgrim de Gloedwachter (4b): een groot vlammenwezen, zweeft (zie Asgrim)
+                    hp = 70;
+                    schaal = Asgrim.SCHAAL;
+                    zetAttr(m, Attribute.KNOCKBACK_RESISTANCE, 1.0);
                 }
                 case KAPITEIN -> {                                   // Kapitein Zoutbaard: groot, staat bij zijn ton, gooit drietanden
                     hp = 60;
@@ -2830,7 +2857,9 @@ final class ZeldaSpel implements Listener {
             it.remove();
             if (v.reeks != null) activeer(p, v.reeks, v.ding);
             else if (v.ijs != null) smelt(p, v.ijs);
-            else if (v.vijand != null && v.vijand.isValid() && !v.vijand.isDead()) {
+            else if (v.vijand != null && v.vijand.isValid() && !v.vijand.isDead() && baasVan(v.vijand) != null && baasVan(v.vijand).vlam(this, p)) {
+                w.spawnParticle(Particle.FLAME, v.vijand.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.02);
+            } else if (v.vijand != null && v.vijand.isValid() && !v.vijand.isDead()) {
                 v.vijand.damage(ZeldaRegels.VUUR_SCHADE * (v.vijand.getScoreboardTags().contains(IJS) ? 1.5 : 1), p);
                 w.spawnParticle(Particle.FLAME, v.vijand.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.02);
                 var duw = v.vijand.getLocation().toVector().subtract(v.van.toVector()).setY(0);
@@ -2964,6 +2993,113 @@ final class ZeldaSpel implements Listener {
         if (nu - ss.teHeet > 30_000L && ss.rij.isEmpty() && ss.nu == null)
             vertel(p, ZeldaHoofdstuk.r("Wiske", h.fel ? "Te heet! Zonder harnas kom je hier niet." : "Te heet! Even terug, afkoelen."));
         ss.teHeet = nu;
+    }
+
+    // ── lava (eiland 4b): stijgen en zakken, en er meteen weer uit springen ─────────────────
+
+    /** Wat lava doet als je erin stapt: zoveel schade (halve harten), en je springt terug naar waar je veilig stond. */
+    static final double LAVA_SCHADE = 2;
+
+    /** Staat deze speler op vaste grond zonder lava vlakbij (onder en naast zijn voeten)? Dan is dit een veilige plek. */
+    private boolean veiligeGrond(Player p) {
+        if (p.isDead() || p.isInLava() || p.getFireTicks() > 0 || !((Entity) p).isOnGround()) return false;
+        Location l = p.getLocation();
+        int x = l.getBlockX(), y = l.getBlockY(), z = l.getBlockZ();
+        if (!l.getBlock().isPassable() || !l.clone().add(0, -1, 0).getBlock().getType().isSolid()) return false;
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dy = -1; dy <= 0; dy++) if (p.getWorld().getBlockAt(x + dx, y + dy, z + dz).getType() == Material.LAVA) return false;
+        for (ZeldaHoofdstuk h : hoofdstukken)                          // niet op de stenen van een ritme (die gaan onder)
+            for (ZeldaHoofdstuk.Ritme r : h.ritmes) if (r.lava.omvang().groter(1).in(l)) return false;
+        return true;
+    }
+
+    /**
+     * Lava in Zelda: wie erin stapt, springt er meteen weer uit (terug naar waar hij veilig stond), met een kleine schroeiplek
+     * ({@link #LAVA_SCHADE}, nooit dood) en zonder brand. Zo kan lava overal een puzzel zijn, zonder dat je doodgaat.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onLava(EntityDamageEvent e) {
+        if (!(e.getEntity() instanceof Player p) || !speelt(p) || beheer.is(p.getUniqueId())) return;
+        EntityDamageEvent.DamageCause c = e.getCause();
+        boolean lava = c == EntityDamageEvent.DamageCause.LAVA;
+        if (!lava && c != EntityDamageEvent.DamageCause.FIRE && c != EntityDamageEvent.DamageCause.FIRE_TICK) return;
+        Sessie ss = sessie(p);
+        if (ss == null || ss.vaart != null) return;
+        if (!lava && !p.isInLava()) {                                   // brand na de lava: weg
+            if (System.currentTimeMillis() - ss.lavaTijd < 5000L) {
+                e.setCancelled(true);
+                p.setFireTicks(0);
+            }
+            return;
+        }
+        e.setCancelled(true);
+        long nu = System.currentTimeMillis();
+        if (nu - ss.lavaTijd < 700L) return;
+        ss.lavaTijd = nu;
+        Location naar = ss.veilig != null && ss.veilig.getWorld().equals(p.getWorld()) && ss.veilig.distanceSquared(p.getLocation()) < 60 * 60
+                ? ss.veilig : ss.rustplaats().plek;
+        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 0.8f, 1.2f);
+        p.getWorld().spawnParticle(Particle.LAVA, p.getLocation().add(0, 0.5, 0), 8, 0.3, 0.2, 0.3, 0);
+        p.setFallDistance(0);
+        p.setVelocity(new org.bukkit.util.Vector());
+        p.teleport(naar);
+        p.setFireTicks(0);
+        p.playSound(p, Sound.ENTITY_PLAYER_HURT_ON_FIRE, 0.6f, 1.2f);
+        p.setHealth(Math.max(1, p.getHealth() - LAVA_SCHADE));
+        ss.geraakt = nu;
+        ZeldaVoortgang.Stand st = voortgang.van(p.getUniqueId());
+        if (st.zet("v:lava")) {
+            voortgang.vuil();
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "Au! Lava. Daar blijf je uit."));
+        }
+    }
+
+    /**
+     * Elke vijf tikken: lava die op een ritme stijgt en zakt, als er iemand in de buurt is. Een tel voor het stijgen
+     * borrelt het. Zonder iemand in de buurt liggen de stenen droog.
+     */
+    private void ritme(ZeldaHoofdstuk.Ritme r, long nu) {
+        boolean iemand = !in(r.gebied.groter(12)).isEmpty();
+        if (!iemand) {
+            if (r.isHoog) zetRitme(r, false);
+            r.begin = 0;
+            return;
+        }
+        if (r.begin == 0) r.begin = nu;
+        long t = (nu - r.begin) % (r.laag + r.hoog);
+        boolean hoog = t >= r.laag;
+        if (hoog != r.isHoog) zetRitme(r, hoog);
+        else if (!hoog && t >= r.laag - 1000) {                         // het borrelt: zo meteen stijgt het
+            var w = plugin.w;
+            for (int i = 0; i < 4; i++) {
+                int[] c = r.lava.blokken.get(rnd.nextInt(r.lava.blokken.size()));
+                w.spawnParticle(Particle.LAVA, c[0] + 0.5, c[1] + 1.0, c[2] + 0.5, 1, 0.2, 0, 0.2, 0);
+            }
+            int[] m = r.lava.blokken.get(r.lava.blokken.size() / 2);
+            if (tikken % 10 == 0) w.playSound(new Location(w, m[0] + 0.5, m[1] + 0.5, m[2] + 0.5), Sound.BLOCK_LAVA_AMBIENT, 0.8f, 1.3f);
+        }
+    }
+
+    /** Een deeltje alleen voor deze speler, ook van ver te zien (de Nevelring aan de horizon). {@code data}: kleur of null. */
+    void deeltje(Player p, Particle d, Location l, int n, double ox, double oy, double oz, Object data) {
+        Object dt = data != null && d.getDataType().isInstance(data) ? data : null;
+        if (dt == null && d.getDataType() != Void.class) return;
+        d.builder().location(l).count(n).offset(ox, oy, oz).speed(0).data(dt).receivers(p).force(true).spawn();
+    }
+
+    /** De lava van een ritme hoog of laag (zonder deurgeluid: lava borrelt en sist). */
+    void zetRitme(ZeldaHoofdstuk.Ritme r, boolean hoog) {
+        r.isHoog = hoog;
+        r.lava.isOpen = !hoog;
+        if (hoog) r.keren++;
+        var w = plugin.w;
+        BlockData d = hoog ? r.lava.dicht : r.lava.open;
+        for (int[] c : r.lava.blokken) w.getBlockAt(c[0], c[1], c[2]).setBlockData(d, false);
+        int[] m = r.lava.blokken.get(r.lava.blokken.size() / 2);
+        Location ml = new Location(w, m[0] + 0.5, m[1] + 0.8, m[2] + 0.5);
+        w.playSound(ml, hoog ? Sound.ITEM_BUCKET_EMPTY_LAVA : Sound.BLOCK_LAVA_EXTINGUISH, 0.9f, hoog ? 0.8f : 1.4f);
+        if (!hoog) for (int[] c : r.lava.blokken) w.spawnParticle(Particle.SMOKE, c[0] + 0.5, c[1] + 1.1, c[2] + 0.5, 2, 0.2, 0.05, 0.2, 0.01);
     }
 
     // ── glijvloeren (eiland 3b) ─────────────────────────────────────────────────────────────
@@ -3173,6 +3309,13 @@ final class ZeldaSpel implements Listener {
         }
         Block b = e.getHitBlock();
         if (b == null) return;
+        for (ZeldaHoofdstuk h : hoofdstukken)                       // een baas kan iets met een pijl op een blok (Asgrims kuipen)
+            for (ZeldaHoofdstuk.Kamer k : h.kamers)
+                if (k.baas != null && k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.baas.leeft() && k.binnen.in(b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5)
+                        && k.baas.raakBlok(this, p, b)) {
+                    if (e.getEntity() instanceof AbstractArrow a) a.remove();
+                    return;
+                }
         for (ZeldaHoofdstuk.Reeks r : sessie(p).h.reeksen) {
             if (r.hoe != ZeldaHoofdstuk.Reeks.Hoe.PIJL) continue;
             int i = r.index(b.getX(), b.getY(), b.getZ());

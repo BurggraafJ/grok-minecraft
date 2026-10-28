@@ -16,8 +16,9 @@ import org.bukkit.World;
  * Kun je er lopen? Volgt vanaf de aanleg van een eiland alle plekken waar een speler kan staan: een stap omhoog van
  * hoogstens één blok (springen), omlaag hoogstens drie, over een gat van één blok springen, ladders en water op en neer.
  * De deuren van het eiland (kamers, poorten, gebarsten muren, de deur van een spiegelpuzzel, een poort voor wie iets
- * heeft, een brug die komt, de sluizen van eb en vloed, en met de vuurstaf betoverd ijs) tellen als open en het water van
- * een getij als water: in het spel gaan ze open.
+ * heeft, een brug die komt, de sluizen van eb en vloed, met de vuurstaf betoverd ijs, en de stenen van lava op een ritme)
+ * tellen als open en het water van een getij als water: in het spel gaan ze open. In lava sta je niet (je springt er
+ * meteen uit), maar over een gat met lava kun je springen.
  * Met de klauwhaak: een haakpunt dat je ergens vandaan kunt raken (binnen bereik, niets ertussen) brengt je naar zijn
  * landing, en daar loop je verder. Daarna moet alles te halen zijn: rustplaatsen, personen, vondsten (behalve wat pas met een voorwerp
  * kan dat er nog niet is, zoals de klauwhaak), kamers, uitdagingen, verhalen, bronnen, spiegels, bellen en de plek vóór
@@ -75,6 +76,7 @@ final class ZeldaLopen {
     private boolean staan(int x, int y, int z) {
         if (!vrij(x, y, z) || !vrij(x, y + 1, z)) return false;
         Material hier = soort(x, y, z), onder = soort(x, y - 1, z);
+        if (hier == Material.LAVA || soort(x, y + 1, z) == Material.LAVA) return false;   // in lava sta je niet (je springt er meteen uit)
         return onder.isSolid() || water(hier) || ladder(hier);
     }
 
@@ -236,6 +238,7 @@ final class ZeldaLopen {
             for (ZeldaHoofdstuk.Reeks r : h.reeksen) l.opening(r.deur);
             for (ZeldaHoofdstuk.Barst b : h.barsten) l.opening(b.muur);
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels) l.opening(s.deur);
+            for (ZeldaHoofdstuk.Ritme r : h.ritmes) l.opening(r.lava);              // lava op een ritme: de stenen liggen af en toe droog
             for (ZeldaHoofdstuk.Poort p : h.poorten) if (!dicht.contains(p.id)) l.opening(p.deur);
             if (voorwerpen.contains("vuurstaf")) for (ZeldaHoofdstuk.Smelt sm : h.smelten) l.opening(sm.ijs);   // betoverd ijs: gesmolten (lucht of water)
             for (ZeldaHoofdstuk.Getij g : h.getijden) {                  // eb en vloed: het water telt als water (zwemmen), de deuren als open

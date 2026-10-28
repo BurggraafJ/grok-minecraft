@@ -335,6 +335,22 @@ final class ZeldaTest {
                     var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
                     moet(max != null && p.getHealth() >= max.getValue() - 0.01, gr.naam + ": je werd toch geraakt (" + p.getHealth() + ")");
                 }, 2, () -> true, 1);
+                if (k.baas instanceof Asgrim ag) stap(ag.naam + " gedoofd", () -> {             // een echte pijl op de kuip boven hem
+                    moet(stand().heeft("boog"), "geen boog voor " + ag.naam);
+                    var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    if (max != null) p.setHealth(max.getValue());
+                    ag.zetBij(0);
+                    Location staan = ag.landing.get(0).clone();
+                    org.bukkit.util.Vector naar = ag.kuip(0).toVector().subtract(staan.toVector().add(new org.bukkit.util.Vector(0, p.getEyeHeight(), 0)));
+                    staan.setDirection(naar);
+                    p.teleport(staan);
+                    p.launchProjectile(org.bukkit.entity.Arrow.class, naar.normalize().multiply(3.0));
+                }, 30, () -> ag.gedoofd > 0, 60);
+                if (k.baas instanceof Asgrim ag) stap(ag.naam + " gedoofd klopt", () -> {
+                    moet(!ag.vol(0), ag.naam + ": de kuip is niet gekanteld");
+                    moet(ag.dovingen >= 1 && ag.schade(10) >= 10, ag.naam + ": gedoofd doet een klap niet meer pijn");
+                    moet(ag.landing.get(0).distanceSquared(ag.ent.getLocation()) < 4, ag.naam + ": niet neergeploft op de rand");
+                }, 2, () -> true, 1);
                 if (k.baas != null) stap("baas " + k.baas.naam, () -> {
                     moet(k.baas.leeft() && k.baas.balk != null, "baas " + k.baas.naam + " is er niet");
                     if (k.baas.leeft()) k.baas.ent.setHealth(k.baas.ent.getHealth() * 0.55);
@@ -445,6 +461,28 @@ final class ZeldaTest {
                     if (sm.ijs.isOpen) z.spel.herstel(sm);
                     smelt(h, sm);
                 }, 10, () -> sm.ijs.isOpen && stand().heeft("s:" + sm.id) && !z.spel.vlamOnderweg(p), 60);
+            } else if (o instanceof ZeldaHoofdstuk.Ritme rt) {                     // lava op een ritme: hij stijgt en zakt; wie erin stapt, springt eruit
+                final int[] keren = {0};
+                final double[] leven = {0};
+                Location voor = rt.voor != null ? rt.voor : vrij(rt.gebied.midden(h.w).add(0, 1, 0));
+                stap("ritme " + rt.id, () -> {
+                    p.teleport(voor);
+                    keren[0] = rt.keren;
+                }, 10, () -> rt.keren > keren[0] && !rt.isHoog, 300);
+                stap("ritme " + rt.id + ": in de lava", () -> { }, 2, () -> {
+                    if (!rt.isHoog) return false;
+                    var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    if (max != null) p.setHealth(max.getValue());
+                    leven[0] = p.getHealth();
+                    int[] c = rt.lava.blokken.get(0);
+                    p.teleport(new Location(h.w, c[0] + 0.5, c[1] + 1, c[2] + 0.5, voor.getYaw(), 0f));
+                    return true;
+                }, 400);
+                stap("ritme " + rt.id + ": eruit", () -> { }, 30, () -> {
+                    moet(!p.isDead() && p.getLocation().distanceSquared(voor) < 9, "ritme " + rt.id + ": niet uit de lava gesprongen (op " + xyz(p.getLocation()) + ")");
+                    moet(p.getHealth() >= leven[0] - ZeldaSpel.LAVA_SCHADE - 0.01 && p.getFireTicks() <= 0, "ritme " + rt.id + ": de lava deed te veel (" + p.getHealth() + ")");
+                    return true;
+                }, 1);
             } else if (o instanceof ZeldaHoofdstuk.Hitte ht) {                     // hitte: warm worden, terug, de koelsteen, afkoelen, het gloedharnas
                 hitte(h, ht);
             } else if (o instanceof ZeldaHoofdstuk.Reeks r) {

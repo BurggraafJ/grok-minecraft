@@ -46,6 +46,8 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     static final int X0 = 1100;                         // rx = 0 (x = X0 + rx): het huisje aan de bosrand
     static final int VERSIE = 4;
     /** De vier hartstukjes van het Lindewoud. */
+    /** De boodschap over zee van Kees (eiland 4b): een bijlblad van de eerste smeden uit de Smidse; de beloning is hier. */
+    static final String BIJLBLAD = "bijlblad";
     static final String STUKJE_EIK = "hs:lindewoud-1", STUKJE_KEES = "hs:lindewoud-2", STUKJE_RICHEL = "hs:lindewoud-3", STUKJE_TEMPEL = "hs:lindewoud-4";
     /** Het bouwvak (rx, z): zee tot aan de vakken van de buren; het oude vak (x 1092 … 1592, z −64 … 64) valt erin. */
     static final int RX1 = -76, RX2 = 539, Z1 = -179, Z2 = 179;
@@ -200,6 +202,15 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
     @Override
     void tik(ZeldaSpel spel, List<Player> wie, long nu) {
         java.util.concurrent.ThreadLocalRandom r = java.util.concurrent.ThreadLocalRandom.current();
+        Particle.DustOptions nevel = new Particle.DustOptions(org.bukkit.Color.fromRGB(0x1a1622), 4f);
+        for (Player p : wie) {                                  // de Nevelring om Nachtrots aan de horizon (tot het Gloedbaken brandt, 4b)
+            if (p.getLocation().getX() < X0 + 230 || spel.voortgang.van(p.getUniqueId()).heeft("baken4")) continue;
+            for (int i = 0; i < 16; i++) {
+                double a = r.nextDouble() * Math.PI * 2;
+                Location l = new Location(w, X0 + 447.5 + Math.cos(a) * 24, G + 2 + r.nextDouble() * 26, 0.5 + Math.sin(a) * 24);
+                spel.deeltje(p, Particle.DUST, l, 1, 1.2, 1.5, 1.2, nevel);
+            }
+        }
         for (Player p : wie) {
             if (p.getLocation().getX() < X0 + 230 || spel.voortgang.van(p.getUniqueId()).heeft("hart1")) continue;
             for (int i = 0; i < 14; i++) {
@@ -877,9 +888,22 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
                     spel.missie(p, "bijl", ZeldaVoortgang.KLAAR);
                     spel.beloon(p, STUKJE_KEES, "Hartstukje", null);
                 })
+                // het bijlblad (eiland 4b, een boodschap over zee): wie in de Smidse op de Gloedberg was, hoort het van Kees
+                .gesprek("kees-blad-2", s -> s.missie(BIJLBLAD) == 2, List.of(
+                        r("Kees", "Een bijlblad van de eerste smeden! Dat blijft scherp."),
+                        r("Kees", "Hier, mijn oude veldfles. Ik heb hem niet meer nodig.")), (spel, p, s) -> {
+                    spel.missie(p, BIJLBLAD, ZeldaVoortgang.KLAAR);
+                    spel.beloon(p, "fles7", "Veldfles", "nog een flesje");
+                })
+                .gesprek(null, s -> s.missie(BIJLBLAD) == 1, List.of(r("Kees", "In de Smidse ligt vast nog een bijlblad. Achter water, denk ik.")), null)
+                .gesprek("kees-blad", s -> s.missieKlaar("bijl") && s.missie(BIJLBLAD) == 0 && s.bezocht("e4b", 0), List.of(
+                        r("Kees", "Je was in de Smidse op de Gloedberg? Echt waar?"),
+                        r("Kees", "Mijn bijl is bot. Al jaren."),
+                        r("Kees", "Een bijlblad van de eerste smeden, dat zou wat zijn!")), (spel, p, s) -> spel.missie(p, BIJLBLAD, 1))
                 .eenmalig("kees-eik", s -> s.missieKlaar("bijl") && !s.heeft(STUKJE_EIK), List.of(
                         r("Kees", "Als kind verstopte ik dingen in de Oude Eik."),
                         r("Kees", "Aan de achterkant zit een gat.")), null);
+        missie(BIJLBLAD, "Het bijlblad", "Zoek een bijlblad in de Smidse, op de Gloedberg.", "Breng het bijlblad naar Kees, op het Lindewoud.");
         verhaal(new Verhaal("kees", box(20, G, -11, 30, G + 5, -3), List.of(
                 r("Wiske", "Buurman Kees kijkt zo zorgelijk.")))).vereist = "v:intro";
     }
