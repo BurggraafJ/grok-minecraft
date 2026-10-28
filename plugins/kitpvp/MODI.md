@@ -167,12 +167,16 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   daarna een `Actie` (zijmissie beginnen of verder: `spel.missie`, beloning: `spel.beloon`). Heeft iemand iets nieuws
   (een gesprek met id dat je nog niet hoorde), dan glinstert hij zacht, alleen voor jou. `eenmalig` = een gesprek dat
   je één keer hoort. **Brecht** vaart je: praten = een menu «Waarheen?» met de eilanden die open zijn (`spel.varen`),
-  of «nog even geduld» als er nog geen ander eiland is.
+  of «nog even geduld» als er nog geen ander eiland is. Na een grote stap heeft hij op elke steiger één keer nieuws
+  (`ZeldaFeest.brechtNieuws`: binnen in de burcht, het kroontje, de brieven).
 - **Wiske**: een kleine fee naast je schouder; ze komt voor je zweven als ze praat. **Klik op haar of `/hint`**: eerst
   een duwtje (het eerste doel van het eiland dat nog niet klaar is), binnen twee minuten nog eens = wat je moet doen en
   ze vliegt even die kant op. Geen doel meer = je zijmissies, «verder varen», wie er iets nieuws te vertellen heeft
   («Kees wil je iets vertellen», nog eens = ze wijst), wat je met een nieuw voorwerp nu kunt halen (hier, of «Op het
-  Lindewoud kun je nu iets halen»), en anders wat het eiland nog laat wachten (`wacht()`, bv. «nog even geduld»). Zes
+  Lindewoud kun je nu iets halen»), «Het verhaal gaat verder op …» (op een eiland dat af is; de kaart zet de X bij dat
+  eiland), wat het eiland nog laat wachten (`wacht()`, bv. «nog even geduld»), en anders een hartstukje dat je mist
+  (`spel.stukje`: «Hier op het eiland ligt nog een hartstukje», nog eens = ze wijst; of «Op de Gloedberg ligt nog …»).
+  Tijmen (de wegwijzer) zegt hetzelfde in zijn woorden. Zes
   minuten zonder voortgang: ze biedt één keer hulp aan.
 - **Het sneeuwvosje** (`ZeldaDier`, eiland 3a): vlag `dier:sneeuwvos`; je krijgt hem met `spel.dier(p, "sneeuwvos")` en
   kiest meteen een naam (klein menu; dicht = de eerste). Loopt mee op elk eiland, zit als je stilstaat, botst niet,
@@ -445,7 +449,8 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   glijd je, zoals in het spel) en noemt wat je
   niet haalt (rustplaats, persoon, vondst, kamer, uitdaging, verhaal, bron, spiegel, bel, graafplek, haakpunt).
   `zonder klauwhaak` / `dicht wachtersdeur` = alsof je dat voorwerp niet hebt of die poort dicht blijft: zo zie je wat
-  erachter ligt en of je er omheen kunt. Deuren, poorten en bruggen tellen
+  erachter ligt en of je er omheen kunt. Sinds 2.15 ook `zonder bommen` (gebarsten muren blijven dicht), `zonder vuurstaf`
+  (vuurpuzzels die alleen een vlam aansteekt blijven dicht) en `dicht <puzzel of muur>`. Deuren, poorten en bruggen tellen
   als open. Laadt de chunks van het eiland; doet ook mee in `test … alles` (voor elk eiland; over de Kloof van het
   Lindewoud kom je ook via de ladders en de beek).
 - `kitpvp zelda kaart` — PNG's van elk eilandblad (zonder mist, met alle zielvuren en tekens) en van de zeekaart in

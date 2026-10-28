@@ -10,8 +10,8 @@ eiland 3 (het dal in sessie `zelda-eiland-3a`, kitpvp 2.8; het IJspaleis in sess
 eiland 4 (Sintelgat en de mijnen in sessie `zelda-eiland-4a`, kitpvp 2.10; de Smidse in sessie `zelda-eiland-4b`, kitpvp
 2.11: de Nevelring is gebroken) en heel eiland 5 (Nachtrots, de muren, in sessie `zelda-eiland-5a`, kitpvp 2.12; de toren en
 Morgal in sessie `zelda-eiland-5b`, kitpvp 2.13: Zelda is vrij, het feest op het Lindewoud, het verhaal is uit), en de
-kaart in vak 9 (sessie `zelda-kaart`, kitpvp 2.14: het eiland van boven en de zeekaart, zie «De kaart»). Nog te doen: de
-sessie `zelda-afronding` (de lijst onderaan). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
+kaart in vak 9 (sessie `zelda-kaart`, kitpvp 2.14: het eiland van boven en de zeekaart, zie «De kaart»), en de afronding
+(sessie `zelda-afronding`, kitpvp 2.15: naspelen, losse eindjes, zie «De afronding»). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
 Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*.java`.
@@ -880,7 +880,8 @@ een eigen tekenaar (`ZeldaKaart`, de tekenregels in `ZeldaKaartBeeld`, unit-test
 - eilanden waar je was in kleur (met dezelfde mist);
 - een eiland dat open is maar waar je nog niet was als vorm op perkament;
 - Nachtrots, zolang hij niet open is, als een donkere vlek: Morgals nevel;
-- de **vaarroutes** als stippellijnen, van je eiland naar elk eiland waar Brecht je heen kan varen;
+- de **vaarroutes** als stippellijnen, van je eiland naar elk eiland waar Brecht je heen kan varen; ligt er land tussen,
+  dan varen ze eromheen (`ZeldaKaartBeeld.vaarweg`: het kortste pad over zee, strakgetrokken, liever niet langs de kust);
 - jij, je medespelers (op een eiland dat je kent) en de X.
 
 **Op zee** (een overtocht) slaat de kaart vanzelf om: je ziet alleen de route van nu, en je pijl vaart mee van steiger
@@ -890,7 +891,8 @@ naar steiger. Bij aankomst is het weer het eiland.
 harten, harnas, flesjes, voltooid, uitleg aan/uit, terug naar de hub). Vak 8 blijft «Terug naar de hub».
 
 **Twee handen.** Zolang je de kaart vasthoudt, is je andere hand leeg: dan houd je de kaart groot met twee handen, zoals
-in Zelda. Wissel je weer, dan komt je schild terug. De kaart gaat niet naar je andere hand (F).
+in Zelda. Wissel je weer, dan komt je schild terug. F (wissel van hand) doet in Zelda niets (sinds 2.15; in beheer wel),
+en een zwaai met de kaart in de hand telt bij Morgal niet als zwaai (linksklik = omslaan).
 
 **Uitleg.** De eerste keer dat je de kaart pakt (vlag `v:kaart`) zegt Wiske: «Je kaart! De pijl ben jij, de X is je
 doel.» en «Linksklik: de hele zee.» Bij de tempelruïne van het Lindewoud zegt ze nu «Rechtsklik op je kaart: reizen
@@ -952,6 +954,52 @@ zet je erop met `tekens()` in het deel (de zelftest kijkt of ze in het deel ligg
 - `kitpvp zelda kaart <speler>` maakt zijn twee kanten zoals hij ze ziet (met eenvoudige tekentjes voor de pijlen).
 - `kitpvp zelda kaart opnieuw [eiland]` meet opnieuw.
 
+## De afronding (sessie `zelda-afronding`, kitpvp 2.15)
+
+Het hele spel nagespeeld (de testroute van Thuis tot het feest, gesprekken en hints per stap nagelopen) en afgemaakt.
+Geen nieuwe eilanden; wat er veranderde, en waarom:
+
+- **Zee overal.** De zee (`zelda-zee` versie 2) zet zee in heel `Zelda.GEBIED` en 112 blokken eromheen, maar alleen waar nog
+  de vlakke wereld lag (gras met lucht erboven): tussen de vakken van de eilanden en voorbij hun randen. Je zag vanaf
+  Nachtrots, de Gloedberg en het Lindewoud nog gras zeven blokken onder zeeniveau; nu is het overal de Glazen Zee
+  (`Bouwer.perKolom`: chunk voor chunk, ±25 s bij de eerste start).
+- **De Witte Toppen** (`zelda-e3b` versie 2): de oosthoeken rond en de noord- en zuidkust golvend; het eiland was van zee en
+  op de kaart een ovaal met een rechthoek ernaast. IJshoeve (`zelda-e3a` versie 3): de schoorstenen lopen niet meer tot y 1.
+- **Waar gaat het verder?** Op een eiland dat af is zei Wiske «Ik weet het ook niet» als het verhaal op een eiland verder
+  ging waar je al was. Nu: «Het verhaal gaat verder op de Gloedberg. Vaar er heen.» (de kaart zet de X bij dat eiland),
+  Tijmen: «Hier is het licht terug. Op de Gloedberg nog niet.»
+- **Twintig hartstukjes, met een hint.** Alle twintig zijn te halen (vier per eiland, `test … alles` controleert het). Is er
+  niets anders te doen, dan zeggen Wiske en Tijmen waar je er nog een mist: «Hier op het eiland ligt nog een hartstukje»
+  (nog eens vragen = ze wijst, de X staat erop), «Hier ligt nog een hartstukje. Wie vraagt je nog iets?» (een beloning), of
+  «Op de Witte Toppen ligt nog een hartstukje voor je.» (`ZeldaSpel.stukje`). Een stukje achter een voorwerp dat je nog
+  niet hebt telt niet mee.
+- **Brecht heeft nieuws** na elke grote stap, één keer, op de steiger waar je hem het eerst ziet: binnen in Morgals burcht,
+  het kroontje («Onder in Morgals toren, zei ze»), Zelda met haar kroontje, de brieven (`ZeldaFeest.brechtNieuws`).
+- **Na het feest: Zelda's brieven** (`brieven`). Na het kroontje vraagt Zelda haar dank rond te brengen: vier brieven, voor
+  Teun (Zoutkom), Ys (IJshoeve), Okker (Sintelgat) en Wolf (de kreek). Ieder zegt er iets over («Brieven · 2 van 4»), en
+  terug bij Zelda is er vuurwerk. Zo stuurt het einde je nog één keer langs alle eilanden.
+- **Het feest klopt**: Bas en Joppe staan er alleen als je ze bevrijdde (Hendrik zegt dan iets anders), Hagen zegt niets
+  meer over een harnas dat je misschien niet hebt, Gerrit niet over Wolkje. Na hun eerste regel zeggen de gasten iets
+  nieuws dat je terugstuurt («Kom eens langs in Zoutkom», «Het meer is weer glad. Kom eens glijden.») in plaats van
+  «Praat met Zelda». Zelda zelf: «Kom je nog eens? Het feest gaat door.»
+- **Kleine gesprekfouten**: Ida in de torenhal zei na de dageraad weer «Deze toren nog niet»; Tijmen in IJshoeve zei
+  «Hoog op de berg slaapt het Vorstbaken» ook als het al brandde; Hagen was na Okkers kool nog steeds koud.
+- **Balans**: de kade (het eerste verplichte gevecht met schutters) heeft in de derde golf één kruisboog in plaats van
+  twee (een spin erbij). Verder bleef `ZeldaRegels` zoals het was: elke kamer heeft drie gemengde golven, een heelplek
+  binnen 32 blokken (zelftest), en bescherming vóór elk zwaar gevecht (de smidshelm van Kees vóór Grauwmoer en de kade;
+  het maliënhemd op het Zilverstrand; wachtersharnas, gloedharnas, Gloedschild en lichtharnas als voorwaarde vóór
+  Grimmel, de Askamer, Asgrim, de binnenplaats en Morgal). Zonder een echte speler is meer bijstellen gokken.
+- **Muziek**: de test meldt elke stap waarop er geen muziek is (achtergrond of gevecht). Er was nergens stilte: elk deel
+  heeft voor elke plek een lied, op zee *Zee* (of *Thuis* bij de terugvaart), het kaartmenu stopt niets, na het feest
+  *Feest* op de open plek en verder de liedjes van het Lindewoud.
+- **Teksten**: alle regels zijn al kort (hoogstens ±60 tekens, op de actiebalk, één tegelijk); niets in de chat of in een
+  titel. De nieuwe regels volgen dat.
+- **De kaart**: vaarroutes om de eilanden heen; met de kaart in de hand zwaai je niet; F doet niets.
+- **Zelda's uiterlijk**: een mannequin met de huid «Alex» uit het spel zelf (smal model, lang haar; een sleutel naar een
+  textuur van de client, geen download) en haar witte jurk; daaronder geen tekst.
+- **`zelda lopen`**: `zonder bommen` houdt gebarsten muren dicht en `zonder vuurstaf` vuurpuzzels die alleen een vlam
+  aansteekt; `dicht <id>` werkt ook voor een puzzel of muur.
+
 ## Terugkerende personages
 
 Jelle (27-10): eilanden zo ontwerpen dat je er later naar terug moet of wilt, omdat je bij een bekend karakter iets
@@ -960,7 +1008,7 @@ moet regelen; een vaste wegwijzer bij wie je steeds terugkomt. Zo knopen we de e
 | wie | wat | Lindewoud | Zilverstrand | later |
 |---|---|---|---|---|
 | **Wolf**, wachter van Zelda (Nachtrots) | helpt je binnen | — | — | 5a: achter een raampje in de rots: de muursleutel; bevrijd in de kerkers, daarna in de kreek: het wachtwoord, het harnas van licht, de gevangenen (`hs:nachtrots-1`); 5b: «Zelda is vrij!», en op het feest |
-| **Zelda**, de prinses | bewaart het licht van de Glazen Zee | — | — | 5b: in een kooi van nevel op het dak van Morgals toren; dan in de kreek bij Brecht, aan dek, en op het feest op het Lindewoud (het einde); daarna vraagt ze om haar kroontje uit Morgals schatkamer |
+| **Zelda**, de prinses | bewaart het licht van de Glazen Zee | — | — | 5b: in een kooi van nevel op het dak van Morgals toren; dan in de kreek bij Brecht, aan dek, en op het feest op het Lindewoud (het einde); daarna vraagt ze om haar kroontje uit Morgals schatkamer, en dan om haar brieven rond te brengen (2.15) |
 | **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al»; het Getijdenplein (2b): de **maanparel** (het getij) | IJshoeve (3a): de **sterrenlantaarn** (de storm); het IJspaleis (3b): zelf opgesloten in de wachtkamer, een bom bevrijdt hem: de **zonnesteen** (de spiegelzaal); Sintelgat (4a): de **koelsteen** (de hete gangen); de Smidse (4b): leest het schrift boven de Hartdeur, en staat op de uitkijk als de Nevelring breekt; verder op elk eiland bij de hub of steiger (de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hij is er alwéér!»); op Nachtrots (5a) zit hij verstopt in de kreek, wijst je naar Wolf en verbindt Wolfs arm; na de binnenplaats staat hij bij de torenpoort; 5b: hij breekt Morgals zegel met een oude spreuk, staat op het torenbalkon («sla zijn bollen terug») en op het feest («vroeger leerde ik Zelda de sterren lezen») |
 | **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira (5a: zij maakt in het licht van haar vuurtoren het zwarte harnas schoon: het lichtharnas); na het baken: «naar het noorden» | de fjord van de Witte Toppen («hier vriest zelfs mijn baard»); de Zwarte Baai («mijn zeilen worden zwart»); op elke steiger; na Morgal vaart hij Zelda en jou naar huis (de terugvaart, 5b) |
 | **Hanne**, kruidenvrouw | brouwt met wat je van andere eilanden meebrengt | *Moeraskruid* → `fles1` | *Zeekraal* (aan de dijk) → `sterkwater` | *De sneeuwbloem* uit de IJstuin (3b) → `fles5`, een vijfde flesje; *Het maanmos* uit de kerkers van Nachtrots (5a) → `fles8` |
@@ -974,7 +1022,7 @@ moet regelen; een vaste wegwijzer bij wie je steeds terugkomt. Zo knopen we de e
 | **Kobus**, oude mijnwerker (Sintelgat, 4a) | weet van vroeger | — | — | 4a: de mijnvuren; vertelt over de Smidse; 4b: «Asgrim kan niet tegen water» |
 | **Wiske**, de fee | hint, uitleg, wijst | overal | overal | wordt feller bij elk baken (`ZeldaMetgezel.licht`: iets groter, meer glans) |
 | **Gerrit, Hendrik, Saar, Dina** | wachten op wie Morgal meenam | Gerrit: Wolkje | Hendrik: Bas | 5a: in de cellen van Nachtrots zitten Wolkje (schaap), Bas (leerjongen), Kiek (geitje) en Joppe (Dina's zoon); bevrijd staan ze thuis en zegt wie wachtte iets (Dina: een warm broodje, helemaal beter); 5b: Hendrik, Bas, Dina en Joppe op het feest |
-| **het feest** (5b, het oefenveld van het Lindewoud) | iedereen die hielp | Kees, Hanne, Fien, Sem, Bram, Gerrit, Brecht en Lotje zeggen na het einde iets nieuws | Mira, Teun, Hendrik, Bas | Ys, Hagen, Okker, Dina, Joppe, Ida, Wolf, Tijmen en Zelda staan op het feest |
+| **het feest** (5b, het oefenveld van het Lindewoud) | iedereen die hielp | Kees, Hanne, Fien, Sem, Bram, Gerrit, Brecht en Lotje zeggen na het einde iets nieuws | Mira, Teun, Hendrik, Bas | Ys, Hagen, Okker, Dina, Joppe, Ida, Wolf, Tijmen en Zelda staan op het feest (Bas en Joppe alleen als je ze bevrijdde); daarna stuurt elke gast je terug naar zijn eiland, en Zelda's brieven gaan naar Teun, Ys, Okker en Wolf (2.15) |
 
 **Bouwregel voor elk volgend eiland:** zet Tijmen bij de hub (met `wegwijzer` als laatste gesprek), en maak minstens
 één **boodschap over zee**: een zijmissie van een bekende op een eerder eiland die pas begint als je op het nieuwe
@@ -984,6 +1032,8 @@ twee rondes heen en weer om ze af te maken.
 
 ## Balans van gevechten (kitpvp 2.8.2, Jelle 27-10)
 - Gevechten langer maar lichter, meer variatie in tegenstanders, heelplek en bescherming voor elk zwaar gevecht (Jelle 27-10). Gebruik de gedeelde balans in `ZeldaRegels` (`SCHADE` 0.55 op alle vijandschade, `BAAS_LEVEN` 1.5, `GOLF_PAUZE` 4 s): geef een kamer liever 3 gemengde golven (vechter + schutter + snel klein beestje, bijv. `SPIN`) dan 1 zware; richting 1-3 minuten, zelden dood. Bijstellen = die drie getallen, niet per kamer.
+- De kade (afronding, 2.15): de derde golf heeft één kruisboog (kruisboog, soldaat, spin) in plaats van twee: het eerste
+  gevecht met schutters, met alleen de smidshelm en de tuniek.
 - Nachtrots (5b): alleen Morgal, het zwaarste gevecht van het spel maar licht: drie fases met zes tellen adem ertussen (en drie harten terug), zijn bollen doen weinig (een schild houdt ze tegen), zijn geesten zijn niet taai; het lichtharnas, en een zielvuur en een bron op het balkon vlak voor de deur. Bijstellen = de drie getallen in `ZeldaRegels` (en de verhoudingen in `ZeldaRegels.morgalSchade`).
 - Nachtrots (5a): alleen de binnenplaats (nachtsoldaat + nevelmijt, nachtsoldaat + nachtschutter, alle drie; de bel = met de wachtmeester), pas met het lichtharnas (de binnenpoort) en met een zielvuur en een bron in het wachthuis ervoor. Sluipen is nooit vechten: gezien = terug naar het zielvuur.
 - De Smidse (4b): alleen Asgrim (lang maar licht: een vlammenschild tot een kuip hem dooft; zijn sintels doen weinig en ketsen af op het Gloedschild), met een zielvuur en een bron in de voorkamer en het Gloedschild als voorwaarde.
@@ -1218,31 +1268,21 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
     van boven, mist over wat je niet zag, zielvuren, dorpen en kerkers, jij, medespelers en de X van `/hint`), linksklik =
     de zeekaart met vaarroutes en je schip op zee; zie «De kaart». **Klaar als** de kaart op alle eilanden en op zee werkt,
     oude voortgang blijft werken, en zelftest, `motor`, `test … alles` en `zelda lopen` OK zijn.
-10. **`zelda-afronding`** — Speel alles na: balans (te veel gevechten? te moeilijk?), alle «later-terug»-plekken
+10. **`zelda-afronding`** (gedaan, kitpvp 2.15, zie «De afronding») — Speel alles na: balans (te veel gevechten? te moeilijk?), alle «later-terug»-plekken
     bereikbaar, twintig hartstukjes, muziek overal, teksten kort, kaartplaatjes. **Klaar als** een volledige
     testronde zonder fouten loopt en de lijst met losse eindjes leeg is.
 
-**Losse eindjes** (gevonden, nog niet opgelost):
-- De kaart (sessie `zelda-kaart`) is niet bekeken met een echte client: hoe de tekens van Minecraft (pijl, groene pijl, rode X,
-  dorp, tempel, landhuis) en de naam op het blad eruitzien, of twee handen (het schild even weg) goed voelt, en of de
-  pagina-geluidjes bij omslaan passen. De plaatjes van `kitpvp zelda kaart` tekenen de tekens na met eenvoudige vormen.
-- De kaart: een vaarroute is een rechte stippellijn en wordt alleen over zee getekend; gaat hij over een eiland (van het
-  Zilverstrand naar de haven van het Lindewoud), dan stopt hij bij de kust.
-- De kaart: zwaaien met de kaart in de hand (linksklik = omslaan) telt in Morgals troonzaal ook als een zwaai tegen een bol
-  (`spel.onZwaai`). Dat is gul, niet fout.
-- Met F wissel je in Zelda nog steeds je zwaard en schild van hand (alleen met de kaart in de hand niet); zo was het al.
-- Nachtrots (5b): `kitpvp zelda lopen` telt een vuurpuzzel (`Reeks`) en een gebarsten muur altijd als open, ook `zonder vuurstaf` /
-  `zonder bommen`: of je om de wachtersvuren of het puin heen kunt, zie je daar niet (wel met `dicht trap1`, `dicht trap2`,
-  `zonder klauwhaak`, telkens met `dicht torenladder`). Geldt voor alle eilanden; gezien in sessie `zelda-eiland-5b`.
-- Nachtrots (5b): een `Poort` is van iedereen: gaat de ladder voor één speler open (die boven was), dan kan een ander er die
-  minuut ook langs omhoog. Samen spelen mag dat; wie alleen speelt merkt het niet.
-- Zelda is een mannequin met de gewone huid (zoals een speler zonder eigen huid) en een witte jurk; of dat er in een echte
-  client mooi uitziet (en of er geen naam of «NPC» onder staat) is niet bekeken (sessie `zelda-eiland-5b`, geen client).
-- IJshoeve (3a): de schoorstenen van de huisjes lopen door tot y 1 (in `ZeldaEiland3a.huis` begint `nok` op 0, en in de
-  vlakke wereld is G negatief). Oplossing: `int nok = Integer.MIN_VALUE;` en `zelda-e3a` versie 3 (dan herbouwt 3a).
-  Gezien in sessie `zelda-eiland-4a` (4a had dezelfde code en is opgelost); 3a is niet aangeraakt (buiten het vak).
-- Rond Nachtrots (5a): buiten het vak (z voorbij ±150, x voorbij 2000, en de strook z −179 … −151 tussen de Witte Toppen en
-  Nachtrots) ligt nog de vlakke wereld (gras, zeven blokken onder zeeniveau). Vanaf de noord- en zuidkust van Nachtrots ligt
-  die rand op ±75 … 95 blokken: net op de grens van de zichtafstand (6 chunks), in de mist. Zie `kitpvp kaart zelda-e5a`
-  (`zelda-e5a-omgeving`). Oplossing voor `zelda-afronding`: een bouwdeel dat in heel `Zelda.GEBIED` zee zet waar geen eiland
-  of zee is. Gezien in sessie `zelda-eiland-5a`; niet opgelost (buiten het vak).
+**Losse eindjes** (stand na `zelda-afronding`: opgelost, of met een reden blijven staan):
+- *Opgelost* in `zelda-afronding`: de schoorstenen van IJshoeve, de vlakke wereld rond de eilanden, `zelda lopen` met
+  vuurpuzzels en gebarsten muren, de vaarroutes die bij een kust stopten, zwaaien met de kaart bij Morgal, F (wissel van
+  hand), Zelda's uiterlijk (een eigen huid, «NPC» stond er al niet meer onder). Zie «De afronding».
+- *Blijft, met reden*: de kaart, de tekens, de huid van Zelda, de nevelbruggen en het feest zijn niet met een echte client
+  bekeken (er is op de box geen client; de testspeler ziet niets). Jelle kijkt: de tekens (`ZeldaKaart.type`), het zicht
+  (`ZeldaKaartBeeld.ZICHT`, 32), het perkament (`PERKAMENT`), twee handen, de pagina-geluidjes, en of Zelda met de huid
+  «Alex» goed oogt (één regel in `ZeldaEiland5b.zelda`; zonder die regel is ze Steve in een jurk).
+- *Blijft, met reden*: een `Poort` is van iedereen (de ladder van de toren gaat voor één speler open en dan die minuut ook
+  voor een ander). Een poort is een echt blok in de wereld; per speler kan dat niet zonder neppe blokken. Samen spelen
+  hoort zo te werken (wie boven was, laat zijn maat erlangs), en alleen merk je het niet.
+- *Blijft, met reden*: de Witte Toppen (3b) houden hun berg tot de rand van het vak in het westen (waar 3a aansluit) en
+  langs het paleis (oost): daar hangt het paleis aan (en de regel «nergens lager dan G+30», zodat je niet om de haakpunten
+  heen loopt). Alleen de hoeken en de noord- en zuidkust zijn rond en golvend gemaakt.
