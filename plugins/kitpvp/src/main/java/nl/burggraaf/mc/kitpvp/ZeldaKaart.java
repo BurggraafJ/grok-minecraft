@@ -50,7 +50,7 @@ import org.bukkit.scheduler.BukkitTask;
 final class ZeldaKaart {
 
     /** Hoger = elk eiland opnieuw meten (als de manier van tekenen verandert). */
-    static final int TEKENWIJZE = 1;
+    static final int TEKENWIJZE = 2;
     /** Een andere kant om naar te kijken: het eiland of de zee. */
     static final String EILAND = "eiland", ZEE = "zee";
 
@@ -172,7 +172,7 @@ final class ZeldaKaart {
     void vastgepakt(Player p, ZeldaVoortgang.Stand s) {
         if (!s.zet("v:kaart")) return;
         spel.voortgang.vuil();
-        spel.uitleg(p, ZeldaHoofdstuk.r("Wiske", "Je kaart! Linksklik: de zee. Rechtsklik: reizen."));
+        spel.uitleg(p, ZeldaHoofdstuk.r("Wiske", "Je kaart! De pijl ben jij, de X is je doel."), ZeldaHoofdstuk.r("Wiske", "Linksklik: de hele zee."));
     }
 
     Kijk kijk(UUID id) {
@@ -283,8 +283,7 @@ final class ZeldaKaart {
                 else ZeldaKaartBeeld.vlam(px, i, j, false);
             }
         if (hier != null) ZeldaKaartBeeld.vlam(px, hier[0], hier[1], true);
-        String naam = e.naam();                                 // de naam van het eiland, klein bovenaan
-        ZeldaKaartBeeld.tekst(px, (ZeldaKaartBeeld.N - ZeldaKaartBeeld.breedte(naam)) / 2, 3, naam, ZeldaKaartBeeld.WIT);
+        ZeldaKaartBeeld.titel(px, e.naam());                    // de naam van het eiland, klein bovenaan
         return px;
     }
 
@@ -634,7 +633,7 @@ final class ZeldaKaart {
                     for (ZeldaHoofdstuk.Rust r : h.rust) ZeldaKaartBeeld.vlam(px, (int) Math.floor(b.vlak().px(r.plek.getX())), (int) Math.floor(b.vlak().pz(r.plek.getZ())), false);
                     for (ZeldaHoofdstuk.Teken t : h.tekens()) m.add(new ZeldaKaartBeeld.Merk(t.soort(), b.vlak().px(t.x() + 0.5), b.vlak().pz(t.z() + 0.5), 8));
                 }
-                ZeldaKaartBeeld.tekst(px, (ZeldaKaartBeeld.N - ZeldaKaartBeeld.breedte(e.naam())) / 2, 3, e.naam(), ZeldaKaartBeeld.WIT);
+                ZeldaKaartBeeld.titel(px, e.naam());
                 l.add(schrijf(uit, "zelda-kaart-" + e.id(), px, m));
             }
             List<ZeldaKaartBeeld.Eilandje> el = new ArrayList<>();
@@ -643,15 +642,22 @@ final class ZeldaKaart {
             l.add(schrijf(uit, "zelda-kaart-zee", ZeldaKaartBeeld.zeekaart(el, null), List.of()));
             return l;
         }
-        long nu = System.currentTimeMillis();
         for (String kant : List.of(EILAND, ZEE)) {
-            Kijk k = kijk(p.getUniqueId());
-            k.sleutel = null;
-            Blad b = blad(p, kant, nu);
-            k.sleutel = null;                                          // het doek in zijn hand tekent zichzelf straks opnieuw
+            Blad b = nu(p, kant);
             l.add(schrijf(uit, "zelda-kaart-" + p.getName().toLowerCase() + "-" + b.kant(), b.px(), b.merken()));
         }
         return l;
+    }
+
+    /** Het blad van deze speler zoals het nu is (voor plaatjes en de test); zijn kaart in de hand tekent zich daarna opnieuw. */
+    Blad nu(Player p, String kant) {
+        Kijk k = kijk(p.getUniqueId());
+        k.sleutel = null;
+        k.doelTijd = 0;
+        Blad b = blad(p, kant, System.currentTimeMillis());
+        k.sleutel = null;
+        k.merkTijd = 0;
+        return b;
     }
 
     private static String schrijf(File map, String naam, byte[] px, List<ZeldaKaartBeeld.Merk> merken) throws IOException {

@@ -92,13 +92,15 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 | `Asgrim` | de baas van 4b (subklasse van `ZeldaBaas`): zweeft onder vier koelkuipen, gooit sintels; een pijl of bom kantelt de kuip boven hem = gedoofd (dan doet een klap alles), de kuip loopt weer vol |
 | `ZeldaZee` | bouwdeel `zelda-zee`: open zee met de Zilvermeeuw, voor de overtocht tussen eilanden |
 | `ZeldaSpel` | de motor: sessies, zones, kamers en golven, baas, uitdagingen, puzzels, vondsten, bronnen, verteller, uitrusting, kaart, hint, gesprekken, missies, overtocht, listeners |
+| `ZeldaKaart` | de kaart in vak 9 (sessie `zelda-kaart`): een gevulde kaart per speler met een eigen tekenaar; het eilandblad (land van boven, mist, zielvuren, dorpen en kerkers, jij, medespelers, de X van `/hint`) en de zeekaart (eilanden, vaarroutes, je schip op zee); meet elk eiland één keer per versie (cache in `plugins/KitPvP/zelda-kaart/`), ontdekken per speler |
+| `ZeldaKaartBeeld` | de kaart zonder wereld (unit-tests): het raster van wat je ontdekte (en hoe het in `zelda.yml` staat), zee, kust en reliëf, perkament over wat je niet zag, de zeekaart, vlammetjes, stippellijnen, de naam, plaatjes |
 | `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
 | `ZeldaDier` | een dier dat meeloopt (vlag `dier:<soort>`): alleen het sneeuwvosje uit het verhaal (`VERHAAL`), vrije huisdieren uit (`AAN`); snuffelt verborgen vondsten op, graaft graafplekken op, gaat in een gevecht opzij |
 | `ZeldaVoorwerp` | een voorwerp in de hotbar: het flesje, de bommen, de klauwhaak, de vuurstaf en de lichtpijlen |
 | `ZeldaRegels` | regels zonder wereld (unit-tests): harten, hartstukjes, harnas, flesjes, welk doel, opnieuw vanaf hier, glijden over een glijvloer (en de kortste oplossing), de schade bij Zoutbaard en Grimmel, de hitte in de mijn |
 | `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk); een andere baas = een subklasse met eigen `soort`, `helper`, `beweeg`, `schade`, `boem`, `weg` |
 | `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; drie lagen: achtergrond (altijd), lus (gevecht, baas), deuntjes; categorie «Nootblokken» |
-| `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden) |
+| `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden, wat je ontdekte voor de kaart) |
 | `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door alle eilanden (varen, elk deel, zijmissies); `test <speler> motor`: alle motoronderdelen |
 
 ### Hoe het speelt
@@ -235,10 +237,20 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   van de keren een hartje van een vijand, en **op adem komen**: buiten een gevecht, na 6 s zonder klap, elke 2 s een
   half hart. **Samen**: geen schade
   aan elkaar; geen huisdier van de plugin Huisdieren mee (`stand` = `geen`).
-- **Kaart** (vak 9): de zielvuren van dit eiland, in de volgorde van het eiland (klik = reizen, **rechtsklik = opnieuw
-  vanaf hier**: verhaal, uitleg en puzzels erna komen terug, spullen blijven; op een open eiland alleen tot de volgende
-  rustplaats), de eilanden die open zijn (klik = **varen**), opdrachten, harten en
-  hartstukjes, harnas, flesjes, **Uitleg: aan/uit**, terug naar de hub.
+- **Kaart** (vak 9, `ZeldaKaart`): een echte kaart. **Vasthouden** = het eiland van boven: het land zoals het er staat
+  (met reliëf), de zee met schuim, **perkament** over land waar je nog niet was, de zielvuren waar je was (blauw: waar je
+  terugkomt), dorpen en kerkers zodra je er was, **jij** (een witte pijl), medespelers (groen) en je **volgende doel**
+  (een rode X, dezelfde bron als `/hint`: `spel.wijzer`). Zolang je de kaart vasthoudt is je andere hand leeg (twee
+  handen), daarna komt je schild terug. **Linksklik** = omslaan naar de **zeekaart**: alle eilanden waar je was (in
+  kleur), waar je heen kunt (een vorm op perkament), Nachtrots in Morgals nevel zolang hij dicht is, de vaarroutes van je
+  eiland (stippels) en de X; **op zee** slaat hij vanzelf om en vaart je pijl mee. Wat je ontdekte staat per speler in
+  `zelda.yml` (vakjes van 8 × 8 blokken, 24 blokken om je heen); een oude stand wordt aangevuld uit je rustplaatsen,
+  verhalen, vondsten en kamers, een eiland dat af is helemaal. In beheer toont de kaart alles. Licht: elk eiland wordt
+  één keer per versie gemeten (chunks op de achtergrond, bewaard in `plugins/KitPvP/zelda-kaart/`), het blad alleen
+  opnieuw getekend als er iets veranderde. **Rechtsklik** = het kaartmenu: de zielvuren van dit eiland, in de volgorde
+  van het eiland (klik = reizen, **rechtsklik = opnieuw vanaf hier**: verhaal, uitleg en puzzels erna komen terug,
+  spullen blijven; op een open eiland alleen tot de volgende rustplaats), de eilanden die open zijn (klik = **varen**),
+  opdrachten, harten en hartstukjes, harnas, flesjes, **Uitleg: aan/uit**, terug naar de hub.
 - **Overtocht**: varen = een paar tellen aan dek van de Zilvermeeuw op open zee (zeemansmuziek, schuim, Brecht aan
   het roer, een regel van Wiske of Brecht; de eerste keer de overtochtregels van het eiland), dan aan land bij de
   aanleg van het eiland (vlag `e:<eiland>`).
@@ -406,7 +418,9 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   lichtpijl door de nevel), het vangnet (hij valt van hoog: de nevel vangt hem op, zonder schade) en Morgal (zijn geesten
   verslaan; een echte zwaai vlak voor een duistere bol: Morgal moet versuft zijn en een klap alles doen; in zijn nevelhart een
   echte lichtpijl: die moet raken, een zwaard niet), Zelda op het dak, de terugvaart en het feest (hij vaart naar het
-  Lindewoud, praat met Zelda: `zelda`, en de kaart zegt «voltooid»), dan drie rondes langs alle eilanden voor de
+  Lindewoud, praat met Zelda: `zelda`, en de kaart zegt «voltooid»), de kaart op elk eiland (gemeten; je pijl op je plek
+  en in je kijkrichting, waar je staat is ontdekt, je zielvuur blauw, de X precies waar `/hint` heen wijst en anders geen;
+  op de zeekaart het eiland in kleur) en op zee (de zeekaart met je schip en de vaarroute), dan drie rondes langs alle eilanden voor de
   boodschappen over zee, en aan het eind via de kaart terug naar een eerder eiland om daar met de bommen, de
   klauwhaak en de vuurstaf te halen wat kon (`hs:lindewoud-4`, de richel `hs:lindewoud-3`, de Meeuwenrots
   `hs:zilverstrand-3`, het ijsblok bij Hagen `hs:witte-toppen-3`, met de lichtpijlen de nevelnis in de Smidse `hs:gloedberg-4`); `dood` = sterven in de eerste kamer (respawn bij je rustplaats, spullen houden, kamer terug). **Wist eerst de
@@ -422,7 +436,8 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   hendel vast en zegt Wiske waarom; met: het water stijgt laag voor laag), de klauwhaak (vak 5, een echte haak naar de
   richel in de Kloof, en mis: dan blijf je staan), de vuurstaf (vak 6, een echte vlam op een vuurschaal van de
   tempelruïne, van een afstand), de lichtpijlen (vak 7, een pijl van licht, en Morgals nevel verdwijnt), varen en aankomen, tip na
-  doodgaan in een kamer, de kaart, en weg = alles weg. Wist eerst en
+  doodgaan in een kamer, het kaartmenu, de kaart in vak 9 (vasthouden: het schild weg, linksklik: omslaan en terug,
+  rechtsklik: het menu, Wiske legt hem uit; weer weg: het schild terug), en weg = alles weg. Wist eerst en
   na afloop de voortgang van die speler (alleen voor tests).
 - `kitpvp zelda lopen <eiland> [zonder <voorwerp>] [dicht <poort>]` — is alles te belopen? Volgt vanaf de aanleg elke
   plek waar je kunt staan (stap ≤ 1 omhoog, ≤ 3 omlaag, een gat van één blok, ladders, zwemmen; deuren en gebarsten
@@ -433,6 +448,9 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   erachter ligt en of je er omheen kunt. Deuren, poorten en bruggen tellen
   als open. Laadt de chunks van het eiland; doet ook mee in `test … alles` (voor elk eiland; over de Kloof van het
   Lindewoud kom je ook via de ladders en de beek).
+- `kitpvp zelda kaart` — PNG's van elk eilandblad (zonder mist, met alle zielvuren en tekens) en van de zeekaart in
+  `plugins/KitPvP/kaart/zelda-kaart-*.png`; `kitpvp zelda kaart <speler>` — zijn kaart zoals hij hem ziet (beide kanten);
+  `kitpvp zelda kaart opnieuw [eiland]` — opnieuw meten.
 - `kitpvp zelda vaar <speler> <eiland>` — de overtocht naar een eiland. `kitpvp zelda vlag <speler> <vlag>` — een
   vlag aan (nog eens = uit), bv. `fles1`, `hs:test`, `harnas2`, `dier:vos`, `o:uitleg-uit` (helpen en testen).
   `kitpvp zelda hint <speler>` — de hint die hij nu zou krijgen.

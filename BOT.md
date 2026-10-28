@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.13.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.14.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -545,7 +545,14 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   (de terugvaart), en op het oefenveld van het Lindewoud is **het feest** met iedereen die hielp (`ZeldaFeest`): praten met
   Zelda = vlag `zelda`, vuurwerk, «Story of Zelda · voltooid» (ook op de kaart, met de hartstukjes). Alles blijft open: de
   gasten zeggen iets nieuws, Zelda's kroontje ligt in Morgals schatkamer onder de toren (`hs:nachtrots-4`). Muziek *Toren*,
-  baas *Morgal* (drie delen), *Dageraad*, *Feest* (het lied van thuis als feest). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  baas *Morgal* (drie delen), *Dageraad*, *Feest* (het lied van thuis als feest). **De kaart** (vak 9, sessie zelda-kaart,
+  kitpvp 2.14, `ZeldaKaart`; Jelle 28-10 "een kaart zoals in Legend of Zelda"): vasthouden = het eiland van boven (met twee
+  handen: het schild is even weg), met perkament over wat je nog niet zag, de zielvuren waar je was, dorpen en kerkers, jij
+  (pijl), medespelers (groen) en een rode X waar `/hint` heen wijst; linksklik = de zeekaart (eilanden, vaarroutes, op zee
+  je schip); rechtsklik = het kaartmenu van altijd (reizen, opnieuw, varen, …). Ontdekken per speler in `zelda.yml`
+  (oude standen aangevuld uit hun voortgang); elk eiland wordt één keer per versie gemeten (`plugins/KitPvP/zelda-kaart/`,
+  ±1 min na een start met nieuwe delen), een kaartnummer per speler in `zelda-kaarten.yml`. PNG's: `kitpvp zelda kaart
+  [<speler>]`. Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).

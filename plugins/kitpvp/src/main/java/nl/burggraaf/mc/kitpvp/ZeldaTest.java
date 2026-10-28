@@ -13,6 +13,7 @@ import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 /**
@@ -132,6 +133,7 @@ final class ZeldaTest {
                     stil();
                     z.spel.vaar(p, e);
                 }
+                kaartOpZee(e);
             }, 20, () -> z.spel.sessie(p).vaart == null && z.spel.sessie(p).h.eiland == e, 600);
             for (ZeldaHoofdstuk d : e.delen()) {
                 if (begin != null && e == begin.eiland && e.delen().indexOf(d) < e.delen().indexOf(begin)) continue;
@@ -143,6 +145,8 @@ final class ZeldaTest {
                 for (ZeldaVoorwerp v : z.spel.voorwerpen) vw.add(v.vlag());
                 for (String f : ZeldaLopen.onbereikbaar(e, vw)) fouten.add("niet te belopen: " + f);
             }, 2, () -> true, 1);
+            stap("kaart " + e.id() + " gemeten", () -> { }, 2, () -> z.spel.landkaart.bladen.containsKey(e.id()), 2400);
+            stap("kaart " + e.id(), () -> kaartKlopt(e), 2, () -> true, 1);
             laterHalen(e);
             zijmissies(e);
             klaar(e, false);
@@ -1319,7 +1323,7 @@ final class ZeldaTest {
             stil();
             p.teleport(h.rust.get(2).plek);
         }, 20, () -> stand().heeft("v:uitleg-kaart"), 40);
-        stap("uitleg uit stil", () -> moet(!rij().contains("Je kaart"), "uitleg kwam toch: " + rij()), 2, () -> true, 1);
+        stap("uitleg uit stil", () -> moet(!rij().contains("je kaart"), "uitleg kwam toch: " + rij()), 2, () -> true, 1);
         if (!h.barsten.isEmpty()) {
             ZeldaHoofdstuk.Barst b = h.barsten.get(0);
             stap("bom", () -> {                                                   // de bommenzak in vak 4, een echte bom tegen de muur
@@ -1488,6 +1492,37 @@ final class ZeldaTest {
             moet(p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu, "kaart ging niet open");
             p.closeInventory();
         }, 2, () -> true, 1);
+        stap("kaart vasthouden", () -> {                                     // vak 9: de kaart met twee handen (het schild even weg), linksklik = omslaan
+            stil();
+            stand().zet("schild");
+            boolean uit = stand().wis("o:uitleg-uit");
+            sp.uitrusten(p, stand());
+            moet(sp.landkaart.isKaart(p.getInventory().getItem(8)), "vak 9: geen kaart van Zelda");
+            var vak = new org.bukkit.event.player.PlayerItemHeldEvent(p, p.getInventory().getHeldItemSlot(), 8);
+            Bukkit.getPluginManager().callEvent(vak);
+            p.getInventory().setHeldItemSlot(8);
+            moet(p.getInventory().getItemInOffHand().getType() == Material.AIR, "met de kaart in de hand: het schild blijft");
+            boolean zee = sp.landkaart.kijk(id).zee;
+            Bukkit.getPluginManager().callEvent(new PlayerInteractEvent(p, org.bukkit.event.block.Action.LEFT_CLICK_AIR, p.getInventory().getItem(8), null,
+                    org.bukkit.block.BlockFace.SELF, org.bukkit.inventory.EquipmentSlot.HAND));
+            moet(sp.landkaart.kijk(id).zee != zee, "linksklik met de kaart: niet omgeslagen");
+            sp.landkaart.kijk(id).omslag = 0;
+            Bukkit.getPluginManager().callEvent(new PlayerInteractEvent(p, org.bukkit.event.block.Action.LEFT_CLICK_AIR, p.getInventory().getItem(8), null,
+                    org.bukkit.block.BlockFace.SELF, org.bukkit.inventory.EquipmentSlot.HAND));
+            moet(sp.landkaart.kijk(id).zee == zee, "nog eens linksklik: niet terug");
+            Bukkit.getPluginManager().callEvent(new PlayerInteractEvent(p, org.bukkit.event.block.Action.RIGHT_CLICK_AIR, p.getInventory().getItem(8), null,
+                    org.bukkit.block.BlockFace.SELF, org.bukkit.inventory.EquipmentSlot.HAND));
+            moet(p.getOpenInventory().getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu, "rechtsklik met de kaart: geen menu");
+            p.closeInventory();
+            moet(rij().contains("Linksklik"), "Wiske legt de kaart niet uit: " + rij());
+            Bukkit.getPluginManager().callEvent(new org.bukkit.event.player.PlayerItemHeldEvent(p, 8, 0));
+            p.getInventory().setHeldItemSlot(0);
+            moet(p.getInventory().getItemInOffHand().getType() == Material.SHIELD, "de kaart weg: het schild niet terug");
+            stand().wis("schild");
+            if (uit) stand().zet("o:uitleg-uit");
+            sp.uitrusten(p, stand());
+            stil();
+        }, 2, () -> true, 1);
         stap("weg", () -> pl.naarHub(p), 10, () -> {
             var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
             moet(sp.metgezel.van(p) == null && sp.dier.van(p) == null, "Wiske of huisdier bleef staan");
@@ -1501,6 +1536,59 @@ final class ZeldaTest {
             z.spel.bewaar();
         }, 1, () -> true, 1);
         start("kitpvp zelda test " + p.getName() + " motor");
+    }
+
+    /**
+     * De kaart in vak 9 op dit eiland: je pijl staat waar je bent en wijst waar je kijkt, waar je staat is ontdekt (geen perkament),
+     * je zielvuur is blauw, de X staat waar {@code /hint} heen wijst (en alleen dan), en op de zeekaart staat het eiland in kleur.
+     */
+    private void kaartKlopt(ZeldaEiland e) {
+        ZeldaKaart k = z.spel.landkaart;
+        ZeldaSpel.Sessie ss = z.spel.sessie(p);
+        moet(k.isKaart(p.getInventory().getItem(8)), "vak 9: geen kaart van Zelda");
+        k.ontdek(p, stand());
+        ZeldaKaart.Blad b = k.nu(p, ZeldaKaart.EILAND);
+        moet(ZeldaKaart.EILAND.equals(b.kant()), "kaart " + e.id() + ": geen eilandblad");
+        if (!ZeldaKaart.EILAND.equals(b.kant())) return;
+        ZeldaKaartBeeld.Vlak v = b.vlak();
+        Location l = p.getLocation();
+        var jij = b.merken().stream().filter(m -> m.soort().equals("jij")).toList();
+        moet(jij.size() == 1 && Math.abs(jij.get(0).i() - v.px(l.getX())) < 0.01 && Math.abs(jij.get(0).j() - v.pz(l.getZ())) < 0.01
+                && jij.get(0).richting() == ZeldaKaartBeeld.richting(l.getYaw()), "kaart " + e.id() + ": je pijl klopt niet (" + jij + ")");
+        int i = (int) Math.floor(v.px(l.getX())), j = (int) Math.floor(v.pz(l.getZ()));
+        ZeldaKaartBeeld.Basis basis = k.bladen.get(e.id());
+        moet(!basis.isLand(i, j) || b.px()[j * ZeldaKaartBeeld.N + i] != ZeldaKaartBeeld.PERKAMENT, "kaart " + e.id() + ": waar je staat is nog perkament");
+        ZeldaHoofdstuk.Rust r = ss.rustplaats();
+        if (ss.rh.eiland == e) {
+            int ri = (int) Math.floor(v.px(r.plek.getX())), rj = (int) Math.floor(v.pz(r.plek.getZ()));
+            moet(rj < 2 || b.px()[(rj - 2) * ZeldaKaartBeeld.N + ri] == ZeldaKaartBeeld.ZIEL, "kaart " + e.id() + ": je zielvuur (" + r.id + ") is niet blauw");
+        }
+        Location d = z.spel.wijzer(e, stand(), l.getX(), l.getZ()).plek();
+        var x = b.merken().stream().filter(m -> m.soort().equals("doel")).toList();
+        if (d != null && v.op(d.getX(), d.getZ()) && e.deelBij(d) != null)
+            moet(x.size() == 1 && Math.abs(x.get(0).i() - v.px(d.getX())) < 0.01 && Math.abs(x.get(0).j() - v.pz(d.getZ())) < 0.01,
+                    "kaart " + e.id() + ": de X staat niet waar /hint heen wijst (" + xyz(d) + ")");
+        else moet(x.isEmpty(), "kaart " + e.id() + ": een X zonder doel van /hint");
+        ZeldaKaart.Blad zee = k.nu(p, ZeldaKaart.ZEE);
+        moet(zee.merken().stream().anyMatch(m -> m.soort().equals("jij")), "zeekaart: geen pijl");
+        int ri = (int) Math.floor(zee.vlak().px(r.plek.getX())), rj = (int) Math.floor(zee.vlak().pz(r.plek.getZ()));
+        java.util.Set<Byte> zeeKleur = java.util.Set.of(ZeldaKaartBeeld.DIEP, ZeldaKaartBeeld.ONDIEP, ZeldaKaartBeeld.GOLF, ZeldaKaartBeeld.PERKAMENT);
+        boolean kleur = false;
+        for (int a = -1; a <= 1; a++) for (int c = -1; c <= 1; c++) kleur |= !zeeKleur.contains(zee.px()[Math.max(0, Math.min(127, rj + c)) * ZeldaKaartBeeld.N + Math.max(0, Math.min(127, ri + a))]);
+        moet(kleur, "zeekaart: " + e.naam() + " staat er niet in kleur op");
+        gedaan.add("kaart " + e.id() + " (" + stand().kaart.cardinality() + " vakjes)");
+    }
+
+    /** Op zee: de zeekaart (vanzelf), met je pijl en de stippels van de vaarroute. */
+    private void kaartOpZee(ZeldaEiland naar) {
+        ZeldaSpel.Sessie ss = z.spel.sessie(p);
+        if (ss == null || ss.vaart == null || !z.spel.landkaart.bladen.containsKey(ss.h.eiland.id())) return;
+        ZeldaKaart.Blad b = z.spel.landkaart.nu(p, ZeldaKaart.EILAND);
+        moet(ZeldaKaart.ZEE.equals(b.kant()), "op zee: geen zeekaart");
+        moet(b.merken().stream().anyMatch(m -> m.soort().equals("jij")), "op zee: geen schip op de kaart");
+        int stip = 0;
+        for (byte c : b.px()) if (c == ZeldaKaartBeeld.STIP) stip++;
+        moet(stip > 3, "op zee: geen vaarroute naar " + naar.naam());
     }
 
     private Material item(int vak) {

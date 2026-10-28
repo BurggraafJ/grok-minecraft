@@ -128,6 +128,16 @@ class ZeldaKaartTest {
         long golfjes = 0;
         for (byte k : b.kleur()) if (k == ZeldaKaartBeeld.GOLF) golfjes++;
         assertTrue(golfjes > 8 && golfjes < 260, "hier en daar een golfje: " + golfjes);
+        byte[] soort = new byte[N * N], kleur = new byte[N * N];             // een spikkel verdwijnt, een pad blijft
+        int[] hoogte = new int[N * N];
+        byte groen = ZeldaKaartBeeld.kleur(0x7fb238), steen = ZeldaKaartBeeld.kleur(0x707070);
+        java.util.Arrays.fill(soort, ZeldaKaartBeeld.LAND);
+        java.util.Arrays.fill(kleur, groen);
+        kleur[30 * N + 30] = steen;
+        for (int i = 50; i < 70; i++) kleur[80 * N + i] = steen;
+        ZeldaKaartBeeld.Basis s = ZeldaKaartBeeld.basis(b.vlak(), soort, hoogte, kleur);
+        assertEquals((groen & 0xff) >> 2, (s.kleur()[30 * N + 30] & 0xff) >> 2, "een losse spikkel: weg");
+        assertEquals((steen & 0xff) >> 2, (s.kleur()[80 * N + 60] & 0xff) >> 2, "een pad: blijft");
     }
 
     @Test
@@ -215,7 +225,7 @@ class ZeldaKaartTest {
         byte[] px = ZeldaKaartBeeld.blad(b, o, false);
         ZeldaKaartBeeld.vlam(px, 60, 62, true);
         ZeldaKaartBeeld.vlam(px, 80, 70, false);
-        ZeldaKaartBeeld.tekst(px, (N - ZeldaKaartBeeld.breedte("Proefeiland")) / 2, 3, "Proefeiland", ZeldaKaartBeeld.WIT);
+        ZeldaKaartBeeld.titel(px, "Proefeiland");
         File uit = new File("build/zelda-kaart-proef.png");
         uit.getParentFile().mkdirs();
         javax.imageio.ImageIO.write(ZeldaKaartBeeld.plaatje(px, List.of(new ZeldaKaartBeeld.Merk("jij", 60, 58, 6), new ZeldaKaartBeeld.Merk("doel", 85, 50, 8)), 4), "png", uit);

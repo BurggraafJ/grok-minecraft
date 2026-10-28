@@ -1390,7 +1390,7 @@ final class ZeldaHoofdstuk1 extends ZeldaHoofdstuk {
         rustvuur(157, -3);
         rust(2, new Rust("ruine", "Tempelruïne", plek(157, G + 1, 0, -90f), box(154, G, -4, 162, G + 6, 4), List.of()));
         verhaal(new Verhaal("uitleg-kaart", box(154, G, -4, 162, G + 6, 4), List.of(
-                r("Wiske", "Je kaart, vak 9: reizen naar elk zielvuur."),
+                r("Wiske", "Rechtsklik op je kaart: reizen naar elk zielvuur."),
                 r("Wiske", "Rechtsklik op een zielvuur: dat stuk opnieuw.")))).uitleg = true;
         op(0, 0);
     }

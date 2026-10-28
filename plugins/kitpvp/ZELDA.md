@@ -9,8 +9,9 @@ mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De mot
 eiland 3 (het dal in sessie `zelda-eiland-3a`, kitpvp 2.8; het IJspaleis in sessie `zelda-eiland-3b`, kitpvp 2.9) en heel
 eiland 4 (Sintelgat en de mijnen in sessie `zelda-eiland-4a`, kitpvp 2.10; de Smidse in sessie `zelda-eiland-4b`, kitpvp
 2.11: de Nevelring is gebroken) en heel eiland 5 (Nachtrots, de muren, in sessie `zelda-eiland-5a`, kitpvp 2.12; de toren en
-Morgal in sessie `zelda-eiland-5b`, kitpvp 2.13: Zelda is vrij, het feest op het Lindewoud, het verhaal is uit). Nog te doen:
-de sessies `zelda-kaart` en `zelda-afronding` (de lijst onderaan). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
+Morgal in sessie `zelda-eiland-5b`, kitpvp 2.13: Zelda is vrij, het feest op het Lindewoud, het verhaal is uit), en de
+kaart in vak 9 (sessie `zelda-kaart`, kitpvp 2.14: het eiland van boven en de zeekaart, zie «De kaart»). Nog te doen: de
+sessie `zelda-afronding` (de lijst onderaan). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
 Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*.java`.
@@ -37,6 +38,7 @@ Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*
 | NPC's, zijmissies, dialoog | personen met gesprekken die van je voortgang afhangen; zijmissies met stappen en beloning | motor (`Persoon.gesprek`, `Missie`) |
 | helper als je vastzit | `/hint` of klik op Wiske: eerst een duwtje, nog eens vragen = wat je moet doen en ze vliegt die kant op; na zes minuten zonder voortgang biedt ze één keer hulp aan | motor |
 | een stuk opnieuw spelen | kaart: **rechtsklik op een zielvuur = opnieuw vanaf hier** (uitleg en puzzels erna komen terug, spullen blijven); **Uitleg: aan/uit** | motor |
+| "een kaart zoals in Legend of Zelda, om het eiland te overzien" (28-10) | vak 9 is een **echte kaart**: vasthouden = het eiland van boven, met jou (een pijl), de zielvuren waar je was, dorpen en kerkers, medespelers en je volgende doel (een rode X, dezelfde bron als `/hint`); wat je nog niet zag ligt onder perkament; linksklik = de **zeekaart** (alle eilanden, de vaarroutes, op zee je schip) | motor (`ZeldaKaart`), zie «De kaart» |
 
 **Smaak (hard):** alles wat spelers lezen is één korte grijze regel op de actiebalk (spreker in groen), nooit chat of
 titels, nooit dubbel. Dialoog is kort: hoogstens vier regels per gesprek, een regel hoogstens ±60 tekens.
@@ -854,6 +856,100 @@ is vierkant (x 1930 … 1950, z −10 … 10, midden 1940, 0), van het plateau (
   kan iets met een pijl op een blok (`ZeldaBaas.raakBlok`) en met de vuurstaf (`ZeldaBaas.vlam`); deeltjes voor één speler
   van ver (`ZeldaSpel.deeltje`). Tijmen en Ida kunnen terugkomen; Hanne heeft nog een opdracht tegoed.
 
+## De kaart (sessie `zelda-kaart`, kitpvp 2.14)
+
+Jelle (28-10): "Een kaart zoals in Legend of Zelda, om het eiland te overzien." Vak 9 is sindsdien een **gevulde kaart** met
+een eigen tekenaar (`ZeldaKaart`, de tekenregels in `ZeldaKaartBeeld`, unit-tests in `ZeldaKaartTest`).
+
+**Wat je ziet.** Houd je vak 9 vast, dan zie je het blad van het eiland waar je bent, van boven:
+- **Het land** in de kleuren van wat er echt staat (zoals een Minecraft-kaart), met reliëf (een helling naar het noorden is
+  licht, naar het zuiden donker) en zonder losse spikkels. Paden, daken en meertjes zie je gewoon.
+- **De zee** rustig blauw: schuim langs de kust, lichter in het ondiepe, hier en daar een golfje (︵).
+- **De mist.** Land waar je nog niet was is **perkament** (lichtgrijs), met een donkerder rand langs de kust: de vorm van
+  het eiland ken je al van zee. De grens is zacht (om en om). De zee is altijd te zien.
+- **De zielvuren** waar je was, als vlammetjes; het zielvuur waar je na doodgaan terugkomt is **blauw**.
+- **Dorpen en kerkers** als de bekende tekens van een Minecraft-kaart, zodra je er in de buurt was: een dorp (in de kleur
+  van het eiland: vlakte, zand, sneeuw, as, hout), een kerker (de tempel) en Morgals toren (het landhuis).
+- **Jij**: een witte pijl die wijst waar je kijkt. **Medespelers** op hetzelfde eiland: een groene pijl.
+- **Je volgende doel**: een rode **X**, op de plek die `/hint` noemt (`ZeldaSpel.wijzer`: een doel van het eiland, iemand
+  met iets nieuws, iets dat je met een nieuw voorwerp kunt halen). Noemt `/hint` een zijmissie zonder plek, dan staat er
+  geen X. Moet je naar een ander eiland, dan staat de X op de zeekaart, bij de steiger van dat eiland.
+- **De naam** van het eiland klein bovenaan, wit op een donkere band. Verder geen tekst.
+
+**Omslaan: de zeekaart.** Linksklik met de kaart = de andere kant: de hele Glazen Zee (8 blokken per pixel):
+- eilanden waar je was in kleur (met dezelfde mist);
+- een eiland dat open is maar waar je nog niet was als vorm op perkament;
+- Nachtrots, zolang hij niet open is, als een donkere vlek: Morgals nevel;
+- de **vaarroutes** als stippellijnen, van je eiland naar elk eiland waar Brecht je heen kan varen;
+- jij, je medespelers en de X.
+
+**Op zee** (een overtocht) slaat de kaart vanzelf om: je ziet alleen de route van nu, en je pijl vaart mee van steiger
+naar steiger. Bij aankomst is het weer het eiland.
+
+**Rechtsklik** met de kaart = het kaartmenu van vroeger (reizen naar een zielvuur, opnieuw vanaf hier, varen, opdrachten,
+harten, harnas, flesjes, voltooid, uitleg aan/uit, terug naar de hub). Vak 8 blijft «Terug naar de hub».
+
+**Twee handen.** Zolang je de kaart vasthoudt, is je andere hand leeg: dan houd je de kaart groot met twee handen, zoals
+in Zelda. Wissel je weer, dan komt je schild terug. De kaart gaat niet naar je andere hand (F).
+
+**Uitleg.** De eerste keer dat je de kaart pakt (vlag `v:kaart`) zegt Wiske: «Je kaart! De pijl ben jij, de X is je
+doel.» en «Linksklik: de hele zee.» Bij de tempelruïne van het Lindewoud zegt ze nu «Rechtsklik op je kaart: reizen
+naar elk zielvuur.» Met «Uitleg: uit» zegt ze niets.
+
+**Ontdekken.** Per speler een raster over heel `Zelda.GEBIED` in vakjes van 8 × 8 blokken (`Stand.kaart`, in
+`zelda.yml` onder `kaart`, ingepakt: een paar honderd tekens). Elke seconde komt alles binnen 24 blokken om je heen
+erbij. Zo heeft in co-op **iedereen zijn eigen kaart en voortgang**. In **beheer** toont de kaart alles: geen mist, alle
+zielvuren, alle tekens.
+
+**Oude voortgang** (een stand van 2.13 heeft nog geen raster). Bij binnenkomen vult `ZeldaKaart.aanvullen` het raster
+aan met wat je zeker al zag:
+- de omgeving van elke rustplaats waar je was (32 blokken);
+- elk verhaal dat je hoorde;
+- elke vondst;
+- elke gewonnen kamer;
+- een eiland dat af is (zijn `klaar`-vlag) helemaal.
+
+Dat geldt ook voor nieuwe spelers: wie een eiland afmaakt, krijgt de hele kaart ervan. Er gaat niets verloren, en een
+stand zonder raster werkt gewoon.
+
+**Licht voor de server.**
+- **Eén keer meten per eiland.** Elk eiland wordt één keer van boven gemeten: per pixel van het blad één kolom. De chunks
+  laden op de achtergrond, hoogstens drie tegelijk, nooit nieuw gemaakt. Dat gebeurt pas als het bouwen klaar is, ±10 s
+  per eiland. Het resultaat staat in `plugins/KitPvP/zelda-kaart/<eiland>.dat`, met als sleutel de versies van de delen
+  en `ZeldaKaart.TEKENWIJZE`. Pas als een deel een nieuwe versie krijgt (of de tekenwijze verandert), wordt dat eiland
+  opnieuw gemeten.
+- **Tekenen.** Minecraft vraagt de tekenaar elke tik om de kaart. Meestal is er niets nieuws:
+  - de pijlen en de X gaan vijf keer per seconde;
+  - het blad wordt alleen opnieuw getekend als er iets veranderde (een nieuw vakje, een zielvuur, een vlag, omslaan),
+    hoogstens eens per seconde;
+  - naar de speler gaan alleen de pixels die anders zijn (Minecraft zelf).
+- **Een eigen kaart per speler.** Elke speler heeft een eigen `MapView`; het nummer staat in `zelda-kaarten.yml` en blijft
+  ook na `/zelda reset`. Eén gedeelde kaart voor iedereen zou in Paper per inlog een stukje geheugen vasthouden.
+- **Geen entiteiten, geen blokken.**
+
+**Keuzes, en waarom.**
+- **De echte wereld, niet getekend.** Zo klopt de kaart altijd, ook als een eiland verandert; een nieuw eiland staat er
+  vanzelf op.
+- **Rustiger dan een gewone Minecraft-kaart**: schuim, golfjes, reliëf over gemiddelde hoogtes, geen spikkels, en perkament
+  in plaats van zwart. Het moet een kaart zijn om graag naar te kijken.
+- **De mist ligt alleen over land.** Een eiland zie je van zee al liggen, dus de kustlijn is geen geheim. En een eiland
+  dat je helemaal kent, staat dan niet in een zee van perkament.
+- **Zielvuren als pixels, dorpen en kerkers als tekens**: weinig tekens die groot zijn (8 × 8), veel kleine vlammetjes.
+  Dorpen en kerkers zijn de bekende tekens van een Minecraft-kaart, overal dezelfde (alleen het dorp heeft de kleur van
+  het eiland). Zo leren kinderen ze snel herkennen.
+- **Linksklik slaat om, rechtsklik is het menu**: zo blijft alles van vroeger op dezelfde plek. Het kaartmenu blijft
+  nodig voor reizen en «opnieuw vanaf hier».
+- **De X volgt `/hint`** (dezelfde functie `ZeldaSpel.wijzer`, ook gebruikt door `/hint` zelf), zodat ze nooit iets anders
+  zeggen.
+
+**Een eiland erbij**: het staat vanzelf op de kaart, want het blad volgt de speelgebieden van zijn delen. Dorpen en kerkers
+zet je erop met `tekens()` in het deel (de zelftest kijkt of ze in het deel liggen).
+
+**Beheer.**
+- `kitpvp zelda kaart` maakt PNG's van elk eilandblad zonder mist en van de zeekaart, in `plugins/KitPvP/kaart/`.
+- `kitpvp zelda kaart <speler>` maakt zijn twee kanten zoals hij ze ziet (met eenvoudige tekentjes voor de pijlen).
+- `kitpvp zelda kaart opnieuw [eiland]` meet opnieuw.
+
 ## Terugkerende personages
 
 Jelle (27-10): eilanden zo ontwerpen dat je er later naar terug moet of wilt, omdat je bij een bekend karakter iets
@@ -913,7 +1009,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | hint | `spel.hint`, `/hint`, klik op Wiske | doelen in volgorde; tweede keer binnen 2 min = `verder` + Wiske wijst; geen doel = zijmissie, «verder varen», iemand met nieuws, iets dat je met een nieuw voorwerp kunt halen (hier of op een ander eiland: «vaar er eens heen»), `wacht()`; zelf aanbieden na 6 min zonder voortgang |
 | uitleg | `Verhaal.uitleg`, kaart «Uitleg: aan/uit» | uitleg overslaan; `Kamer.tips` na doodgaan |
 | opnieuw | kaart: rechtsklik op een zielvuur | vergeet `v:`/`r:` na die rustplaats, reist erheen |
-| kaart | `spel.kaart` | zielvuren van dit eiland, eilanden (varen), opdrachten, harten, harnas, flesjes, uitleg, hub |
+| kaartmenu | `spel.kaart` (rechtsklik met de kaart) | zielvuren van dit eiland, eilanden (varen), opdrachten, harten, harnas, flesjes, uitleg, hub; de kaart zelf: «De kaart» |
 | voorwerpen | `ZeldaVoorwerp` | haak voor bommen, klauwhaak, vuurstaf, lichtpijlen: vlag, vak, item, rechtsklik, projectiel raakt |
 | gewonnen kamers | vlag `k:<kamer>` | voor missies en doelen («ben je hier al geweest»); **vrije doorgang** als iedereen binnen hem al won |
 | bel | `Kamer.bel`, `Kamer.extra`, `spel.luid` | rechtsklik op de bel in een kamer = nog eens vechten, met de extra golven |
@@ -1002,6 +1098,13 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | een naam bij beheer | `Persoon.beheerNaam` | zo heet hij bij `/zelda ga` (de gasten op het feest: `hendrik-feest`; Zelda daar: `feest`) |
 | test vanaf een deel | `kitpvp zelda test <speler> alles vanaf <deel>` | alles ervoor telt als gedaan; voor wie aan één deel werkt (de volledige route blijft de echte controle) |
 | nieuwe vijanden | `Soort.NEVELGEEST`, `MORGAL` | een vex van nevel (licht doet dubbel), een evoker (Morgal zelf) |
+| **de kaart** (sessie `zelda-kaart`) | | |
+| kaart in vak 9 | `ZeldaKaart`, `ZeldaKaartBeeld` | een gevulde kaart per speler (`MapView`, nummer in `zelda-kaarten.yml`); vasthouden = het eilandblad, linksklik = de zeekaart, rechtsklik = het kaartmenu; met de kaart in de hand is je andere hand leeg (`spel.schild`) |
+| een eiland meten | `ZeldaKaart.Meting`, `TEKENWIJZE` | één keer per versie van de delen: de bovenkant van het eiland, chunks op de achtergrond; bewaard in `plugins/KitPvP/zelda-kaart/` |
+| ontdekken | `Stand.kaart`, `ZeldaKaart.ontdek`, `aanvullen` | vakjes van 8 × 8 blokken, 24 blokken om je heen; bij binnenkomen aangevuld uit je voortgang (oude standen); een eiland dat af is helemaal |
+| wat er op het blad staat | `ZeldaKaartBeeld.basis`, `blad`, `zeekaart`, `vlam`, `stippel`, `titel` | zee met schuim, reliëf, perkament over wat je niet zag, zielvuren, vaarroutes, de naam |
+| dorpen en kerkers | `ZeldaHoofdstuk.Teken`, `tekens()` | per deel; op de kaart zodra je er in de buurt was |
+| wat /hint noemt | `ZeldaSpel.wijzer`, `Wijzer.plek`, `Wijzer.eiland` | dezelfde volgorde als `/hint`; de kaart zet er een X |
 
 ### Hoe een eilandsessie aanhaakt
 
@@ -1043,10 +1146,13 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    `pad` met `schuil`-punten, een `hek` en `terug`: de zelftest controleert of het te doen is. Een brug of trap die een
    lichtpijl laat zien is een `Nevel` met `brug = true` (dicht = lucht, open = de brug; `ZeldaRegels.trap` voor treden), en
    een plek waar je hoog loopt krijgt een vangnet (`val(new Val(…))`: wie valt, staat weer waar hij veilig stond).
-8. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
+8. Op de kaart: het eiland staat er vanzelf op (de speelgebieden van de delen). Zet dorpen en kerkers erop met `tekens()`
+   (`new Teken("dorp", x, z)`, `"kerker"`, …); de zelftest kijkt of ze in het deel liggen. Na een nieuwe versie van een
+   deel wordt het eiland vanzelf opnieuw gemeten.
+9. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
    test teleporteert, dus deze controle volgt vanaf de steiger elke plek waar een speler kan staan en noemt wat je
    zonder teleporteren niet haalt. Deuren, poorten en bruggen tellen als open (een brug als planken).
-9. De test vaart van eiland naar eiland met een klik in het menu van Brecht, haalt na elk eiland wat met de voorwerpen
+10. De test vaart van eiland naar eiland met een klik in het menu van Brecht, haalt na elk eiland wat met de voorwerpen
    van nu te halen is (een echte bom tegen de muur ervoor, dan pakken), en vaart aan het eind via de kaart terug naar
    eerdere eilanden om daar hetzelfde te doen (het Lindewoud: `hs:lindewoud-4` achter de tempelmuur). Daarna twee
    rondes langs alle eilanden voor de boodschappen over zee (Hanne en de zeekraal), en pas dan moeten alle zijmissies
@@ -1106,7 +1212,10 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
    (vlag `zelda`, «voltooid»); daarna Morgals schatkamer; motor: nevelbruggen, een vangnet, muziek per speler, een bijzondere
    overtocht. **Klaar als** het hele spel van Thuis tot het feest uit te spelen is (`kitpvp zelda test <speler> alles` over
    alle eilanden), zelftest OK.
-9b. **`zelda-kaart`** — Een eilandkaart zoals in Legend of Zelda (zie de tips in de samenvatting van 5b).
+9b. **`zelda-kaart`** (gebouwd, kitpvp 2.14) — Een eilandkaart zoals in Legend of Zelda: vak 9 is een echte kaart (het eiland
+    van boven, mist over wat je niet zag, zielvuren, dorpen en kerkers, jij, medespelers en de X van `/hint`), linksklik =
+    de zeekaart met vaarroutes en je schip op zee; zie «De kaart». **Klaar als** de kaart op alle eilanden en op zee werkt,
+    oude voortgang blijft werken, en zelftest, `motor`, `test … alles` en `zelda lopen` OK zijn.
 10. **`zelda-afronding`** — Speel alles na: balans (te veel gevechten? te moeilijk?), alle «later-terug»-plekken
     bereikbaar, twintig hartstukjes, muziek overal, teksten kort, kaartplaatjes. **Klaar als** een volledige
     testronde zonder fouten loopt en de lijst met losse eindjes leeg is.

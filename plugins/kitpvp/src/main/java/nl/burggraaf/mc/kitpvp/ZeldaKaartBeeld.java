@@ -6,7 +6,9 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Base64;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -202,6 +204,8 @@ final class ZeldaKaartBeeld {
                 }
             }
         }
+        int[] basis = rustig(soort, kleur);
+        double[] h = gemiddeld(soort, hoogte);
         byte[] uit = new byte[N * N];
         BitSet land = new BitSet(N * N);
         for (int j = 0; j < N; j++)
@@ -211,13 +215,60 @@ final class ZeldaKaartBeeld {
                 land.set(p);
                 if (soort[p] == NAT) uit[p] = kleur[p] >= 3 ? WATER_DIEP : WATER;
                 else {
-                    int basis = (kleur[p] & 0xFF) >> 2, schaduw = 1;
-                    if (j > 0 && soort[p - N] == LAND) schaduw = hoogte[p] > hoogte[p - N] ? 2 : hoogte[p] < hoogte[p - N] ? 0 : 1;
-                    uit[p] = (byte) (basis * 4 + schaduw);
+                    int schaduw = 1;
+                    if (j > 0 && soort[p - N] == LAND) schaduw = h[p] - h[p - N] > 0.6 ? 2 : h[p] - h[p - N] < -0.6 ? 0 : 1;
+                    uit[p] = (byte) (basis[p] * 4 + schaduw);
                 }
             }
         zee(uit, zee);
         return new Basis(vlak, uit, land);
+    }
+
+    /**
+     * De kleur van elk stukje land, zonder losse spikkels: een pixel die (bijna) alleen staat tussen buren van één kleur krijgt
+     * die kleur. Een pad (een lijn) blijft: daar heeft elke pixel twee buren van zijn eigen kleur.
+     */
+    private static int[] rustig(byte[] soort, byte[] kleur) {
+        int[] b = new int[N * N], uit = new int[N * N];
+        for (int p = 0; p < N * N; p++) b[p] = (kleur[p] & 0xFF) >> 2;
+        for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++) {
+                int p = j * N + i;
+                uit[p] = b[p];
+                if (soort[p] != LAND) continue;
+                int zelfde = 0, buren = 0;
+                Map<Integer, Integer> tel = new HashMap<>();
+                for (int dj = -1; dj <= 1; dj++)
+                    for (int di = -1; di <= 1; di++) {
+                        int x = i + di, y = j + dj;
+                        if ((di == 0 && dj == 0) || x < 0 || y < 0 || x >= N || y >= N || soort[y * N + x] != LAND) continue;
+                        buren++;
+                        if (b[y * N + x] == b[p]) zelfde++;
+                        tel.merge(b[y * N + x], 1, Integer::sum);
+                    }
+                if (zelfde > 1 || buren < 6) continue;
+                for (var e : tel.entrySet()) if (e.getValue() >= 5) uit[p] = e.getKey();
+            }
+        return uit;
+    }
+
+    /** De hoogte van het land, gemiddeld over 3 × 3 (voor het reliëf: rustiger dan blok voor blok). */
+    private static double[] gemiddeld(byte[] soort, int[] hoogte) {
+        double[] uit = new double[N * N];
+        for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++) {
+                double som = 0;
+                int n = 0;
+                for (int dj = -1; dj <= 1; dj++)
+                    for (int di = -1; di <= 1; di++) {
+                        int x = i + di, y = j + dj;
+                        if (x < 0 || y < 0 || x >= N || y >= N || soort[y * N + x] != LAND) continue;
+                        som += hoogte[y * N + x];
+                        n++;
+                    }
+                uit[j * N + i] = n == 0 ? hoogte[j * N + i] : som / n;
+            }
+        return uit;
     }
 
     /** Kleur de zee in (waar {@code zee} klopt): schuim langs het land, ondiep, diep, en een paar golfjes. */
@@ -381,6 +432,22 @@ final class ZeldaKaartBeeld {
             if (i < 0 || j < 0 || i >= N || j >= N || zee != null && !zee[j * N + i]) continue;
             px[j * N + i] = c;
         }
+    }
+
+    /** Een donkere band (elke pixel de donkerste tint van zijn eigen kleur): zo is een naam overal te lezen, ook op sneeuw. */
+    static void band(byte[] px, int i1, int j1, int i2, int j2) {
+        for (int j = Math.max(0, j1); j <= Math.min(N - 1, j2); j++)
+            for (int i = Math.max(0, i1); i <= Math.min(N - 1, i2); i++) {
+                int c = px[j * N + i] & 0xFF;
+                if (c >= 4) px[j * N + i] = (byte) ((c >> 2) * 4 + 3);
+            }
+    }
+
+    /** De naam van een eiland bovenaan het blad: wit op een donkere band. */
+    static void titel(byte[] px, String naam) {
+        int w = breedte(naam), i = (N - w) / 2;
+        band(px, i - 3, 1, i + w + 2, 12);
+        tekst(px, i, 3, naam, WIT);
     }
 
     /** Tekst in het lettertype van de kaart, met een donkere schaduw; (i, j) = linksboven. */
