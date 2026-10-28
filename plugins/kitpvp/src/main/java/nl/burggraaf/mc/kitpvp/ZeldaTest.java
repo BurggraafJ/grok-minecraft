@@ -44,7 +44,8 @@ final class ZeldaTest {
     private boolean belGehad;                               // de bel is één keer getest (in de eerste kamer met een bel)
     private boolean hitteTest;                              // nu wordt de hitte getest (anders houdt de test je koel: hij teleporteert)
     private boolean sluipTest;                              // nu wordt er gesloten (anders zien de wachters je niet: de test teleporteert)
-    private String geklikt;                                 // het eiland waarheen Brecht vaart na een klik in zijn menu
+    private String geklikt;
+    private int stilte;                                     // hoe vaak er geen muziek was (de eerste drie worden gemeld)                                 // het eiland waarheen Brecht vaart na een klik in zijn menu
 
     ZeldaTest(KitPvP pl, Zelda z, Player p, CommandSender aan) {
         this.pl = pl;
@@ -1677,6 +1678,8 @@ final class ZeldaTest {
             }
             if (ok || gewacht[0] - s.wacht() >= s.max()) {
                 if (!ok) fouten.add(s.naam() + ": niet gelukt");
+                if (z.spel.speelt(p) && z.spel.muziek.achter(p) == null && z.spel.muziek.lus(p) == null && stilte++ < 3)
+                    fouten.add(s.naam() + ": stilte (geen muziek)");             // muziek altijd aan (Jelle)
                 gedaan.add(s.naam());
                 rij.poll();
                 gedaanDoe[0] = false;

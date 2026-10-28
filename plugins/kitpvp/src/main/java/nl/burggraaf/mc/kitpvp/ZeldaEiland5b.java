@@ -746,6 +746,10 @@ final class ZeldaEiland5b extends ZeldaHoofdstuk {
         if (!(e instanceof org.bukkit.entity.Mannequin m)) return;
         m.setImmovable(true);
         m.setDescription(Component.empty());
+        // een eigen gezicht: de standaardhuid «Alex» (lang haar, smal model) uit het spel zelf, geen download (anders Steve in een jurk)
+        m.setProfile(io.papermc.paper.datacomponent.item.ResolvableProfile.resolvableProfile()
+                .skinPatch(sp -> sp.body(net.kyori.adventure.key.Key.key("minecraft", "entity/player/slim/alex"))
+                        .model(org.bukkit.profile.PlayerTextures.SkinModel.SLIM)).build());
         var eq = m.getEquipment();
         eq.setChestplate(kleur(Material.LEATHER_CHESTPLATE, 0xf4f0ff, true));
         eq.setLeggings(kleur(Material.LEATHER_LEGGINGS, 0xe9e2ff, false));

@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -437,15 +438,111 @@ final class ZeldaKaartBeeld {
         for (int k = 0; k < vorm.length; k++) zet(px, i + vorm[k][0], j + vorm[k][1], kl[k]);
     }
 
-    /** Een vaarroute: een stippellijn van a naar b, alleen over open zee ({@code zee}; null = overal). */
+    /**
+     * Een vaarroute: een stippellijn van a naar b, alleen over open zee ({@code zee}; null = overal). Ligt er land
+     * tussen, dan vaart hij eromheen ({@link #vaarweg}): rechte stukken over zee, met een bocht om de kust.
+     */
     static void stippel(byte[] px, double ai, double aj, double bi, double bj, byte c, boolean[] zee) {
-        double d = Math.hypot(bi - ai, bj - aj);
-        int n = (int) (d / 3);
-        for (int k = 1; k < n; k++) {
-            int i = (int) Math.round(ai + (bi - ai) * k / n), j = (int) Math.round(aj + (bj - aj) * k / n);
-            if (i < 0 || j < 0 || i >= N || j >= N || zee != null && !zee[j * N + i]) continue;
-            px[j * N + i] = c;
+        List<double[]> weg = zee == null ? null : vaarweg(zee, ai, aj, bi, bj);
+        if (weg == null) weg = List.of(new double[]{ai, aj}, new double[]{bi, bj});
+        double lang = 0, op = 3, gedaan = 0;                     // om de 3 pixels een stip, ook over de bochten heen
+        for (int k = 0; k + 1 < weg.size(); k++) lang += Math.hypot(weg.get(k + 1)[0] - weg.get(k)[0], weg.get(k + 1)[1] - weg.get(k)[1]);
+        for (int k = 0; k + 1 < weg.size(); k++) {
+            double[] a = weg.get(k), b = weg.get(k + 1);
+            double d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            for (; op - gedaan < d && lang - op >= 1.5; op += 3) {
+                double t = (op - gedaan) / d;
+                int i = (int) Math.round(a[0] + (b[0] - a[0]) * t), j = (int) Math.round(a[1] + (b[1] - a[1]) * t);
+                if (i < 0 || j < 0 || i >= N || j >= N || zee != null && !zee[j * N + i]) continue;
+                px[j * N + i] = c;
+            }
+            gedaan += d;
         }
+    }
+
+    /**
+     * De weg over zee van a naar b (punten in pixels): het kortste pad over zeepixels (8 kanten op), daarna strakgetrokken
+     * (elk punt naar het verste punt dat je over zee ziet). Begin en eind zijn de dichtste zeepixels bij a en b. Null als
+     * er geen weg is of het rechtdoor ook kan.
+     */
+    static List<double[]> vaarweg(boolean[] zee, double ai, double aj, double bi, double bj) {
+        int s = dichtsteZee(zee, ai, aj), t = dichtsteZee(zee, bi, bj);
+        if (s < 0 || t < 0 || s == t) return null;
+        if (vrij(zee, s % N, s / N, t % N, t / N)) return null;
+        double[] af = new double[N * N];
+        int[] van = new int[N * N];
+        java.util.Arrays.fill(af, Double.MAX_VALUE);
+        java.util.PriorityQueue<double[]> rij = new java.util.PriorityQueue<>((x, y) -> Double.compare(x[0], y[0]));
+        af[s] = 0;
+        van[s] = -1;
+        rij.add(new double[]{0, s});
+        while (!rij.isEmpty()) {
+            double[] k = rij.poll();
+            int u = (int) k[1];
+            if (k[0] > af[u]) continue;
+            if (u == t) break;
+            int ui = u % N, uj = u / N;
+            for (int di = -1; di <= 1; di++)
+                for (int dj = -1; dj <= 1; dj++) {
+                    int vi = ui + di, vj = uj + dj, v = vj * N + vi;
+                    if ((di | dj) == 0 || vi < 0 || vj < 0 || vi >= N || vj >= N || !zee[v]) continue;
+                    double nd = af[u] + (di != 0 && dj != 0 ? 1.4142 : 1) + (kust(zee, vi, vj) ? 2 : 0);   // liever niet langs de kust
+                    if (nd < af[v]) {
+                        af[v] = nd;
+                        van[v] = u;
+                        rij.add(new double[]{nd, v});
+                    }
+                }
+        }
+        if (af[t] == Double.MAX_VALUE) return null;
+        List<Integer> pad = new ArrayList<>();
+        for (int u = t; u != -1; u = van[u]) pad.add(0, u);
+        List<double[]> weg = new ArrayList<>();
+        weg.add(new double[]{ai, aj});
+        int i = 0;
+        while (i < pad.size() - 1) {                            // strak trekken
+            int j = pad.size() - 1;
+            while (j > i + 1 && !vrij(zee, pad.get(i) % N, pad.get(i) / N, pad.get(j) % N, pad.get(j) / N)) j--;
+            if (i > 0) weg.add(new double[]{pad.get(i) % N, pad.get(i) / N});
+            i = j;
+        }
+        weg.add(new double[]{bi, bj});
+        return weg;
+    }
+
+    private static boolean kust(boolean[] zee, int i, int j) {
+        for (int di = -2; di <= 2; di++)
+            for (int dj = -2; dj <= 2; dj++) {
+                int a = i + di, b = j + dj;
+                if (a >= 0 && b >= 0 && a < N && b < N && !zee[b * N + a]) return true;
+            }
+        return false;
+    }
+
+    /** Ligt de rechte lijn tussen twee pixels helemaal over zee? */
+    private static boolean vrij(boolean[] zee, int ai, int aj, int bi, int bj) {
+        int n = Math.max(Math.abs(bi - ai), Math.abs(bj - aj)) * 2;
+        for (int k = 0; k <= n; k++) {
+            int i = (int) Math.round(ai + (bi - ai) * (double) k / Math.max(1, n)), j = (int) Math.round(aj + (bj - aj) * (double) k / Math.max(1, n));
+            if (!zee[j * N + i]) return false;
+        }
+        return true;
+    }
+
+    private static int dichtsteZee(boolean[] zee, double fi, double fj) {
+        int ci = (int) Math.round(fi), cj = (int) Math.round(fj), beste = -1;
+        double bd = Double.MAX_VALUE;
+        for (int r = 0; r <= 16 && beste < 0; r++)
+            for (int i = ci - r; i <= ci + r; i++)
+                for (int j = cj - r; j <= cj + r; j++) {
+                    if (i < 0 || j < 0 || i >= N || j >= N || !zee[j * N + i]) continue;
+                    double d = Math.hypot(i - fi, j - fj);
+                    if (d < bd) {
+                        bd = d;
+                        beste = j * N + i;
+                    }
+                }
+        return beste;
     }
 
     /** Een donkere band (elke pixel de donkerste tint van zijn eigen kleur): zo is een naam overal te lezen, ook op sneeuw. */

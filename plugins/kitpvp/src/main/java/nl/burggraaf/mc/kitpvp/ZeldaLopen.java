@@ -246,8 +246,10 @@ final class ZeldaLopen {
                 l.opening(k.uit);
             }
             for (ZeldaHoofdstuk.Uitdaging u : h.uitdagingen) l.opening(u.poort);
-            for (ZeldaHoofdstuk.Reeks r : h.reeksen) l.opening(r.deur);
-            for (ZeldaHoofdstuk.Barst b : h.barsten) l.opening(b.muur);
+            for (ZeldaHoofdstuk.Reeks r : h.reeksen)                  // een vuurpuzzel gaat alleen met de vuurstaf open
+                if (!dicht.contains(r.id) && (r.hoe != ZeldaHoofdstuk.Reeks.Hoe.VUUR || voorwerpen.contains("vuurstaf"))) l.opening(r.deur);
+            if (voorwerpen.contains("bommen"))                                    // een gebarsten muur alleen met bommen
+                for (ZeldaHoofdstuk.Barst b : h.barsten) if (!dicht.contains(b.id)) l.opening(b.muur);
             for (ZeldaHoofdstuk.Spiegels s : h.spiegels) l.opening(s.deur);
             for (ZeldaHoofdstuk.Ritme r : h.ritmes) l.opening(r.lava);              // lava op een ritme: de stenen liggen af en toe droog
             for (ZeldaHoofdstuk.Poort p : h.poorten) if (!dicht.contains(p.id)) l.opening(p.deur);

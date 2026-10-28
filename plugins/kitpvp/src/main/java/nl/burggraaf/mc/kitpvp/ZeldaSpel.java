@@ -2244,6 +2244,10 @@ final class ZeldaSpel implements Listener {
             vertel(p, ZeldaHoofdstuk.r("Wiske", "Op " + ZeldaRegels.inZin(w.elders().naam()) + " kun je nu iets halen. Vaar er eens heen."));
             return;
         }
+        if (w.verhaal() != null) {                                              // hier is het af: het verhaal gaat elders verder
+            vertel(p, ZeldaHoofdstuk.r("Wiske", "Het verhaal gaat verder op " + ZeldaRegels.inZin(w.verhaal().naam()) + ". Vaar er heen."));
+            return;
+        }
         ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
         if (!s.heeft(e.klaar()) && laatste.wacht() != null) {             // het eiland is nog niet af, maar hier is niets meer
             vertel(p, ZeldaHoofdstuk.r("Wiske", laatste.wacht()));
@@ -2253,7 +2257,15 @@ final class ZeldaSpel implements Listener {
             vertel(p, ZeldaHoofdstuk.r("Wiske", komt(s)));
             return;
         }
-        if (voltooid(s)) {                                                 // het verhaal is uit: nog hartstukjes te zoeken?
+        if (w.stukje() != null) {                                               // een hartstukje dat je nog mist (nog eens vragen = ze wijst)
+            ZeldaHoofdstuk.Vondst v = w.stukje().vondst();
+            ss.hintDoel = v != null ? "s:" + v.vlag : null;
+            if (v != null && ss.hintDoel.equals(vorige) && nu - ss.hintTijd < 120_000L) metgezel.wijs(p, v.plek);
+            ss.hintTijd = nu;
+            vertel(p, ZeldaHoofdstuk.r("Wiske", stukjeTekst(w.stukje())));
+            return;
+        }
+        if (voltooid(s)) {                                                 // het verhaal is uit, alle hartstukjes gevonden
             int[] st = stukjes(s);
             vertel(p, ZeldaHoofdstuk.r("Wiske", st[0] < st[1] ? "Alles is weer licht. Nog " + (st[1] - st[0]) + " hartstukjes verstopt!"
                     : "Alles is weer licht. Dank je wel!"));
@@ -2268,17 +2280,59 @@ final class ZeldaSpel implements Listener {
      * zet een rode X op dezelfde plek ({@link #plek}) of op het eiland waar je heen moet ({@link #eiland}).
      */
     record Wijzer(ZeldaHoofdstuk.Doel doel, List<ZeldaHoofdstuk.Missie> bezig, ZeldaEiland varen, ZeldaHoofdstuk.Persoon persoon,
-                  ZeldaHoofdstuk.Vondst later, ZeldaEiland elders) {
+                  ZeldaHoofdstuk.Vondst later, ZeldaEiland elders, ZeldaEiland verhaal, Stukje stukje) {
+
+        Wijzer(ZeldaHoofdstuk.Doel doel, List<ZeldaHoofdstuk.Missie> bezig, ZeldaEiland varen, ZeldaHoofdstuk.Persoon persoon,
+               ZeldaHoofdstuk.Vondst later, ZeldaEiland elders) {
+            this(doel, bezig, varen, persoon, later, elders, null, null);
+        }
 
         /** Waar het is (null = nergens: een zijmissie, of niets meer te doen). */
         Location plek() {
-            return doel != null ? doel.plek() : persoon != null ? persoon.plek : later != null ? later.plek : null;
+            return doel != null ? doel.plek() : persoon != null ? persoon.plek : later != null ? later.plek
+                    : stukje != null && stukje.vondst() != null ? stukje.vondst().plek : null;
         }
 
         /** Het eiland waar je heen moet varen (null = hier, of niets). */
         ZeldaEiland eiland() {
-            return varen != null ? varen : elders;
+            return varen != null ? varen : elders != null ? elders : verhaal != null ? verhaal : stukje != null ? stukje.elders() : null;
         }
+    }
+
+    /**
+     * Een hartstukje dat je nog mist: hier op het eiland ({@code hier}; {@code vondst} als hij ergens ligt en nu te pakken is,
+     * anders is hij de beloning van iemand die je iets vraagt), of op een ander eiland ({@code elders}).
+     */
+    record Stukje(boolean hier, ZeldaHoofdstuk.Vondst vondst, ZeldaEiland elders) {
+    }
+
+    /** Een hartstukje dat je nog mist (null = je hebt ze allemaal, of ze liggen nog achter een voorwerp dat je niet hebt). */
+    Stukje stukje(ZeldaEiland e, ZeldaVoortgang.Stand s) {
+        for (ZeldaHoofdstuk.Vondst v : alle(e, h -> h.vondsten))
+            if (v.vlag.startsWith("hs:") && !s.heeft(v.vlag) && (v.voorwerp == null || s.heeft(v.voorwerp)) && (v.vereist == null || s.heeft(v.vereist)))
+                return new Stukje(true, v, null);
+        if (mist(e, s)) return new Stukje(true, null, null);
+        for (ZeldaEiland o : eilanden) if (o != e && o.open(s) && o.aanlegRust() != null && mist(o, s)) return new Stukje(false, null, o);
+        return null;
+    }
+
+    /** Mist je op dit eiland nog een hartstukje dat je nu kunt halen (een vondst, of de beloning van een zijmissie)? */
+    private boolean mist(ZeldaEiland e, ZeldaVoortgang.Stand s) {
+        java.util.Set<String> vondst = new java.util.HashSet<>();
+        for (ZeldaHoofdstuk.Vondst v : alle(e, h -> h.vondsten)) {
+            if (!v.vlag.startsWith("hs:")) continue;
+            vondst.add(v.vlag);
+            if (!s.heeft(v.vlag) && (v.voorwerp == null || s.heeft(v.voorwerp)) && (v.vereist == null || s.heeft(v.vereist))) return true;
+            if (!s.heeft(v.vlag) && v.vereist != null && !s.heeft(v.vereist) && (v.voorwerp == null || s.heeft(v.voorwerp))) return true;   // eerst iets doen (Zelda's kroontje)
+        }
+        for (ZeldaHoofdstuk h : e.delen()) for (String st : h.stukjes) if (!vondst.contains(st) && !s.heeft(st)) return true;   // een beloning
+        return false;
+    }
+
+    /** Het eiland waar het verhaal verder gaat: het eerste dat open is en nog niet af (null = hier, of het verhaal is uit). */
+    private ZeldaEiland verhaal(ZeldaEiland e, ZeldaVoortgang.Stand s) {
+        for (ZeldaEiland o : eilanden) if (o.open(s) && !s.heeft(o.klaar()) && o.aanlegRust() != null) return o == e ? null : o;
+        return null;
     }
 
     Wijzer wijzer(ZeldaEiland e, ZeldaVoortgang.Stand s, double x, double z) {
@@ -2294,7 +2348,18 @@ final class ZeldaSpel implements Listener {
         for (ZeldaEiland o : eilanden)
             if (o != e && o.open(s) && o.aanlegRust() != null && alle(o, h -> h.vondsten).stream().anyMatch(v -> later(v, s)))
                 return new Wijzer(null, List.of(), null, null, null, o);
-        return new Wijzer(null, List.of(), null, null, null, null);
+        ZeldaEiland verder = verhaal(e, s);
+        if (verder != null) return new Wijzer(null, List.of(), null, null, null, null, verder, null);
+        ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
+        if (!s.heeft(e.klaar()) && laatste.wacht() != null || komt(s) != null) return new Wijzer(null, List.of(), null, null, null, null);
+        return new Wijzer(null, List.of(), null, null, null, null, null, stukje(e, s));
+    }
+
+    /** Wat Wiske (of een wegwijzer) zegt over een hartstukje dat je mist. */
+    static String stukjeTekst(Stukje st) {
+        if (st.elders() != null) return "Op " + ZeldaRegels.inZin(st.elders().naam()) + " ligt nog een hartstukje voor je.";
+        if (st.vondst() != null) return "Hier op het eiland ligt nog een hartstukje.";
+        return "Hier ligt nog een hartstukje. Wie vraagt je nog iets?";
     }
 
     /** Is Story of Zelda voltooid (de klaar-vlag van het laatste eiland: Zelda is thuis, het feest)? */
@@ -2353,6 +2418,11 @@ final class ZeldaSpel implements Listener {
                 metgezel.wijs(p, v.plek);
                 return;
             }
+        ZeldaEiland verder = verhaal(e, s);
+        if (verder != null) {
+            vertel(p, ZeldaHoofdstuk.r(naam, "Hier is het licht terug. Op " + ZeldaRegels.inZin(verder.naam()) + " nog niet."));
+            return;
+        }
         ZeldaHoofdstuk laatste = e.delen().get(e.delen().size() - 1);
         if (!s.heeft(e.klaar()) && laatste.wacht() != null) {
             vertel(p, ZeldaHoofdstuk.r(naam, laatste.wacht()));
@@ -2360,6 +2430,13 @@ final class ZeldaSpel implements Listener {
         }
         if (komt(s) != null) {
             vertel(p, ZeldaHoofdstuk.r(naam, komt(s)));
+            return;
+        }
+        Stukje mis = stukje(e, s);
+        if (mis != null) {
+            vertel(p, ZeldaHoofdstuk.r(naam, mis.elders() != null ? "De sterren zeggen: op " + ZeldaRegels.inZin(mis.elders().naam()) + " ligt nog een hartstukje."
+                    : "De sterren zeggen: hier ligt nog een hartstukje."));
+            if (mis.vondst() != null) metgezel.wijs(p, mis.vondst().plek);
             return;
         }
         if (voltooid(s)) {
@@ -3884,10 +3961,10 @@ final class ZeldaSpel implements Listener {
         if (e.getNewSlot() == 8) landkaart.vastgepakt(p, s);
     }
 
-    /** De kaart blijft in vak 9 (niet naar je andere hand). */
+    /** Geen wissel van hand (F) in Zelda: het schild blijft links, de kaart in vak 9 (in beheer mag het wel). */
     @EventHandler
     public void onWissel(PlayerSwapHandItemsEvent e) {
-        if (speelt(e.getPlayer()) && e.getPlayer().getInventory().getHeldItemSlot() == 8) e.setCancelled(true);
+        if (speelt(e.getPlayer()) && !beheer.is(e.getPlayer().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler
@@ -4002,6 +4079,7 @@ final class ZeldaSpel implements Listener {
     public void onZwaai(org.bukkit.event.player.PlayerAnimationEvent e) {
         Player p = e.getPlayer();
         if (e.getAnimationType() != org.bukkit.event.player.PlayerAnimationType.ARM_SWING || !speelt(p) || beheer.is(p.getUniqueId())) return;
+        if (p.getInventory().getHeldItemSlot() == 8) return;                 // met de kaart in de hand sla je om, je zwaait niet
         for (ZeldaHoofdstuk h : hoofdstukken)
             for (ZeldaHoofdstuk.Kamer k : h.kamers)
                 if (k.baas != null && k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.baas.leeft() && k.binnen.in(p.getLocation()) && k.baas.zwaai(this, p)) return;

@@ -191,6 +191,28 @@ class ZeldaKaartTest {
     }
 
     @Test
+    void vaarrouteOmEenEilandHeen() {
+        int N = ZeldaKaartBeeld.N;
+        boolean[] zee = new boolean[N * N];
+        java.util.Arrays.fill(zee, true);
+        for (int j = 40; j <= 80; j++) for (int i = 50; i <= 70; i++) zee[j * N + i] = false;   // een eiland midden op de route
+        byte[] px = new byte[N * N];
+        ZeldaKaartBeeld.stippel(px, 20, 60, 100, 60, ZeldaKaartBeeld.STIP, zee);
+        int stippen = 0, voorbij = 0;
+        for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++) {
+                if (px[j * N + i] != ZeldaKaartBeeld.STIP) continue;
+                assertTrue(zee[j * N + i], "geen stip op land: " + i + "," + j);
+                stippen++;
+                if (i > 75) voorbij++;
+            }
+        assertTrue(voorbij >= 5, "de route gaat door tot de overkant, om het eiland heen: " + voorbij);
+        assertTrue(stippen > 25 && stippen < 60, "stippels: " + stippen);
+        assertTrue(ZeldaKaartBeeld.vaarweg(zee, 20, 60, 100, 60).size() >= 3, "een bocht");
+        assertEquals(null, ZeldaKaartBeeld.vaarweg(zee, 20, 20, 100, 20), "rechtdoor als het kan");
+    }
+
+    @Test
     void pijlenEnTekentjes() {
         assertEquals(0, ZeldaKaartBeeld.richting(0), "zuid");
         assertEquals(4, ZeldaKaartBeeld.richting(90), "west");

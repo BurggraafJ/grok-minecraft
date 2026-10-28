@@ -42,7 +42,7 @@ import org.bukkit.potion.PotionEffectType;
  */
 final class ZeldaEiland3a extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 2;                        // 2: de lawine op het bergpad is weg (3b, het IJspaleis, sluit aan)
+    static final int VERSIE = 3;                        // 2: de lawine op het bergpad is weg (3b, het IJspaleis, sluit aan); 3: schoorstenen niet meer tot de bodem
     /** Het vak van dit halve eiland (3b, de berg en het IJspaleis, komt oost ervan: x 1580 … 1720). */
     static final int X1 = 1400, X2 = 1579, Z1 = -480, Z2 = -180;
     /** Het plein van IJshoeve, het meer (eilandje in het midden), de kop van de fjord. */
@@ -675,7 +675,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
                 }
             }
         // het dak: treden van sneeuw naar de nok; de gevels van planken
-        int nok = 0;
+        int nok = Integer.MIN_VALUE;
         for (int z = z1 - 1; z <= z2 + 1; z++) {
             int y = G + 5 + Math.min(z - (z1 - 1), z2 + 1 - z);
             nok = Math.max(nok, y);
@@ -689,6 +689,7 @@ final class ZeldaEiland3a extends ZeldaHoofdstuk {
         int mz = (z1 + z2) / 2;
         vul(x2 - 1, G + 5, mz + 1, x2 - 1, nok + 1, mz + 1, Material.BRICKS);
         zet(x2 - 1, nok + 2, mz + 1, vuur(Material.CAMPFIRE, true));
+        if (nok + 3 <= 2) vul(x2 - 1, nok + 3, mz + 1, x2 - 1, 2, mz + 1, Material.AIR);   // de oude schoorsteen (tot versie 2) liep door tot y 1
         zet(x1 + 1, G + 1, z1 + 1, Material.BARREL);
         zet(x2 - 1, G + 1, z1 + 1, Material.CRAFTING_TABLE);
         zet(dx, G + 4, mz, Bouwer.hangend(Material.LANTERN));

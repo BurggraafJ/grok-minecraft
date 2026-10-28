@@ -113,6 +113,34 @@ final class Bouwer {
         });
     }
 
+    /**
+     * Iets per kolom (x, z) in een rechthoek, chunk voor chunk (zo wordt elke chunk één keer geladen), over de ticks
+     * verdeeld. Alleen als {@link #plaats}.
+     */
+    void perKolom(int x1, int z1, int x2, int z2, java.util.function.BiConsumer<Integer, Integer> kolom) {
+        if (!plaats) return;
+        int ax = Math.min(x1, x2), bx = Math.max(x1, x2), az = Math.min(z1, z2), bz = Math.max(z1, z2);
+        rij.add(new Stap() {
+            int cx = Math.floorDiv(ax, 16), cz = Math.floorDiv(az, 16), i = 0;
+
+            public boolean doe(long tot) {
+                while (cx <= Math.floorDiv(bx, 16)) {
+                    int x = cx * 16 + (i & 15), z = cz * 16 + (i >> 4);
+                    if (x >= ax && x <= bx && z >= az && z <= bz) kolom.accept(x, z);
+                    if (++i == 256) {
+                        i = 0;
+                        if (++cz > Math.floorDiv(bz, 16)) {
+                            cz = Math.floorDiv(az, 16);
+                            cx++;
+                        }
+                        if (System.nanoTime() > tot) return cx > Math.floorDiv(bx, 16);
+                    }
+                }
+                return true;
+            }
+        });
+    }
+
     /** Iets dat na de blokken hiervoor moet gebeuren (bv. tekst op een bord). Altijd. */
     void daarna(Runnable r) {
         rij.add(t -> {

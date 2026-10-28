@@ -18,7 +18,7 @@ import org.bukkit.plugin.Plugin;
  */
 final class ZeldaZee extends ZeldaHoofdstuk {
 
-    static final int VERSIE = 1;
+    static final int VERSIE = 2;                                // 2: zee waar de vlakke wereld lag (rand)
     static final int X1 = 1840, X2 = 2040, Z1 = -510, Z2 = -330;
     /** Midden van het schip (achtersteven op X0, boeg op X0 + 29), dek op G + 1. */
     static final int X0 = 1926, MZ = -420;
@@ -92,6 +92,7 @@ final class ZeldaZee extends ZeldaHoofdstuk {
             vul(X1, G, Z1, X2, G + 24, Z2, Material.AIR);
             romp(dekY);
             b.daarna(() -> chunks.forEach(c -> w.removePluginChunkTicket((int) c[0], (int) c[1], plugin)));
+            rand(bouwer.g);
         }
         for (int[] d : new int[][]{{9, -1}, {11, 1}, {14, -2}, {17, 2}, {23, 0}, {12, -2}})
             dek.add(new Location(w, X0 + d[0] + 0.5, dekY + 1, MZ + d[1] + 0.5, -90f, 0f));
@@ -105,6 +106,24 @@ final class ZeldaZee extends ZeldaHoofdstuk {
         zelda.uiterlijk = e -> ZeldaEiland5b.zelda(e, false);
         zelda.zichtbaar = s -> s.heeft(ZeldaEiland5b.VRIJ_ZELDA) && !s.heeft("zelda");
         b = null;
+    }
+
+    /**
+     * Zee waar nog de vlakke wereld ligt (gras, zeven onder zeeniveau), in heel {@link Zelda#GEBIED} en {@link #RAND}
+     * blokken eromheen (de zichtafstand): tussen de vakken van de eilanden en voorbij hun randen. Alleen kolommen die
+     * niemand bouwde (gras met lucht erboven), dus de eilanden blijven zoals ze zijn. Zelfde bodem als de overtocht.
+     */
+    static final int RAND = 112;
+
+    private void rand(int g) {
+        Bouwer bw = b;
+        int[] ge = Zelda.GEBIED;
+        bw.perKolom(ge[0] - RAND, ge[1] - RAND, ge[2] + RAND, ge[3] + RAND, (x, z) -> {
+            if (w.getBlockAt(x, g, z).getType() != Material.GRASS_BLOCK || !w.getBlockAt(x, g + 1, z).getType().isAir()) return;
+            for (int y = g + 1; y <= g + 7; y++)
+                w.getBlockAt(x, y, z).setType(y <= g + 2 ? Material.STONE : y == g + 3 ? Material.SAND : Material.WATER, false);
+            bw.gezet += 7;
+        });
     }
 
     /** De Zilvermeeuw (dezelfde vorm als in de haven van het Lindewoud), boeg naar het oosten. */
