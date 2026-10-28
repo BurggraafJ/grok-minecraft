@@ -286,8 +286,9 @@ final class Zelda implements Modus {
                 if (!klaar) continue;
                 if (!vrij(r.voor)) fouten.add(hid + ": puzzel " + r.id + ": de plek om te mikken is niet vrij op " + xyz(r.voor));
                 for (int[] d : r.dingen)
-                    if (!spel.zicht(r.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(d[0], d[1], d[2])))
-                        fouten.add(hid + ": puzzel " + r.id + ": " + d[0] + "," + d[1] + "," + d[2] + " niet te zien (of te ver) vanaf " + xyz(r.voor));
+                    if (laad(r.voor, d) && !spel.zicht(r.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(d[0], d[1], d[2])))
+                        fouten.add(hid + ": puzzel " + r.id + ": " + d[0] + "," + d[1] + "," + d[2] + " niet te zien vanaf " + xyz(r.voor) + ": je ziet "
+                                + spel.zichtRaakt(r.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(d[0], d[1], d[2])));
             }
             // betoverd ijs (eiland 4a): in zijn gebied, dicht in rust, van de plek ervoor te zien
             for (ZeldaHoofdstuk.Smelt sm : h.smelten) {
@@ -299,9 +300,12 @@ final class Zelda implements Modus {
                 if (!sm.ijs.isOpen && !deurKlopt(h, sm.ijs, false)) fouten.add(sid + " is gesmolten terwijl niemand het smolt");
                 if (sm.voor != null) {
                     boolean zien = false;
-                    for (int[] c : sm.ijs.blokken) zien |= spel.zicht(sm.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(c[0], c[1], c[2]));
+                    for (int[] c : sm.ijs.blokken) zien |= laad(sm.voor, c) && spel.zicht(sm.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(c[0], c[1], c[2]));
                     if (!vrij(sm.voor) || !sm.gebied.in(sm.voor)) fouten.add(sid + ": de plek ervoor is niet vrij of ligt niet in het gebied");
-                    else if (!zien && !sm.ijs.isOpen) fouten.add(sid + ": van de plek ervoor niet te zien");
+                    else if (!zien && !sm.ijs.isOpen) {
+                        int[] c = sm.ijs.blokken.get(sm.ijs.blokken.size() / 2);
+                        fouten.add(sid + ": van de plek ervoor niet te zien: je ziet " + spel.zichtRaakt(sm.voor.clone().add(0, 1.62, 0), h.w.getBlockAt(c[0], c[1], c[2])));
+                    }
                 }
             }
             // hitte (eiland 4a): een plek om heen te gaan als het te heet wordt, en een koelplek erin (water, zielvuur of bron)
@@ -427,8 +431,13 @@ final class Zelda implements Modus {
                 if (!vrij(l) || !l.clone().add(0, -1, 0).getBlock().getType().isSolid()) fouten.add("zelda zee: dekplek " + xyz(l) + " niet vrij of zonder vloer");
         }
         for (ZeldaMuziek.Lied l : ZeldaMuziek.alle()) if (l.lengte() == 0) fouten.add("zelda: lied " + l.id() + " is leeg");
-        for (ZeldaEiland.Komt k : KOMT)                                  // een eiland dat eraan komt: nog niet echt gebouwd
-            if (!eids.add(k.id())) fouten.add("zelda: eiland " + k.id() + " staat ook bij KOMT (haal het daar weg)");
+        for (ZeldaEiland.Komt k : KOMT) {                                // een eiland (of deel) dat eraan komt: nog niet echt gebouwd
+            if (k.eiland() == null && !eids.add(k.id())) fouten.add("zelda: eiland " + k.id() + " staat ook bij KOMT (haal het daar weg)");
+            ZeldaEiland op = k.eiland() == null ? null : spel.eiland(k.eiland());
+            if (k.eiland() != null && op == null) fouten.add("zelda: " + k.naam() + " komt op een onbekend eiland " + k.eiland());
+            if (op != null && op.delen().stream().anyMatch(d -> d.id().equals(k.openNa())) && !op.delen().get(op.delen().size() - 1).id().equals(k.openNa()))
+                fouten.add("zelda: " + k.naam() + " is al een deel van " + op.naam() + " (haal het uit KOMT)");
+        }
         java.util.Set<Integer> vakken = new java.util.HashSet<>();
         for (ZeldaVoorwerp v : spel.voorwerpen) if (!vakken.add(v.vak()) || v.vak() < 2 || v.vak() > 6) fouten.add("zelda: voorwerp " + v.id() + " in vak " + v.vak() + " (dubbel of buiten 2 … 6)");
         // opslag: schrijven en teruglezen in een proefbestand
@@ -475,6 +484,13 @@ final class Zelda implements Modus {
                 + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
                 + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
+    }
+
+    /** Laad de chunks tussen {@code van} en blok {@code c} (een straal door een niet-geladen chunk raakt niets). Altijd true. */
+    private static boolean laad(Location van, int[] c) {
+        for (int cx = Math.min(van.getBlockX(), c[0]) >> 4; cx <= Math.max(van.getBlockX(), c[0]) >> 4; cx++)
+            for (int cz = Math.min(van.getBlockZ(), c[2]) >> 4; cz <= Math.max(van.getBlockZ(), c[2]) >> 4; cz++) van.getWorld().getChunkAt(cx, cz);
+        return true;
     }
 
     private static boolean deurKlopt(ZeldaHoofdstuk h, ZeldaHoofdstuk.Deur d, boolean open) {

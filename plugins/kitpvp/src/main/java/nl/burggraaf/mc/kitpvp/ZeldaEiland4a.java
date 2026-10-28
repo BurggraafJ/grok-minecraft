@@ -826,7 +826,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
                 .eenmalig("okker-1", null, List.of(
                         r("Okker", "Een reiziger! Pas op, het is heet hier."),
                         r("Okker", "Mijn esse is koud. De berg ademt slecht sinds de nevel."),
-                        r("Okker", "Zonder vuur geen gloedharnas. En zonder harnas niet de diepte in."),
+                        r("Okker", "Zonder vuur geen harnas. En zonder harnas niet de diepte in."),
                         r("Okker", "In de oude mijn ligt de vuurstaf van de eerste smeden.")), null)
                 .eenmalig("okker-esse", s -> s.heeft("r:esse") && !s.heeft(GLOEDIJZER), List.of(
                         r("Okker", "Het vuur brandt weer! Mooi werk."),
@@ -861,7 +861,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
 
     /** Fenna de koerier: elke dag rent ze over de sporen naar de Laadkade (een tijdrace, een hartstukje). */
     private void fenna() {
-        verhaal(new Verhaal("uitleg-sporen", Box.van(1130, D, 302, 1136, D + 4, 307), List.of(
+        verhaal(new Verhaal("uitleg-sporen", Box.van(1130, D, 306, 1136, D + 4, 309), List.of(
                 r("Wiske", "Stap op de plaat, dan gaat het hekje open.")))).uitleg = true;
         Uitdaging race = uitdaging(new Uitdaging("sporen", "De sporen", Box.van(1132, D, 303, 1134, D + 3, 305),
                 Box.van(1130, G, 221, 1136, G + 4, 226), Box.van(1124, G - 2, 208, 1144, D + 8, 310),
@@ -984,7 +984,9 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
     private void mijningang() {
         if (b.plaats) {
             gang(1166, 328, 1185, 332, D, 4, false);
-            for (int x = 1166; x <= 1185; x++) zet(x, D + 1, 330, spoor(true));
+            vul(1165, D + 1, 328, 1165, D + 4, 332, Material.AIR);                // de mond van de mijn (een gang heeft wanden aan alle kanten)
+            vul(1165, D, 328, 1165, D, 332, Material.GRAVEL);
+            for (int x = 1165; x <= 1185; x++) zet(x, D + 1, 330, spoor(true));
             for (int x = 1169; x <= 1185; x += 4) stempel(x, 0, false, 328, 332, D, 4, false);
             // de ingang: een raam van zware balken met een bord, lantaarns ernaast
             vul(1167, D + 1, 327, 1167, D + 5, 327, Material.DARK_OAK_LOG);
@@ -1205,7 +1207,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         ht.terug = new Location(w, 1218.5, F2, 271.5, 180f, 0f);
         ht.proef = plek(1218, F2 + 1, 282, 180f);
         verhaal(new Verhaal("hetegangen", Box.van(1214, F2, 265, 1221, F2 + 4, 269), List.of(
-                r("Wiske", "Pff, wat warm hier beneden."),
+                r("Wiske", "Wat een warmte hier beneden!"),
                 r("Wiske", "Gelukkig heb je de koelsteen van Tijmen."))));
         Verhaal uitleg = verhaal(new Verhaal("uitleg-koel", Box.van(1216, F2, 282, 1221, F2 + 4, 288), List.of(
                 r("Wiske", "Bevroren water, in een warme mijn?"),
@@ -1324,20 +1326,20 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
     private void gloed() {
         if (b.plaats) {
             // de Gloedgang: oostwaarts omhoog van de Gloedader (F2) naar D
-            for (int x = 1239; x <= 1247; x++) {
-                int vloer = x <= 1240 ? F2 : Math.min(D, F2 + (x - 1240));
+            for (int x = 1239; x <= 1246; x++) {
+                int vloer = x <= 1239 ? F2 : Math.min(D, F2 + (x - 1239));
                 for (int z = 323; z <= 327; z++) {
                     boolean muur = z == 323 || z == 327;
                     vul(x, vloer - 1, z, x, D + 6, z, mijnwand(x, vloer, z, true));
                     if (muur) continue;
-                    zet(x, vloer, z, x > 1240 && x < 1247 ? Bouwer.trap(Material.POLISHED_BLACKSTONE_BRICK_STAIRS, BlockFace.EAST)
+                    zet(x, vloer, z, x > 1239 && x < 1246 ? Bouwer.trap(Material.POLISHED_BLACKSTONE_BRICK_STAIRS, BlockFace.EAST)
                             : Material.POLISHED_BLACKSTONE_BRICKS.createBlockData());
                     vul(x, vloer + 1, z, x, Math.min(D + 5, vloer + 5), z, Material.AIR);
                 }
                 holte(x, vloer + 1, 324, x, Math.min(D + 5, vloer + 5), 326);
             }
             // de gloedtrap: een plek om te rusten voor de Askamer
-            gang(1246, 318, 1254, 330, D, 6, true);
+            gang(1247, 318, 1254, 330, D, 6, true);
             for (int x = 1248; x <= 1253; x++) zet(x, D - 1, 329, Material.DEEPSLATE);
             for (int[] l : new int[][]{{1249, 322}, {1253, 322}}) zet(l[0], D + 6, l[1], Bouwer.hangend(Material.SOUL_LANTERN));
             for (int z = 319; z <= 321; z++) {                                  // lava achter tralies in de oostwand
@@ -1349,7 +1351,7 @@ final class ZeldaEiland4a extends ZeldaHoofdstuk {
         lava.add(new Location(w, 1255.5, D + 3, 320.5));
         Hitte ht = hitte(new Hitte("gloed", "De gloed", Box.van(1239, F2 - 1, 268, 1259, D + 13, 332), 0.4, 0.4, true));
         ht.terug = plek(1228, F2 + 1, 325, 90f);
-        ht.proef = plek(1243, F2 + 4, 325, -90f);
+        ht.proef = plek(1243, F2 + 5, 325, -90f);
         verhaal(new Verhaal("gloed-harnas", Box.van(1240, F2, 323, 1246, D + 4, 327), List.of(
                 r("Wiske", "Het gloedharnas houdt de gloed tegen!")))).vereist = GLOEDHARNAS;
         rustvuur(1252, D, 327, true);

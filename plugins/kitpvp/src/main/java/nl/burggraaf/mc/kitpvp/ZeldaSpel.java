@@ -2697,12 +2697,46 @@ final class ZeldaSpel implements Listener {
 
     /** Ziet je oog dit blok (zit er niets tussen)? */
     boolean zicht(Location oog, Block b) {
+        return zichtpunt(oog, b) != null;
+    }
+
+    /**
+     * Een punt van dit blok dat je oog ziet, binnen het bereik van de vuurstaf: het midden, de bovenkant (ijs in de vloer)
+     * of een zijkant. Null = niet te zien.
+     */
+    Location zichtpunt(Location oog, Block b) {
+        var box = b.getBoundingBox();
+        List<Location> punten = new ArrayList<>();
+        if (box.getVolume() <= 0) punten.add(b.getLocation().add(0.5, 0.5, 0.5));
+        else {
+            var c = box.getCenter();
+            var w = b.getWorld();
+            punten.add(c.toLocation(w));
+            punten.add(new Location(w, c.getX(), box.getMaxY() - 0.05, c.getZ()));
+            punten.add(new Location(w, box.getMinX() + 0.05, c.getY(), c.getZ()));
+            punten.add(new Location(w, box.getMaxX() - 0.05, c.getY(), c.getZ()));
+            punten.add(new Location(w, c.getX(), c.getY(), box.getMinZ() + 0.05));
+            punten.add(new Location(w, c.getX(), c.getY(), box.getMaxZ() - 0.05));
+        }
+        for (Location m : punten) {
+            org.bukkit.util.Vector v = m.toVector().subtract(oog.toVector());
+            double d = v.length();
+            if (d < 0.1 || d > ZeldaRegels.VUUR_BEREIK + 1) continue;
+            var r = oog.getWorld().rayTraceBlocks(oog, v.normalize(), d + 0.4, org.bukkit.FluidCollisionMode.NEVER, true);
+            if (r != null && r.getHitBlock() != null && r.getHitBlock().equals(b)) return m;
+        }
+        return null;
+    }
+
+    /** Wat je oog raakt als je naar het midden van dit blok kijkt (voor de zelftest: wat staat ervoor?). */
+    String zichtRaakt(Location oog, Block b) {
         Location m = raakpunt(b);
         org.bukkit.util.Vector v = m.toVector().subtract(oog.toVector());
         double d = v.length();
-        if (d < 0.1 || d > ZeldaRegels.VUUR_BEREIK + 1) return false;
         var r = oog.getWorld().rayTraceBlocks(oog, v.normalize(), d + 0.4, org.bukkit.FluidCollisionMode.NEVER, true);
-        return r != null && r.getHitBlock() != null && r.getHitBlock().equals(b);
+        if (r == null || r.getHitBlock() == null) return "niets (" + String.format("%.1f", d) + " ver)";
+        Block h = r.getHitBlock();
+        return h.getType() + " op " + h.getX() + "," + h.getY() + "," + h.getZ() + " (" + String.format("%.1f", d) + " ver)";
     }
 
     /**
@@ -2722,6 +2756,7 @@ final class ZeldaSpel implements Listener {
         for (ZeldaHoofdstuk h : ss.h.eiland != null ? ss.h.eiland.delen() : List.of(ss.h)) {
             for (ZeldaHoofdstuk.Reeks r : h.reeksen) {
                 if (r.hoe == ZeldaHoofdstuk.Reeks.Hoe.PIJL || r.opgelost) continue;
+                if (r.hoe == ZeldaHoofdstuk.Reeks.Hoe.KLIK && !(r.uit instanceof org.bukkit.block.data.type.Campfire)) continue;   // een hendel trekt de vlam niet om
                 for (int i = 0; i < r.dingen.size(); i++) {
                     if (r.isAan.contains(i)) continue;
                     int[] c = r.dingen.get(i);
@@ -2749,7 +2784,8 @@ final class ZeldaSpel implements Listener {
                     punten, ZeldaRegels.VUUR_BEREIK, ZeldaRegels.VUUR_HOEK);
             if (i >= 0 && zicht(oog, (Block) doelen.get(i)[2])) doel = doelen.get(i);
         }
-        Location naar = doel != null ? raakpunt((Block) doel[2])
+        Location gezien = doel != null ? zichtpunt(oog, (Block) doel[2]) : null;
+        Location naar = doel != null ? (gezien != null ? gezien : raakpunt((Block) doel[2]))
                 : vijand != null ? vijand.getLocation().add(0, vijand.getHeight() / 2, 0)
                 : raak != null ? raak.getHitPosition().toLocation(w) : oog.clone().add(kijk.clone().multiply(ZeldaRegels.VUUR_BEREIK));
         Location van = oog.clone().add(kijk.clone().multiply(0.6)).add(0, -0.25, 0);

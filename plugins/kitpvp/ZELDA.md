@@ -5,8 +5,9 @@ is"). Zelda 2.0 maakt er een groter avontuur van: **vijf eilanden** in de Glazen
 erop, verbonden door het schip de Zilvermeeuw. Dit document is het plan voor de bouwsessies: verhaal, eilanden,
 mechanics en de verdeling in sessies. De gedeelde motor is gebouwd (zie «De motor»), eiland 1 ook (sessie
 `zelda-eiland-1`, kitpvp 2.4; en opnieuw als **open eiland** in sessie `zelda-lindewoud-v2`, kitpvp 2.6) en heel eiland 2
-(de westhelft in sessie `zelda-eiland-2a`, kitpvp 2.5; de Getijdentempel in sessie `zelda-eiland-2b`, kitpvp 2.7) en heel
-eiland 3 (het dal in sessie `zelda-eiland-3a`, kitpvp 2.8; het IJspaleis in sessie `zelda-eiland-3b`, kitpvp 2.9); de
+(de westhelft in sessie `zelda-eiland-2a`, kitpvp 2.5; de Getijdentempel in sessie `zelda-eiland-2b`, kitpvp 2.7), heel
+eiland 3 (het dal in sessie `zelda-eiland-3a`, kitpvp 2.8; het IJspaleis in sessie `zelda-eiland-3b`, kitpvp 2.9) en de
+eerste helft van eiland 4 (Sintelgat en de mijnen in sessie `zelda-eiland-4a`, kitpvp 2.10); de
 andere eilanden bouwen latere sessies, één per (half) eiland, in de volgorde onderaan. **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
@@ -74,7 +75,7 @@ versie. Zee om elk eiland tot de rand van zijn vak (zichtafstand op kitpvp is 6 
 | 1 Het Lindewoud | `h1` · `zelda` | 1024 … 1639 · −179 … 179 (bouwvak, vooral zee); land 1045 … 1492 · −105 … 105 | rust `haven` | — | `h1` |
 | 2 Het Zilverstrand | `e2a` · `zelda-e2a`, `e2b` · `zelda-e2b` | 1060 … 1360 · −480 … −180 (2a tot x 1229, 2b vanaf 1230) | rust `steiger` (e2a) | `h1` | `baken2` |
 | 3 De Witte Toppen | `e3a` · `zelda-e3a`, `e3b` · `zelda-e3b` | 1400 … 1720 · −480 … −180 (3a tot x 1579, 3b vanaf 1580) | rust `steiger` (e3a) | `baken2` | `baken3` |
-| 4 De Gloedberg | `e4a`, `e4b` | 1060 … 1400 · 180 … 480 | `steiger` (e4a) | `baken3` | `baken4` |
+| 4 De Gloedberg | `e4a` · `zelda-e4a`, `e4b` | 1060 … 1400 · 180 … 480 (4a tot x 1259, 4b vanaf 1260) | rust `baai` (e4a) | `baken3` | `baken4` |
 | 5 Nachtrots | `e5a`, `e5b` | 1640 … 2000 · −150 … 150 | `steiger` (e5a) | `baken4` | `zelda` |
 | de zee (overtocht) | `zee` · `zelda-zee` | 1840 … 2040 · −510 … −330 | — | — | — |
 
@@ -127,14 +128,15 @@ de buren (z −179 / 179, x 1639): daar bouwt het alleen zee, zodat de zeeën va
 | 1 Lindewoud | zwaard, schild, boog (bestaan) | groene tuniek | `hart1` (Grauwmoer) | `fles1` (zijmissie Hanne), `fles2` (Tijmen, meteen) | `lichtwoord` (Tijmen), `sterkwater` (Hanne, met zeekraal van het Zilverstrand) |
 | 2 Zilverstrand | **bommen** (vak 4, vlag `bommen`): gooien, gebarsten muren, baas verdoven | `harnas1` maliënhemd (smid Hendrik) | `hart2` (Zoutbaard) | `fles3` (Lotje, boodschap over zee) | `maanparel` (Tijmen: het getij), `ankersleutel` (Teun) |
 | 3 Witte Toppen | **klauwhaak** (vak 5, vlag `klauwhaak`): naar een haakpunt trekken (gebouwd in 3a) | `harnas2` wachtersharnas (het bevroren harnas uit het IJspaleis, Hagen warmt het) | `hart3` (Grimmel) | `fles4` (Teun, de brief van Ys), `fles5` (Hanne, de sneeuwbloem) | **sneeuwvos** (`dier:sneeuwvos`), `lantaarn` (Tijmen, 3a), `zonnesteen` (Tijmen, 3b) |
-| 4 Gloedberg | **vuurstaf** (vak 6, vlag `vuurstaf`): vuur op afstand, ijs smelten | `harnas3` gloedharnas (smeden; hitte in de mijn) | `hart4` | — | — |
+| 4 Gloedberg | **vuurstaf** (vak 6, vlag `vuurstaf`): een vlam op afstand (vuurschalen, lampen), betoverd ijs smelten | `harnas3` gloedharnas (Okker smeedt het van gloedijzer, met zijn esse weer aan; tegen de hitte) | `hart4` (4b) | `fles6` (Hagen, de gloedkool) | `koelsteen` (Tijmen), `gloedijzer` |
 | 5 Nachtrots | **lichtpijlen** (boog, vak 2, vlag `lichtpijlen`): nevel en Morgal | `harnas4` lichtharnas (Zelda's wachters) | — | — | het einde |
 
 De vlag van een voorwerp is vast: de vondsten op eerdere eilanden die erop wachten (`voorwerp = "bommen"`, …) gebruiken
 hem al. Flesjes: de nummers zijn alleen namen (`ZeldaRegels.flessen` telt `fles1` … `fles8`); het Lindewoud geeft er
 sinds versie 4 twee (Tijmen meteen `fles2`, zodat je vanaf het begin kunt genezen), dus 2b geeft `fles3` en de Witte
 Toppen `fles4`. Sinds 3b is er een vijfde: Hanne brouwt het van een sneeuwbloem uit de IJstuin (`fles5`, een
-boodschap over zee; Jelle wil overal kunnen genezen).
+boodschap over zee; Jelle wil overal kunnen genezen). Sinds 4a een zesde: de veldfles van Hagen, voor een gloedkool van
+Okker (`fles6`).
 
 Een voorwerp is een `ZeldaVoorwerp` (zie het flesje in `ZeldaSpel.Flesje`), geregistreerd in `Zelda`; de sessie van
 dat eiland bouwt het. Harten: 8 aan het begin, +4 containers, +5 uit twintig stukjes = hoogstens 17.
@@ -461,28 +463,119 @@ IJshoeve (3a) blijft de hub van het eiland; het voorplein is de hub van het pale
 
 Muziek van het hele eiland: *IJshoeve*, *Sneeuwstorm*, *Wachterspost* (3a), *Bergpad*, *IJspaleis*, baas *Grimmel* (3b).
 
-**Hoe 4a aanhaakt** (sessie `zelda-eiland-4a`, de Gloedberg): haal de Gloedberg uit `Zelda.KOMT` en zet hem als echt
-eiland in `Zelda.EILANDEN` (open na `baken3`), in zijn vak (x 1060 … 1400, z 180 … 480). De vuurstaf (vak 6, vlag
-`vuurstaf`) moet het betoverde ijsblok bij de smidse van Hagen kunnen smelten (`hs:witte-toppen-3`, een vondst met
-`voorwerp = "vuurstaf"` in `ZeldaEiland3a`; de test haalt hem dan vanzelf in «later terug»). Personen die 4a kan
-gebruiken: Hagen (smid: kent de smeden van de Gloedberg?), Ida (klimt overal), Tijmen (een vijfde Tijmen). Glijvloeren
-(`Glij`), `Kamer.haken` en `Spiegels.licht` zijn er; een baas met eigen gedrag per tik kan zoals `Grimmel` een
-`BukkitTask` starten (en stoppen in `stop()`).
+**Hoe 4a aanhaakte** (sessie `zelda-eiland-4a`): de Gloedberg staat sinds kitpvp 2.10 in `Zelda.EILANDEN` (open na
+`baken3`); het ijsblok bij Hagen is een `Smelt` (betoverd ijs) in `ZeldaEiland3a` en smelt met de vuurstaf. Zie «4 · De
+Gloedberg».
 
 ### 4 · De Gloedberg
 
-Zwart zand, as, lava die langzaam stroomt, een mijnwerkersdorp **Sintelgat** tegen de vulkaan, en binnenin de oude
+Zwart zand, as, lava die langzaam sputtert, een mijnwerkersdorp **Sintelgat** tegen de vulkaan, en binnenin de oude
 **Smidse** van de eerste smeden.
 
-- **4a (dorp en mijnen)**: steiger in een baai van zwart zand, de mijnwerkers **Dorus en Dina** (zijmissie
-  *De verdwaalde lorrie*), **Meester Gerrit** van het smidsgilde (het gloedharnas, dat tegen de hitte beschermt: zonder
-  word je in de diepe mijn langzaam warm), **Fenna** de koerierster (tijdrace over de mijnsporen). Voorwerp: de
-  **vuurstaf** (steekt vuurschalen op afstand aan, smelt ijs: terug naar de Witte Toppen voor een hartstukje).
-- **4b (de Smidse)**: lava die stijgt en zakt (deuren van lava), kettingbruggen, vuurpuzzels op afstand. Baas **Asgrim
-  de Gloedwachter**, een vlammenwezen dat boven de lava zweeft: doof zijn schilden met water uit de koelbakken (bommen
-  in de bakken), dan pijlen. `hart4`, **Gloedbaken** (`baken4`). De Nevelring breekt: Nachtrots gaat open.
+#### 4a · Sintelgat en de mijnen (gebouwd: sessie `zelda-eiland-4a`, deel `zelda-e4a` versie 1, klasse `ZeldaEiland4a`)
 
-Muziek: *Sintelgat* (banjo, aambeeld), *Mijnen* (bas, druppels), *Smidse* (dreun), baas *Asgrim*.
+Een half eiland met een eigen hub. Vak **x 1060 … 1259, z 180 … 480** (zee tot de rand). Tot de Smidse (4b) er is, bouwt
+dit deel ook de kegel van de vulkaan in het vak van 4b (x 1260 … 1400, de krater op 1312, 330), met dezelfde vormen
+(`ZeldaEiland4a.land`, `berg`): zodra het eiland een tweede deel heeft, doet 4a dat niet meer (`vulkaanErbij`).
+Hoogtes: G = de pad-hoogte bij zee (je staat op G+1), **D = G+2** (Sintelgat en de bovenmijn), **F2 = G−5** (de hete
+gangen). Coördinaten: de Zwarte Baai (1095, 335), het plein van Sintelgat (1135, 330), de ingang van de mijn (1166, 330),
+de Lorriehal (1196, 330), de Vonkkamer (1197, 265), de Gloedader (1230, 323), de Askamer (1248, 306), de Smidsepoort
+(de oostwand, x 1259, z 284), het Uitzicht (1243, 232).
+
+| plek | wat | soort |
+|---|---|---|
+| 1074 … 1106, 326 … 346 | **de Zwarte Baai**: zwart zand, een steiger de baai in, de Zilvermeeuw, **Brecht** | rust 0 `baai` (aanleg) |
+| 1105 … 1167, 299 … 361 | **Sintelgat** (de hub, een terras op D): een plein met een monument (een vuurschaal), zielvuur, bron, lantaarns, bordjes (De Zwarte Baai, De mijn, De Laadkade, Het Lavaveld); **Tijmen** onder zijn luifel; de smidse van **Meester Okker** (de esse is koud); het huis van **Dina** en Dorus; de koerierspost van **Fenna**; **Kobus** op zijn bankje; drie hoge basaltrotsen met de **mijnvuren** | rust 1 `sintelgat`, bron, personen |
+| 1126 … 1142, 210 … 233 | **de Laadkade** (noordkust), de sporen van het dorp ernaartoe: **de race van Fenna** (20 s) | uitdaging `sporen` |
+| 1117 … 1142, 384 … 405 | **het Lavaveld** (zuid): poelen lava met een stenen rand | — |
+| 1165 … 1185, 328 … 332 | **de mijningang**, **Dorus** ervoor | persoon |
+| 1186 … 1206, 319 … 341 | **de Lorriehal** (de hub binnen): sporen naar alle kanten, deuren noord (de Oude Gang), zuid (de Zijgang), oost (de Daaltrap) | rust 2 `lorriehal`, bron |
+| 1194 … 1198, 297 … 318 | **de Oude Gang**: ingestort, gebarsten stenen | barst `oudegang` (op het pad) |
+| 1188 … 1206, 283 … 296 | **de Schachtput**: een put over de hele breedte (water op de bodem, een ladder terug naar de zuidrand); haakpunten aan balken (heen en terug) | haakpunten `schacht`, `schacht-terug` |
+| 1188 … 1206, 259 … 282 | **de Vonkkamer**: het altaar van de eerste smeden met de **vuurstaf**; drie lampen hoog aan de wanden en boven de put: alle drie aan (20 s) = het hek naar beneden | rust 3 `vonkkamer`, vondst `vuurstaf`, vuurpuzzel `lampen` |
+| 1208 … 1236, 262 … 313 | **de hete gangen** (F2): de Vonktrap omlaag, gang A (een koelbak, lava achter een muurtje, bevroren water `koel1`), gang B (bevroren water `koel2`), gang C | hitte `hetegangen`, ijs `koel1`, `koel2` (op het pad) |
+| 1222 … 1238, 314 … 332 | **de Gloedader**: muren vol gloed, een lavaval achter tralies, een koelbak, het **gloedijzer** | rust 4 `gloedader`, bron, vondst `gloedijzer` |
+| 1207 … 1221, 323 … 327 | **de Daaltrap**: van de Gloedader omhoog naar de Lorriehal; het hek gaat alleen open voor wie gloedijzer heeft (de korte weg terug) | poort `daaltrap` |
+| 1142 … 1153, 310 … 321 | terug in Sintelgat: **de esse** aansteken met de vuurstaf, en **Okker** smeedt het **gloedharnas** (`harnas3`) | vuurpuzzel `esse`, praten |
+| 1239 … 1254, 318 … 330 | **de gloed**: de Gloedgang omhoog, de gloedtrap (rust, bron) voor de Askamer; zonder gloedharnas te heet | hitte `gloed` (fel), rust 5 `gloedtrap`, bron |
+| 1240 … 1256, 296 … 316 | **de Askamer**: asknecht, vonkschutter, sintelmijt (drie gemengde golven; de bel = nog eens) — het enige gevecht | kamer `askamer` |
+| 1240 … 1258, 274 … 294 | **de Smidsepoort**: een poort van gloeiend steen in de oostwand, twee smeden van steen; daarachter de Smidse (4b) | rust 6 `smidsepoort`, verhaal: einde (`e4a`, vereist `k:askamer`) |
+| 1240 … 1244, 238 … 273 | **de Asgang** naar buiten (het hek opent voor wie de Askamer won) en **het Uitzicht**: **Ida** de klimster; over het Asveld terug naar Sintelgat | poort `asgang`, rust 7 `uitzicht`, persoon |
+| 1191 … 1201, 342 … 364 | **de Zijgang** en de oude koelkelder: een muur van betoverd ijs, erachter **de lorrie van Dina** | ijs `koelgang`, vondst `lorrie` |
+
+- **Hoofdlijn** (elf doelen voor `/hint` en Tijmen): Tijmen (de **koelsteen**) → Okker (de esse is koud; de vuurstaf
+  ligt in de oude mijn) → de mijn in: een bom op de Oude Gang → haak je over de Schachtput → de **vuurstaf** → de lampen →
+  **in elke volgorde** (doelgroep `smeden`) de esse in de smidse aansteken, en de hete gangen door naar het
+  **gloedijzer** → Okker: het **gloedharnas** → de gloed in, de Askamer → de Smidsepoort (`e4a`). `wacht()`: «De
+  Smidsepoort gloeit nog dicht. Nog even geduld.»
+- **Rondjes**: Lorriehal → Oude Gang → Schachtput → Vonkkamer → Vonktrap → hete gangen → Gloedader → Daaltrap →
+  Lorriehal; Gloedader → de gloed → Askamer → Smidsepoort → Asgang → Uitzicht → Asveld → Sintelgat; Sintelgat → de sporen →
+  de Laadkade. Met het gloedijzer is de Daaltrap een korte weg, na de Askamer de Asgang. De kaart reist tussen de acht
+  zielvuren. Wat de volgorde bewaakt: zonder klauwhaak kom je niet in de Vonkkamer, zonder de lampen (vuurstaf) niet
+  naar beneden, zonder gloedijzer niet door het hek van de Daaltrap, zonder gloedharnas niet door de gloed
+  (`kitpvp zelda lopen gloedberg zonder klauwhaak dicht daaltrap dicht asgang`).
+- **De vuurstaf** (vak 6, `ZeldaSpel.Vuurstaf`): rechtsklik = een vlam die rechtdoor vliegt (24 blokken; een paar graden
+  ernaast mag, net als de klauwhaak). Een vuurschaal of lamp gaat aan (`Reeks.Hoe.VUUR`, en ook de gewone vuurschalen
+  `KLIK`, zoals de drie vuren van de tempelruïne op het Lindewoud), betoverd ijs smelt (`Smelt`), een vijand krijgt een
+  tik (ijsvijanden het dubbele). Wiske legt het uit bij het pakken.
+- **Hitte** (`ZeldaHoofdstuk.Hitte`, `ZeldaRegels.hitte`): een rustige druk, geen schade. In de hete gangen vult de balk
+  onderin (de ervaringsbalk) zich; zonder koelsteen in ±2 s, met de koelsteen van Tijmen in ±9 s. In water (een koelbak,
+  gesmolten ijs), bij een zielvuur of in een bron koel je af. Vol = «Pff, te heet!» en je staat weer waar je het laatst
+  afkoelde. De **gloed** (fel) bij de kern: daar helpt alleen het gloedharnas, en koelt niets. Met het gloedharnas deert
+  hitte je nergens meer. Wiske legt het één keer uit (bij 60 %).
+- **Betoverd ijs** (`Smelt`, blok `ICE`, altijd hetzelfde): smelt met de vuurstaf tot lucht (een doorgang) of water (een
+  koelplek); wie het smolt (`s:<id>`) vindt het gesmolten; na een minuut niemand weer bevroren. Gewoon ijs smelt ook bij
+  fel licht: hou lampen en lava vijf blokken weg (soul lanterns mogen: licht 10).
+- **Personen** (acht): Brecht, Tijmen (de koelsteen; daarna de wegwijzer), Okker (de smid: de esse, het gloedharnas,
+  de gloedkool voor Hagen; na de Askamer: Asgrim), Dina (*De verdwaalde lorrie*), Dorus (de mijningang), Fenna (*De
+  sporen*), Kobus (*De mijnvuren*; vertelt over de Smidse), Ida (het Uitzicht).
+- **Zijmissies en terugkomen**: *De verdwaalde lorrie* (Dina: de Zijgang, het ijs smelten → `hs:gloedberg-1`), *De sporen*
+  (Fenna: de race naar de Laadkade → `hs:gloedberg-2`), *De mijnvuren* (Kobus: drie vuurschalen hoog op de rotsen bij het
+  plein, met de vuurstaf → `hs:gloedberg-3`; het monument brandt dan ook). **Boodschap over zee** *De gloedkool*: wie op
+  de Gloedberg was, hoort van **Hagen** in IJshoeve dat hij met Okker leerde smeden; Okker geeft een gloedkool, en terug
+  bij Hagen krijg je een veldfles (`fles6`). De missie staat bij 3a (daar is de beloning). En **de vuurstaf op de Witte
+  Toppen**: het betoverde ijsblok bij de smidse van Hagen smelt (`hs:witte-toppen-3`; Hagen zegt het als hij de staf ziet).
+- **Vechten**: alleen de Askamer, en pas met het gloedharnas (de gloed): bescherming vooraf en een zielvuur en een bron op
+  de gloedtrap vlak ervoor. Nieuwe vijanden: de **asknecht** (zombie met een houweel), de **vonkschutter** (skelet met
+  een boog) en de **sintelmijt** (een klein magmaklodder, snel en niet taai; splitst niet).
+- **Genezen**: acht zielvuren, bronnen in Sintelgat, de Lorriehal, de Gloedader en op de gloedtrap, de flesjes, op adem
+  komen.
+- **Hartstukjes**: drie (`hs:gloedberg-1` … `-3`); `hs:gloedberg-4` is voor 4b.
+- **Muziek**: *Sintelgat* (banjo, gitaar, het tikken van een aambeeld; de baai, het dorp en buiten), *Mijnen* (bas,
+  druppels, een harp in de verte; de bovenmijn, de hete gangen en de Asgang) en *Gloed* (een brommende grondtoon en een
+  ijzeren melodie; de Gloedader, de gloed, de Smidsepoort). **Hemel** schuift op met wat je deed: een gouden middag, later
+  de avond (vuurstaf, harnas), na de Smidsepoort de schemer. Buiten valt as en rookt de krater (van ver te zien).
+- **Afwijkingen van het oude plan, en waarom**: de smid heet **Okker** (Gerrit is de herder op het Lindewoud); de
+  mijnwerkers zijn Dina en Dorus, maar alleen Dina heeft de zijmissie (Dorus staat bij de mijn); Tijmens gave is de
+  **koelsteen** (zonder hou je het in de hete gangen geen drie tellen uit: zo is hij nodig, net als de sterrenlantaarn).
+  Het gloedharnas vraagt twee dingen (de esse aan en gloedijzer uit de hete gangen): zo moet je terug naar de hub en heb je
+  bescherming vóór het enige gevecht. Het ijs op de Gloedberg is betoverd ijs uit de oude koelkelder van de mijnwerkers
+  (ijs van de Witte Toppen): gesmolten wordt het een koelplek. De Smidse is in `Zelda.KOMT` aangekondigd als *deel* van
+  de Gloedberg (`ZeldaEiland.Komt.eiland`): grijs op de kaart, niet bij Brecht.
+
+#### 4b · de Smidse (sessie `zelda-eiland-4b`)
+
+Lava die stijgt en zakt (deuren van lava), kettingbruggen, vuurpuzzels op afstand (de vuurstaf). Baas **Asgrim de
+Gloedwachter**, een vlammenwezen dat boven de lava zweeft: doof zijn schilden met water uit de koelbakken (bommen in de
+bakken), dan pijlen. `hart4`, **Gloedbaken** (`baken4`) boven op de berg (de krater). De Nevelring breekt: Nachtrots gaat
+open (zet Nachtrots in `Zelda.KOMT`, open na `baken4`).
+
+Muziek van het hele eiland: *Sintelgat*, *Mijnen*, *Gloed* (4a); *Smidse* (dreun) en baas *Asgrim* (4b).
+
+**Hoe 4b aanhaakt** (sessie `zelda-eiland-4b`, de Smidse):
+- Zet het tweede deel in de regel van de Gloedberg: `List.of(new ZeldaEiland4a(plugin), new ZeldaEiland4b(plugin))`, en
+  haal «De Smidse» uit `Zelda.KOMT` (de zelftest meldt niets: het is een deel, geen eiland; zorg zelf dat hij weg is).
+- Het vak is **x 1260 … 1400** (zet elke kolom zelf). Gebruik `ZeldaEiland4a.land(x, z)` en `ZeldaEiland4a.berg(x, z)`
+  voor de kust en de berg (de kegel, de krater op 1312, 330), dan sluit hij naadloos aan. Zodra 4b in de regel staat,
+  bouwt 4a de kegel niet meer (`vulkaanErbij`); hoog **4a niet** op (dan herbouwt alleen 4a, en 4b staat er al).
+- De **Smidsepoort** is de oostwand van de zaal van 4a: x **1259**, z 277 … 291, y D+1 … D+11 (D = G+2): een poort van
+  gepolijst zwart steen met een naad van gloed (z 284). 4b kan hem openen met een `Poort` of een deur op x 1259 (die blokken
+  zijn van 4a: verander ze met een eigen `Deur`, niet met een herbouw van 4a). Achter de poort, vanaf x 1260, ligt alles
+  in het vak van 4b. De zaal ervoor ligt in de **gloed** van 4a (alleen met het gloedharnas).
+- Klaar: `hart4`, `baken4` (de `klaar`-vlag van de Gloedberg); Nachtrots in `Zelda.KOMT` (open na `baken4`).
+- Wat er is: de vuurstaf (`Reeks.Hoe.VUUR` met `voor`: de plek om te mikken; de zelftest kijkt of je elke schaal ziet),
+  betoverd ijs (`Smelt`), hitte (`Hitte`, `fel`), de koelbakken (water); en `hs:gloedberg-4` is nog vrij.
+- Personen die 4b kan gebruiken: Okker en Kobus (ze weten van Asgrim), Ida (klimt overal), Tijmen (een zesde Tijmen).
 
 ### 5 · Nachtrots
 
@@ -507,15 +600,17 @@ moet regelen; een vaste wegwijzer bij wie je steeds terugkomt. Zo knopen we de e
 
 | wie | wat | Lindewoud | Zilverstrand | later |
 |---|---|---|---|---|
-| **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al»; het Getijdenplein (2b): de **maanparel** (het getij) | IJshoeve (3a): de **sterrenlantaarn** (de storm); het IJspaleis (3b): zelf opgesloten in de wachtkamer, een bom bevrijdt hem: de **zonnesteen** (de spiegelzaal); verder op elk eiland bij de hub of steiger (Sintelgat, de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hij is er alwéér!»); op Nachtrots helpt hij Wolf |
-| **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira; na het baken: «naar het noorden» | de fjord van de Witte Toppen («hier vriest zelfs mijn baard»); op elke steiger; na Morgal vaart hij iedereen naar huis |
-| **Hanne**, kruidenvrouw | brouwt met wat je van andere eilanden meebrengt | *Moeraskruid* → `fles1` | *Zeekraal* (aan de dijk) → `sterkwater` | *De sneeuwbloem* uit de IJstuin (3b) → `fles5`, een vijfde flesje; later misschien iets tegen de hitte van de mijn (4a) |
+| **Tijmen**, reizende tovenaar (wandering trader, blauwe mantel) | de **wegwijzer**: praten = je volgende opdracht (`spel.wegwijzer(p, "Tijmen")`), Wiske vliegt die kant op; hij geeft wat je nodig hebt om verder te kunnen | sterrentoren in Lindedorp: flesje `fles2`, het **lichtwoord** (doornen) | plein van Zoutkom (2a): «ik was er al»; het Getijdenplein (2b): de **maanparel** (het getij) | IJshoeve (3a): de **sterrenlantaarn** (de storm); het IJspaleis (3b): zelf opgesloten in de wachtkamer, een bom bevrijdt hem: de **zonnesteen** (de spiegelzaal); Sintelgat (4a): de **koelsteen** (de hete gangen); verder op elk eiland bij de hub of steiger (de visserskreek op Nachtrots), met één eigen gave per eiland; Wiske verbaast zich er elke keer over («Hij is er alwéér!»); op Nachtrots helpt hij Wolf |
+| **Brecht**, visser en kapitein | varen (`spel.varen`), op elke steiger | pier | steiger; zijn zus Mira; na het baken: «naar het noorden» | de fjord van de Witte Toppen («hier vriest zelfs mijn baard»); de Zwarte Baai («mijn zeilen worden zwart»); op elke steiger; na Morgal vaart hij iedereen naar huis |
+| **Hanne**, kruidenvrouw | brouwt met wat je van andere eilanden meebrengt | *Moeraskruid* → `fles1` | *Zeekraal* (aan de dijk) → `sterkwater` | *De sneeuwbloem* uit de IJstuin (3b) → `fles5`, een vijfde flesje; later nog iets (Nachtrots?) |
 | **Kees**, houthakker | heeft altijd iets nodig van ver weg | *De verloren bijl* | — | 4a: ijzerhout of een nieuw bijlblad van de smeden van de Gloedberg → iets voor de Kloof (een brug?) |
 | **Lotje**, kind op de pier | telt meeuwen, wil weten hoe het elders is | praatje | (vraagt naar de meeuwen); *De zingende schelp* uit de getijdenpoelen (2b) → `fles3` | kan een kleine boodschap krijgen (een veer van de Meeuwenrots, een sneeuwbal die niet smelt) |
 | **Teun**, oude visser (Zoutkom) | weet van vroeger | — | de bakens (2a); voer met Zoutbaard: de **ankersleutel** en de ton buskruit (2b) | jeugdvriend van **Ys** op de Witte Toppen: *De brief van Ys* → `fles4` (3a) |
 | **Ys**, oude bergwachter (IJshoeve) | vist aan zijn wak, weet van het IJspaleis | — | — | 3a: de brief voor Teun; 3b: zijn hoorn (`hs:witte-toppen-4`), zijn oude harnas, «Grimmel loopt recht tegen de zuilen» |
-| **Hagen**, smid (IJshoeve) | smeedde voor de bergwachters | — | — | 3a: de klauwhaak (verhaal), het ijsblok; 3b: warmt het bevroren harnas → `harnas2`; 4a: kent hij de smeden van de Gloedberg? |
-| **Ida**, klimster (berghut, 3b) | klimt overal | — | — | 3b: de wand, de sleebaan; kan later op een andere berg opduiken |
+| **Hagen**, smid (IJshoeve) | smeedde voor de bergwachters | — | — | 3a: de klauwhaak (verhaal), het ijsblok; 3b: warmt het bevroren harnas → `harnas2`; 4a: leerde smeden met **Okker** in Sintelgat: *De gloedkool* → `fles6`; met de vuurstaf smelt het ijsblok (`hs:witte-toppen-3`) |
+| **Ida**, klimster (berghut, 3b) | klimt overal | — | — | 3b: de wand, de sleebaan; 4a: op het Uitzicht van de Gloedberg («ik klim alle bergen»); misschien ook op Nachtrots |
+| **Okker**, smid (Sintelgat, 4a) | de smid van het mijnwerkersdorp | — | — | 4a: de esse, het gloedharnas, de gloedkool voor Hagen; weet van Asgrim (4b) |
+| **Kobus**, oude mijnwerker (Sintelgat, 4a) | weet van vroeger | — | — | 4a: de mijnvuren; vertelt over de Smidse en Asgrim (4b) |
 | **Wiske**, de fee | hint, uitleg, wijst | overal | overal | wordt feller bij elk baken (`ZeldaMetgezel.licht`: iets groter, meer glans) |
 
 **Bouwregel voor elk volgend eiland:** zet Tijmen bij de hub (met `wegwijzer` als laatste gesprek), en maak minstens
@@ -526,6 +621,7 @@ twee rondes heen en weer om ze af te maken.
 
 ## Balans van gevechten (kitpvp 2.8.2, Jelle 27-10)
 - Gevechten langer maar lichter, meer variatie in tegenstanders, heelplek en bescherming voor elk zwaar gevecht (Jelle 27-10). Gebruik de gedeelde balans in `ZeldaRegels` (`SCHADE` 0.55 op alle vijandschade, `BAAS_LEVEN` 1.5, `GOLF_PAUZE` 4 s): geef een kamer liever 3 gemengde golven (vechter + schutter + snel klein beestje, bijv. `SPIN`) dan 1 zware; richting 1-3 minuten, zelden dood. Bijstellen = die drie getallen, niet per kamer.
+- De Gloedberg (4a) ook: de Askamer is het enige gevecht (asknecht + sintelmijt, asknecht + vonkschutter, alle drie), pas met het gloedharnas (de gloed ervoor is te heet zonder), met een zielvuur en een bron op de gloedtrap vlak voor de deur.
 - Het IJspaleis (3b) volgt dit: de Wachtzaal heeft drie gemengde golven (ijsknecht + ijskobold, ijsknecht + vorstschutter, alle drie), Grimmel is lang maar licht (een dikke vacht tot hij tegen een zuil loopt; zijn storm doet weinig), met een bron en een zielvuur vlak voor de troondeur en het wachtersharnas als voorwaarde.
 
 ## De motor (gebouwd in deze sessie)
@@ -602,6 +698,13 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | Grimmel | `Grimmel` | een baas met ijszuilen: stormt (aanloop op zijn achterpoten, dan rechtdoor per tik), een zuil = duizelig (`ZeldaRegels.grimmelSchade`), de zuil groeit terug; sjokt na afloop naar zijn hol |
 | nieuwe vijanden | `Soort.IJSKNECHT`, `VORSTSCHUTTER`, `IJSKOBOLD`, `GRIMMEL` | een zombie met ijs, een stray (zijn pijlen maken je niet traag), een kleine snelle zombie, een ijsbeer (×2) |
 | kaartplaatjes van één deel | `kitpvp kaart <begin>` | alleen de plaatjes waarvan de naam zo begint (bv. `zelda-e3b`): lichter voor de server |
+| **de Gloedberg** (eiland 4a) | | |
+| vuurstaf | `ZeldaSpel.Vuurstaf`, `spel.vlam`, `ZeldaRegels.VUUR_BEREIK` | vak 6; rechtsklik = een vlam (24 blokken, 6° ernaast mag, niets ertussen: `spel.zichtpunt`); steekt vuurschalen en lampen aan, smelt betoverd ijs, een tik voor vijanden (ijs het dubbele) |
+| vuurpuzzel | `Reeks.Hoe.VUUR`, `Reeks.voor` | dingen die alleen de vuurstaf aansteekt (hoog of ver weg); `voor` = de plek om te mikken (de zelftest kijkt of je elk ding ziet, de test schiet echt); ook `KLIK`-vuurschalen gaan aan met de vuurstaf |
+| betoverd ijs | `ZeldaHoofdstuk.Smelt`, `smelt(…)`, `smeltOpPad(…)`, `spel.smelt` | blok `ICE`; smelt tot lucht of water (een koelplek), `s:<id>`, na een minuut weer bevroren; `voor` voor de test; `zelda lopen` telt het als open met de vuurstaf |
+| hitte | `ZeldaHoofdstuk.Hitte`, `hitte(…)`, `ZeldaRegels.hitte`, `hittevast` | een gebied waar je warm wordt (de ervaringsbalk); koelsteen = langzamer, water/zielvuur/bron = afkoelen, vol = terug naar je koelplek (geen schade); `fel`: alleen het gloedharnas (`harnas3`) helpt |
+| een deel dat eraan komt | `ZeldaEiland.Komt.eiland` | een deel van een eiland in `Zelda.KOMT` (de Smidse na `e4a`): grijs op de kaart, niet bij Brecht, Wiske: «… gaat straks open» |
+| nieuwe vijanden | `Soort.ASKNECHT`, `VONKSCHUTTER`, `SINTELMIJT` | een zombie met een houweel, een skelet met een boog, een kleine magmaklodder (grootte 1: splitst niet) |
 
 ### Hoe een eilandsessie aanhaakt
 
@@ -679,8 +782,10 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
    glijvloeren, de Spiegelzaal met de zonnesteen, Grimmel, `hart3`, wachtersharnas (Hagen), Vorstbaken (`baken3`, de
    Gloedberg aangekondigd); Ys (de hoorn), Hanne (de sneeuwbloem, `fles5`). **Klaar als** het paleis met klauwhaak en
    bommen te halen is, `baken3` de Gloedberg opent, er een terugkeer-opdracht is, zelftest en test OK.
-6. **`zelda-eiland-4a`** — Gloedberg: Sintelgat, mijnen met hitte, personen, de vuurstaf, het gloedharnas. **Klaar als**
-   de vuurstaf vuur op afstand aansteekt en ijs smelt (ook op de Witte Toppen), zelftest en test OK.
+6. **`zelda-eiland-4a`** (gebouwd, kitpvp 2.10) — Gloedberg: de Zwarte Baai, Sintelgat (hub), de mijnen met hitte en
+   koelplekken, Tijmen (koelsteen), Okker, Dina, Fenna, Kobus, Ida; de vuurstaf, het gloedharnas, de Askamer, de
+   Smidsepoort (de Smidse aangekondigd); Hagen en de gloedkool (`fles6`). **Klaar als** de vuurstaf vuur op afstand
+   aansteekt en ijs smelt (ook op de Witte Toppen), zelftest en test OK.
 7. **`zelda-eiland-4b`** — De Smidse: lavapuzzels, Asgrim, `hart4`, Gloedbaken (`baken4`), de Nevelring breekt.
    **Klaar als** de Smidse te halen is met alle voorwerpen tot nu toe, `baken4` Nachtrots opent, zelftest en test OK.
 8. **`zelda-eiland-5a`** — Nachtrots, de muren: Wolf, sluipen, de kerkers, lichtpijlen, lichtharnas, één gevecht.

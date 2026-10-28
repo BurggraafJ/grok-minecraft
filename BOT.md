@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.9.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.10.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -491,8 +491,21 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   duizelt hij (dan doet een klap veel meer). Bevrijd sjokt hij naar zijn hol. Dan `hart3` en de toren op naar het
   **Vorstbaken** (`baken3`, einde `e3b`): het wordt ochtend, Wiske wordt feller en **de Gloedberg** staat aangekondigd
   (`Zelda.KOMT`). Zijmissies: *De hoorn van Ys* (→ `hs:witte-toppen-4`) en de boodschap over zee *De sneeuwbloem*
-  (Hanne op het Lindewoud → een vijfde flesje `fles5`). Muziek *Bergpad*, *IJspaleis*, baas *Grimmel*. Volgende delen
-  (Gloedberg, Nachtrots) komen in losse sessies (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  (Hanne op het Lindewoud → een vijfde flesje `fles5`). Muziek *Bergpad*, *IJspaleis*, baas *Grimmel*. **Eiland 4a, de
+  Gloedberg: Sintelgat en de mijnen** (sessie zelda-eiland-4a, kitpvp 2.10, deel `zelda-e4a`, x 1060…1259, z 180…480;
+  open na `baken3`): de **Zwarte Baai** (Brecht), het mijnwerkersdorp **Sintelgat** als hub (Tijmen geeft de
+  **koelsteen**; smid **Okker** met een koude esse; Dina, Fenna, Kobus), en de mijn: de **Lorriehal**, een bom op de Oude
+  Gang, met de klauwhaak over de Schachtput naar de **Vonkkamer** met de **vuurstaf** (vak 6: een vlam op afstand; steekt
+  vuurschalen en lampen aan, smelt betoverd ijs). Drie lampen = het hek naar de **hete gangen**: **hitte** als rustige
+  druk (de ervaringsbalk vult zich; met de koelsteen hou je het even uit; in water, bij een zielvuur of bron koel je af;
+  te heet = terug naar je koelplek, geen schade); bevroren water smelt je tot een koelplek. In de **Gloedader** het
+  gloedijzer (de Daaltrap is een korte weg terug). Met de esse aan en het gloedijzer smeedt Okker het **gloedharnas**
+  (`harnas3`): dan pas door de gloed naar de **Askamer** (het enige gevecht: asknecht, vonkschutter, sintelmijt in drie
+  gemengde golven, met zielvuur en bron ervoor) en de **Smidsepoort** (einde `e4a`); de Asgang leidt naar het Uitzicht
+  (Ida). De **Smidse** (4b) staat aangekondigd (`Zelda.KOMT`, een deel van het eiland). Zijmissies: de lorrie (Dina),
+  de sporen (Fenna, race), de mijnvuren (Kobus) → drie hartstukjes; boodschap over zee: Hagen in IJshoeve wil een
+  gloedkool van Okker → `fles6`; de vuurstaf smelt het ijsblok bij Hagen (`hs:witte-toppen-3`). Muziek *Sintelgat*,
+  *Mijnen*, *Gloed*. Volgende delen (de Smidse, Nachtrots) komen in losse sessies (lijst in ZELDA.md). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).

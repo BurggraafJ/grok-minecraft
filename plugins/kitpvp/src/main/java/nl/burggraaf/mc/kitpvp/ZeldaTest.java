@@ -477,7 +477,8 @@ final class ZeldaTest {
     /** Richt de vuurstaf (het voorwerp, zoals rechtsklik) vanaf waar je staat op dit blok. */
     private void vuur(org.bukkit.block.Block b) {
         Location l = p.getLocation().clone();
-        l.setDirection(ZeldaSpel.raakpunt(b).toVector().subtract(l.toVector().add(new org.bukkit.util.Vector(0, p.getEyeHeight(), 0))));
+        Location oog = l.clone().add(0, p.getEyeHeight(), 0), m = z.spel.zichtpunt(oog, b);
+        l.setDirection((m != null ? m : ZeldaSpel.raakpunt(b)).toVector().subtract(oog.toVector()));
         p.setVelocity(new org.bukkit.util.Vector());
         p.teleport(l);
         p.setCooldown(ZeldaSpel.Vuurstaf.ITEM, 0);
@@ -702,7 +703,7 @@ final class ZeldaTest {
                 final boolean[] kan = {false};
                 stap("later " + v.vlag, () -> {
                     ZeldaVoortgang.Stand s = stand();
-                    kan[0] = s.heeft(v.voorwerp) && !s.heeft(v.vlag);
+                    kan[0] = s.heeft(v.voorwerp) && !s.heeft(v.vlag) && (v.vereist == null || s.heeft(v.vereist));   // na een gesprek: zie de zijmissies
                     if (!kan[0]) return;
                     for (ZeldaHoofdstuk x : e.delen())
                         for (ZeldaHoofdstuk.Barst b : x.barsten) if (b.gebied.in(v.plek) && !b.muur.isOpen) muur[0] = b;
