@@ -897,7 +897,7 @@ doel.» en «Linksklik: de hele zee.» Bij de tempelruïne van het Lindewoud zeg
 naar elk zielvuur.» Met «Uitleg: uit» zegt ze niets.
 
 **Ontdekken.** Per speler een raster over heel `Zelda.GEBIED` in vakjes van 8 × 8 blokken (`Stand.kaart`, in
-`zelda.yml` onder `kaart`, ingepakt: een paar honderd tekens). Elke seconde komt alles binnen 24 blokken om je heen
+`zelda.yml` onder `kaart`, ingepakt: een paar honderd tekens). Elke seconde komt alles binnen 32 blokken om je heen
 erbij. Zo heeft in co-op **iedereen zijn eigen kaart en voortgang**. In **beheer** toont de kaart alles: geen mist, alle
 zielvuren, alle tekens.
 
@@ -1101,7 +1101,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | **de kaart** (sessie `zelda-kaart`) | | |
 | kaart in vak 9 | `ZeldaKaart`, `ZeldaKaartBeeld` | een gevulde kaart per speler (`MapView`, nummer in `zelda-kaarten.yml`); vasthouden = het eilandblad, linksklik = de zeekaart, rechtsklik = het kaartmenu; met de kaart in de hand is je andere hand leeg (`spel.schild`) |
 | een eiland meten | `ZeldaKaart.Meting`, `TEKENWIJZE` | één keer per versie van de delen: de bovenkant van het eiland, chunks op de achtergrond; bewaard in `plugins/KitPvP/zelda-kaart/` |
-| ontdekken | `Stand.kaart`, `ZeldaKaart.ontdek`, `aanvullen` | vakjes van 8 × 8 blokken, 24 blokken om je heen; bij binnenkomen aangevuld uit je voortgang (oude standen); een eiland dat af is helemaal |
+| ontdekken | `Stand.kaart`, `ZeldaKaart.ontdek`, `aanvullen` | vakjes van 8 × 8 blokken, 32 blokken om je heen; bij binnenkomen aangevuld uit je voortgang (oude standen); een eiland dat af is helemaal |
 | wat er op het blad staat | `ZeldaKaartBeeld.basis`, `blad`, `zeekaart`, `vlam`, `stippel`, `titel` | zee met schuim, reliëf, perkament over wat je niet zag, zielvuren, vaarroutes, de naam |
 | dorpen en kerkers | `ZeldaHoofdstuk.Teken`, `tekens()` | per deel; op de kaart zodra je er in de buurt was |
 | wat /hint noemt | `ZeldaSpel.wijzer`, `Wijzer.plek`, `Wijzer.eiland` | dezelfde volgorde als `/hint`; de kaart zet er een X |

@@ -35,7 +35,7 @@ final class ZeldaKaartBeeld {
     /** De hoek van {@link Zelda#GEBIED} (de unit-test kijkt of het klopt). */
     static final int GX = 1024, GZ = -512;
     /** Zo ver om je heen ontdek je (blokken). */
-    static final int ZICHT = 24;
+    static final int ZICHT = 32;
 
     // ── kleuren (de dichtstbijzijnde kleur van een Minecraft-kaart) ──────────────────────────
 

@@ -244,7 +244,7 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   handen), daarna komt je schild terug. **Linksklik** = omslaan naar de **zeekaart**: alle eilanden waar je was (in
   kleur), waar je heen kunt (een vorm op perkament), Nachtrots in Morgals nevel zolang hij dicht is, de vaarroutes van je
   eiland (stippels) en de X; **op zee** slaat hij vanzelf om en vaart je pijl mee. Wat je ontdekte staat per speler in
-  `zelda.yml` (vakjes van 8 × 8 blokken, 24 blokken om je heen); een oude stand wordt aangevuld uit je rustplaatsen,
+  `zelda.yml` (vakjes van 8 × 8 blokken, 32 blokken om je heen); een oude stand wordt aangevuld uit je rustplaatsen,
   verhalen, vondsten en kamers, een eiland dat af is helemaal. In beheer toont de kaart alles. Licht: elk eiland wordt
   één keer per versie gemeten (chunks op de achtergrond, bewaard in `plugins/KitPvP/zelda-kaart/`), het blad alleen
   opnieuw getekend als er iets veranderde. **Rechtsklik** = het kaartmenu: de zielvuren van dit eiland, in de volgorde

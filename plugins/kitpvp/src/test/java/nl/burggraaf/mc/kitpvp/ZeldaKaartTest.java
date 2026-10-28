@@ -40,7 +40,7 @@ class ZeldaKaartTest {
         assertTrue(b.get(ZeldaKaartBeeld.cel(1212 + ZeldaKaartBeeld.ZICHT - 2, 2)), "binnen je zicht");
         assertFalse(b.get(ZeldaKaartBeeld.cel(1212 + ZeldaKaartBeeld.ZICHT + 16, 2)), "verder weg niet");
         int n = b.cardinality();
-        assertTrue(n >= 25 && n <= 50, "een rondje van een paar vakjes: " + n);
+        assertTrue(n >= 45 && n <= 80, "een rondje van een paar vakjes: " + n);
         BitSet c = new BitSet();
         assertTrue(ZeldaKaartBeeld.ontdek(c, 1104, -16, 1135, 15));
         assertEquals(4 * 4, c.cardinality(), "een gebied van 32 × 32 blokken: 4 × 4 vakjes");
