@@ -898,7 +898,8 @@ naar elk zielvuur.» Met «Uitleg: uit» zegt ze niets.
 
 **Ontdekken.** Per speler een raster over heel `Zelda.GEBIED` in vakjes van 8 × 8 blokken (`Stand.kaart`, in
 `zelda.yml` onder `kaart`, ingepakt: een paar honderd tekens). Elke seconde komt alles binnen 32 blokken om je heen
-erbij. Zo heeft in co-op **iedereen zijn eigen kaart en voortgang**. In **beheer** toont de kaart alles: geen mist, alle
+erbij; naar `zelda.yml` gaat het hoogstens eens per minuut (en als je weggaat). Zo heeft in co-op **iedereen zijn eigen
+kaart en voortgang**. In **beheer** toont de kaart alles: geen mist, alle
 zielvuren, alle tekens.
 
 **Oude voortgang** (een stand van 2.13 heeft nog geen raster). Bij binnenkomen vult `ZeldaKaart.aanvullen` het raster
@@ -918,7 +919,8 @@ stand zonder raster werkt gewoon.
   per eiland. Het resultaat staat in `plugins/KitPvP/zelda-kaart/<eiland>.dat`, met als sleutel de versies van de delen
   en `ZeldaKaart.TEKENWIJZE`. Pas als een deel een nieuwe versie krijgt (of de tekenwijze verandert), wordt dat eiland
   opnieuw gemeten.
-- **Tekenen.** Minecraft vraagt de tekenaar elke tik om de kaart. Meestal is er niets nieuws:
+- **Tekenen.** Minecraft vraagt de tekenaar elke tik om de kaart. Er gebeurt pas iets als je de kaart vasthoudt, en dan
+  is er meestal niets nieuws:
   - de pijlen en de X gaan vijf keer per seconde;
   - het blad wordt alleen opnieuw getekend als er iets veranderde (een nieuw vakje, een zielvuur, een vlag, omslaan),
     hoogstens eens per seconde;
