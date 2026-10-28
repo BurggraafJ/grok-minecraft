@@ -50,7 +50,7 @@ import org.bukkit.scheduler.BukkitTask;
 final class ZeldaKaart {
 
     /** Hoger = elk eiland opnieuw meten (als de manier van tekenen verandert). */
-    static final int TEKENWIJZE = 2;
+    static final int TEKENWIJZE = 3;
     /** Een andere kant om naar te kijken: het eiland of de zee. */
     static final String EILAND = "eiland", ZEE = "zee";
 
@@ -101,6 +101,7 @@ final class ZeldaKaart {
         if (taak != null) taak.cancel();
         taak = null;
         meting = null;
+        bewaar();
         for (MapView v : views.values()) for (MapRenderer r : new ArrayList<>(v.getRenderers())) v.removeRenderer(r);
         views.clear();
         kijk.clear();
@@ -109,6 +110,7 @@ final class ZeldaKaart {
     /** Een speler gaat weg uit Zelda: zijn kaart vergeet wat erop stond (bij terugkomst opnieuw getekend). */
     void weg(UUID id) {
         kijk.remove(id);
+        bewaar();
     }
 
     // ── de kaart in je hand ─────────────────────────────────────────────────────────────────
@@ -197,12 +199,12 @@ final class ZeldaKaart {
 
     private void render(Player p, MapCanvas canvas) {
         ZeldaSpel.Sessie ss = spel.sessie(p);
-        if (ss == null) return;
+        if (ss == null || p.getInventory().getHeldItemSlot() != 8) return;   // alleen als je hem vasthoudt
         Kijk k = kijk(p.getUniqueId());
         long nu = System.currentTimeMillis();
         if (nu - k.merkTijd < 200) return;                     // de pijlen vijf keer per seconde
         k.merkTijd = nu;
-        Blad b = blad(p, k.zee || ss.vaart != null ? ZEE : EILAND, nu);
+        Blad b = blad(p, k.zee ? ZEE : EILAND, nu);
         if (k.nieuw && k.px != null) {
             k.nieuw = false;
             for (int j = 0; j < ZeldaKaartBeeld.N; j++)
@@ -254,7 +256,7 @@ final class ZeldaKaart {
             k.doelEiland = w == null ? null : w.eiland();
         }
         ZeldaKaartBeeld.Basis basis = e == null ? null : bladen.get(e.id());
-        if (EILAND.equals(kant) && basis == null) kant = ZEE;  // nog niet gemeten: dan de zee
+        if (basis == null || ss != null && ss.vaart != null) kant = ZEE;   // op zee (of nog niet gemeten): de zeekaart
         String sleutel = kant + "|" + (e == null ? "" : e.id()) + "|" + versie + "|" + s.kaart.cardinality() + "|" + s.bezocht.size() + "|"
                 + s.vlaggen.size() + "|" + (ss == null ? "" : ss.rh.id() + ":" + ss.rust) + "|" + alles + "|" + (ss != null && ss.vaart != null);
         boolean anders = !sleutel.equals(k.sleutel);
@@ -380,10 +382,22 @@ final class ZeldaKaart {
 
     // ── ontdekken ───────────────────────────────────────────────────────────────────────────
 
-    /** Elke seconde: wat om je heen ligt, heb je gezien. */
+    /**
+     * Elke seconde: wat om je heen ligt, heb je gezien. Naar zelda.yml gaat het hoogstens eens per minuut (of als je weggaat),
+     * niet bij elk vakje: ontdekken is geen voortgang die je kwijt kunt raken.
+     */
     void ontdek(Player p, ZeldaVoortgang.Stand s) {
         Location l = p.getLocation();
-        if (ZeldaKaartBeeld.ontdek(s.kaart, l.getX(), l.getZ(), ZeldaKaartBeeld.ZICHT)) spel.voortgang.vuil();
+        if (ZeldaKaartBeeld.ontdek(s.kaart, l.getX(), l.getZ(), ZeldaKaartBeeld.ZICHT)) nieuw = true;
+    }
+
+    private boolean nieuw;                                     // er is iets ontdekt dat nog niet in zelda.yml staat
+
+    /** Wat er ontdekt is, gaat mee met de volgende keer bewaren. */
+    void bewaar() {
+        if (!nieuw) return;
+        nieuw = false;
+        spel.voortgang.vuil();
     }
 
     /**
@@ -448,7 +462,9 @@ final class ZeldaKaart {
             if (!sl.equals(sleutel(e))) return;                    // een deel is veranderd: opnieuw meten
             byte[] kleur = new byte[ZeldaKaartBeeld.N * ZeldaKaartBeeld.N];
             in.readFully(kleur);
-            byte[] land = new byte[in.readInt()];
+            int n = in.readInt();
+            if (n < 0 || n > ZeldaKaartBeeld.N * ZeldaKaartBeeld.N / 8 + 8) throw new IOException("kapot bestand");
+            byte[] land = new byte[n];
             in.readFully(land);
             bladen.put(e.id(), new ZeldaKaartBeeld.Basis(vlak(e), kleur, BitSet.valueOf(land)));
             sleutels.put(e.id(), sl);
@@ -523,7 +539,7 @@ final class ZeldaKaart {
         }
 
         void tik() {
-            while (onderweg < 3 && !rij.isEmpty()) {
+            for (int n = 0; n < 6 && onderweg < 3 && !rij.isEmpty(); n++) {   // een geladen chunk is meteen klaar: hoogstens zes per tik
                 long k = rij.poll();
                 int cx = (int) (k >> 32), cz = (int) k;
                 onderweg++;
@@ -590,6 +606,7 @@ final class ZeldaKaart {
 
     /** Elke tik: verder meten (hoogstens drie chunks tegelijk onderweg); pas als het bouwen klaar is. */
     private void tik() {
+        if (Bukkit.getCurrentTick() % 1200 == 0) bewaar();
         if (meting == null) {
             if (Bukkit.getCurrentTick() % 40 != 0) return;
             Bouwer b = plugin.bouwer();

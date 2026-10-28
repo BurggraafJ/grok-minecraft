@@ -435,6 +435,10 @@ final class ZeldaSpel implements Listener {
      */
     void schild(Player p, ZeldaVoortgang.Stand s, boolean kaart) {
         var inv = p.getInventory();
+        ItemStack nu = inv.getItemInOffHand();
+        boolean leeg = nu.getType().isAir();
+        if (!leeg && !(nu.hasItemMeta() && "schild".equals(nu.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING))))
+            return;                                          // iets anders in die hand (met F gewisseld): dat blijft
         if (kaart || !s.heeft("schild") && !s.heeft(GLOEDSCHILD)) inv.setItemInOffHand(null);
         else inv.setItemInOffHand(s.heeft(GLOEDSCHILD) ? gloedschild() : ding(Material.SHIELD, "Eikenschild", "schild"));
     }

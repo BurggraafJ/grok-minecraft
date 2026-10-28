@@ -218,6 +218,7 @@ final class ZeldaKaartBeeld {
                     int schaduw = 1;
                     if (j > 0 && soort[p - N] == LAND) schaduw = h[p] - h[p - N] > 0.6 ? 2 : h[p] - h[p - N] < -0.6 ? 0 : 1;
                     uit[p] = (byte) (basis[p] * 4 + schaduw);
+                    if (uit[p] == PERKAMENT || uit[p] == PERKAMENT_RAND) uit[p] = (byte) (basis[p] * 4 + 2);   // land is nooit perkament (kwarts)
                 }
             }
         zee(uit, zee);
@@ -369,11 +370,11 @@ final class ZeldaKaartBeeld {
                     if (e.zicht() == Zicht.WEG || !e.in(x, z)) continue;
                     Basis b = e.basis();
                     int bi = (int) Math.floor(b.vlak().px(x)), bj = (int) Math.floor(b.vlak().pz(z));
+                    if (!b.isLand(bi, bj)) continue;
                     if (e.zicht() == Zicht.NEVEL) {
                         nevel[j * N + i] = 1;
                         continue;
                     }
-                    if (!b.isLand(bi, bj)) continue;
                     zee[j * N + i] = false;
                     int c = cel(x, z);
                     boolean zien = e.zicht() == Zicht.KLEUR && (e.ontdekt() == null || c >= 0 && e.ontdekt().get(c));
@@ -392,8 +393,21 @@ final class ZeldaKaartBeeld {
                 for (int[] n : new int[][]{{i - 1, j}, {i + 1, j}, {i, j - 1}, {i, j + 1}})
                     if (n[0] < 0 || n[1] < 0 || n[0] >= N || n[1] >= N || zee[n[1] * N + n[0]]) uit[p] = PERKAMENT_RAND;
             }
-        for (int p = 0; p < N * N; p++)                               // Morgals nevel: donker, om en om lichter
-            if (nevel[p] == 1) uit[p] = ((p % N) + (p / N)) % 2 == 0 ? NEVEL : NEVEL_LICHT;
+        boolean nevelt = false;
+        for (byte n : nevel) nevelt |= n == 1;
+        if (nevelt) for (int j = 0; j < N; j++)                       // Morgals nevel: een donkere wolk om het eiland, naar buiten toe ijler
+            for (int i = 0; i < N; i++) {
+                int d = 99;
+                for (int dj = -4; dj <= 4; dj++)
+                    for (int di = -4; di <= 4; di++) {
+                        int x = i + di, y = j + dj;
+                        if (x >= 0 && y >= 0 && x < N && y < N && nevel[y * N + x] == 1) d = Math.min(d, Math.max(Math.abs(di), Math.abs(dj)));
+                    }
+                if (d > 4 || land[j * N + i]) continue;
+                int p = j * N + i;
+                if (d <= 1) uit[p] = (i + j) % 2 == 0 ? NEVEL : NEVEL_LICHT;
+                else if (d <= 3 ? (i + j) % 2 == 0 : (i % 2 == 0 && j % 2 == 0)) uit[p] = NEVEL_LICHT;
+            }
         return uit;
     }
 

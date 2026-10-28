@@ -138,6 +138,9 @@ class ZeldaKaartTest {
         ZeldaKaartBeeld.Basis s = ZeldaKaartBeeld.basis(b.vlak(), soort, hoogte, kleur);
         assertEquals((groen & 0xff) >> 2, (s.kleur()[30 * N + 30] & 0xff) >> 2, "een losse spikkel: weg");
         assertEquals((steen & 0xff) >> 2, (s.kleur()[80 * N + 60] & 0xff) >> 2, "een pad: blijft");
+        java.util.Arrays.fill(kleur, ZeldaKaartBeeld.kleur(0xfffcf5));                // kwarts: land is nooit perkament
+        ZeldaKaartBeeld.Basis q = ZeldaKaartBeeld.basis(b.vlak(), soort, hoogte, kleur);
+        for (byte k : q.kleur()) assertTrue(k != ZeldaKaartBeeld.PERKAMENT && k != ZeldaKaartBeeld.PERKAMENT_RAND, "kwarts lijkt op perkament");
     }
 
     @Test
@@ -176,6 +179,7 @@ class ZeldaKaartTest {
         assertTrue(Set.of(ZeldaKaartBeeld.DIEP, ZeldaKaartBeeld.GOLF).contains(weg[j * N + i]), "nog niet open: zee");
         byte[] nevel = ZeldaKaartBeeld.zeekaart(List.of(new ZeldaKaartBeeld.Eilandje(b, vak, ZeldaKaartBeeld.Zicht.NEVEL, null)), null);
         assertTrue(Set.of(ZeldaKaartBeeld.NEVEL, ZeldaKaartBeeld.NEVEL_LICHT).contains(nevel[j * N + i]), "Nachtrots in Morgals nevel");
+        assertTrue(Set.of(ZeldaKaartBeeld.DIEP, ZeldaKaartBeeld.GOLF).contains(nevel[(int) z.pz(-96) * N + (int) z.px(1104)]), "de nevel hangt om het eiland, niet over het hele vak");
         byte[] mist = ZeldaKaartBeeld.zeekaart(List.of(new ZeldaKaartBeeld.Eilandje(b, vak, ZeldaKaartBeeld.Zicht.KLEUR, new BitSet())), null);
         assertEquals(ZeldaKaartBeeld.PERKAMENT, mist[j * N + i], "geweest maar daar niet gekeken: perkament");
         byte[] px = new byte[N * N];
