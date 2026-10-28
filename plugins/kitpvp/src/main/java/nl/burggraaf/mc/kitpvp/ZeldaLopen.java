@@ -70,6 +70,10 @@ final class ZeldaLopen {
         return m == Material.LADDER || m == Material.VINE;
     }
 
+    private static boolean hoog(Material m) {
+        return org.bukkit.Tag.WALLS.isTagged(m) || org.bukkit.Tag.FENCES.isTagged(m) || org.bukkit.Tag.FENCE_GATES.isTagged(m);
+    }
+
     private boolean vrij(int x, int y, int z) {
         Material m = soort(x, y, z);
         return m.isAir() || !m.isSolid();
@@ -80,6 +84,7 @@ final class ZeldaLopen {
         Material hier = soort(x, y, z), onder = soort(x, y - 1, z);
         if (hier == Material.LAVA || soort(x, y + 1, z) == Material.LAVA) return false;   // in lava sta je niet (je springt er meteen uit)
         if (opgevangen(x, y, z)) return false;
+        if (hoog(onder)) return false;                    // op een muurtje of hek (anderhalf hoog) stap of spring je niet
         return onder.isSolid() || water(hier) || ladder(hier);
     }
 
