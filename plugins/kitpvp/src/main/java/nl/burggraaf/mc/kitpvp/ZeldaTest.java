@@ -1763,12 +1763,11 @@ final class ZeldaTest {
             moet(ZeldaRegels.flessen(stand()) == 3 && fl != null && fl.getAmount() == 3, "Verhaal: geen twee extra flesjes (" + (fl == null ? 0 : fl.getAmount()) + ")");
             p.teleport(buiten(h, h.rust.get(0).plek));
         }, 2, () -> true, 1);
+        stap("zonder harnas", () -> p.getInventory().setArmorContents(new org.bukkit.inventory.ItemStack[4]), 3, () -> true, 1);   // harnas telt een tik later niet meer
         stap("schade per niveau", () -> {
             var m = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
             max[0] = m == null ? 20 : m.getValue();
             LivingEntity v = sp.spawn(ZeldaHoofdstuk.Soort.VEENLOPER, p.getLocation().add(2, 0, 0), 1);
-            org.bukkit.inventory.ItemStack[] harnas = p.getInventory().getArmorContents();
-            p.getInventory().setArmorContents(new org.bukkit.inventory.ItemStack[4]);
             double[] verlies = new double[4];
             for (ZeldaRegels.Niveau n : ZeldaRegels.Niveau.values()) {
                 sp.zetNiveau(id, n);
@@ -1778,7 +1777,7 @@ final class ZeldaTest {
                 verlies[n.ordinal()] = max[0] - p.getHealth();
             }
             v.remove();
-            p.getInventory().setArmorContents(harnas);
+            sp.uitrusten(p, stand());
             double a = verlies[ZeldaRegels.Niveau.AVONTUUR.ordinal()];
             moet(a > 0, "een vijand deed niets");
             for (ZeldaRegels.Niveau n : ZeldaRegels.Niveau.values())

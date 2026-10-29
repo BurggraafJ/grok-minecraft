@@ -148,6 +148,19 @@ class ZeldaSpellenTest {
     }
 
     @Test
+    void eenNieuweGroepDeeltMeteen() {
+        ZeldaVoortgang v = new ZeldaVoortgang(new File(map, "zelda.yml"));
+        v.van(a).zet("zwaard");
+        v.van(a).groep = "g2";
+        ZeldaVoortgang.Stand d = v.van(a).kopie();
+        v.nieuw(b, 2, d);
+        v.kies(b, 2);
+        v.van(a).zet("boog");                                // nog vóór de eerste ronde: ook dat is nieuw
+        v.deel(null);
+        assertTrue(v.van(b).heeft("boog"));
+    }
+
+    @Test
     void samenOokAlsJeErNietBent() {
         ZeldaVoortgang v = samen();
         v.kies(b, 1);                                        // Daan speelt even in zijn eigen spel

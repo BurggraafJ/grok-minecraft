@@ -357,12 +357,8 @@ final class ZeldaVoortgang {
         for (var g : groepen.entrySet()) {
             List<Stand> leden = new java.util.ArrayList<>();
             for (var l : g.getValue()) leden.add(spelers.get(l.getKey()).spellen.get(l.getValue()));
-            java.util.LinkedHashSet<String> p = pot.get(g.getKey());
-            if (p == null) {                                 // voor het eerst (na het laden): wat er nu is, is gedeeld
-                p = new java.util.LinkedHashSet<>();
-                for (Stand s : leden) for (String v : s.vlaggen) if (deelbaar(v)) p.add(v);
-                pot.put(g.getKey(), p);
-            } else for (Stand s : leden) for (String v : s.vlaggen) if (deelbaar(v)) p.add(v);
+            java.util.LinkedHashSet<String> p = pot.computeIfAbsent(g.getKey(), k -> new java.util.LinkedHashSet<>());   // een nieuwe groep
+            for (Stand s : leden) for (String v : s.vlaggen) if (deelbaar(v)) p.add(v);
             List<String> lijst = new java.util.ArrayList<>(p);
             Map<String, Integer> rust = new HashMap<>(), missies = new HashMap<>();
             java.util.Set<String> bezocht = new java.util.HashSet<>();
@@ -376,9 +372,8 @@ final class ZeldaVoortgang {
             for (int i = 0; i < leden.size(); i++) {
                 Stand s = leden.get(i);
                 String sleutel = g.getValue().get(i).getKey() + ":" + g.getValue().get(i).getValue();
-                int van = kreeg.getOrDefault(sleutel, -1);
+                int van = kreeg.getOrDefault(sleutel, 0);   // nieuw in de groep: alles uit de pot (hij is een kopie, dus vooral wat erbij kwam)
                 boolean anders = false;
-                if (van < 0) van = lijst.size();             // nieuw in de groep (of net geladen): hij begint met wat er nu is
                 for (int j = van; j < lijst.size(); j++) anders |= s.vlaggen.add(lijst.get(j));
                 kreeg.put(sleutel, lijst.size());
                 for (var r : rust.entrySet()) if (r.getValue() > s.rust(r.getKey())) {
@@ -440,6 +435,17 @@ final class ZeldaVoortgang {
             }
             spelers.put(id, s);
         }
+        // samen-spellen: wat er nu in het bestand staat, is al gedeeld (wie iets vergat, krijgt het niet terug)
+        for (var e : spelers.entrySet())
+            for (var sp2 : e.getValue().spellen.entrySet()) {
+                String g = sp2.getValue().groep;
+                if (g == null) continue;
+                java.util.LinkedHashSet<String> p = pot.computeIfAbsent(g, k -> new java.util.LinkedHashSet<>());
+                for (String v : sp2.getValue().vlaggen) if (deelbaar(v)) p.add(v);
+            }
+        for (var e : spelers.entrySet())
+            for (var sp2 : e.getValue().spellen.entrySet())
+                if (sp2.getValue().groep != null) kreeg.put(e.getKey() + ":" + sp2.getKey(), pot.get(sp2.getValue().groep).size());
     }
 
     private static Stand lees(ConfigurationSection c) {
