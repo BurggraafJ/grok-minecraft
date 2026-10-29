@@ -447,7 +447,7 @@ final class ZeldaTest {
                     moet(h.w.getBlockAt(gr.zuilen.get(0)[0], gr.zuilen.get(0)[4], gr.zuilen.get(0)[1]).getType() == Material.AIR, "de zuil is niet gebroken");
                     moet(gr.schade(10) > 10, gr.naam + ": duizelig doet een klap niet meer pijn");
                     var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-                    moet(max != null && p.getHealth() >= max.getValue() - 0.01, gr.naam + ": je werd toch geraakt (" + p.getHealth() + ")");
+                    moet(mee != null || max != null && p.getHealth() >= max.getValue() - 0.01, gr.naam + ": je werd toch geraakt (" + p.getHealth() + ")");   // samen: zijn helper (een extra speler = een helper erbij) mag je raken
                 }, 2, () -> true, 1);
                 if (k.baas instanceof Asgrim ag) stap(ag.naam + " gedoofd", () -> {             // een echte pijl op de kuip boven hem
                     moet(stand().heeft("boog"), "geen boog voor " + ag.naam);

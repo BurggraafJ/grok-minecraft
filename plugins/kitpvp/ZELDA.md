@@ -1100,6 +1100,15 @@ golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
 
 `<wie>` = een speler, `hier` (iedereen binnen 48 blokken van jou: je groep) of `allen` (iedereen in Zelda).
 
+### Samen: wat er nog bij kwam
+
+- **Door een maat heen**: een bom, pijl of lichtpijl van een speler gaat door een medespeler heen (`ZeldaSpel.onDoorMaat`).
+  De co-op-test vond het: een vriend die voor je staat, ving je bom, en de gebarsten muur bleef dicht.
+- **Testen met twee** (`kitpvp zelda test <speler> alles mee <speler2>`): één script speelt, de tweede neemt een samen-spel
+  aan en volgt overal (op een vloer: een testspeler valt niet vanzelf, anders kickt de server hem wegens vliegen), ook op
+  zee. Aan het eind moet hij alles hebben wat de eerste heeft (ruim 500 vlaggen). Bij Grimmel mag de eerste dan wel geraakt
+  worden: met twee spelers heeft Grimmel een helper.
+
 ### Oude voortgang
 
 `zelda.yml` van 2.15 blijft geldig: `spelers.<uuid>` is het spel waarin je nu speelt (met `spel: 1` en `niveau`), de
