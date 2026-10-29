@@ -4162,7 +4162,17 @@ final class ZeldaSpel implements Listener {
         if (speelt(e.getPlayer()) && !beheer.is(e.getPlayer().getUniqueId())) e.setCancelled(true);
     }
 
-    @EventHandler
+    /**
+     * Samen spelen: wat een speler gooit of schiet (een bom, een pijl, een lichtpijl) gaat door een medespeler heen; anders
+     * vangt een vriend die voor je staat je bom.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onDoorMaat(ProjectileHitEvent e) {
+        if (e.getHitEntity() instanceof Player q && e.getEntity().getShooter() instanceof Player p && !p.equals(q) && speelt(p) && speelt(q))
+            e.setCancelled(true);
+    }
+
+    @EventHandler(ignoreCancelled = true)
     public void onPijl(ProjectileHitEvent e) {
         if (!(e.getEntity().getShooter() instanceof Player p) || !speelt(p)) return;
         String vk = e.getEntity().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);

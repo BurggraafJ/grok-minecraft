@@ -680,7 +680,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)                    // een pijl die in Zelda door een medespeler gaat, vliegt door
     public void onRaak(ProjectileHitEvent e) {
         if (actief && e.getEntity() instanceof AbstractArrow a && !(a instanceof org.bukkit.entity.Trident)) {
             Bukkit.getScheduler().runTaskLater(this, () -> { if (a.isValid()) a.remove(); }, e.getHitBlock() != null ? 40L : 1L);
