@@ -737,14 +737,28 @@ final class Zelda implements Modus {
             }
             case "test" -> {
                 if (p == null) {
-                    s.sendMessage("kitpvp zelda test <speler> [alles [vanaf <deel>]|dood|motor]: speler niet online");
+                    s.sendMessage("kitpvp zelda test <speler> [alles [vanaf <deel>] [niveau <niveau>] [mee <speler>]|dood|motor|niveau|spellen [<speler>]]: speler niet online");
                     return;
                 }
                 ZeldaTest t = new ZeldaTest(plugin, this, p, s);
-                if (args.length >= 4 && args[3].equalsIgnoreCase("dood")) t.dood();
-                else if (args.length >= 4 && args[3].equalsIgnoreCase("motor")) t.motor();
-                else t.route(args.length >= 4 && args[3].equalsIgnoreCase("alles"),
-                        args.length >= 6 && args[4].equalsIgnoreCase("vanaf") ? args[5].toLowerCase() : null);   // alles vanaf <deel>: alleen voor tests
+                String wat = args.length >= 4 ? args[3].toLowerCase() : "";
+                if (wat.equals("dood")) t.dood();
+                else if (wat.equals("motor")) t.motor();
+                else if (wat.equals("niveau")) t.niveau();
+                else if (wat.equals("spellen")) t.spellen(args.length >= 5 ? Bukkit.getPlayerExact(args[4]) : null);
+                else {
+                    String vanaf = null;                                 // alles vanaf <deel>: alleen voor tests
+                    ZeldaRegels.Niveau niveau = null;
+                    Player mee = null;
+                    for (int i = 4; i + 1 < args.length; i += 2)
+                        switch (args[i].toLowerCase()) {
+                            case "vanaf" -> vanaf = args[i + 1].toLowerCase();
+                            case "niveau" -> niveau = ZeldaRegels.Niveau.van(args[i + 1]);
+                            case "mee" -> mee = Bukkit.getPlayerExact(args[i + 1]);
+                            default -> { }
+                        }
+                    t.route(wat.equals("alles"), vanaf, niveau, mee);
+                }
             }
             case "in" -> {
                 if (p == null) {

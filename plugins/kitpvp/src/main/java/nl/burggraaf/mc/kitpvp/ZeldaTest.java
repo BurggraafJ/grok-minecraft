@@ -45,6 +45,7 @@ final class ZeldaTest {
     private boolean hitteTest;                              // nu wordt de hitte getest (anders houdt de test je koel: hij teleporteert)
     private boolean sluipTest;                              // nu wordt er gesloten (anders zien de wachters je niet: de test teleporteert)
     private String geklikt;
+    private Player mee;                                     // co-op: deze speler loopt mee in hetzelfde samen-spel (het script stuurt alleen p)
     private int stilte;                                     // hoe vaak er geen muziek was (de eerste drie worden gemeld)                                 // het eiland waarheen Brecht vaart na een klik in zijn menu
 
     ZeldaTest(KitPvP pl, Zelda z, Player p, CommandSender aan) {
@@ -84,7 +85,11 @@ final class ZeldaTest {
     }
 
     void route(boolean alles) {
-        route(alles, null);
+        route(alles, null, null, null);
+    }
+
+    void route(boolean alles, String vanaf) {
+        route(alles, vanaf, null, null);
     }
 
     /**
@@ -92,10 +97,20 @@ final class ZeldaTest {
      * puzzels, wat personen geven) en de route begint bij de aanleg van dat eiland. Alleen voor tests: zo hoef je niet elke keer
      * het hele spel door.
      */
-    void route(boolean alles, String vanaf) {
+    /**
+     * Idem, op een {@code niveau} (null = Avontuur), en met {@code twee}: een tweede speler die meeloopt in hetzelfde samen-spel
+     * (co-op: hij volgt p overal, ook op zee; aan het eind moet hij alles hebben wat p heeft).
+     */
+    void route(boolean alles, String vanaf, ZeldaRegels.Niveau niveau, Player twee) {
         if (p.isDead()) p.spigot().respawn();
         pl.naarHub(p);                                       // eerst uit Zelda, anders schrijft de rustplaats meteen weer
         z.spel.voortgang.wis(id);
+        if (niveau != null) stand().niveau = niveau.ordinal();
+        if (twee != null && !twee.equals(p)) {
+            if (twee.isDead()) twee.spigot().respawn();
+            pl.naarHub(twee);
+            z.spel.voortgang.wis(twee.getUniqueId());
+        }
         ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
         ZeldaHoofdstuk begin = vanaf == null ? null : z.spel.deel(vanaf);
         if (vanaf != null && (begin == null || begin.eiland == null)) {
@@ -121,6 +136,12 @@ final class ZeldaTest {
             moet(begin != null || p.getInventory().getItem(0) != null && p.getInventory().getItem(0).getType() == Material.WOODEN_SWORD, "geen houten zwaard");
             moet(p.getInventory().getItem(8) != null && p.getInventory().getItem(8).getType() == Material.FILLED_MAP, "geen kaart");
         }, 2, () -> true, 1);
+        if (twee != null && !twee.equals(p)) stap("mee: " + twee.getName(), () -> {      // hij neemt de uitnodiging aan: een samen-spel
+            pl.kiesModus(twee, z);
+            String fout = z.spel.spellen.samen(twee.getUniqueId(), id);
+            moet(fout == null, "mee: " + fout);
+            mee = twee;
+        }, 2, () -> mee == null || z.spel.speelt(mee) && stand().groep != null && stand().groep.equals(z.spel.voortgang.van(mee.getUniqueId()).groep), 40);
         // alle eilanden in de volgorde van het verhaal: varen (met Brecht: klik in zijn menu), elk deel aflopen, wat nu te
         // halen is (een bom tegen een gebarsten muur), de zijmissies (zonder alles: tot na de eerste kamer)
         eilanden:
@@ -244,6 +265,18 @@ final class ZeldaTest {
             stand().zet(weg);
             stil();
         }, 2, () -> true, 1);
+        if (twee != null && !twee.equals(p)) stap("mee: alles samen", () -> {   // co-op: wat p heeft, heeft de ander ook
+            ZeldaVoortgang.Stand a = stand(), b = z.spel.voortgang.van(twee.getUniqueId());
+            moet(a.groep != null && a.groep.equals(b.groep), "mee: niet meer in hetzelfde samen-spel");
+            List<String> mist = new ArrayList<>();
+            for (String v : a.vlaggen) if (ZeldaVoortgang.deelbaar(v) && !b.heeft(v)) mist.add(v);
+            moet(mist.isEmpty(), "mee mist " + mist.size() + " vlaggen: " + mist.subList(0, Math.min(8, mist.size())));
+            moet(ZeldaRegels.harten(a) == ZeldaRegels.harten(b) && ZeldaRegels.harnas(a) == ZeldaRegels.harnas(b), "mee: andere harten of harnas");
+            var max = twee.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            moet(max != null && max.getValue() == ZeldaRegels.harten(b) * 2, "mee: zijn harten zijn niet bijgewerkt (" + (max == null ? "?" : max.getValue() / 2) + ")");
+            moet(!alles || b.heeft(z.EILANDEN.get(z.EILANDEN.size() - 1).klaar()), "mee: het verhaal is voor hem niet uit");
+            gedaan.add("mee: " + b.vlaggen.size() + " vlaggen samen");
+        }, 30, () -> true, 1);
         stap("bewaren", () -> { }, 2, () -> !z.spel.voortgang.isVuil(), 260);   // hoogstens 10 s: dan bewaart het spel vanzelf
         stap("opslag", () -> {
             ZeldaVoortgang.Stand s = stand();
@@ -252,7 +285,8 @@ final class ZeldaTest {
                     "zelda.yml: rustplaats " + schijf.van(id).rust(h.id()) + " (in het geheugen " + s.rust(h.id()) + ")");
             moet(schijf.van(id).vlaggen.containsAll(s.vlaggen) || !z.spel.voortgang.isVuil(), "zelda.yml: vlaggen niet bewaard");
         }, 2, () -> true, 1);
-        start("kitpvp zelda test " + p.getName() + (alles ? " alles" : ""));
+        start("kitpvp zelda test " + p.getName() + (alles ? " alles" : "") + (niveau != null ? " niveau " + niveau.naam.toLowerCase() : "")
+                + (twee != null ? " mee " + twee.getName() : ""));
     }
 
     /**
@@ -1001,7 +1035,11 @@ final class ZeldaTest {
 
     /** Staat er in het open Zelda-menu een item met deze soort? */
     private boolean menuHeeft(String soort) {
-        var view = p.getOpenInventory();
+        return menuHeeft(p, soort);
+    }
+
+    private boolean menuHeeft(Player wie, String soort) {
+        var view = wie.getOpenInventory();
         if (!(view.getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu)) return false;
         for (int i = 0; i < view.getTopInventory().getSize(); i++) {
             var it = view.getTopInventory().getItem(i);
@@ -1060,17 +1098,23 @@ final class ZeldaTest {
 
     /** Klik in het open Zelda-menu (Brecht of de kaart) op het item met deze soort; false als het er niet is. */
     private boolean klik(String soort) {
-        var view = p.getOpenInventory();
+        return klik(p, soort, false);
+    }
+
+    /** Idem voor speler {@code wie}, links- of rechtsklik. */
+    private boolean klik(Player wie, String soort, boolean rechts) {
+        var view = wie.getOpenInventory();
         if (!(view.getTopInventory().getHolder(false) instanceof ZeldaSpel.Menu)) return false;
         for (int i = 0; i < view.getTopInventory().getSize(); i++) {
             var it = view.getTopInventory().getItem(i);
             if (it == null || !it.hasItemMeta() || !soort.equals(it.getItemMeta().getPersistentDataContainer().get(z.spel.itemKey, org.bukkit.persistence.PersistentDataType.STRING))) continue;
             var e = new org.bukkit.event.inventory.InventoryClickEvent(view, org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, i,
-                    org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PICKUP_ALL);
+                    rechts ? org.bukkit.event.inventory.ClickType.RIGHT : org.bukkit.event.inventory.ClickType.LEFT,
+                    rechts ? org.bukkit.event.inventory.InventoryAction.PICKUP_HALF : org.bukkit.event.inventory.InventoryAction.PICKUP_ALL);
             z.spel.onMenu(e);
             return e.isCancelled();
         }
-        p.closeInventory();
+        wie.closeInventory();
         return false;
     }
 
@@ -1620,7 +1664,11 @@ final class ZeldaTest {
 
     /** Alles wat er nu op de actiebalk staat of nog komt, als platte tekst. */
     private String rij() {
-        ZeldaSpel.Sessie ss = z.spel.sessie(p);
+        return rij(p);
+    }
+
+    private String rij(Player wie) {
+        ZeldaSpel.Sessie ss = z.spel.sessie(wie);
         if (ss == null) return "";
         var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
         StringBuilder sb = new StringBuilder();
@@ -1636,6 +1684,330 @@ final class ZeldaTest {
         ss.rij.clear();
         ss.nu = null;
         ss.tot = 0;
+    }
+
+    /**
+     * Co-op: de tweede speler volgt p overal (zelfde plek, zelfde eiland; vaart p, dan vaart hij ook). Hij wordt niet gezien
+     * en wordt niet te heet (de test teleporteert hem).
+     */
+    private void volg() {
+        if (!mee.isOnline() || !z.spel.speelt(mee) || !z.spel.speelt(p)) return;
+        if (mee.isDead()) {
+            mee.spigot().respawn();
+            return;
+        }
+        ZeldaSpel.Sessie a = z.spel.sessie(p), b = z.spel.sessie(mee);
+        b.hitte = 0;
+        b.ongezien = true;
+        if (b.vaart != null) return;                         // hij vaart nog
+        ZeldaEiland waar = a.vaart != null ? a.vaart.naar() : a.h.eiland;
+        if (waar != null && b.h.eiland != waar) {
+            if (waar.open(z.spel.voortgang.van(mee.getUniqueId()))) z.spel.vaar(mee, waar);
+            return;
+        }
+        if (a.vaart != null || p.isDead() || !p.getWorld().equals(mee.getWorld())) return;
+        if (mee.getLocation().distanceSquared(p.getLocation()) > 9) {
+            mee.setFallDistance(0);
+            mee.teleport(p.getLocation());
+        }
+    }
+
+    /** Een plek bij {@code l} om te staan buiten elke rustplaats en bron (daar genees je vanzelf). */
+    private Location buiten(ZeldaHoofdstuk h, Location l) {
+        for (int r = 6; r < 60; r += 3)
+            for (int[] d : new int[][]{{r, 0}, {-r, 0}, {0, r}, {0, -r}}) {
+                Location t = vrij(l.clone().add(d[0], 1, d[1]));
+                if (!staan(t) || !h.speelgebied.in(t)) continue;
+                boolean zone = false;
+                for (ZeldaHoofdstuk.Rust rp : h.rust) zone |= rp.zone.groter(2).in(t);
+                for (ZeldaHoofdstuk.Bron b : h.bronnen) zone |= b.zone.groter(2).in(t);
+                for (ZeldaHoofdstuk.Kamer k : h.kamers) zone |= k.binnen.groter(2).in(t);
+                if (!zone) return t;
+            }
+        return l;
+    }
+
+    /**
+     * {@code kitpvp zelda test <speler> niveau}: de vier niveaus met een echte speler: een nieuw spel is Avontuur, de knop op de
+     * kaart en het menu, Verhaal kiezen (twee extra flesjes), de schade van een vijand per niveau (de verhouding klopt), op adem
+     * komen (Verhaal snel, Legende traag), in een kamer het schildje van licht, midden in het gevecht wisselen, doodgaan (de
+     * doodteller, hulp bij de volgende poging), winnen (de ster is het laagste niveau tijdens het gevecht), de bel op Held (ster
+     * Held, «Gewonnen op Held»), drie keer dood (Wiske: «makkelijker»), beheer: vast en los, steun, het overzicht en de doden, en
+     * de heldenrand. Wist eerst en na afloop de voortgang van die speler (alleen voor tests).
+     */
+    void niveau() {
+        if (p.isDead()) p.spigot().respawn();
+        pl.naarHub(p);
+        z.spel.voortgang.wis(id);
+        ZeldaSpel sp = z.spel;
+        ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
+        ZeldaHoofdstuk.Kamer k = h.kamers.stream().filter(x -> !x.alleenBel && x.bel != null).findFirst()
+                .orElse(h.kamers.stream().filter(x -> !x.alleenBel).findFirst().orElseThrow());
+        String naam = p.getName();
+        final double[] max = {20};
+        stap("poort", this::doorDePoort, 2, () -> true, 1);
+        stap("avontuur", () -> {
+            moet(ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.AVONTUUR, "een nieuw spel begint niet op Avontuur");
+            sp.kaart(p);
+            moet(menuHeeft("menu:niveau") && menuHeeft("menu:spellen"), "de kaart heeft geen knop Niveau of Spellen");
+            moet(klik("menu:niveau"), "klik op Niveau: niets");
+        }, 3, () -> menuHeeft("niveau:0") && menuHeeft("niveau:3"), 20);
+        stap("verhaal kiezen", () -> moet(klik("niveau:0"), "klik op Verhaal: niets"), 3, () -> ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.VERHAAL, 20);
+        stap("verhaal: flesjes", () -> {
+            moet(rij().contains("Niveau · Verhaal"), "geen regel na het kiezen: " + rij());
+            stil();
+            stand().zet("fles2");
+            ZeldaRegels.vulFlessen(stand());
+            sp.uitrusten(p, stand());
+            var fl = p.getInventory().getItem(2);
+            moet(ZeldaRegels.flessen(stand()) == 3 && fl != null && fl.getAmount() == 3, "Verhaal: geen twee extra flesjes (" + (fl == null ? 0 : fl.getAmount()) + ")");
+            p.teleport(buiten(h, h.rust.get(0).plek));
+        }, 2, () -> true, 1);
+        stap("schade per niveau", () -> {
+            var m = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            max[0] = m == null ? 20 : m.getValue();
+            LivingEntity v = sp.spawn(ZeldaHoofdstuk.Soort.VEENLOPER, p.getLocation().add(2, 0, 0), 1);
+            org.bukkit.inventory.ItemStack[] harnas = p.getInventory().getArmorContents();
+            p.getInventory().setArmorContents(new org.bukkit.inventory.ItemStack[4]);
+            double[] verlies = new double[4];
+            for (ZeldaRegels.Niveau n : ZeldaRegels.Niveau.values()) {
+                sp.zetNiveau(id, n);
+                p.setNoDamageTicks(0);
+                p.setHealth(max[0]);
+                p.damage(4, v);
+                verlies[n.ordinal()] = max[0] - p.getHealth();
+            }
+            v.remove();
+            p.getInventory().setArmorContents(harnas);
+            double a = verlies[ZeldaRegels.Niveau.AVONTUUR.ordinal()];
+            moet(a > 0, "een vijand deed niets");
+            for (ZeldaRegels.Niveau n : ZeldaRegels.Niveau.values())
+                moet(a > 0 && Math.abs(verlies[n.ordinal()] / a - n.schade) < 0.02, n.naam + ": schade × " + (a > 0 ? verlies[n.ordinal()] / a : 0) + " (verwacht " + n.schade + ")");
+            gedaan.add("schade " + java.util.Arrays.toString(verlies));
+            sp.zetNiveau(id, ZeldaRegels.Niveau.VERHAAL);
+            p.setHealth(10);
+            sp.sessie(p).geraakt = System.currentTimeMillis();
+            sp.sessie(p).bijkomen = 0;
+        }, 2, () -> true, 1);
+        stap("op adem: verhaal", () -> { }, 110, () -> p.getHealth() > 10.5, 20);
+        stap("op adem: legende", () -> {
+            sp.zetNiveau(id, ZeldaRegels.Niveau.LEGENDE);
+            p.setHealth(10);
+            sp.sessie(p).geraakt = System.currentTimeMillis();
+            sp.sessie(p).bijkomen = 0;
+        }, 160, () -> {
+            moet(p.getHealth() == 10, "Legende: na 8 s al op adem (" + p.getHealth() + ")");
+            return true;
+        }, 1);
+        stap("kamer " + k.id + ": schildje", () -> {
+            sp.zetNiveau(id, ZeldaRegels.Niveau.VERHAAL);
+            p.setHealth(max[0]);
+            stil();
+            if (k.fase != ZeldaHoofdstuk.Fase.RUST) sp.herstel(k);
+            p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
+        }, 10, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+        stap("kamer: gouden harten", () -> {
+            moet(p.getAbsorptionAmount() >= 7.9, "Verhaal: geen schildje van licht (" + p.getAbsorptionAmount() + ")");
+            moet(rij().contains("schildje"), "Wiske zegt niets over het schildje: " + rij());
+            stil();
+            sp.kaart(p);
+            moet(klik("menu:niveau"), "in het gevecht: geen menu");
+        }, 3, () -> menuHeeft("niveau:1"), 20);
+        stap("kamer: wisselen in het gevecht", () -> moet(klik("niveau:1"), "klik op Avontuur: niets"), 3,
+                () -> ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.AVONTUUR && k.fase == ZeldaHoofdstuk.Fase.BEZIG, 20);
+        stap("kamer: dood", () -> p.setHealth(0), 3, () -> {
+            if (p.isDead()) p.spigot().respawn();
+            return !p.isDead();
+        }, 40);
+        stap("kamer: doodteller", () -> {
+            moet(stand().teller("dood:" + k.id) == 1 && sp.sessie(p).pogingen.getOrDefault(k.id, 0) == 1,
+                    "doodteller " + stand().teller("dood:" + k.id) + ", pogingen " + sp.sessie(p).pogingen.get(k.id));
+            stil();
+            if (k.fase != ZeldaHoofdstuk.Fase.RUST) sp.herstel(k);
+            p.teleport(vrij(k.start.midden(h.w).add(0, 1, 0)));
+        }, 5, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+        stap("kamer: hulp na doodgaan", () -> moet(Math.abs(p.getAbsorptionAmount() - 4) < 0.1, "Avontuur na één keer dood: geen twee gouden harten ("
+                + p.getAbsorptionAmount() + ")"), 3, () -> true, 1);
+        stap("kamer: winnen (beheer zet Held)", () -> {
+            List<String> uit = sp.bijsturen.commando(aan, null, new String[]{"niveau", naam, "held"});
+            moet(uit != null && String.join(" ", uit).contains("Held"), "beheer niveau: " + uit);
+        }, 2, () -> verslaan(h, k), 600);
+        stap("kamer: ster", () -> {
+            moet(ZeldaRegels.ster(stand(), k.id) == ZeldaRegels.Niveau.AVONTUUR, "ster " + ZeldaRegels.ster(stand(), k.id) + " (het laagste niveau in het gevecht was Avontuur)");
+            moet(!sp.sessie(p).pogingen.containsKey(k.id), "na winnen telt de hulp niet terug");
+            moet(!rij().contains("Gewonnen op"), "«Gewonnen op» voor Avontuur: " + rij());
+            stil();
+        }, 3, () -> true, 1);
+        if (k.bel != null) {
+            stap("kamer: bel op Held", () -> belKlik(h, k), 5, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+            stap("kamer: Held winnen", () -> { }, 5, () -> verslaan(h, k), 1200);
+            stap("kamer: ster Held", () -> {
+                moet(ZeldaRegels.ster(stand(), k.id) == ZeldaRegels.Niveau.HELD, "ster na de bel op Held: " + ZeldaRegels.ster(stand(), k.id));
+                moet(rij().contains("Gewonnen op Held"), "geen «Gewonnen op Held»: " + rij());
+                stil();
+                sp.zetNiveau(id, ZeldaRegels.Niveau.AVONTUUR);
+                sp.sessie(p).pogingen.put(k.id, 2);
+            }, 3, () -> true, 1);
+            stap("drie keer dood: bel", () -> belKlik(h, k), 5, () -> k.fase == ZeldaHoofdstuk.Fase.BEZIG, 40);
+            stap("drie keer dood", () -> p.setHealth(0), 3, () -> {
+                if (p.isDead()) p.spigot().respawn();
+                return !p.isDead();
+            }, 40);
+            stap("drie keer dood: Wiske", () -> { }, 5, () -> {
+                moet(rij().contains("makkelijker"), "Wiske biedt na drie keer dood geen makkelijker niveau aan: " + rij());
+                return true;
+            }, 1);
+        }
+        stap("vast", () -> {
+            stil();
+            sp.bijsturen.commando(aan, null, new String[]{"niveau", naam, "legende", "vast"});
+            moet(stand().vast && ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.LEGENDE, "beheer: niet vast op Legende");
+            sp.kaart(p);
+            moet(klik("menu:niveau"), "klik op Niveau (vast): niets");
+        }, 4, () -> {
+            moet(rij().contains("staat vast") && !menuHeeft("niveau:0"), "vast: toch het menu of geen regel: " + rij());
+            sp.spellen.klik(p, "niveau:0", false);
+            return true;
+        }, 1);
+        stap("los en steun", () -> {
+            moet(ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.LEGENDE, "vast: toch veranderd");
+            sp.bijsturen.commando(aan, null, new String[]{"niveau", naam, "los"});
+            moet(!stand().vast, "beheer: niet los");
+            sp.bijsturen.commando(aan, null, new String[]{"steun", naam, "2"});
+            moet(Math.abs(ZeldaRegels.schade(stand()) - ZeldaRegels.SCHADE * 1.75 * 0.7) < 1e-9 && ZeldaRegels.flessen(stand()) == 3, "steun 2: schade "
+                    + ZeldaRegels.schade(stand()) + ", flesjes " + ZeldaRegels.flessen(stand()));
+            String ov = String.join(" | ", sp.bijsturen.overzicht());
+            moet(ov.contains(naam) && ov.contains("Legende +2"), "overzicht: " + ov);
+            String d = String.join(" | ", sp.bijsturen.doden());
+            moet(d.contains(k.naam), "doden: " + d);
+            gedaan.add("overzicht: " + ov);
+            sp.bijsturen.commando(aan, null, new String[]{"steun", naam, "0"});
+        }, 2, () -> true, 1);
+        stap("heldenrand", () -> {
+            for (String b : sp.bazen()) stand().teller("ster:" + b, ZeldaRegels.Niveau.HELD.ordinal() + 1);
+            sp.uitrusten(p, stand());
+            var borst = p.getInventory().getChestplate();
+            boolean goud = borst != null && borst.getItemMeta() instanceof org.bukkit.inventory.meta.ArmorMeta am && am.getTrim() != null
+                    && am.getTrim().getMaterial().equals(org.bukkit.inventory.meta.trim.TrimMaterial.GOLD);
+            moet(goud, "alle bazen op Held: geen gouden heldenrand");
+        }, 2, () -> true, 1);
+        stap("opruimen", () -> {
+            stil();
+            pl.naarHub(p);
+            z.spel.voortgang.wis(id);
+            z.spel.bewaar();
+        }, 2, () -> true, 1);
+        stap("kamer terug", () -> { }, 20, () -> k.fase == ZeldaHoofdstuk.Fase.RUST && k.vijanden.isEmpty(), 200);
+        start("kitpvp zelda test " + p.getName() + " niveau");
+    }
+
+    /**
+     * {@code kitpvp zelda test <speler> spellen [<tweede speler>]}: meerdere spellen met een echte speler: via de kaart een nieuw
+     * spel op Held (het begint bij Thuis, zonder je spullen, je eerste spel blijft), terug naar het eerste spel (je spullen en je
+     * rustplaats), een spel wissen (niet het spel waarin je speelt). Met een tweede speler ook samen spelen: uitnodigen,
+     * aannemen in zijn «Spellen» (een samen-spel bij jouw voortgang, zijn eigen spel blijft), dan delen ze wat nieuw is (niet
+     * de opties), zijn harten volgen, en beheer maakt het los. Wist eerst en na afloop de voortgang (alleen voor tests).
+     */
+    void spellen(Player twee) {
+        if (p.isDead()) p.spigot().respawn();
+        pl.naarHub(p);
+        z.spel.voortgang.wis(id);
+        ZeldaSpel sp = z.spel;
+        ZeldaVoortgang v = sp.voortgang;
+        ZeldaHoofdstuk h = z.HOOFDSTUKKEN.get(0);
+        ZeldaHoofdstuk.Rust r1 = h.rust.get(1);
+        stap("poort", this::doorDePoort, 2, () -> true, 1);
+        stap("spel 1", () -> {
+            stand().zet("zwaard");
+            stand().zet("v:intro");
+            sp.uitrusten(p, stand());
+            p.teleport(r1.plek);
+        }, 8, () -> sp.sessie(p).rust == r1.index && stand().bezocht(h.id(), r1.index), 40);
+        stap("spellen", () -> {
+            stil();
+            sp.kaart(p);
+            moet(klik("menu:spellen"), "klik op Spellen: niets");
+        }, 3, () -> menuHeeft("nieuw:2") && menuHeeft("spel:1") && menuHeeft("samen"), 20);
+        stap("nieuw spel", () -> moet(klik("nieuw:2"), "klik op een lege plek: niets"), 3, () -> menuHeeft("nieuwniveau:2:2"), 20);
+        stap("nieuw spel op Held", () -> moet(klik("nieuwniveau:2:2"), "klik op Held: niets"), 5, () -> v.actief(id) == 2 && sp.speelt(p), 40);
+        stap("spel 2", () -> {
+            moet(ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.HELD, "spel 2 is niet op Held");
+            moet(!stand().heeft("zwaard") && item(0) == Material.WOODEN_SWORD, "spel 2 heeft de spullen van spel 1");
+            moet(p.getLocation().distanceSquared(h.rust.get(0).plek) < 4, "spel 2 begint niet bij Thuis: " + xyz(p.getLocation()));
+            moet(v.spellen(id).get(1) != null && v.spellen(id).get(1).heeft("zwaard"), "spel 1 is weg");
+            stil();
+            sp.kaart(p);
+            klik("menu:spellen");
+        }, 5, () -> menuHeeft("spel:1"), 20);
+        stap("terug naar spel 1", () -> moet(klik("spel:1"), "klik op spel 1: niets"), 5, () -> v.actief(id) == 1 && sp.speelt(p), 40);
+        stap("spel 1 terug", () -> {
+            moet(stand().heeft("zwaard") && item(0) == Material.IRON_SWORD, "spel 1: het zwaard is weg");
+            moet(p.getLocation().distanceSquared(r1.plek) < 4, "spel 1: niet op zijn laatste rustplaats (" + r1.naam + ") maar op " + xyz(p.getLocation()));
+            moet(ZeldaRegels.niveau(stand()) == ZeldaRegels.Niveau.AVONTUUR, "spel 1 is niet meer op Avontuur");
+            stil();
+            sp.spellen.spellenMenu(p);
+            klik(p, "spel:2", true);
+        }, 5, () -> menuHeeft("wisja:2"), 20);
+        stap("spel 2 wissen", () -> moet(klik("wisja:2"), "klik op «Ja, wissen»: niets"), 3, () -> !v.spellen(id).containsKey(2), 20);
+        stap("het spel waarin je speelt blijft", () -> {
+            p.closeInventory();
+            sp.spellen.klik(p, "wisja:1", false);
+        }, 3, () -> {
+            moet(v.spellen(id).containsKey(1) && v.actief(id) == 1, "het spel waarin je speelt is gewist");
+            p.closeInventory();
+            return true;
+        }, 1);
+        if (twee != null && !twee.equals(p)) {
+            UUID tid = twee.getUniqueId();
+            stap("samen: " + twee.getName(), () -> {
+                if (twee.isDead()) twee.spigot().respawn();
+                pl.naarHub(twee);
+                v.wis(tid);
+                pl.kiesModus(twee, z);
+            }, 5, () -> sp.speelt(twee), 40);
+            stap("samen: uitnodigen", () -> {
+                v.van(tid).zet("eigen-spel");
+                v.van(tid).zet("o:uitleg-uit");
+                stand().zet("o:proef");
+                sp.spellen.nodigUit(p, twee);
+                moet(sp.spellen.uitnodiging(tid) != null, "geen uitnodiging");
+                moet(rij(twee).contains("wil samen spelen"), "hij hoort niets: " + rij(twee));
+                sp.spellen.spellenMenu(twee);
+            }, 3, () -> menuHeeft(twee, "aannemen"), 20);
+            stap("samen: aannemen", () -> moet(klik(twee, "aannemen", false), "klik op de uitnodiging: niets"), 5, () -> v.actief(tid) == 2 && sp.speelt(twee), 40);
+            stap("samen: één avontuur", () -> {
+                ZeldaVoortgang.Stand b = v.van(tid);
+                moet(b.groep != null && b.groep.equals(stand().groep), "geen samen-spel");
+                moet(b.heeft("zwaard") && !b.heeft("eigen-spel"), "het samen-spel begint niet bij jouw voortgang");
+                moet(b.heeft("o:uitleg-uit") && !b.heeft("o:proef"), "de opties zijn niet van hemzelf");
+                moet(v.spellen(tid).get(1) != null && v.spellen(tid).get(1).heeft("eigen-spel"), "zijn eigen spel is weg");
+                moet(twee.getLocation().distanceSquared(r1.plek) < 4, "hij staat niet op jouw laatste rustplaats: " + xyz(twee.getLocation()));
+                stand().zet("hart-proef");
+                stand().zet("o:nog-een");
+                b.zet("k:proef-samen");
+            }, 2, () -> true, 1);
+            stap("samen: delen", () -> { }, 25, () -> v.van(tid).heeft("hart-proef") && stand().heeft("k:proef-samen"), 40);
+            stap("samen: eigen", () -> {
+                moet(!v.van(tid).heeft("o:nog-een"), "een optie ging over");
+                var m = twee.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                moet(m != null && m.getValue() == ZeldaRegels.harten(v.van(tid)) * 2 && ZeldaRegels.harten(v.van(tid)) == ZeldaRegels.harten(stand()),
+                        "zijn harten volgen niet (" + (m == null ? "?" : m.getValue() / 2) + ")");
+                moet(String.join(" ", sp.bijsturen.overzicht()).contains("samen met"), "het overzicht zegt niet wie samen speelt");
+                List<String> los = sp.bijsturen.commando(aan, null, new String[]{"samen", twee.getName(), "los"});
+                moet(v.van(tid).groep == null, "beheer: niet los: " + los);
+            }, 2, () -> true, 1);
+            stap("samen: opruimen", () -> {
+                pl.naarHub(twee);
+                v.wis(tid);
+            }, 2, () -> true, 1);
+        }
+        stap("opruimen", () -> {
+            stil();
+            pl.naarHub(p);
+            v.wis(id);
+            sp.bewaar();
+        }, 2, () -> true, 1);
+        start("kitpvp zelda test " + p.getName() + " spellen" + (twee != null ? " " + twee.getName() : ""));
     }
 
     void verder() {
@@ -1667,6 +2039,7 @@ final class ZeldaTest {
             if (s == null) {
                 taak.cancel();
                 if (z.spel.sessie(p) != null) z.spel.sessie(p).ongezien = false;
+                if (mee != null && z.spel.sessie(mee) != null) z.spel.sessie(mee).ongezien = false;
                 String uit = titel + ": " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" → ", gedaan);
                 aan.sendMessage(uit);
                 pl.getLogger().info(uit);
@@ -1677,6 +2050,7 @@ final class ZeldaTest {
                 return;
             }
             if (!hitteTest && z.spel.sessie(p) != null) z.spel.sessie(p).hitte = 0;   // de test teleporteert: niet te heet worden
+            if (mee != null) volg();
             if (!sluipTest && z.spel.sessie(p) != null) z.spel.sessie(p).ongezien = true;   // … en niet gezien worden (behalve bij het sluipen)
             if (!gedaanDoe[0]) {
                 gedaanDoe[0] = true;
