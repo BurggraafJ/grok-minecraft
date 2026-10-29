@@ -28,6 +28,10 @@ import org.bukkit.scheduler.BukkitTask;
  *
  * <p>{@code kitpvp zelda verder <speler>}: door de poort naar binnen, en kijk of je op je laatste rustplaats staat
  * (na uitloggen en weer inloggen; een oude stand zonder laatste: de verste).
+ *
+ * <p>Sinds 2.16: {@code test <speler> niveau} (de vier niveaus, {@link #niveau}), {@code test <speler> spellen [<speler2>]}
+ * (meerdere spellen en samen spelen, {@link #spellen}), {@code test <speler> alles niveau <niveau>} (de route op een niveau) en
+ * {@code test <speler> alles mee <speler2>} (co-op: de tweede speler neemt een samen-spel aan en loopt overal mee).
  */
 final class ZeldaTest {
 

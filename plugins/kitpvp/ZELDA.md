@@ -1034,10 +1034,12 @@ golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
 - **Kiezen en wisselen**: op de kaart (rechtsklik met vak 9) staat **«Niveau: Avontuur»**. Klik = een klein menu met de vier
   niveaus, elk met twee korte regels («Wiske helpt veel», «Vijanden slaan harder»). Wisselen kan altijd, ook midden in
   een gevecht: het geldt meteen. Geen straf, geen bevestiging; één grijze regel «Niveau · Held».
-- **Een nieuw spel** begint met de keuze van het niveau (hetzelfde menu); het eerste spel van een speler (en elke oude
-  stand) is **Avontuur**: dat is precies de balans van 2.15.
+- **Een nieuw spel** begint met de keuze van het niveau (hetzelfde menu; staat je niveau vast, dan krijgt het nieuwe spel
+  dat niveau); het eerste spel van een speler (en elke oude stand) is **Avontuur**: dat is precies de balans van 2.15.
+  Wiske noemt het menu één keer als ze de kaart uitlegt («Rechtsklik: het menu, ook je niveau.»).
 - **Hulp na doodgaan** (doorzetten): ga je dood in een gevecht, dan begint je volgende poging met een schildje van licht
-  (Wiske, één keer: «Ik geef je een schildje van licht.»). Na drie keer dood in hetzelfde gevecht zegt Wiske één keer
+  (Wiske, de eerste keer dat je een schildje krijgt: «Ik geef je een schildje van licht.», op Verhaal «Een schildje van
+  licht, van mij.»). Na drie keer dood in hetzelfde gevecht zegt Wiske één keer
   «Te zwaar? Op de kaart kun je het makkelijker zetten.» (niet op Verhaal, niet als het niveau vaststaat). Winnen zet de
   teller terug.
 
@@ -1068,7 +1070,8 @@ golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
   dat spel (je komt binnen op zijn laatste rustplaats), een lege plek = **nieuw spel** (eerst het niveau kiezen),
   rechtsklik op een ander spel = wissen (met «Ja, wissen» / «Nee»). Het spel waarin je speelt, kun je niet wissen.
 - **Samen-spel**: in «Spellen» staat **«Samen spelen»**: de vrienden die nu in Zelda zijn. Klik = een uitnodiging (zij
-  zien één grijze regel en in hun «Spellen» een glinsterende «Uitnodiging van …»). Wie hem aanneemt, krijgt een nieuw
+  zien één grijze regel en in hun «Spellen» een glinsterende «Uitnodiging van …»; vijf minuten geldig, en alleen zolang
+  jij in dat spel speelt). Wie hem aanneemt, krijgt een nieuw
   spel (op een vrije plek) dat precies bij jouw voortgang begint, en komt binnen op jouw laatste rustplaats. Vanaf dan is
   het **één avontuur met twee (of meer) spelers**: wat de één vindt, wint, oplost of hoort, krijgt de ander ook (binnen een
   seconde, ook als hij er niet is). Zo raakt niemand achter en kun je samen verder waar je gebleven was. Ieder houdt
@@ -1077,8 +1080,10 @@ golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
   dezelfde wereld, een kamer is van wie erin staat).
 - Wat er gedeeld wordt (`ZeldaVoortgang.deel`): nieuwe vlaggen (behalve `o:`), de verste rustplaats per deel, bezochte
   rustplaatsen (reizen kan naar waar een ander was), zijmissies (de verste stap) en wat je op de kaart ontdekte. Alleen
-  **nieuwe** vlaggen gaan over: wie «opnieuw vanaf hier» kiest, krijgt de verhalen erna niet meteen terug. Wie in
-  beheer is, doet even niet mee.
+  **nieuwe** vlaggen gaan over: wie «opnieuw vanaf hier» kiest, krijgt de verhalen erna niet meteen terug, en wie later
+  aansluit begint bij wat de groep nu heeft. Wie in beheer is, doet even niet mee en krijgt het daarna. Een nieuwe vlag
+  krijgt je maat binnen een seconde, en vóór elke keer bewaren; een flesje dat zo binnenkomt is leeg tot een bron of
+  zielvuur (zoals altijd).
 
 ### Bijsturen (Jelle; alleen OP/beheer, `kitpvp.beheer`)
 
