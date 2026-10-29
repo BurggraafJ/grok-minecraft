@@ -338,6 +338,7 @@ final class ZeldaSpel implements Listener {
         metgezel.weg(p.getUniqueId());
         dier.weg(p.getUniqueId());
         landkaart.weg(p.getUniqueId());
+        uitgerust.remove(p.getUniqueId());
         trekken.remove(p.getUniqueId());
         vlammen.removeIf(v -> v.wie.equals(p.getUniqueId()));
         glijders.remove(p.getUniqueId());
@@ -376,7 +377,9 @@ final class ZeldaSpel implements Listener {
     }
 
     void bewaar() {
-        if (voortgang == null || !voortgang.isVuil()) return;
+        if (voortgang == null) return;
+        voortgang.deel(beheer::is);                          // samen-spellen: eerst delen, dan pas bewaren
+        if (!voortgang.isVuil()) return;
         try {
             voortgang.bewaar();
         } catch (IOException e) {
@@ -413,6 +416,7 @@ final class ZeldaSpel implements Listener {
 
     /** Alles wat je bij je hebt volgt uit je voortgang: zwaard, schild, boog, voorwerpen, kaart, harnas en harten. */
     void uitrusten(Player p, ZeldaVoortgang.Stand s) {
+        uitgerust.put(p.getUniqueId(), uitrusting(s));
         var inv = p.getInventory();
         inv.clear();
         inv.setItem(0, s.heeft("zwaard") ? ding(Material.IRON_SWORD, "Wachterszwaard", "zwaard") : ding(Material.WOODEN_SWORD, "Houten zwaard", "zwaard"));
@@ -629,6 +633,7 @@ final class ZeldaSpel implements Listener {
     void zetNiveau(UUID id, ZeldaRegels.Niveau n) {
         ZeldaVoortgang.Stand s = voortgang.van(id);
         s.niveau = n.ordinal();
+        beheer.ookKopie(id, k -> k.niveau = n.ordinal());
         voortgang.vuil();
         Sessie ss = sessies.get(id);
         if (ss != null) ss.laagste.replaceAll((k, v) -> Math.min(v, n.ordinal()));   // lager zetten in een gevecht: de ster ook
@@ -640,6 +645,7 @@ final class ZeldaSpel implements Listener {
     void zetSteun(UUID id, int steun) {
         ZeldaVoortgang.Stand s = voortgang.van(id);
         s.steun = Math.max(-ZeldaRegels.STEUN_MAX, Math.min(ZeldaRegels.STEUN_MAX, steun));
+        beheer.ookKopie(id, k -> k.steun = s.steun);
         voortgang.vuil();
         Player p = Bukkit.getPlayer(id);
         if (p != null && speelt(p)) vernieuw(p, s, voorwerp("fles"));
@@ -661,15 +667,17 @@ final class ZeldaSpel implements Listener {
 
     /** Samen spelen: deel nieuwe voortgang in elke groep, en geef wie er iets bij kreeg de spullen die erbij horen. */
     private void samen() {
-        Map<UUID, String> voor = new HashMap<>();
-        for (UUID id : sessies.keySet()) if (voortgang.van(id).groep != null) voor.put(id, uitrusting(voortgang.van(id)));
-        for (UUID id : voortgang.deel(beheer::is)) {
-            Player p = Bukkit.getPlayer(id);
-            if (p == null || !speelt(p) || beheer.is(id)) continue;
+        voortgang.deel(beheer::is);
+        for (UUID id : new ArrayList<>(sessies.keySet())) {
             ZeldaVoortgang.Stand s = voortgang.van(id);
-            if (!uitrusting(s).equals(voor.get(id))) uitrusten(p, s);
+            Player p = Bukkit.getPlayer(id);
+            if (s.groep == null || p == null || beheer.is(id) || uitrusting(s).equals(uitgerust.get(id))) continue;
+            uitrusten(p, s);
         }
     }
+
+    /** Per speler wat hij het laatst aantrok ({@link #uitrusting}): kreeg hij via zijn groep iets nieuws, dan trekt hij het aan. */
+    private final Map<UUID, String> uitgerust = new HashMap<>();
 
     /** Wat je bij je hebt, als tekst (zelfde tekst = niets nieuws om aan te trekken). */
     private String uitrusting(ZeldaVoortgang.Stand s) {
@@ -1270,6 +1278,7 @@ final class ZeldaSpel implements Listener {
         k.leegSinds = 0;
         k.golf = 0;
         k.terug = false;
+        for (Sessie ss : sessies.values()) ss.laagste.remove(k.id);   // een nieuw gevecht: een nieuwe ster
         Location buiten = k.in.omvang().midden(plugin.w).add(-2, 0, 0);
         deur(k.in, true, buiten);
         deur(k.uit, k.alleenBel, k.start.midden(plugin.w).add(0, 1, 0));

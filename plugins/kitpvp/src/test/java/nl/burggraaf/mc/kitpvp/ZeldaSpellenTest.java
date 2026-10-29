@@ -161,6 +161,25 @@ class ZeldaSpellenTest {
     }
 
     @Test
+    void eenDerdeKrijgtNietWatVergetenIs() {
+        ZeldaVoortgang v = samen();
+        v.van(a).wis("v:intro");                             // Jelle speelt een stuk opnieuw
+        UUID c = UUID.randomUUID();
+        ZeldaVoortgang.Stand k = v.van(a).kopie();
+        v.nieuw(c, 1, k);
+        v.sluitAan(c, 1);
+        v.deel(null);
+        assertFalse(v.van(c).heeft("v:intro"), "een nieuw lid begint bij wat de groep nu heeft");
+        v.van(b).zet("k:nieuw");
+        v.deel(null);
+        assertTrue(v.van(c).heeft("k:nieuw"), "en krijgt wat erbij komt");
+        assertTrue(v.wis(c, 1));
+        v.nieuw(c, 1, null).groep = "g1";                     // een nieuw spel op dezelfde plek: geen oude teller
+        v.deel(null);
+        assertTrue(v.van(c).heeft("k:nieuw"));
+    }
+
+    @Test
     void samenOokAlsJeErNietBent() {
         ZeldaVoortgang v = samen();
         v.kies(b, 1);                                        // Daan speelt even in zijn eigen spel

@@ -197,6 +197,7 @@ final class ZeldaBijsturen {
                 case "vast" -> {
                     ZeldaVoortgang.Stand s = spel.voortgang.van(id);
                     s.vast = !s.vast;
+                    spel.beheer.ookKopie(id, k -> k.vast = s.vast);
                     spel.voortgang.vuil();
                     stuurMenu(b, id);
                 }
@@ -270,6 +271,7 @@ final class ZeldaBijsturen {
                     ZeldaVoortgang.Stand st = spel.voortgang.van(id);
                     if (n != null) spel.zetNiveau(id, n);
                     st.vast = !los && (vast || st.vast);
+                    spel.beheer.ookKopie(id, k -> k.vast = st.vast);
                     spel.voortgang.vuil();
                     uit.add(naam(id) + ": " + niveau(st));
                 }
@@ -330,6 +332,7 @@ final class ZeldaBijsturen {
                 UUID id = l.get(0);
                 if (args[2].equalsIgnoreCase("los")) {
                     spel.voortgang.van(id).groep = null;
+                    spel.beheer.ookKopie(id, k -> k.groep = null);
                     spel.voortgang.vuil();
                     spel.bewaar();
                     return List.of(naam(id) + ": spel " + spel.voortgang.actief(id) + " speelt weer alleen");

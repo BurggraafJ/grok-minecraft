@@ -45,6 +45,12 @@ final class ZeldaBeheer {
         return kopie.size();
     }
 
+    /** Beheer zet iets voor deze speler (niveau, steun, groep): is hij in beheer, dan ook in de voortgang die straks terugkomt. */
+    void ookKopie(UUID id, java.util.function.Consumer<ZeldaVoortgang.Stand> wat) {
+        ZeldaVoortgang.Stand k = kopie.get(id);
+        if (k != null) wat.accept(k);
+    }
+
     private static void regel(Player p, String tekst) {
         p.sendActionBar(Component.text(tekst, NamedTextColor.GRAY));
     }

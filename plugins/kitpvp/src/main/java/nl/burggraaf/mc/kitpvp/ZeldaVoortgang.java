@@ -283,6 +283,7 @@ final class ZeldaVoortgang {
     /** Alles van deze speler weg (al zijn spellen). */
     void wis(UUID id) {
         if (spelers.remove(id) != null) vuil = true;
+        kreeg.keySet().removeIf(k -> k.startsWith(id + ":"));
     }
 
     /**
@@ -293,6 +294,7 @@ final class ZeldaVoortgang {
         Speler sp = spelers.get(id);
         if (sp == null || sp.spellen.remove(n) == null) return false;
         vuil = true;
+        kreeg.remove(id + ":" + n);
         if (sp.spellen.isEmpty()) spelers.remove(id);
         else if (sp.actief == n) sp.actief = sp.spellen.firstKey();
         return true;
@@ -334,6 +336,18 @@ final class ZeldaVoortgang {
     private final Map<String, java.util.LinkedHashSet<String>> pot = new HashMap<>();
     /** Per spel in een groep ({@code uuid:n}): hoeveel van de pot hij al kreeg. */
     private final Map<String, Integer> kreeg = new HashMap<>();
+
+    /**
+     * Spel {@code n} van deze speler gaat (weer) meedoen in zijn groep, als kopie van wat de groep nu heeft: hij krijgt
+     * voortaan alleen wat erbij komt (niet wat een ander ooit vergat).
+     */
+    void sluitAan(UUID id, int n) {
+        Stand s = spellen(id).get(n);
+        if (s == null || s.groep == null) return;
+        java.util.LinkedHashSet<String> p = pot.get(s.groep);
+        if (p != null) kreeg.put(id + ":" + n, p.size());
+        else kreeg.remove(id + ":" + n);
+    }
 
     /** Gaat deze vlag over naar de groep? Opties ({@code o:}, bv. uitleg uit) zijn van jezelf. */
     static boolean deelbaar(String vlag) {

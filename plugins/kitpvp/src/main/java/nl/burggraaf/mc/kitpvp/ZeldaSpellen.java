@@ -23,8 +23,8 @@ import org.bukkit.inventory.meta.SkullMeta;
  */
 final class ZeldaSpellen {
 
-    /** Een uitnodiging om samen te spelen: van wie, tot wanneer. */
-    record Uitnodiging(UUID van, long tot) {}
+    /** Een uitnodiging om samen te spelen: van wie, voor welk spel van hem, tot wanneer. */
+    record Uitnodiging(UUID van, int spel, long tot) {}
 
     /** Zo lang geldt een uitnodiging. */
     static final long GELDIG = 5 * 60_000L;
@@ -210,7 +210,13 @@ final class ZeldaSpellen {
             p.closeInventory();
             nieuwSpel(p, Integer.parseInt(d[1]), ZeldaRegels.Niveau.values()[Integer.parseInt(d[2])]);
         };
-        else if (soort.startsWith("nieuw:")) doe = () -> niveauMenu(p, Integer.parseInt(soort.substring(6)));
+        else if (soort.startsWith("nieuw:")) doe = () -> {
+            int n = Integer.parseInt(soort.substring(6));
+            if (s.vast) {                                    // het niveau staat vast (beheer): het nieuwe spel ook
+                p.closeInventory();
+                nieuwSpel(p, n, ZeldaRegels.niveau(s));
+            } else niveauMenu(p, n);
+        };
         else if (soort.startsWith("spel:")) doe = () -> {
             int n = Integer.parseInt(soort.substring(5));
             if (n == spel.voortgang.actief(id)) return;
@@ -248,11 +254,13 @@ final class ZeldaSpellen {
     /** Een nieuw spel op plek {@code n} met dit niveau, en meteen daarin verder (bij het begin). */
     void nieuwSpel(Player p, int n, ZeldaRegels.Niveau niveau) {
         UUID id = p.getUniqueId();
-        String uitleg = spel.voortgang.van(id).heeft("o:uitleg-uit") ? "o:uitleg-uit" : null;
+        ZeldaVoortgang.Stand nu = spel.voortgang.van(id);
         ZeldaVoortgang.Stand s = spel.voortgang.nieuw(id, n, null);
         if (s == null) return;
         s.niveau = niveau.ordinal();
-        if (uitleg != null) s.zet(uitleg);                   // je opties gaan mee
+        for (String v : nu.vlaggen) if (!ZeldaVoortgang.deelbaar(v)) s.zet(v);   // je opties gaan mee
+        s.steun = nu.steun;                                  // en wat beheer voor je bijstuurde
+        s.vast = nu.vast;
         spel.wissel(p, n);
     }
 
@@ -264,7 +272,7 @@ final class ZeldaSpellen {
             spel.zeg(p, Component.text(wie.getName() + " speelt al met je samen", NamedTextColor.GRAY));
             return;
         }
-        uitnodigingen.put(wie.getUniqueId(), new Uitnodiging(p.getUniqueId(), System.currentTimeMillis() + GELDIG));
+        uitnodigingen.put(wie.getUniqueId(), new Uitnodiging(p.getUniqueId(), spel.voortgang.actief(p.getUniqueId()), System.currentTimeMillis() + GELDIG));
         spel.zeg(p, Component.text("Uitgenodigd: " + wie.getName(), NamedTextColor.GRAY));
         spel.zeg(wie, Component.text(p.getName(), ZeldaSpel.GROEN).append(Component.text(" wil samen spelen · kaart, Spellen", NamedTextColor.GRAY)));
         wie.playSound(wie, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.6f, 1.4f);
@@ -284,6 +292,11 @@ final class ZeldaSpellen {
     void neemAan(Player p) {
         Uitnodiging u = uitnodiging(p.getUniqueId());
         if (u == null) return;
+        uitnodigingen.remove(p.getUniqueId());
+        if (spel.voortgang.actief(u.van()) != u.spel()) {    // hij speelt nu een ander spel
+            spel.zeg(p, Component.text("Die uitnodiging geldt niet meer", NamedTextColor.GRAY));
+            return;
+        }
         String fout = samen(p.getUniqueId(), u.van());
         if (fout != null) {
             spel.zeg(p, Component.text(fout, NamedTextColor.GRAY));
@@ -304,7 +317,9 @@ final class ZeldaSpellen {
         if (gast.equals(met)) return "Dat ben je zelf";
         ZeldaVoortgang.Stand thuis = spel.voortgang.van(met);
         if (thuis.groep == null) {
-            thuis.groep = "g" + Long.toString(System.currentTimeMillis(), 36) + Integer.toString(rnd.nextInt(1296), 36);
+            String g = "g" + Long.toString(System.currentTimeMillis(), 36) + Integer.toString(rnd.nextInt(1296), 36);
+            spel.beheer.ookKopie(met, k -> k.groep = g);   // is hij in beheer: ook de voortgang die na het beheer terugkomt
+            thuis.groep = g;
             spel.voortgang.vuil();
         }
         Integer al = null;
@@ -324,6 +339,7 @@ final class ZeldaSpellen {
             s.vast = eigen.vast;
             ZeldaRegels.vulFlessen(s);
             spel.voortgang.nieuw(gast, n, s);
+            spel.voortgang.sluitAan(gast, n);
         }
         Player p = Bukkit.getPlayer(gast);
         if (p != null && spel.speelt(p)) spel.wissel(p, n);
