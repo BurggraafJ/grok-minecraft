@@ -97,11 +97,13 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 | `ZeldaMetgezel` | Wiske, de fee: een kleine allay die naast je vliegt (alleen voor jou zichtbaar), praat en wijst |
 | `ZeldaDier` | een dier dat meeloopt (vlag `dier:<soort>`): alleen het sneeuwvosje uit het verhaal (`VERHAAL`), vrije huisdieren uit (`AAN`); snuffelt verborgen vondsten op, graaft graafplekken op, gaat in een gevecht opzij |
 | `ZeldaVoorwerp` | een voorwerp in de hotbar: het flesje, de bommen, de klauwhaak, de vuurstaf en de lichtpijlen |
-| `ZeldaRegels` | regels zonder wereld (unit-tests): harten, hartstukjes, harnas, flesjes, welk doel, opnieuw vanaf hier, glijden over een glijvloer (en de kortste oplossing), de schade bij Zoutbaard en Grimmel, de hitte in de mijn |
+| `ZeldaRegels` | regels zonder wereld (unit-tests): harten, hartstukjes, harnas, flesjes, welk doel, opnieuw vanaf hier, glijden over een glijvloer (en de kortste oplossing), de schade bij Zoutbaard en Grimmel, de hitte in de mijn; de vier **niveaus** (`Niveau`: schade, op adem komen, flesjes, hartjes, adem tussen golven, schildje, hulp na doodgaan), steun, samen zwaarder (`samen`, `baasLeven`, `extraHelpers`), sterren en de heldenrand |
+| `ZeldaSpellen` | de menu's **Niveau** en **Spellen** op de kaart: niveau kiezen (ook in een gevecht), je drie spellen (verder, nieuw, wissen), samen spelen (uitnodigen, aannemen: `samen`) |
+| `ZeldaBijsturen` | bijsturen voor beheer: wie er is en wie vastloopt (`spelers`, menu met hoofden), `niveau`, `steun`, `volg` (een regel als iemand vastloopt), `doden` (waar het knelt), `spel`, `samen` |
 | `ZeldaBaas` | baasgedrag (Grauwmoer: springt tussen paddenstoelen, valt eraf door een pijl, roept hulp, levensbalk); een andere baas = een subklasse met eigen `soort`, `helper`, `beweeg`, `schade`, `boem`, `weg` |
 | `ZeldaMuziek` | nootblokmuziek in een klein notenschrift; drie lagen: achtergrond (altijd), lus (gevecht, baas), deuntjes; categorie «Nootblokken» |
-| `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml` (laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden, wat je ontdekte voor de kaart) |
-| `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door alle eilanden (varen, elk deel, zijmissies); `test <speler> motor`: alle motoronderdelen |
+| `ZeldaVoortgang` | opslag per speler in `plugins/KitPvP/zelda.yml`: hoogstens drie **spellen** per speler (`van` = het spel waarin hij speelt; `spellen`, `kies`, `nieuw`, `wis(id, n)`), per spel laatste en bezochte rustplaatsen, verste per deel, vlaggen, missies, tellers, huisdiernaam, beste tijden, wat je ontdekte voor de kaart, niveau, steun, vast en groep; `deel` = het samen-spel (nieuwe voortgang naar de rest van de groep) |
+| `ZeldaTest` | `kitpvp zelda test|verder <speler>`: loopt met een echte speler door alle eilanden (varen, elk deel, zijmissies); `test <speler> motor`: alle motoronderdelen; `niveau`, `spellen [<speler>]`, `alles niveau <n>`, `alles mee <speler>` (co-op) |
 
 ### Hoe het speelt
 
@@ -239,8 +241,20 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
 - **Dood**: items blijven, geen doodsmelding; respawn bij je rustplaats. **Honger** vast op 17 (geen gewoon
   bijkomen door eten); genezen bij rustplaatsen, bronnen, flesjes, gewonnen kamers, de bakker in Lindedorp, de helft
   van de keren een hartje van een vijand, en **op adem komen**: buiten een gevecht, na 6 s zonder klap, elke 2 s een
-  half hart. **Samen**: geen schade
+  half hart (op Avontuur; de andere niveaus: hieronder). **Samen**: geen schade
   aan elkaar; geen huisdier van de plugin Huisdieren mee (`stand` = `geen`).
+- **Niveau** (`ZeldaRegels.Niveau`, sinds 2.16): Verhaal, Avontuur (het begin, = de balans van 2.15), Held, Legende. Alleen
+  de hulp verschilt (schade die je krijgt, op adem komen, extra flesjes, wat een flesje geneest, hartjes van vijanden, adem
+  tussen golven, een **schildje van licht** = gouden harten bij het begin van een gevecht, en hulp na doodgaan in hetzelfde
+  gevecht); vijanden, golven en bazen nooit. Per spel, te kiezen op de kaart (**Niveau**), ook midden in een gevecht. Een
+  gewonnen kamer onthoudt het laagste niveau tijdens dat gevecht (teller `ster:<kamer>`); alle bazen op Held of hoger = de
+  **heldenrand** op je harnas (op Legende paars). Doodgaan telt per kamer (`dood:<kamer>`, voor beheer); na drie keer biedt
+  Wiske één keer aan het makkelijker te zetten. Tabel en keuzes: `ZELDA.md` («Niveaus, samen spelen en meerdere spellen»).
+- **Spellen** (sinds 2.16): drie per speler, op de kaart (**Spellen**): verder in een ander spel, een nieuw spel (eerst het
+  niveau), wissen (rechtsklik, met «Ja, wissen»; niet het spel waarin je speelt). **Samen spelen**: nodig iemand uit die in
+  Zelda is; wie aanneemt, krijgt een samen-spel dat bij jouw voortgang begint, en vanaf dan delen jullie wat nieuw is
+  (`ZeldaVoortgang.deel`, elke seconde; ieder houdt zijn niveau, opties, flesjes, records en vosnaam). Samen is net iets
+  zwaarder: per extra speler in een kamer één vijand per golf meer, een baas meer leven.
 - **Kaart** (vak 9, `ZeldaKaart`): een echte kaart. **Vasthouden** = het eiland van boven: het land zoals het er staat
   (met reliëf), de zee met schuim, **perkament** over land waar je nog niet was, de zielvuren waar je was (blauw: waar je
   terugkomt), dorpen en kerkers zodra je er was, **jij** (een witte pijl), medespelers (groen) en je **volgende doel**
@@ -254,7 +268,7 @@ hub») brengt je terug; dan ruimt `leave` alles op (items, harten, hemel, muziek
   opnieuw getekend als er iets veranderde. **Rechtsklik** = het kaartmenu: de zielvuren van dit eiland, in de volgorde
   van het eiland (klik = reizen, **rechtsklik = opnieuw vanaf hier**: verhaal, uitleg en puzzels erna komen terug,
   spullen blijven; op een open eiland alleen tot de volgende rustplaats), de eilanden die open zijn (klik = **varen**),
-  opdrachten, harten en hartstukjes, harnas, flesjes, **Uitleg: aan/uit**, terug naar de hub.
+  opdrachten, harten en hartstukjes, harnas, flesjes, **Uitleg: aan/uit**, **Niveau**, **Spellen**, terug naar de hub.
 - **Overtocht**: varen = een paar tellen aan dek van de Zilvermeeuw op open zee (zeemansmuziek, schuim, Brecht aan
   het roer, een regel van Wiske of Brecht; de eerste keer de overtochtregels van het eiland), dan aan land bij de
   aanleg van het eiland (vlag `e:<eiland>`).
@@ -399,7 +413,7 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
 ### Beheer (console of OP)
 
 - `kitpvp zelda` — status (spelers, voortgang, vijanden, fase van elke kamer). `kitpvp zelda in <speler>` — naar binnen (zoals door de poort).
-- `kitpvp zelda reset <speler>` — voortgang wissen. `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen;
+- `kitpvp zelda reset <speler> [spel]` — voortgang wissen (alles, of alleen dat spel). `kitpvp zelda rust <speler> <n>` — op rustplaats n zetten (helpen;
   op het open Lindewoud geeft een rustplaats geen spullen meer: die geef je met `kitpvp zelda vlag`).
 - `kitpvp zelda test <speler> [alles]` — loopt met een echte speler door de poort en het hoofdstuk (kamers verslaan,
   puzzels, uitdaging, vondsten, rustplaatsen, opslag op schijf); zonder `alles` tot de eerste rustplaats na de eerste
@@ -432,6 +446,20 @@ Het plan (welk eiland, welk vak, welke voorwerpen, in welke volgorde) staat in `
   <deel>` (bv. `vanaf e5b`, voor wie aan één deel werkt) telt alles vóór dat deel als gedaan en begint de route bij de aanleg
   van zijn eiland (de rondes gaan dan alleen langs dat eiland en het Lindewoud). `kitpvp zelda verder <speler>` — door de poort,
   en sta je op je verste rustplaats? (na uit- en inloggen).
+- **Bijsturen** (sinds 2.16, ook in de game als `/zelda …`): `spelers` (wie er is: spel, plek, niveau, harten, doden in
+  zijn gevecht, minuten zonder voortgang; in de game een menu met een hoofd per speler, klik = niveau, steun, vast),
+  `niveau <wie> <verhaal|avontuur|held|legende> [vast]` en `niveau <wie> los`, `steun <wie> <-2 … 2>` (stil: per stap 15 %
+  schade, plus = ook een flesje), `volg` (alleen in de game: een regel in je chat als iemand drie keer doodgaat in een
+  gevecht of tien minuten niet verder komt), `doden` (waar het meest wordt doodgegaan), `spel <speler> [n]`, `samen
+  <speler> <met>|los`. `<wie>` = speler, `hier` (binnen 48 blokken van jou) of `allen`.
+- `kitpvp zelda test <speler> niveau` — de niveaus met een echte speler: een nieuw spel is Avontuur, de knop en het menu,
+  Verhaal (extra flesjes), de schade van een vijand per niveau, op adem komen (Verhaal snel, Legende traag), in een kamer
+  het schildje, wisselen in het gevecht, doodgaan (doodteller, hulp), de ster (het laagste niveau), de bel op Held
+  («Gewonnen op Held»), drie keer dood (Wiske), beheer (vast, los, steun, overzicht, doden) en de heldenrand.
+  `kitpvp zelda test <speler> spellen [<speler2>]` — een nieuw spel op Held, terug naar het eerste, wissen; met een tweede
+  speler: uitnodigen, aannemen, delen, harten, los. `test <speler> alles niveau <niveau>` = de hele route op dat niveau;
+  `test <speler> alles mee <speler2>` = co-op: de tweede speler neemt een samen-spel aan en loopt overal mee (ook op zee),
+  het script stuurt alleen de eerste; aan het eind moet hij alles hebben wat de eerste heeft.
 - `kitpvp zelda test <speler> motor` — de motor met een echte speler: Wiske, muziek, `/hint` (twee keer), de wegwijzer
   (Tijmen noemt het dichtstbijzijnde doel van een groep), bron (met alleen Tijmens flesje),
   flesje, hartstukjes, harnas, geen vrij huisdier (een `dier:vos` loopt niet mee), het sneeuwvosje (verschijnt, loopt
@@ -540,4 +568,6 @@ ervoor), sluipen (het hek open in rust, een pad om te staan, wachters niet in ee
 en elk stuk tussen twee schuilplekken is met de echte blokken op minstens 5 % van het ritme ongezien te lopen), Mira (2a) staat
 op het pad; eiland 5b: nevelbruggen (lucht in de nevel en een brug in het licht, dicht in rust, vanaf de plek ervoor te zien),
 vangnetten (in het gebied, een vrije proefplek), Morgals plekken (in de troonzaal en vrij; wie op de vloer staat heeft een vloer),
-Tijmen bij de torenpoort (5a) en Zelda op het feest (het Lindewoud) staan op het pad).
+Tijmen bij de torenpoort (5a) en Zelda op het feest (het Lindewoud) staan op het pad); niveaus en spellen (2.16): Avontuur is
+de balans van 2.15, vijf bazen voor de heldenrand, een tweede spel en een groep komen goed terug uit het bestand, niemand heeft
+meer dan drie spellen.

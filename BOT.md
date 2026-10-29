@@ -368,7 +368,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.15.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.16.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
@@ -557,7 +557,18 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   versie 3); `/hint` en Tijmen zeggen op een afgemaakt eiland waar het verhaal verder gaat en waar je nog een hartstukje
   mist (de kaart zet er een X); Brecht heeft nieuws na elke grote stap; na het kroontje *Zelda's brieven* (Teun, Ys, Okker,
   Wolf); feestgasten alleen als je ze bevrijdde; vaarroutes op de zeekaart om de eilanden heen; F (wissel van hand) doet
-  niets in Zelda; Zelda heeft de huid «Alex». Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
+  niets in Zelda; Zelda heeft de huid «Alex». **Niveaus, samen en spellen** (sessie zelda-moeilijkheid, kitpvp 2.16, Jelle
+  28-10 "difficulty level … meerdere journeys … ik wil kunnen bijsturen"; tabel en keuzes in ZELDA.md): vier niveaus
+  (Verhaal, Avontuur = de oude balans en het begin, Held, Legende) die alleen de hulp veranderen (schade die je krijgt, op adem
+  komen, extra flesjes, hartjes van vijanden, een schildje van licht, hulp na doodgaan), nooit vijanden of golven; kiezen op
+  de kaart («Niveau»), ook midden in een gevecht. Elke kamer onthoudt het niveau waarop je hem won (sterren), alle bazen op
+  Held = een gouden heldenrand op je harnas. Drie spellen per speler (kaart: «Spellen»: verder, nieuw, wissen) en een
+  samen-spel (uitnodigen; wie aanneemt deelt vanaf dan alles wat nieuw is; ieder zijn eigen niveau). Samen net iets
+  zwaarder (een vijand per extra speler per golf, bazen meer leven). Oude `zelda.yml` = spel 1 op Avontuur. **Bijsturen**
+  (OP, `/zelda …` of `kitpvp zelda …`): `spelers` (wie waar, niveau, doden, minuten zonder voortgang; in de game een menu),
+  `niveau <wie|hier|allen> <niveau> [vast]` / `los`, `steun <wie> <-2…2>` (stil), `volg` (een chatregel als iemand vastloopt),
+  `doden` (waar het knelt), `spel <speler> [n]`, `samen <speler> <met>|los`, `reset <speler> [spel]`. Tests: `kitpvp zelda
+  test <speler> niveau`, `… spellen [<speler2>]`, `… alles niveau <n>`, `… alles mee <speler2>` (co-op). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
   «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).
@@ -581,7 +592,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   zijn) = Zelda-voortgang terug naar het begin; zit hij in Zelda, dan eerst naar de hub (spullen weg, beheer uit) en
   opnieuw naar binnen bij het begin. Console: `kitpvp zelda reset <speler>`. Raakt alleen zelda.yml van die speler. Console:
   `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
-  (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor]` (loopt met een
+  (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor|niveau|spellen]` (loopt met een
   echte speler; wist eerst diens voortgang; `alles` loopt alle eilanden af van Thuis tot het feest, vaart heen en weer voor
   boodschappen en controleert of alles te belopen is; `alles vanaf <deel>` begint later, alleen voor tests), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp zelda lopen
   <eiland> [zonder <voorwerp>] [dicht <poort>]` (is alles te belopen? en wat ligt er achter een poort of voorwerp?),

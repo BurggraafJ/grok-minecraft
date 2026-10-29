@@ -11,7 +11,8 @@ eiland 4 (Sintelgat en de mijnen in sessie `zelda-eiland-4a`, kitpvp 2.10; de Sm
 2.11: de Nevelring is gebroken) en heel eiland 5 (Nachtrots, de muren, in sessie `zelda-eiland-5a`, kitpvp 2.12; de toren en
 Morgal in sessie `zelda-eiland-5b`, kitpvp 2.13: Zelda is vrij, het feest op het Lindewoud, het verhaal is uit), en de
 kaart in vak 9 (sessie `zelda-kaart`, kitpvp 2.14: het eiland van boven en de zeekaart, zie «De kaart»), en de afronding
-(sessie `zelda-afronding`, kitpvp 2.15: naspelen, losse eindjes, zie «De afronding»). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
+(sessie `zelda-afronding`, kitpvp 2.15: naspelen, losse eindjes, zie «De afronding»), en niveaus, samen spelen en
+meerdere spellen (sessie `zelda-moeilijkheid`, kitpvp 2.16, zie «Niveaus, samen spelen en meerdere spellen»). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
 Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*.java`.
@@ -38,6 +39,7 @@ Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*
 | NPC's, zijmissies, dialoog | personen met gesprekken die van je voortgang afhangen; zijmissies met stappen en beloning | motor (`Persoon.gesprek`, `Missie`) |
 | helper als je vastzit | `/hint` of klik op Wiske: eerst een duwtje, nog eens vragen = wat je moet doen en ze vliegt die kant op; na zes minuten zonder voortgang biedt ze één keer hulp aan | motor |
 | een stuk opnieuw spelen | kaart: **rechtsklik op een zielvuur = opnieuw vanaf hier** (uitleg en puzzels erna komen terug, spullen blijven); **Uitleg: aan/uit** | motor |
+| "difficulty level, met hoeveel players, meerdere journeys naast elkaar; niet sneller door een arena, wel sneller helen, meer armor, extra potions; ik wil kunnen bijsturen" (28-10) | vier **niveaus** die alleen de hulp veranderen (kaart: «Niveau», ook midden in een gevecht), **sterren** en de **heldenrand** voor wie het hoog houdt, **hulp na doodgaan**; samen net iets zwaarder; drie **spellen** per speler en een **samen-spel**; **bijsturen** voor beheer (niveau, steun, wie vastloopt) | `ZeldaRegels.Niveau`, `ZeldaSpellen`, `ZeldaBijsturen`, zie «Niveaus, samen spelen en meerdere spellen» |
 | "een kaart zoals in Legend of Zelda, om het eiland te overzien" (28-10) | vak 9 is een **echte kaart**: vasthouden = het eiland van boven, met jou (een pijl), de zielvuren waar je was, dorpen en kerkers, medespelers en je volgende doel (een rode X, dezelfde bron als `/hint`); wat je nog niet zag ligt onder perkament; linksklik = de **zeekaart** (alle eilanden, de vaarroutes, op zee je schip) | motor (`ZeldaKaart`), zie «De kaart» |
 
 **Smaak (hard):** alles wat spelers lezen is één korte grijze regel op de actiebalk (spreker in groen), nooit chat of
@@ -1131,6 +1133,9 @@ bij de bekende. `/hint` noemt zo'n missie ook op het andere eiland, en `kitpvp z
 twee rondes heen en weer om ze af te maken.
 
 ## Balans van gevechten (kitpvp 2.8.2, Jelle 27-10)
+
+Sinds 2.16 is dit de balans van **Avontuur**; de andere niveaus veranderen alleen de hulp voor de speler (zie «Niveaus, samen
+spelen en meerdere spellen»), nooit de golven of de bazen hieronder.
 - Gevechten langer maar lichter, meer variatie in tegenstanders, heelplek en bescherming voor elk zwaar gevecht (Jelle 27-10). Gebruik de gedeelde balans in `ZeldaRegels` (`SCHADE` 0.55 op alle vijandschade, `BAAS_LEVEN` 1.5, `GOLF_PAUZE` 4 s): geef een kamer liever 3 gemengde golven (vechter + schutter + snel klein beestje, bijv. `SPIN`) dan 1 zware; richting 1-3 minuten, zelden dood. Bijstellen = die drie getallen, niet per kamer.
 - De kade (afronding, 2.15): de derde golf heeft één kruisboog (kruisboog, soldaat, spin) in plaats van twee: het eerste
   gevecht met schutters, met alleen de smidshelm en de tuniek.
@@ -1186,7 +1191,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | wegwijzer | `spel.wegwijzer(p, naam)` | een persoon zegt je volgende opdracht (de tweede hint, in zijn stem) en Wiske vliegt die kant op; anders een eiland waar je nog niet was, een zijmissie (ook van een ander eiland), iets voor later, `wacht()` |
 | praten op het pad | `praten(persoon)`, `ZeldaHoofdstuk.Praten` | voor de test: hier praat je met iemand (Tijmen, Bram) tot hij niets nieuws meer heeft |
 | vaste rustnummers | `rust(index, Rust)` | een rustplaats houdt zijn nummer (de opslag) maar staat op zijn plek in het pad; de zelftest eist 0 … n−1 |
-| op adem komen | `ZeldaSpel.BIJKOMEN_NA/ELK` | buiten een gevecht: na 6 s zonder klap elke 2 s een half hart |
+| op adem komen | `ZeldaRegels.bijkomen` | buiten een gevecht: na 6 s zonder klap elke 2 s een half hart (Avontuur; per niveau anders, op Verhaal ook in een gevecht) |
 | hemel naar voortgang | `hemel(Location, Stand)` | een open eiland laat de dag opschuiven met wat je deed, niet met waar je staat |
 | verhaal met voorwaarde | `Verhaal.als` | alleen als dit klopt (bv. de doornen-uitleg alleen zonder lichtwoord) |
 | lichtere baas | `ZeldaBaas.leven`, `levenPerSpeler`, `oproepen` | leven en hulp per baas |
@@ -1257,6 +1262,14 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | wat er op het blad staat | `ZeldaKaartBeeld.basis`, `blad`, `zeekaart`, `vlam`, `stippel`, `titel` | zee met schuim, reliëf, perkament over wat je niet zag, zielvuren, vaarroutes, de naam |
 | dorpen en kerkers | `ZeldaHoofdstuk.Teken`, `tekens()` | per deel; op de kaart zodra je er in de buurt was |
 | wat /hint noemt | `ZeldaSpel.wijzer`, `Wijzer.plek`, `Wijzer.eiland` | dezelfde volgorde als `/hint`; de kaart zet er een X |
+| **niveaus en spellen** (sessie `zelda-moeilijkheid`) | | |
+| niveau | `ZeldaRegels.Niveau`, `niveau(s)`, `schade(s)`, `bijkomen`, `flessen`, `flesHp`, `golfPauze`, `schildje` | per spel (`Stand.niveau`); alleen de hulp; `spel.zetNiveau` geldt meteen |
+| schildje van licht | `ZeldaSpel.schildje` | bij het begin van een gevecht gouden harten (absorptie): Verhaal altijd, en hulp na doodgaan (`Sessie.pogingen`) |
+| sterren en heldenrand | `ZeldaRegels.ster`, `sterren`, `heldenrand`, `ZeldaSpel.ster`, `rand` | teller `ster:<kamer>`: het laagste niveau tijdens het gevecht (`Sessie.laagste`); alle bazen op Held = een gouden rand |
+| samen zwaarder | `ZeldaRegels.samen`, `baasLeven`, `extraHelpers` | per extra speler een vijand per golf, een baas meer leven en (vanaf drie) een helper |
+| spellen | `ZeldaVoortgang.Speler`, `spellen`, `kies`, `nieuw`, `wis(id, n)`, `spel.wissel` | drie per speler; `van` = het spel waarin hij speelt; wisselen = opnieuw binnenkomen |
+| samen-spel | `Stand.groep`, `ZeldaVoortgang.deel`, `ZeldaSpellen.samen`, `nodigUit`, `neemAan` | nieuwe vlaggen (niet `o:`), verste rustplaats, bezocht, missies en kaart gaan elke seconde naar de groep |
+| bijsturen | `ZeldaBijsturen` | `spelers` (menu), `niveau`, `steun`, `volg`, `doden`, `spel`, `samen`; doodteller `dood:<kamer>`, `Sessie.vastGemeld` |
 
 ### Hoe een eilandsessie aanhaakt
 
