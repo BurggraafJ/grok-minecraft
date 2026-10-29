@@ -588,12 +588,20 @@ final class Zelda implements Modus {
             v.van(id).teller("fles-vol", 1);
             v.van(id).dier = "Pluis";
             ZeldaKaartBeeld.ontdek(v.van(id).kaart, 1212, 2, ZeldaKaartBeeld.ZICHT);
+            v.van(id).groep = "proef";
+            ZeldaVoortgang.Stand twee = v.nieuw(id, 2, null);       // een tweede spel, op Held, waarin hij nu speelt
+            twee.niveau = ZeldaRegels.Niveau.HELD.ordinal();
+            twee.zet("boog");
+            v.kies(id, 2);
             v.bewaar();
             ZeldaVoortgang terug = new ZeldaVoortgang(proef);
-            ZeldaVoortgang.Stand t = terug.van(id);
-            if (t.rust("h1") != 3 || !t.heeft("zwaard") || t.beste("kloof") != 12345L || !"h1:2".equals(t.laatste) || t.missie("proef") != 2
-                    || t.teller("fles-vol") != 1 || !"Pluis".equals(t.dier) || !t.bezocht("h1", 3) || !t.kaart.equals(v.van(id).kaart) || t.kaart.isEmpty())
+            ZeldaVoortgang.Stand t = terug.spellen(id).get(1);
+            if (t == null || t.rust("h1") != 3 || !t.heeft("zwaard") || t.beste("kloof") != 12345L || !"h1:2".equals(t.laatste) || t.missie("proef") != 2
+                    || t.teller("fles-vol") != 1 || !"Pluis".equals(t.dier) || !t.bezocht("h1", 3) || !t.kaart.equals(v.spellen(id).get(1).kaart) || t.kaart.isEmpty()
+                    || !"proef".equals(t.groep) || ZeldaRegels.niveau(t) != ZeldaRegels.Niveau.AVONTUUR)
                 fouten.add("zelda: voortgang komt niet goed terug uit het bestand");
+            if (terug.actief(id) != 2 || !terug.van(id).heeft("boog") || terug.van(id).heeft("zwaard") || ZeldaRegels.niveau(terug.van(id)) != ZeldaRegels.Niveau.HELD)
+                fouten.add("zelda: het tweede spel komt niet goed terug uit het bestand");
         } catch (Exception e) {
             fouten.add("zelda: voortgang bewaren mislukt: " + e);
         } finally {
@@ -609,6 +617,14 @@ final class Zelda implements Modus {
         if (spel.dier.aantal() > spel.sessies.size()) fouten.add("zelda: " + spel.dier.aantal() + " dieren voor " + spel.sessies.size() + " spelers");
         if (ZeldaDier.AAN) fouten.add("zelda: vrije huisdieren staan aan (ZeldaDier.AAN; Jelle wil ze uit)");
         spel.landkaart.zelftest(fouten, info);
+        // niveaus: Avontuur is de balans van 2.15, elk niveau alleen meer of minder hulp; vijf bazen voor de heldenrand
+        ZeldaVoortgang.Stand avontuur = new ZeldaVoortgang.Stand();
+        if (ZeldaRegels.niveau(avontuur) != ZeldaRegels.Niveau.AVONTUUR || ZeldaRegels.schade(avontuur) != ZeldaRegels.SCHADE
+                || ZeldaRegels.golfPauze(List.of(avontuur)) != ZeldaRegels.GOLF_PAUZE || ZeldaRegels.flesHp(avontuur) != ZeldaRegels.FLES_HP)
+            fouten.add("zelda: Avontuur is niet meer de balans van 2.15");
+        if (spel.bazen().size() != 5) fouten.add("zelda: " + spel.bazen().size() + " bazen voor de heldenrand (verwacht 5)");
+        for (var sp : spel.voortgang.alle().entrySet())
+            if (sp.getValue().size() > ZeldaVoortgang.MAX_SPELLEN) fouten.add("zelda: " + sp.getKey() + " heeft " + sp.getValue().size() + " spellen");
         for (var e : spel.sessies.entrySet()) {
             Player p = Bukkit.getPlayer(e.getKey());
             if (p != null && !p.isDead() && spel.metgezel.van(p) == null)
@@ -620,7 +636,16 @@ final class Zelda implements Modus {
                 + " spiegels=" + spieg + " poorten=" + poorten + " getijden=" + getijden + " graafplekken=" + graven + " glijvloeren=" + glij + " ijs=" + ijs + " hitte=" + hitten + " ritmes=" + ritmes + " nevel=" + nevels + " nevelbruggen=" + bruggen + " sluipen=" + sluipen + " vangnetten=" + vallen
                 + " voorwerpen=" + spel.voorwerpen.size()
                 + " liedjes=" + ZeldaMuziek.alle().size()
-                + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
+                + " spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " spellen=" + spellen() + " niveaus=" + ZeldaRegels.Niveau.values().length
+                + " bazen=" + spel.bazen().size() + " gevechten=" + spel.gevechten().size()
+                + " entiteiten=" + ents + " feeen=" + feeen + " dieren=" + spel.dier.aantal());
+    }
+
+    /** Hoeveel spellen er in totaal zijn (alle spelers). */
+    private int spellen() {
+        int n = 0;
+        for (var sp : spel.voortgang.alle().values()) n += sp.size();
+        return n;
     }
 
     /** Laad de chunks tussen {@code van} en blok {@code c} (een straal door een niet-geladen chunk raakt niets). Altijd true. */
@@ -642,6 +667,11 @@ final class Zelda implements Modus {
      * (Zelda-spullen weg, beheer uit) en daarna opnieuw naar binnen: bij het begin. Geeft één korte regel terug.
      */
     String reset(String wie) {
+        return reset(wie, null);
+    }
+
+    /** Idem; met {@code spel} (een nummer) alleen dat spel van hem (zijn andere spellen blijven). */
+    String reset(String wie, String spelNr) {
         Player p = Bukkit.getPlayerExact(wie);
         java.util.UUID id = p != null ? p.getUniqueId() : spel.voortgang.zoek(wie);
         if (id == null) {
@@ -650,12 +680,23 @@ final class Zelda implements Modus {
         }
         if (id == null || !spel.voortgang.bekend(id)) return "geen Zelda-voortgang van " + wie;
         String naam = p != null ? p.getName() : spel.voortgang.van(id).naam == null || spel.voortgang.van(id).naam.isEmpty() ? wie : spel.voortgang.van(id).naam;
+        int nr = 0;
+        if (spelNr != null) {
+            try {
+                nr = Integer.parseInt(spelNr);
+            } catch (NumberFormatException e) {
+                return "geen spelnummer: " + spelNr;
+            }
+            if (!spel.voortgang.spellen(id).containsKey(nr)) return naam + " heeft geen spel " + nr;
+        }
         boolean in = p != null && spel.speelt(p);
         if (in) plugin.naarHub(p);                           // weg(): beheer uit, spullen weg, voortgang bewaard
-        spel.voortgang.wis(id);
+        if (nr > 0) spel.voortgang.wis(id, nr);
+        else spel.voortgang.wis(id);
         spel.voortgang.vuil();
         spel.bewaar();
         if (in) plugin.kiesModus(p, this);                   // opnieuw binnen: bij het begin
+        if (nr > 0) return "spel " + nr + " van " + naam + " gewist" + (in ? ", hij speelt nu in spel " + spel.voortgang.actief(id) : "");
         return "voortgang van " + naam + " gewist" + (in ? ", terug bij het begin" : "");
     }
 
@@ -665,10 +706,10 @@ final class Zelda implements Modus {
         switch (sub) {
             case "reset" -> {
                 if (args.length < 3) {
-                    s.sendMessage("kitpvp zelda reset <speler> (ook als hij niet online is)");
+                    s.sendMessage("kitpvp zelda reset <speler> [spel] (ook als hij niet online is)");
                     return;
                 }
-                s.sendMessage("zelda: " + reset(args[2]));
+                s.sendMessage("zelda: " + reset(args[2], args.length >= 4 ? args[3] : null));
             }
             case "rust" -> {
                 if (p == null || args.length < 4) {
@@ -798,12 +839,18 @@ final class Zelda implements Modus {
                 new ZeldaTest(plugin, this, p, s).verder();
             }
             default -> {
+                List<String> uit = args.length >= 2 ? spel.bijsturen.commando(s, s instanceof Player b ? b : null, java.util.Arrays.copyOfRange(args, 1, args.length)) : null;
+                if (uit != null) {                           // bijsturen: spelers, niveau, steun, volg, doden, spel, samen
+                    for (String r : uit) s.sendMessage("zelda: " + r);
+                    return;
+                }
                 StringBuilder sb = new StringBuilder("zelda: spelers=" + spel.sessies.size() + " voortgang=" + spel.voortgang.aantal() + " vijanden=" + spel.vijanden());
                 for (ZeldaHoofdstuk h : HOOFDSTUKKEN) {
                     sb.append(" · ").append(h.id()).append(":");
                     for (ZeldaHoofdstuk.Kamer k : h.kamers) sb.append(' ').append(k.id).append('=').append(k.fase.name().toLowerCase());
                 }
-                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer|kaart <speler> · kitpvp zelda lopen <eiland> · kitpvp zelda kaart [opnieuw]");
+                s.sendMessage(sb + " · kitpvp zelda in|reset|rust|test|verder|vaar|vlag|hint|beheer|kaart <speler> · kitpvp zelda lopen <eiland> · kitpvp zelda kaart [opnieuw]"
+                        + " · bijsturen: kitpvp zelda spelers|doden|niveau|steun|spel|samen");
             }
         }
     }

@@ -175,7 +175,8 @@ final class ZeldaKaart {
     void vastgepakt(Player p, ZeldaVoortgang.Stand s) {
         if (!s.zet("v:kaart")) return;
         spel.voortgang.vuil();
-        spel.uitleg(p, ZeldaHoofdstuk.r("Wiske", "Je kaart! De pijl ben jij, de X is je doel."), ZeldaHoofdstuk.r("Wiske", "Linksklik: de hele zee."));
+        spel.uitleg(p, ZeldaHoofdstuk.r("Wiske", "Je kaart! De pijl ben jij, de X is je doel."), ZeldaHoofdstuk.r("Wiske", "Linksklik: de hele zee."),
+                ZeldaHoofdstuk.r("Wiske", "Rechtsklik: het menu, ook je niveau."));
     }
 
     Kijk kijk(UUID id) {

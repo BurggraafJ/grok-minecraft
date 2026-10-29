@@ -21,7 +21,7 @@ import org.bukkit.entity.Player;
  * hij was. Met {@code /zelda ga <plek>} ga je overal heen (eiland, deel, rustplaats, kamer, persoon).
  *
  * <p>{@code /zelda} of {@code /zelda beheer} = aan/uit · {@code /zelda beheer aan|uit} · {@code /zelda ga <plek>} ·
- * {@code /zelda plekken}.
+ * {@code /zelda plekken}. Bijsturen (niveau, steun, wie vastloopt): {@link ZeldaBijsturen}.
  */
 final class ZeldaBeheer {
 
@@ -214,16 +214,25 @@ final class ZeldaBeheer {
                 else ga(p, args[1]);
             }
             case "reset" -> {
-                if (args.length < 2) regel(p, "/zelda reset <speler>");
-                else regel(p, "Zelda: " + spel.modus.reset(args[1]));
+                if (args.length < 2) regel(p, "/zelda reset <speler> [spel]");
+                else regel(p, "Zelda: " + spel.modus.reset(args[1], args.length >= 3 ? args[2] : null));
             }
             case "plekken" -> p.sendMessage(Component.text("Plekken: " + String.join(", ", plekken().keySet()), NamedTextColor.GRAY));
-            default -> regel(p, "/zelda beheer [aan|uit] · /zelda ga <plek> · /zelda plekken · /zelda reset <speler>");
+            default -> {
+                List<String> uit = spel.bijsturen.commando(p, p, args);       // bijsturen: spelers, niveau, steun, volg, doden, spel, samen
+                if (uit == null) regel(p, "/zelda beheer [aan|uit] · ga <plek> · plekken · reset <speler> [spel] · spelers · niveau · steun · volg · doden · spel · samen");
+                else for (String r : uit) p.sendMessage(Component.text(r, NamedTextColor.GRAY));
+            }
         }
     }
 
     List<String> tab(String[] args) {
-        if (args.length <= 1) return passend(List.of("beheer", "ga", "plekken", "reset"), args.length == 1 ? args[0] : "");
+        if (args.length <= 1) {
+            List<String> l = new ArrayList<>(List.of("beheer", "ga", "plekken", "reset"));
+            l.addAll(ZeldaBijsturen.SUB);
+            return passend(l, args.length == 1 ? args[0] : "");
+        }
+        if (ZeldaBijsturen.SUB.contains(args[0].toLowerCase(Locale.ROOT))) return spel.bijsturen.tab(args);
         if (args.length == 2 && args[0].equalsIgnoreCase("reset")) {
             java.util.Set<String> namen = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             for (Player q : org.bukkit.Bukkit.getOnlinePlayers()) namen.add(q.getName());

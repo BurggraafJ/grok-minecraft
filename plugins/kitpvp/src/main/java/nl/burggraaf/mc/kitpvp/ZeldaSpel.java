@@ -102,8 +102,8 @@ final class ZeldaSpel implements Listener {
     static final TextColor GROEN = TextColor.color(0x8fcf6a);
     /** Na zo lang zonder voortgang biedt Wiske één keer hulp aan (en dan pas weer na {@link #AANBOD_OPNIEUW}). */
     static final long VAST_MS = 6 * 60_000L, AANBOD_OPNIEUW = 10 * 60_000L;
-    /** Op adem komen: zo lang na de laatste klap (en niet in een gevecht) geneest elke {@link #BIJKOMEN_ELK} ms een half hart. */
-    static final long BIJKOMEN_NA = 6_000L, BIJKOMEN_ELK = 2_000L;
+    /** Na zo lang zonder voortgang krijgt wie meekijkt (beheer: {@code /zelda volg}) één regel. */
+    static final long VAST_MELDEN = 10 * 60_000L;
 
     /** Een overtocht naar een ander eiland. */
     record Vaart(ZeldaEiland naar, long tot, boolean eerste) {}
@@ -133,6 +133,10 @@ final class ZeldaSpel implements Listener {
         int opgevangen;                                      // hoe vaak de nevel je opving (een vangnet, 5b; de test kijkt ernaar)
         final Map<String, Integer> gezien = new HashMap<>(); // sluipstuk → keer gezien (voor wat Wiske zegt)
         final Map<String, Integer> doden = new HashMap<>();  // kamer → keer doodgegaan (voor tips)
+        final Map<String, Integer> pogingen = new HashMap<>();   // kamer → keer doodgegaan sinds je hem het laatst won (hulp, Wiske, beheer)
+        final Map<String, Integer> laagste = new HashMap<>();    // kamer → het laagste niveau tijdens dit gevecht (voor de ster)
+        final java.util.Set<String> lagerAangeboden = new java.util.HashSet<>();   // kamers waar Wiske al zei dat het makkelijker kan
+        boolean vastGemeld;                                  // beheer hoorde al dat je niet verder komt
 
         Sessie(ZeldaHoofdstuk h, int rust) {
             this.h = h;
@@ -173,6 +177,10 @@ final class ZeldaSpel implements Listener {
     final ZeldaBeheer beheer = new ZeldaBeheer(this);
     /** De kaart in vak 9 (het eiland van boven, de zee): {@link ZeldaKaart}. */
     final ZeldaKaart landkaart;
+    /** Niveau kiezen, je spellen en samen spelen (menu's op de kaart): {@link ZeldaSpellen}. */
+    final ZeldaSpellen spellen = new ZeldaSpellen(this);
+    /** Bijsturen voor beheer (wie vastloopt, niveau en steun per speler): {@link ZeldaBijsturen}. */
+    final ZeldaBijsturen bijsturen = new ZeldaBijsturen(this);
     ZeldaVoortgang voortgang;
     final NamespacedKey itemKey;
     private final NamespacedKey hartKey;
@@ -311,7 +319,8 @@ final class ZeldaSpel implements Listener {
         hemel(p, ss, l);
         muziek.speel(p, ZeldaMuziek.BEGIN);
         muziek.achter(p, h.muziek(l, s));
-        if (s.heeft("v:intro")) zeg(p, Component.text(h.naam() + " · " + h.rust.get(r).naam + " · vak 8 = terug naar de hub", NamedTextColor.GRAY));
+        String spelNr = voortgang.spellen(p.getUniqueId()).size() > 1 ? "Spel " + voortgang.actief(p.getUniqueId()) + " · " : "";
+        if (s.heeft("v:intro")) zeg(p, Component.text(spelNr + h.naam() + " · " + h.rust.get(r).naam + " · vak 8 = terug naar de hub", NamedTextColor.GRAY));
         if (s.zet("v:wiske")) {                              // Wiske is nu te zien: wie al speelde, krijgt het even te horen
             voortgang.vuil();
             if (s.heeft("v:intro")) {
@@ -423,6 +432,8 @@ final class ZeldaSpel implements Listener {
             p.getInventory().setHelmet(ding(Material.IRON_HELMET, "Smidshelm", "muts"));
             if (p.getInventory().getLeggings() == null) p.getInventory().setLeggings(ding(Material.LEATHER_LEGGINGS, "Broek", "broek"));
         }
+        ZeldaRegels.Niveau rand = ZeldaRegels.heldenrand(s, bazen());
+        if (rand != null) rand(p, rand);
         harten(p, ZeldaRegels.harten(s));
     }
 
@@ -524,6 +535,152 @@ final class ZeldaSpel implements Listener {
         if (p.getHealth() > a.getValue()) p.setHealth(a.getValue());
     }
 
+
+    // ── niveau, sterren en hulp (ZeldaRegels.Niveau) ─────────────────────────────────────────
+
+    private List<String> bazen, gevechten;
+
+    /** De kamers met een baas (voor de heldenrand). */
+    List<String> bazen() {
+        if (bazen == null) {
+            List<String> l = new ArrayList<>();
+            for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.baas != null) l.add(k.id);
+            bazen = List.copyOf(l);
+        }
+        return bazen;
+    }
+
+    /** Alle kamers (gevechten), voor de sterren. */
+    List<String> gevechten() {
+        if (gevechten == null) {
+            List<String> l = new ArrayList<>();
+            for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) l.add(k.id);
+            gevechten = List.copyOf(l);
+        }
+        return gevechten;
+    }
+
+    /** De kamer met dit id (of null). */
+    ZeldaHoofdstuk.Kamer kamer(String id) {
+        for (ZeldaHoofdstuk h : hoofdstukken) for (ZeldaHoofdstuk.Kamer k : h.kamers) if (k.id.equals(id)) return k;
+        return null;
+    }
+
+    /** De heldenrand op je harnas: goud (alle bazen op Held of hoger) of paars (alles op Legende). Doet verder niets. */
+    private void rand(Player p, ZeldaRegels.Niveau rand) {
+        var inv = p.getInventory();
+        ItemStack[] stuk = inv.getArmorContents();
+        for (ItemStack it : stuk)
+            if (it != null && it.getItemMeta() instanceof ArmorMeta am) {
+                am.setTrim(new ArmorTrim(rand == ZeldaRegels.Niveau.LEGENDE ? TrimMaterial.AMETHYST : TrimMaterial.GOLD, TrimPattern.SILENCE));
+                it.setItemMeta(am);
+            }
+        inv.setArmorContents(stuk);
+    }
+
+    /**
+     * Het begin van een gevecht: het schildje van licht (gouden harten) van je niveau, en hulp als je hier al doodging
+     * (doorzetten); en het niveau waarmee je begon (voor de ster).
+     */
+    private void schildje(Player p, ZeldaHoofdstuk.Kamer k) {
+        Sessie ss = sessie(p);
+        if (ss == null) return;
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        ss.laagste.put(k.id, ZeldaRegels.niveau(s).ordinal());
+        int doden = ss.pogingen.getOrDefault(k.id, 0);
+        int harten = ZeldaRegels.schildje(s, doden);
+        if (harten <= 0) return;
+        p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 20 * 60 * 5, (harten + 1) / 2 - 1, true, false, true));
+        if (s.zet("v:schildje")) {
+            voortgang.vuil();
+            vertel(p, ZeldaHoofdstuk.r("Wiske", doden > 0 ? "Ik geef je een schildje van licht." : "Een schildje van licht, van mij."));
+        }
+    }
+
+    /** Gewonnen: de ster van deze kamer (het laagste niveau tijdens het gevecht), en misschien de heldenrand. */
+    private void ster(Player p, Sessie ss, ZeldaHoofdstuk.Kamer k) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        ZeldaRegels.Niveau nu = ZeldaRegels.niveau(s);
+        Integer laagste = ss.laagste.remove(k.id);
+        ZeldaRegels.Niveau n = ZeldaRegels.Niveau.values()[laagste == null ? nu.ordinal() : Math.min(laagste, nu.ordinal())];
+        ss.pogingen.remove(k.id);
+        ss.lagerAangeboden.remove(k.id);
+        if (beheer.is(p.getUniqueId())) return;
+        ZeldaRegels.Niveau voor = ZeldaRegels.heldenrand(s, bazen());
+        if (!ZeldaRegels.ster(s, k.id, n)) return;
+        voortgang.vuil();
+        if (n.ordinal() >= ZeldaRegels.Niveau.HELD.ordinal()) zeg(p, Component.text("Gewonnen op " + n.naam, NamedTextColor.GRAY));
+        ZeldaRegels.Niveau na = ZeldaRegels.heldenrand(s, bazen());
+        if (na != voor && na != null) {
+            uitrusten(p, s);
+            muziek.speel(p, ZeldaMuziek.KLAAR);
+            vertel(p, ZeldaHoofdstuk.r("Wiske", na == ZeldaRegels.Niveau.LEGENDE ? "Een paarse rand! Jij bent een legende." : "Een gouden heldenrand! Iedereen ziet het."));
+        }
+    }
+
+    /** Drie keer dood in hetzelfde gevecht: Wiske zegt één keer dat het makkelijker kan (niet op Verhaal of als het vaststaat). */
+    private void lagerAanbieden(Player p, Sessie ss, ZeldaHoofdstuk.Kamer k) {
+        ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+        if (ss.pogingen.getOrDefault(k.id, 0) < 3 || s.vast || ZeldaRegels.niveau(s) == ZeldaRegels.Niveau.VERHAAL || !ss.lagerAangeboden.add(k.id)) return;
+        vertel(p, ZeldaHoofdstuk.r("Wiske", "Te zwaar? Op de kaart kun je het makkelijker zetten."));
+    }
+
+    /** Het niveau van iemands spel (zelf gekozen of door beheer); geldt meteen, ook midden in een gevecht. */
+    void zetNiveau(UUID id, ZeldaRegels.Niveau n) {
+        ZeldaVoortgang.Stand s = voortgang.van(id);
+        s.niveau = n.ordinal();
+        voortgang.vuil();
+        Sessie ss = sessies.get(id);
+        if (ss != null) ss.laagste.replaceAll((k, v) -> Math.min(v, n.ordinal()));   // lager zetten in een gevecht: de ster ook
+        Player p = Bukkit.getPlayer(id);
+        if (p != null && speelt(p)) vernieuw(p, s, voorwerp("fles"));
+    }
+
+    /** Stil bijsturen (beheer): steun −2 … 2. */
+    void zetSteun(UUID id, int steun) {
+        ZeldaVoortgang.Stand s = voortgang.van(id);
+        s.steun = Math.max(-ZeldaRegels.STEUN_MAX, Math.min(ZeldaRegels.STEUN_MAX, steun));
+        voortgang.vuil();
+        Player p = Bukkit.getPlayer(id);
+        if (p != null && speelt(p)) vernieuw(p, s, voorwerp("fles"));
+    }
+
+    /** Speel verder in spel {@code n} van deze speler (bestaat het nog niet: een nieuw spel). Zit hij in Zelda: opnieuw binnen. */
+    void wissel(Player p, int n) {
+        UUID id = p.getUniqueId();
+        boolean in = speelt(p);
+        if (in) weg(p);
+        voortgang.kies(id, n);
+        voortgang.vuil();
+        bewaar();
+        if (in) {
+            plugin.naarSpel(p, modus, hoofdstuk(voortgang.van(id).hoofdstuk).id());
+            binnen(p);
+        }
+    }
+
+    /** Samen spelen: deel nieuwe voortgang in elke groep, en geef wie er iets bij kreeg de spullen die erbij horen. */
+    private void samen() {
+        Map<UUID, String> voor = new HashMap<>();
+        for (UUID id : sessies.keySet()) if (voortgang.van(id).groep != null) voor.put(id, uitrusting(voortgang.van(id)));
+        for (UUID id : voortgang.deel(beheer::is)) {
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || !speelt(p) || beheer.is(id)) continue;
+            ZeldaVoortgang.Stand s = voortgang.van(id);
+            if (!uitrusting(s).equals(voor.get(id))) uitrusten(p, s);
+        }
+    }
+
+    /** Wat je bij je hebt, als tekst (zelfde tekst = niets nieuws om aan te trekken). */
+    private String uitrusting(ZeldaVoortgang.Stand s) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ZeldaRegels.harten(s)).append('/').append(ZeldaRegels.harnas(s)).append('/').append(ZeldaRegels.flessen(s))
+                .append('/').append(ZeldaRegels.heldenrand(s, bazen()));
+        for (String v : List.of("zwaard", "schild", "boog", GLOEDSCHILD, ZeldaRegels.HELM)) sb.append(s.heeft(v) ? '1' : '0');
+        for (ZeldaVoorwerp v : voorwerpen) sb.append(v.heeft(s) ? '1' : '0');
+        return sb.toString();
+    }
+
     // ── verteller: één regel tegelijk op de actiebalk ───────────────────────────────────────
 
     void vertel(Player p, ZeldaHoofdstuk.Regel r) {
@@ -602,6 +759,7 @@ final class ZeldaSpel implements Listener {
         if (!vlammen.isEmpty()) veilig("vuurstaf", this::vlammen);
         veilig("glijden", () -> glijden(spelers));
         if (tikken % 20 == 0) {
+            veilig("samen", this::samen);
             for (Player p : spelers) veilig("seconde", () -> seconde(p, sessie(p), nu));
             for (ZeldaHoofdstuk h : delen()) veilig("decor", () -> decor(h));
             for (ZeldaHoofdstuk h : hoofdstukken) {                 // wat een deel zelf laat bewegen (vlieger, lichtbundel, …)
@@ -670,9 +828,12 @@ final class ZeldaSpel implements Listener {
                 vernieuw(p, s, voorwerp("fles"));
                 if (ZeldaRegels.flessen(s) > 0) zeg(p, Component.text("Flesjes vol", NamedTextColor.GRAY));
             }
-        } else if (nu - ss.geraakt > BIJKOMEN_NA && nu >= ss.bijkomen && !inGevecht(p)) {   // buiten een gevecht kom je vanzelf op adem
-            ss.bijkomen = nu + BIJKOMEN_ELK;
-            geneesBij(p, 1);
+        } else {                                             // vanzelf op adem komen (buiten een gevecht; op Verhaal ook erin)
+            long[] bk = ZeldaRegels.bijkomen(s, inGevecht(p));
+            if (bk != null && nu - ss.geraakt > bk[0] && nu >= ss.bijkomen) {
+                ss.bijkomen = nu + bk[1];
+                geneesBij(p, 1);
+            }
         }
         if (bron && !ss.inBron && nu > ss.bronDeuntje) {
             ss.bronDeuntje = nu + 30_000L;
@@ -691,7 +852,14 @@ final class ZeldaSpel implements Listener {
         if (v != ss.voortgangStand) {
             ss.voortgangStand = v;
             ss.laatsteVoortgang = nu;
-        } else if (nu - ss.laatsteVoortgang > VAST_MS && nu > ss.aangeboden && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
+            ss.vastGemeld = false;
+            return;
+        }
+        if (nu - ss.laatsteVoortgang > VAST_MELDEN && !ss.vastGemeld) {      // beheer (wie meekijkt) hoort het één keer
+            ss.vastGemeld = true;
+            bijsturen.vast(p, (nu - ss.laatsteVoortgang) / 60_000L);
+        }
+        if (nu - ss.laatsteVoortgang > VAST_MS && nu > ss.aangeboden && ss.rij.isEmpty() && ss.nu == null && !inGevecht(p)) {
             ss.aangeboden = nu + AANBOD_OPNIEUW;
             muziek.speel(p, ZeldaMuziek.HINT);
             vertel(p, ZeldaHoofdstuk.r("Wiske", "Kwijt? Klik op mij, dan help ik je."));
@@ -961,16 +1129,15 @@ final class ZeldaSpel implements Listener {
             muziek.speel(p, ZeldaMuziek.DICHT);
             muziek.lus(p, k.muziek);
             for (ZeldaHoofdstuk.Regel r : k.bijStart) vertel(p, r);
+            schildje(p, k);
         }
         golf(k, in.size());
     }
 
     private void golf(ZeldaHoofdstuk.Kamer k, int spelers) {
-        List<ZeldaHoofdstuk.Soort> soorten = new ArrayList<>(ZeldaRegels.golf(k, k.golf));
-        for (int i = 1; i < spelers && soorten.size() < 8; i++) {             // per extra speler één erbij (de baas roept een helper)
-            ZeldaHoofdstuk.Soort s = soorten.get((i - 1) % soorten.size());
-            soorten.add(k.baas != null && s == k.baas.soort ? k.baas.helper : s);
-        }
+        // samen net iets zwaarder: per extra speler één erbij (de baas roept een helper)
+        List<ZeldaHoofdstuk.Soort> soorten = ZeldaRegels.samen(ZeldaRegels.golf(k, k.golf), spelers, k.baas == null ? null : k.baas.soort,
+                k.baas == null ? null : k.baas.helper);
         List<Location> plekken = new ArrayList<>(k.spawns);
         java.util.Collections.shuffle(plekken, rnd);
         int i = 0;
@@ -980,7 +1147,7 @@ final class ZeldaSpel implements Listener {
             LivingEntity e = spawn(s, l, spelers);
             k.vijanden.add(e);
             if (baas) {
-                double hp = (k.baas.leven + k.baas.levenPerSpeler * (spelers - 1)) * ZeldaRegels.BAAS_LEVEN;   // balans: langer
+                double hp = ZeldaRegels.baasLeven(k.baas.leven, k.baas.levenPerSpeler, spelers);   // balans: langer, samen meer
                 zetAttr(e, Attribute.MAX_HEALTH, hp);
                 e.setHealth(hp);
                 k.baas.start(e);
@@ -1008,7 +1175,11 @@ final class ZeldaSpel implements Listener {
                 if (binnen) p.showBossBar(k.baas.balk);
                 else p.hideBossBar(k.baas.balk);
             }
-            if (binnen) k.meegedaan.add(id);
+            if (binnen) {
+                k.meegedaan.add(id);
+                Sessie ss = sessies.get(id);
+                if (ss != null) ss.laagste.putIfAbsent(k.id, ZeldaRegels.niveau(voortgang.van(id)).ordinal());
+            }
         }
         k.vijanden.removeIf(e -> !e.isValid() || e.isDead());
         if (in.isEmpty()) {
@@ -1034,13 +1205,15 @@ final class ZeldaSpel implements Listener {
         }
         if (k.baas != null && tikken % 20 == 0) {
             int oproep = k.baas.tik(this, in);
-            for (int n = 0; n < oproep + (in.size() > 2 ? 1 : 0) && oproep > 0; n++)
+            for (int n = 0; n < oproep + ZeldaRegels.extraHelpers(in.size()) && oproep > 0; n++)
                 k.vijanden.add(spawn(k.baas.helper, k.spawns.get(rnd.nextInt(k.spawns.size())), in.size()));
         }
         if (!k.vijanden.isEmpty()) return;
         if (k.golf + 1 < ZeldaRegels.golven(k)) {
             if (k.volgendeGolf == 0) {
-                k.volgendeGolf = nu + ZeldaRegels.GOLF_PAUZE;
+                List<ZeldaVoortgang.Stand> wie = new ArrayList<>();
+                for (Player p : in) wie.add(voortgang.van(p.getUniqueId()));
+                k.volgendeGolf = nu + ZeldaRegels.golfPauze(wie);              // de adem van het niveau met de meeste hulp
                 for (Player p : in) p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASEDRUM, SoundCategory.RECORDS, 0.8f, 0.6f);
             } else if (nu >= k.volgendeGolf) {
                 k.golf++;
@@ -1060,10 +1233,16 @@ final class ZeldaSpel implements Listener {
         deur(k.uit, true, midden);
         for (UUID id : k.meegedaan)
             if (sessies.containsKey(id) && voortgang.van(id).zet("k:" + k.id)) voortgang.vuil();
+        for (UUID id : k.meegedaan) {                       // de ster: het laagste niveau tijdens het gevecht
+            Sessie ss = sessies.get(id);
+            Player p = Bukkit.getPlayer(id);
+            if (ss != null && p != null) ster(p, ss, k);
+        }
         for (Player p : in) {
             muziek.lus(p, null);
             muziek.speel(p, ZeldaMuziek.GEWONNEN);
             geneesBij(p, 6);
+            p.removePotionEffect(PotionEffectType.ABSORPTION);      // het schildje van licht was voor dit gevecht
             if (k.baas != null) {
                 if (k.baas.balk != null) p.hideBossBar(k.baas.balk);
                 for (ZeldaHoofdstuk.Regel r : k.baas.bijWinst) vertel(p, r);
@@ -2019,6 +2198,8 @@ final class ZeldaSpel implements Listener {
         ItemStack ui = ding(uitleg ? Material.BOOK : Material.GRAY_DYE, "Uitleg: " + (uitleg ? "aan" : "uit"), "uitleg");
         lore(ui, "klik: " + (uitleg ? "uit (alleen het verhaal)" : "aan"));
         m.inv.setItem(32, ui);
+        m.inv.setItem(33, spellen.niveauKnop(s));
+        m.inv.setItem(34, spellen.spellenKnop(p));
         m.inv.setItem(35, ding(Material.OAK_DOOR, "Terug naar de hub", "hub"));
         p.openInventory(m.inv);
     }
@@ -2553,6 +2734,7 @@ final class ZeldaSpel implements Listener {
             return;
         }
         boolean rechts = e.getClick().isRightClick();
+        if (spellen.klik(p, soort, rechts) || bijsturen.klik(p, soort, rechts)) return;   // niveau, spellen, samen; beheer
         if (soort.equals("hub")) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 p.closeInventory();
@@ -4066,7 +4248,8 @@ final class ZeldaSpel implements Listener {
         }
         if (v != null && speelt(v) && d instanceof org.bukkit.entity.Trident && isVijand(bron))     // een drietand: hoogstens twee harten
             e.setDamage(Math.min(e.getDamage(), DRIETAND));
-        if (v != null && speelt(v) && isVijand(bron)) e.setDamage(e.getDamage() * ZeldaRegels.SCHADE);   // balans: lichter (ZeldaRegels)
+        if (v != null && speelt(v) && isVijand(bron))       // balans: lichter, en per speler zijn niveau (ZeldaRegels.schade)
+            e.setDamage(e.getDamage() * ZeldaRegels.schade(voortgang.van(v.getUniqueId())));
         if (d.getScoreboardTags().contains(LICHT) && doel.getScoreboardTags().contains(NEVEL)) {     // licht tegen nevel: dubbel
             e.setDamage(e.getDamage() * 2);
             doel.getWorld().spawnParticle(Particle.END_ROD, doel.getLocation().add(0, 0.4, 0), 8, 0.2, 0.2, 0.2, 0.05);
@@ -4152,10 +4335,15 @@ final class ZeldaSpel implements Listener {
         muziek.lus(p, null);
         Sessie ss = sessie(p);
         for (ZeldaHoofdstuk.Uitdaging u : ss.h.uitdagingen) u.loopt.remove(p.getUniqueId());
-        for (ZeldaHoofdstuk h : hoofdstukken)                        // doodgegaan in een kamer: straks een tip
+        for (ZeldaHoofdstuk h : hoofdstukken)                        // doodgegaan in een kamer: straks een tip, en hulp
             for (ZeldaHoofdstuk.Kamer k : h.kamers)
-                if (k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.binnen.in(p.getLocation()) && !k.tips.isEmpty()) {
-                    ss.doden.merge(k.id, 1, Integer::sum);
+                if (k.fase == ZeldaHoofdstuk.Fase.BEZIG && k.binnen.in(p.getLocation())) {
+                    ZeldaVoortgang.Stand s = voortgang.van(p.getUniqueId());
+                    s.teller("dood:" + k.id, s.teller("dood:" + k.id) + 1);         // voor beheer: waar het knelt
+                    voortgang.vuil();
+                    int n = ss.pogingen.merge(k.id, 1, Integer::sum);
+                    bijsturen.dood(p, k, n);
+                    if (!k.tips.isEmpty()) ss.doden.merge(k.id, 1, Integer::sum);
                     ss.tip = h.id() + ":" + k.id;
                 }
     }
@@ -4184,7 +4372,8 @@ final class ZeldaSpel implements Listener {
                 if (h != null) for (ZeldaHoofdstuk.Kamer x : h.kamers) if (x.id.equals(t[1])) k = x;
                 if (k != null) {
                     int n = ss.doden.getOrDefault(k.id, 1);
-                    if (n <= k.tips.size()) vertel(p, k.tips.get(n - 1));
+                    if (n >= 1 && n <= k.tips.size()) vertel(p, k.tips.get(n - 1));
+                    lagerAanbieden(p, ss, k);
                 }
             }
         });
@@ -4198,7 +4387,7 @@ final class ZeldaSpel implements Listener {
         ZeldaBaas baas = baasVan(e.getEntity());
         if (baas != null) baas.weg(e.getEntity().getLocation());
         Player k = e.getEntity().getKiller();
-        if (k != null && speelt(k) && rnd.nextInt(10) < 5) {
+        if (k != null && speelt(k) && rnd.nextDouble() < ZeldaRegels.niveau(voortgang.van(k.getUniqueId())).hartKans) {
             geneesBij(k, 2);
             e.getEntity().getWorld().spawnParticle(Particle.HEART, e.getEntity().getLocation().add(0, 1, 0), 3, 0.3, 0.3, 0.3, 0);
             k.playSound(k, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.4f, 1.6f);
