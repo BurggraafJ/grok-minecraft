@@ -1709,10 +1709,12 @@ final class ZeldaTest {
             if (waar.open(z.spel.voortgang.van(mee.getUniqueId()))) z.spel.vaar(mee, waar);
             return;
         }
-        if (a.vaart != null || p.isDead() || !p.getWorld().equals(mee.getWorld())) return;
+        if (a.vaart != null || p.isDead() || !p.getWorld().equals(mee.getWorld()) || z.spel.aanHetHaken(p)) return;
         if (mee.getLocation().distanceSquared(p.getLocation()) > 9) {
+            Location l = vrij(p.getLocation());              // op een vloer: een testspeler valt niet vanzelf (anders «vliegen»)
+            if (!staan(l)) return;
             mee.setFallDistance(0);
-            mee.teleport(p.getLocation());
+            mee.teleport(l);
         }
     }
 
