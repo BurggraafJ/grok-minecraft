@@ -1241,11 +1241,6 @@ final class ZeldaSpel implements Listener {
         deur(k.uit, true, midden);
         for (UUID id : k.meegedaan)
             if (sessies.containsKey(id) && voortgang.van(id).zet("k:" + k.id)) voortgang.vuil();
-        for (UUID id : k.meegedaan) {                       // de ster: het laagste niveau tijdens het gevecht
-            Sessie ss = sessies.get(id);
-            Player p = Bukkit.getPlayer(id);
-            if (ss != null && p != null) ster(p, ss, k);
-        }
         for (Player p : in) {
             muziek.lus(p, null);
             muziek.speel(p, ZeldaMuziek.GEWONNEN);
@@ -1257,6 +1252,11 @@ final class ZeldaSpel implements Listener {
             }
         }
         if (k.baas != null) k.baas.stop();
+        for (UUID id : k.meegedaan) {                       // de ster: het laagste niveau tijdens het gevecht (na de woorden van de baas)
+            Sessie ss = sessies.get(id);
+            Player p = Bukkit.getPlayer(id);
+            if (ss != null && p != null) ster(p, ss, k);
+        }
     }
 
     /** Terug naar het begin: vijanden weg, ingang open, uitgang dicht. */
