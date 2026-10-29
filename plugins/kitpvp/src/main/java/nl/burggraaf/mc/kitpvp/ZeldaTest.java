@@ -1885,6 +1885,12 @@ final class ZeldaTest {
             moet(d.contains(k.naam), "doden: " + d);
             gedaan.add("overzicht: " + ov);
             sp.bijsturen.commando(aan, null, new String[]{"steun", naam, "0"});
+            sp.bijsturen.menu(p);                            // het menu van beheer: een hoofd per speler, dan bijsturen
+            moet(menuHeeft("bs:wie:" + id), "bijsturen: geen hoofd in het menu");
+            sp.bijsturen.stuurMenu(p, id);
+            moet(menuHeeft("bs:niveau:" + id + ":3") && menuHeeft("bs:steun:" + id + ":1") && menuHeeft("bs:vast:" + id), "bijsturen: geen knoppen");
+            moet(sp.bijsturen.klik(p, "bs:vast:" + id, false) && !stand().vast, "bijsturen: wie geen beheer heeft, kan toch iets zetten");
+            p.closeInventory();
         }, 2, () -> true, 1);
         stap("heldenrand", () -> {
             for (String b : sp.bazen()) stand().teller("ster:" + b, ZeldaRegels.Niveau.HELD.ordinal() + 1);
