@@ -65,8 +65,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 /**
- * De lobby van Burggraaf Craft: de tuin (een klein tuindorp, zie {@link Tuin}) met de poorten naar Survival en
- * KitPvP en tien parkour-levels ({@link Banen}).
+ * De lobby van Burggraaf Craft: de tuin (een klein tuindorp, zie {@link Tuin}) met de poorten naar Survival,
+ * KitPvP en Story of Zelda en tien parkour-levels ({@link Banen}).
  * <ul>
  * <li>Veilig: onkwetsbaar, geen honger, adventure; wie onder de wereld valt gaat naar de spawn. Op staging niets.</li>
  * <li>Bouwen: een nieuwe {@link #BOUW_VERSIE} bouwt bij de start vanzelf, verdeeld over ticks ({@link Bouwer});
@@ -740,10 +740,14 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
     private void poortDeeltjes() {
         if (tuin == null || wereld == null || wereld.getPlayers().isEmpty()) return;
         for (Tuin.Poort pt : tuin.poorten) {
-            boolean surv = pt.server().equals("survival");
+            int kleur = switch (pt.server()) {
+                case "survival" -> 0x9ad59a;
+                case "zelda" -> 0x7fd1c4;
+                default -> 0xe58b8b;
+            };
             Location l = new Location(wereld, (pt.x1() + pt.x2()) / 2.0 + 0.5, grondY + 2.5, pt.z() + 0.5);
             wereld.spawnParticle(org.bukkit.Particle.DUST, l, 5, 0.9, 1.2, 0.15, 0,
-                    new org.bukkit.Particle.DustOptions(surv ? org.bukkit.Color.fromRGB(0x9ad59a) : org.bukkit.Color.fromRGB(0xe58b8b), 1.0f));
+                    new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(kleur), 1.0f));
         }
     }
 
@@ -884,12 +888,30 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         }
     }
 
+    /**
+     * Het cookie dat zegt waar je op de kitpvp-server heen wilt: Story of Zelda (plugin Zelda, eigen wereld) of de KitPvP-hub.
+     * De kitpvp-server leest het terwijl je laadt, zodat je meteen op de goede plek verschijnt.
+     */
+    static final NamespacedKey PLEK_COOKIE = new NamespacedKey("burggraaf", "plek");
+
+    /** Naar een server, of naar Story of Zelda (een eigen spel op de kitpvp-server: met het cookie erheen). */
     private void naarServer(Player p, String server) {
-        String naam = server.equals("kitpvp") ? "KitPvP" : Character.toUpperCase(server.charAt(0)) + server.substring(1);
+        String naam = switch (server) {
+            case "kitpvp" -> "KitPvP";
+            case "zelda" -> "Story of Zelda";
+            default -> Character.toUpperCase(server.charAt(0)) + server.substring(1);
+        };
         stopRun(p.getUniqueId());
         balk(p, "Naar " + naam + "…");
         p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, 0.2f, 1.6f);
-        stuurNaar(p, server);
+        if (server.equals("zelda") || server.equals("kitpvp")) {
+            try {
+                p.storeCookie(PLEK_COOKIE, server.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (RuntimeException e) {
+                getLogger().fine("cookie: " + e);
+            }
+        }
+        stuurNaar(p, server.equals("zelda") ? "kitpvp" : server);
     }
 
     private void stuurActie(Player p, String wat) {
@@ -983,7 +1005,7 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         String naar = m == null ? "" : m.split(":", 3)[2];
         if (aftel) return item(Material.BARRIER, "Annuleren", NamedTextColor.WHITE, "klik: in de lobby blijven (ook /annuleer)", itemKey, (byte) 2);
         if (wacht) return item(Material.RED_WOOL, "Blijven", NamedTextColor.WHITE, "klik: niet vanzelf terug naar " + naar, itemKey, (byte) 3);
-        return item(Material.NETHER_STAR, "Server kiezen", NamedTextColor.WHITE, "klik: Survival, KitPvP of parkour", itemKey, (byte) 1);
+        return item(Material.NETHER_STAR, "Server kiezen", NamedTextColor.WHITE, "klik: Survival, Zelda, KitPvP of parkour", itemKey, (byte) 1);
     }
 
     private boolean heeft(ItemStack it, NamespacedKey key) {
@@ -1126,9 +1148,10 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
         m.inv = Bukkit.createInventory(m, 27, Component.text("Waar wil je heen?"));
         for (int i = 0; i < 27; i++) m.inv.setItem(i, leeg(Material.LIGHT_BLUE_STAINED_GLASS_PANE));
         m.inv.setItem(10, knop(Material.GRASS_BLOCK, "Survival", NamedTextColor.WHITE, "de survivalwereld"));
-        m.inv.setItem(12, knop(Material.IRON_SWORD, "KitPvP", NamedTextColor.WHITE, "kies een kit en vecht"));
-        m.inv.setItem(14, knop(Material.FEATHER, "Parkour", NamedTextColor.WHITE, "tien levels in de tuin"));
-        m.inv.setItem(16, knop(Material.OAK_SAPLING, "De brink", NamedTextColor.WHITE, "terug naar de spawn (/spawn)"));
+        m.inv.setItem(12, knop(Material.MAP, "Story of Zelda", NamedTextColor.WHITE, "een avontuur, alleen of samen"));
+        m.inv.setItem(14, knop(Material.IRON_SWORD, "KitPvP", NamedTextColor.WHITE, "kies een kit en vecht"));
+        m.inv.setItem(16, knop(Material.FEATHER, "Parkour", NamedTextColor.WHITE, "tien levels in de tuin"));
+        m.inv.setItem(22, knop(Material.OAK_SAPLING, "De brink", NamedTextColor.WHITE, "terug naar de spawn (/spawn)"));
         p.openInventory(m.inv);
     }
 
@@ -1159,13 +1182,17 @@ public final class LobbyMelding extends JavaPlugin implements Listener, PluginMe
                     }
                     case 12 -> {
                         p.closeInventory();
-                        naarServer(p, "kitpvp");
+                        naarServer(p, "zelda");
                     }
                     case 14 -> {
                         p.closeInventory();
-                        Bukkit.getScheduler().runTask(this, () -> openKiezer(p));
+                        naarServer(p, "kitpvp");
                     }
                     case 16 -> {
+                        p.closeInventory();
+                        Bukkit.getScheduler().runTask(this, () -> openKiezer(p));
+                    }
+                    case 22 -> {
                         p.closeInventory();
                         stopRun(p.getUniqueId());
                         if (spawn != null) p.teleport(spawn);

@@ -46,6 +46,10 @@ import org.bukkit.plugin.java.JavaPlugin;
  *
  * Stilte: `mc` roept `/opmaak stil <s>` aan vlak voor spelers naar de lobby gaan (geen [-] bij een herstart) en
  * schrijft plugins/Opmaak/terugkeer.txt met wie er terugkomen (geen [+] als ze na de herstart terug zijn).
+ *
+ * Werelden met een eigen spel (Story of Zelda op de kitpvp-server, wereld «zelda»): `wereld-<wereld>-server-tag`,
+ * `-tablijst`, `-chat` en `-hulp` gelden daar in plaats van de gewone (zelfde placeholders; losse sleutels op het hoogste
+ * niveau, zodat `mc` ze via server.json → patches kan zetten). Zo staat daar [Zelda] en Z.
  */
 public final class Opmaak extends JavaPlugin implements Listener {
 
@@ -78,8 +82,17 @@ public final class Opmaak extends JavaPlugin implements Listener {
         return Boolean.parseBoolean(v);
     }
 
-    private Component tagComp() {
-        String t = getConfig().getString("server-tag", "");
+    /** Een instelling, met voorrang voor die van de wereld van deze speler ({@code wereld-<wereld>-<sleutel>}). */
+    private String instelling(Player p, String sleutel, String standaard) {
+        if (p != null) {
+            String w = getConfig().getString("wereld-" + p.getWorld().getName() + "-" + sleutel);
+            if (w != null) return w;
+        }
+        return getConfig().getString(sleutel, standaard);
+    }
+
+    private Component tagComp(Player p) {
+        String t = instelling(p, "server-tag", "");
         return t == null || t.isBlank() || !netwerk() ? Component.empty() : mm.deserialize(t.strip()).append(Component.space());
     }
 
@@ -241,7 +254,7 @@ public final class Opmaak extends JavaPlugin implements Listener {
             }
             if (tik % 20 == 0 && netwerk() && profielBron()) stuurProfiel(p, afk);
             if (tik % 20 == 0) {
-                String sleutel = mm.serialize(naamVan(p)) + "|" + prefixVan(p) + "|" + afk;
+                String sleutel = mm.serialize(naamVan(p)) + "|" + prefixVan(p) + "|" + afk + "|" + p.getWorld().getName();
                 if (!sleutel.equals(laatsteTab.get(id))) {
                     laatsteTab.put(id, sleutel);
                     zetTab(p);
@@ -295,13 +308,13 @@ public final class Opmaak extends JavaPlugin implements Listener {
         TagResolver alles = TagResolver.resolver(
                 TagResolver.resolver(extra),
                 Placeholder.component("naam", naamVan(p)),
-                Placeholder.component("tag", tagComp()),
+                Placeholder.component("tag", tagComp(p)),
                 Placeholder.component("prefix", mm.deserialize(prefixVan(p))));
-        return mm.deserialize(getConfig().getString(sleutel, ""), alles);
+        return mm.deserialize(instelling(p, sleutel, ""), alles);
     }
 
     private void zetTab(Player p) {
-        if (getConfig().getString("tablijst", "").isBlank()) return;
+        if (instelling(p, "tablijst", "").isBlank()) return;
         Component naam = tekst("tablijst", p);
         p.playerListName(afkStand.contains(p.getUniqueId()) ? AFK_TAG.append(naam) : naam);
     }
@@ -341,8 +354,8 @@ public final class Opmaak extends JavaPlugin implements Listener {
     }
 
     private Component chatRegel(Player p, Component bericht) {
-        return mm.deserialize(getConfig().getString("chat", ""),
-                Placeholder.component("tag", tagComp()),
+        return mm.deserialize(instelling(p, "chat", ""),
+                Placeholder.component("tag", tagComp(p)),
                 Placeholder.component("prefix", mm.deserialize(prefixVan(p))),
                 Placeholder.component("naam", naamVan(p)),
                 Placeholder.component("bericht", bericht));
@@ -353,8 +366,8 @@ public final class Opmaak extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
         Component prefix = mm.deserialize(prefixVan(p));
         Component naamComp = naamVan(p);
-        Component tag = tagComp();
-        String formaat = getConfig().getString("chat", "");
+        Component tag = tagComp(p);
+        String formaat = instelling(p, "chat", "");
         e.renderer((bron, naam, bericht, kijker) -> mm.deserialize(formaat,
                 Placeholder.component("tag", tag),
                 Placeholder.component("prefix", prefix),
@@ -440,13 +453,22 @@ public final class Opmaak extends JavaPlugin implements Listener {
         var pm = Bukkit.getPluginManager();
         p.sendMessage(Component.text("Burggraaf Craft", net.kyori.adventure.text.format.TextColor.color(0xe8c872))
                 .append(Component.text(" · hulp", net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)));
-        regel(p, "/hub · /survival · /kitpvp", "naar een server");
+        regel(p, "/hub · /survival · /kitpvp · /zelda", "naar een server");
         regel(p, "/terug", "terug naar je vorige plek");
         regel(p, "/spelers", "wie er is, met beroep");
         regel(p, "/beroep", "jouw beroep en de lijst");
         if (pm.getPlugin("LobbyMelding") != null) {
             regel(p, "/spawn · /parkour", "naar de fontein of je parkourlevel");
             regel(p, "/blijf", "in de lobby blijven");
+        }
+        java.util.List<String> eigen = getConfig().getStringList("wereld-" + p.getWorld().getName() + "-hulp");
+        if (!eigen.isEmpty()) {                                  // een wereld met een eigen spel (Story of Zelda): alleen zijn eigen regels
+            for (String r : eigen) {
+                String[] d = r.split("\\|", 2);
+                regel(p, d[0].strip(), d.length > 1 ? d[1].strip() : "");
+            }
+            if (p.isOp()) regel(p, "/admin · /beroep <speler> <beroep>", "extra's aan/uit, beroep geven");
+            return;
         }
         if (pm.getPlugin("Essentials") != null) {
             regel(p, "/sethome · /home · /tpa", "thuis en naar elkaar");

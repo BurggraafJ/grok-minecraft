@@ -9,12 +9,13 @@ import java.util.List;
  * <pre>
  *            boomhut (9)        molen (10)   pluktuin    boerderij, hooiberg (4)
  *   tuinmuur (5)      ┌──── dorpsstraat (ring) ────┐      boomgaard (3)
- *   moestuin          │  Survival  ◇  KitPvP        │
+ *   moestuin          │  Survival  Zelda  KitPvP    │
  *                     │       brink + linde         │
  *   vijver (1)        └──── huisjes, daken (7) ────┘      buxustuin (2)
  *   pergola (6)              kruidenwiel                  speeltuin (8)
  * </pre>
- * Midden: de brink met de spawn (kijkt naar het noorden, recht op de twee poorten), een linde, een waterput, een
+ * Midden: de brink met de spawn (kijkt naar het noorden, recht op de poorten: Survival en KitPvP aan weerszijden, Story of
+ * Zelda als oude bemoste ruïne in het midden erachter, met stapstenen door het tulpenperk), een linde, een waterput, een
  * prikbord met de records en een wegwijzer. Daaromheen een straatje van kinderkopjes; daarbuiten de erven met elk
  * een eigen tuin en een parkour-level ({@link Banen}).
  */
@@ -550,9 +551,8 @@ final class Tuin {
         pad(new int[][]{{-21, -12}, {-27, -20}}, 2.4, "zand");              // noordwest: bos
         // een paar lantaarns langs de straat (niet te veel)
         for (int[] l : new int[][]{{-17, -16}, {17, -16}, {23, 8}, {-23, 8}, {12, 25}, {-12, 25}}) lantaarn(l[0], l[1], "spruce");
-        // achter de poorten: een haag met een spar in het midden als achtergrond
+        // achter de poorten: een haag als achtergrond (in het midden staat sinds de Zelda-poort geen spar meer)
         haag(-10, -11, 10, -11, 2, "oak");
-        spar(0, -9, 7);
     }
 
     // ── de pluktuin (noordoost) en het kruidenwiel (zuid) ──────────────────────────────────
@@ -653,7 +653,7 @@ final class Tuin {
         lantaarn(cx + 8, cz - 7, "spruce");
     }
 
-    // ── de poorten: Survival links (rozenboog), KitPvP rechts (smidspoort) ────────────────
+    // ── de poorten: Survival links (rozenboog), KitPvP rechts (smidspoort), Story of Zelda midden (ruïne) ──
 
     void poorten() {
         int z = -6;
@@ -709,11 +709,59 @@ final class Tuin {
         zet(kx - 2, 1, z + 1, "anvil[facing=east]");
         poorten.add(new Poort(kx - 1, kx + 1, z, "kitpvp"));
         p.label(kx + 0.5, g + 8.8, z + 0.5, "<#e58b8b>KitPvP</#e58b8b>", 1.5f);
+        zeldaPoort();
         // licht in de doorgang (onzichtbaar), zodat de poorten ook 's avonds opvallen
         for (int dx = -1; dx <= 1; dx++) {
             zet(sx + dx, 3, z, "light[level=10]");
             zet(kx + dx, 3, z, "light[level=10]");
+            zet(dx, 3, ZELDA_Z, "light[level=10]");
         }
+    }
+
+    /** Waar de Zelda-poort staat: midden tussen de twee andere, drie blokken erachter (voor de haag). */
+    static final int ZELDA_Z = -9;
+
+    /**
+     * Story of Zelda (sessie zelda-apart, Jelle 30-10: "een aparte portal"): een oude boog van bemoste steen, half
+     * overgroeid, met een groen licht in de sluitsteen, als een ruïne die in de tuin is blijven staan. Ervoor stapstenen
+     * door het tulpenperk, zodat je ziet dat je erheen kunt. Even hoog als de andere poorten.
+     */
+    void zeldaPoort() {
+        int z = ZELDA_Z;
+        for (int s : new int[]{-2, 2})
+            for (int h = 1; h <= 5; h++)
+                zet(s, h, z, h == 5 ? "chiseled_stone_bricks" : kans(s * 5 + h, z, 3) == 0 ? "cracked_stone_bricks" : "mossy_stone_bricks");
+        zet(-1, 5, z, trap("mossy_stone_brick", "east", true));
+        zet(1, 5, z, trap("mossy_stone_brick", "west", true));
+        zet(0, 5, z, "verdant_froglight");
+        for (int dx = -2; dx <= 2; dx++) zet(dx, 6, z, dx == 0 ? "chiseled_stone_bricks" : "mossy_stone_bricks");
+        for (int dx = -1; dx <= 1; dx++) zet(dx, 7, z, plaat("mossy_stone_brick", false));
+        zet(-2, 7, z, "mossy_stone_brick_wall");
+        zet(2, 7, z, "mossy_stone_brick_wall");
+        // klimop tegen de voorkant van de zuilen, een paar losse stenen ernaast
+        for (int h = 2; h <= 4; h++) zet(2, h, z + 1, "vine[north=true]");
+        for (int h = 3; h <= 5; h++) zet(-2, h, z + 1, "vine[north=true]");
+        zet(-3, 1, z, trap("mossy_stone_brick", "east", false));
+        zet(3, 1, z, "mossy_cobblestone");
+        zet(3, 0, z + 1, "moss_block");
+        zet(3, 1, z + 1, "fern");
+        zet(-3, 0, z + 1, "moss_block");
+        zet(-3, 1, z + 1, "fern");
+        // de doorgang: vrij, mos eronder; ervoor mos en stapstenen door het perk tot aan de brink
+        for (int dx = -1; dx <= 1; dx++) {
+            zet(dx, 0, z, "moss_block");
+            for (int h = 1; h <= 4; h++) zet(dx, h, z, "air");
+            for (int dz = 1; dz <= 2; dz++) {
+                zet(dx, 0, z + dz, "moss_block");
+                zet(dx, 1, z + dz, "air");
+            }
+        }
+        for (int zz : new int[]{-6, -5, -3, -1, 1}) {
+            zet(0, 0, zz, "mossy_stone_bricks");
+            zet(0, 1, zz, "air");
+        }
+        poorten.add(new Poort(-1, 1, z, "zelda"));
+        p.label(0.5, g + 8.8, z + 0.5, "<#7fd1c4>Story of Zelda</#7fd1c4>", 1.5f);
     }
 
     // ── rand en begroeiing ──────────────────────────────────────────────────────────────────

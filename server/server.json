@@ -394,6 +394,14 @@
       "op": [
         "kitpvp"
       ]
+    },
+    {
+      "naam": "zelda",
+      "bron": "eigen",
+      "pad": "plugins/zelda",
+      "op": [
+        "kitpvp"
+      ]
     }
   ],
   "datapacks": {
@@ -523,7 +531,14 @@
         "server-tag": "<red>[KitPvP]</red> ",
         "chat": "<tag><prefix> <white><naam></white> <dark_gray>»</dark_gray> <gray><bericht>",
         "tablijst": "<gray>K</gray> <prefix> <white><naam>",
-        "toon-join-quit": false
+        "toon-join-quit": false,
+        "wereld-zelda-server-tag": "<#7fd1c4>[Zelda]</#7fd1c4> ",
+        "wereld-zelda-tablijst": "<gray>Z</gray> <prefix> <white><naam>",
+        "wereld-zelda-hulp": [
+          "/hint | een tip van Wiske",
+          "vak 9 | de kaart: reizen, niveau, je spellen",
+          "vak 8 | naar de lobby"
+        ]
       },
       "plugins/ViaVersion/config.yml": {
         "check-for-updates": false

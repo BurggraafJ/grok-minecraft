@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'nl.burggraaf.mc'
-version = '1.0.0'
+version = '1.1.0'
 
 def javaRelease = (findProperty('javaRelease') ?: '25') as int
 def velocityApi = findProperty('velocityApiVersion') ?: '4.3.0'

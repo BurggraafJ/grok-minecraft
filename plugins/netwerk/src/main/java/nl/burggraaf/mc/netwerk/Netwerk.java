@@ -50,6 +50,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -71,8 +72,13 @@ import org.slf4j.Logger;
  * - TAB toont iedereen op het netwerk met servertag.
  *
  * Backends praten met ons via het kanaal netwerk:main (alleen berichten van een server tellen, nooit van een speler).
+ *
+ * <p>Plekken (sessie zelda-apart): een eigen spel op een spelserver, zoals Story of Zelda (wereld «zelda» op kitpvp). Voor
+ * spelers is het een eigen bestemming: eigen naam, tag en letter ([Zelda], Z), /zelda, /terug en het terugkeren na het
+ * inloggen gaan erheen. De backend meldt waar je bent («plek»); erheen = het cookie burggraaf:plek zetten en verbinden
+ * (of, als je al op die server bent, «plek-naar» aan de backend).
  */
-@Plugin(id = "netwerk", name = "Netwerk", version = "1.0.0", authors = {"Minecraft Bot"},
+@Plugin(id = "netwerk", name = "Netwerk", version = "1.1.0", authors = {"Minecraft Bot"},
         description = "Lobby-eerst, aftellen naar je laatste server, gedeelde chat en TAB voor Burggraaf Craft")
 public final class Netwerk {
 
@@ -97,7 +103,10 @@ public final class Netwerk {
     private String quitFormaat = "<gray>[<red>-</red>]</gray> <white><naam>";
     private String wisselFormaat = "<dark_gray>»</dark_gray> <gray><naam></gray> <dark_gray>→</dark_gray> <tag>";
     private String tabFormaat = "<gray><letter></gray> <prefix> <white><naam>";   // H/S/K vooraan (Jelle 26-10)
-    private final Map<String, String> letters = new HashMap<>(Map.of("lobby", "H", "survival", "S", "kitpvp", "K"));
+    private final Map<String, String> letters = new HashMap<>(Map.of("lobby", "H", "survival", "S", "kitpvp", "K", "zelda", "Z"));
+    /** Plek → de server waar hij op draait (config.json «plekken»). */
+    private final Map<String, String> plekken = new LinkedHashMap<>(Map.of("zelda", "kitpvp"));
+    static final Key PLEK_COOKIE = Key.key("burggraaf", "plek");
     private String kop = "<gold>Burggraaf Craft</gold>";
     private int beroepTipMinuten = 10;
 
@@ -115,6 +124,12 @@ public final class Netwerk {
     private final Map<String, String> laatste = new ConcurrentHashMap<>();          // uuid → server
     private final Map<String, Profiel> profielen = new ConcurrentHashMap<>();       // uuid → profiel
     private final Map<UUID, String> wachtend = new ConcurrentHashMap<>();           // wacht in de lobby op server
+    /** Waar de backend zegt dat je bent (een plek, of de server zelf); geldt zolang je op die server bent. */
+    private final Map<UUID, String> plek = new ConcurrentHashMap<>();
+    /** Op weg naar deze plek (wij verbinden): voor de wisselregel, nog voor de backend het meldt. */
+    private final Map<UUID, String> verwacht = new ConcurrentHashMap<>();
+    /** Net op een server met plekken binnen: de wisselregel wacht even op de plek (tot dit tijdstip). */
+    private final Map<UUID, Long> meldNog = new ConcurrentHashMap<>();
     /** Server gaat zo uit (herstart): pas weer "klaar" als hij eerst echt weg was (of na 90 s). */
     private final Map<String, Long> gaatUit = new ConcurrentHashMap<>();
     private final Map<UUID, Aftelling> aftellingen = new ConcurrentHashMap<>();
@@ -133,7 +148,7 @@ public final class Netwerk {
     }
 
     private final class Aftelling {
-        final String server;
+        final String server;                                  // een server of een plek (Story of Zelda)
         final boolean naJoin;
         int over;
         Aftelling(String server, boolean naJoin, int over) {
@@ -167,6 +182,7 @@ public final class Netwerk {
         for (String s : spel) {
             cm.register(cm.metaBuilder(s).plugin(this).build(), (SimpleCommand) inv -> naarCommando(inv.source(), s));
         }
+        for (String pk : plekken.keySet()) cm.register(cm.metaBuilder(pk).plugin(this).build(), new PlekCommando(pk));
         cm.register(cm.metaBuilder("annuleer").aliases("blijf", "annuleren").plugin(this).build(),
                 (SimpleCommand) inv -> { if (inv.source() instanceof Player pl) annuleer(pl, true); });
         cm.register(cm.metaBuilder("terug").plugin(this).build(), (SimpleCommand) inv -> {
@@ -192,9 +208,11 @@ public final class Netwerk {
         tags.put("lobby", "<aqua>[Lobby]</aqua>");
         tags.put("survival", "<green>[Survival]</green>");
         tags.put("kitpvp", "<red>[KitPvP]</red>");
+        tags.put("zelda", "<#7fd1c4>[Zelda]</#7fd1c4>");
         namen.put("lobby", "Lobby");
         namen.put("survival", "Survival");
         namen.put("kitpvp", "KitPvP");
+        namen.put("zelda", "Story of Zelda");
         beroepSoorten.put("wildvreemde", "<#9a9a9a>Wildvreemde</#9a9a9a>");
         beroepSoorten.put("bouwer", "<#c9a66b>Bouwer</#c9a66b>");
         beroepSoorten.put("dokter", "<#8fd3c7>Dokter</#8fd3c7>");
@@ -250,6 +268,10 @@ public final class Netwerk {
             if (o.has("tablijst")) tabFormaat = o.get("tablijst").getAsString();
             if (o.has("letters")) letters.putAll(GSON.fromJson(o.get("letters"), new TypeToken<Map<String, String>>() {}.getType()));
             if (o.has("kop")) kop = o.get("kop").getAsString();
+            if (o.has("plekken")) {
+                plekken.clear();
+                plekken.putAll(GSON.fromJson(o.get("plekken"), new TypeToken<Map<String, String>>() {}.getType()));
+            }
         } catch (IOException | RuntimeException ex) {
             log.warn("config.json niet te lezen, standaardwaarden: {}", ex.toString());
         }
@@ -302,6 +324,7 @@ public final class Netwerk {
     private String commandoLijst() {
         StringBuilder sb = new StringBuilder("/" + lobby);
         for (String s : spel) if (proxy.getServer(s).isPresent()) sb.append(" · /").append(s);
+        for (String pk : plekken.keySet()) if (proxy.getServer(serverVanPlek(pk)).isPresent()) sb.append(" · /").append(pk);
         return sb.toString();
     }
 
@@ -334,6 +357,30 @@ public final class Netwerk {
 
     private Optional<String> serverVan(Player p) {
         return p.getCurrentServer().map(c -> c.getServerInfo().getName());
+    }
+
+    /** De server waar een plek op draait (een gewone server: zichzelf). */
+    String serverVanPlek(String pk) {
+        return pk == null ? null : plekken.getOrDefault(pk, pk);
+    }
+
+    /** Waar iemand is: een plek (Story of Zelda) als de backend dat meldde, anders zijn server. */
+    private Optional<String> plekVan(Player p) {
+        Optional<String> s = serverVan(p);
+        if (s.isEmpty()) return s;
+        String pk = plek.get(p.getUniqueId());
+        if (pk == null) pk = verwacht.get(p.getUniqueId());
+        return Optional.of(pk != null && s.get().equals(serverVanPlek(pk)) ? pk : s.get());
+    }
+
+    /** Is dit een spelbestemming (een spelserver of een plek op een spelserver)? */
+    private boolean spelPlek(String pk) {
+        return pk != null && spel.contains(serverVanPlek(pk));
+    }
+
+    /** Heeft deze server plekken (dan meldt de backend waar je bent)? */
+    private boolean heeftPlekken(String server) {
+        return plekken.containsValue(server);
     }
 
     private Component formaat(String f, Player p, String server) {
@@ -372,14 +419,19 @@ public final class Netwerk {
     public void onVerbonden(ServerConnectedEvent e) {
         Player p = e.getPlayer();
         String naar = e.getServer().getServerInfo().getName();
+        plek.remove(p.getUniqueId());
+        String vw = verwacht.get(p.getUniqueId());
+        if (vw != null && !serverVanPlek(vw).equals(naar)) verwacht.remove(p.getUniqueId());
         if (!naar.equals(lobby)) {
             stopAftelling(p, false);
             if (wachtend.remove(p.getUniqueId()) != null) schrijfWachtend();
         }
-        if (spel.contains(naar)) {
-            String oud = laatste.put(p.getUniqueId().toString(), naar);
-            if (!naar.equals(oud)) laatsteVuil = true;
-        }
+        if (spel.contains(naar)) zetLaatste(p.getUniqueId(), verwacht.getOrDefault(p.getUniqueId(), naar));
+    }
+
+    private void zetLaatste(UUID id, String pk) {
+        String oud = laatste.put(id.toString(), pk);
+        if (!pk.equals(oud)) laatsteVuil = true;
     }
 
     @Subscribe
@@ -395,15 +447,26 @@ public final class Netwerk {
                 proxy.getScheduler().buildTask(this, () -> naJoin(p)).delay(joinStilMs, TimeUnit.MILLISECONDS).schedule();
             }
         } else if (!stilleWissel.remove(p.getUniqueId())) {
-            // bewuste wissel: de anderen zien één regel in de chat, de speler zelf alleen een korte actiebalk
-            Component c = formaat(wisselFormaat, p, naar);
-            for (Player q : proxy.getAllPlayers()) if (!q.equals(p)) q.sendMessage(c);
-            p.sendActionBar(Component.text("→ " + serverNaam(naar), NamedTextColor.GRAY));
             if (naar.equals(lobby)) stuurNaarBackend(p, "hub");   // lobby: naar je hoogste parkourlevel
+            if (heeftPlekken(naar) && !verwacht.containsKey(p.getUniqueId())) {
+                meldNog.put(p.getUniqueId(), System.currentTimeMillis() + 2000);   // eerst horen waar hij is (Zelda of KitPvP)
+            } else {
+                meldWissel(p, plekVan(p).orElse(naar));
+            }
         }
         if (naar.equals(lobby) && wachtend.containsKey(p.getUniqueId())) {
             stuurNaarBackend(p, "wacht", wachtend.get(p.getUniqueId()), serverNaam(wachtend.get(p.getUniqueId())));
         }
+    }
+
+    /**
+     * Bewuste wissel: de anderen zien één regel in de chat, de speler zelf alleen een korte actiebalk. Naar een plek met een
+     * eigen binnenkomst (Story of Zelda zegt zelf waar je bent): geen actiebalk, anders staat het er twee keer.
+     */
+    private void meldWissel(Player p, String waar) {
+        Component c = formaat(wisselFormaat, p, waar);
+        for (Player q : proxy.getAllPlayers()) if (!q.equals(p)) q.sendMessage(c);
+        if (!plekken.containsKey(waar)) p.sendActionBar(Component.text("→ " + serverNaam(waar), NamedTextColor.GRAY));
     }
 
     /**
@@ -418,8 +481,8 @@ public final class Netwerk {
             return;
         }
         String doel = laatste.get(p.getUniqueId().toString());
-        if (!spel.contains(doel) || proxy.getServer(doel).isEmpty()) return;   // die server is er niet meer: gewoon in de lobby
-        final String server = doel;
+        if (!spelPlek(doel) || proxy.getServer(serverVanPlek(doel)).isEmpty()) return;   // die server is er niet meer: gewoon in de lobby
+        final String server = serverVanPlek(doel);
         proxy.getServer(server).ifPresent(rs -> rs.ping().whenComplete((ping, fout) -> {
             if (!p.isActive() || !serverVan(p).map(lobby::equals).orElse(false)) return;
             if (fout != null) {
@@ -428,7 +491,7 @@ public final class Netwerk {
                 stuurNaarBackend(p, "wacht", server, serverNaam(server));
                 return;
             }
-            startAftelling(p, server, true);
+            startAftelling(p, doel, true);
         }));
     }
 
@@ -440,8 +503,10 @@ public final class Netwerk {
 
     private Component serverKnoppen(String behalve) {
         Component c = Component.empty();
-        for (String s : spel) {
-            if (s.equals(behalve) || proxy.getServer(s).isEmpty()) continue;
+        List<String> alle = new ArrayList<>(spel);
+        for (String pk : plekken.keySet()) if (!alle.contains(pk)) alle.add(pk);
+        for (String s : alle) {
+            if (s.equals(behalve) || proxy.getServer(serverVanPlek(s)).isEmpty()) continue;
             c = c.append(Component.space()).append(knop("[" + serverNaam(s) + "]", NamedTextColor.AQUA, "/" + s, "Naar " + serverNaam(s)));
         }
         return c;
@@ -479,8 +544,9 @@ public final class Netwerk {
                     : "Je bent van " + serverNaam(van) + " gehaald en staat nu in de lobby.", NamedTextColor.YELLOW)));
         } else if (van.equals(lobby)) {
             String doel = laatste.getOrDefault(p.getUniqueId().toString(), standaard);
-            Optional<RegisteredServer> s = proxy.getServer(doel);
+            Optional<RegisteredServer> s = proxy.getServer(serverVanPlek(doel));
             if (s.isEmpty()) return;
+            zetCookie(p, doel);
             stilleWissel.add(p.getUniqueId());
             e.setResult(KickedFromServerEvent.RedirectPlayer.create(s.get(),
                     Component.text("De lobby herstart even; je bent naar " + serverNaam(doel) + " gestuurd.", NamedTextColor.YELLOW)));
@@ -490,6 +556,9 @@ public final class Netwerk {
     @Subscribe
     public void onWeg(DisconnectEvent e) {
         Player p = e.getPlayer();
+        plek.remove(p.getUniqueId());
+        verwacht.remove(p.getUniqueId());
+        meldNog.remove(p.getUniqueId());
         aftellingen.remove(p.getUniqueId());
         gevechtTot.remove(p.getUniqueId());
         stilleWissel.remove(p.getUniqueId());
@@ -515,7 +584,7 @@ public final class Netwerk {
         int n = naJoin ? aftellenJoin : aftellen;
         aftellingen.put(p.getUniqueId(), new Aftelling(server, naJoin, n));
         // rustig: geen chatregels en geen grote titels, alleen de actionbar (zie tik)
-        stuurNaarBackend(p, "aftellen", server, serverNaam(server), String.valueOf(n));
+        stuurNaarBackend(p, "aftellen", serverVanPlek(server), serverNaam(server), String.valueOf(n));
         tik(p);
     }
 
@@ -524,15 +593,17 @@ public final class Netwerk {
         if (a == null || !p.isActive()) return;
         if (a.over <= 0) {
             aftellingen.remove(p.getUniqueId());
-            stuurNaarBackend(p, "aftellen-klaar", a.server);
-            Optional<RegisteredServer> rs = proxy.getServer(a.server);
+            stuurNaarBackend(p, "aftellen-klaar", serverVanPlek(a.server));
+            Optional<RegisteredServer> rs = proxy.getServer(serverVanPlek(a.server));
             if (rs.isEmpty()) return;
             stilleWissel.add(p.getUniqueId());
+            zetCookie(p, a.server);
             p.createConnectionRequest(rs.get()).connect().whenComplete((r, fout) -> {
                 if (fout != null || r == null || !r.isSuccessful()) {
                     stilleWissel.remove(p.getUniqueId());
+                    verwacht.remove(p.getUniqueId());
                     if (p.isActive() && serverVan(p).map(lobby::equals).orElse(false)) {
-                        wachtend.put(p.getUniqueId(), a.server);
+                        wachtend.put(p.getUniqueId(), serverVanPlek(a.server));
                         schrijfWachtend();
                         p.sendActionBar(Component.text(serverNaam(a.server) + " is even niet bereikbaar · je gaat vanzelf · /blijf = blijven", NamedTextColor.GRAY));
                     }
@@ -550,7 +621,7 @@ public final class Netwerk {
     private void stopAftelling(Player p, boolean melden) {
         Aftelling a = aftellingen.remove(p.getUniqueId());
         if (a == null) return;
-        stuurNaarBackend(p, "aftellen-stop", a.server);
+        stuurNaarBackend(p, "aftellen-stop", serverVanPlek(a.server));
         if (melden) {
             p.sendActionBar(Component.text("Je blijft in de lobby", NamedTextColor.GRAY));
         }
@@ -596,7 +667,7 @@ public final class Netwerk {
         return true;
     }
 
-    private static final Set<String> WISSEL_COMMANDOS = Set.of("server", "lobby", "hub", "survival", "kitpvp", "terug", "spawn", "annuleer", "blijf");
+    private static final Set<String> WISSEL_COMMANDOS = Set.of("server", "lobby", "hub", "survival", "kitpvp", "zelda", "terug", "spawn", "annuleer", "blijf");
 
     @Subscribe(order = PostOrder.FIRST)
     public void onCommando(CommandExecuteEvent e) {
@@ -606,25 +677,68 @@ public final class Netwerk {
         if (WISSEL_COMMANDOS.contains(root) && inGevecht(p)) e.setResult(CommandExecuteEvent.CommandResult.denied());
     }
 
-    private void naar(Player p, String server) {
+    /** Naar een server of een plek (Story of Zelda: de server waar hij op draait, met het cookie; of daar al: de backend). */
+    private void naar(Player p, String doel) {
         if (inGevecht(p)) return;
+        String server = serverVanPlek(doel);
         Optional<RegisteredServer> rs = proxy.getServer(server);
         if (rs.isEmpty()) {   // bv. kitpvp nog niet in velocity.toml (paneel zonder plek): netjes melden
-            String wat = namen.containsKey(server) ? serverNaam(server) + " is er nu niet" : "Die server bestaat niet";
+            String wat = namen.containsKey(doel) ? serverNaam(doel) + " is er nu niet" : "Die server bestaat niet";
             p.sendMessage(Component.text(wat + ".", NamedTextColor.YELLOW));
             return;
         }
-        if (serverVan(p).map(server::equals).orElse(false)) {
-            p.sendMessage(Component.text("Je bent al op " + serverNaam(server) + ".", NamedTextColor.GRAY));
+        if (plekVan(p).map(doel::equals).orElse(false)) {
+            p.sendActionBar(Component.text("Je bent al in " + serverNaam(doel), NamedTextColor.GRAY));
             return;
         }
         stopAftelling(p, false);
         if (wachtend.remove(p.getUniqueId()) != null) schrijfWachtend();
+        if (serverVan(p).map(server::equals).orElse(false)) {     // zelfde server, andere plek (KitPvP ↔ Zelda): de backend wisselt
+            stuurNaarBackend(p, "plek-naar", doel);
+            return;
+        }
+        zetCookie(p, doel);
         p.createConnectionRequest(rs.get()).connect().whenComplete((r, fout) -> {
             if (fout != null || r == null || !r.isSuccessful()) {
-                p.sendMessage(Component.text(serverNaam(server) + " is nu niet bereikbaar (herstart?). Probeer het zo nog eens.", NamedTextColor.YELLOW));
+                verwacht.remove(p.getUniqueId());
+                p.sendMessage(Component.text(serverNaam(doel) + " is nu niet bereikbaar (herstart?). Probeer het zo nog eens.", NamedTextColor.YELLOW));
             }
         });
+    }
+
+    /** Naar een server met plekken: het cookie zegt de backend waar je heen wilt (de plek, of de server zelf = zijn hub). */
+    private void zetCookie(Player p, String doel) {
+        String server = serverVanPlek(doel);
+        if (!heeftPlekken(server)) return;
+        verwacht.put(p.getUniqueId(), doel);
+        try {
+            p.storeCookie(PLEK_COOKIE, doel.getBytes(StandardCharsets.UTF_8));
+        } catch (RuntimeException ex) {
+            log.debug("cookie: {}", ex.toString());
+        }
+    }
+
+    /**
+     * /zelda (een plek): erheen. Met iets erachter, of als je er al bent, is het een commando van de backend zelf
+     * (/zelda beheer, …): dan geeft Velocity het door (hasPermission = false).
+     */
+    private final class PlekCommando implements SimpleCommand {
+        private final String pk;
+
+        PlekCommando(String pk) {
+            this.pk = pk;
+        }
+
+        @Override
+        public void execute(Invocation inv) {
+            naarCommando(inv.source(), pk);
+        }
+
+        @Override
+        public boolean hasPermission(Invocation inv) {
+            if (inv.arguments().length > 0) return false;
+            return !(inv.source() instanceof Player p) || !plekVan(p).map(pk::equals).orElse(false);
+        }
     }
 
     // ── elke seconde: aftellen, TAB ─────────────────────────────────────────────────────────
@@ -633,8 +747,14 @@ public final class Netwerk {
 
     private void elkeSeconde() {
         seconde++;
+        long nu = System.currentTimeMillis();
         for (Player p : proxy.getAllPlayers()) {
             if (aftellingen.containsKey(p.getUniqueId())) tik(p);
+            Long tot = meldNog.get(p.getUniqueId());
+            if (tot != null && (tot <= nu || plek.containsKey(p.getUniqueId()))) {
+                meldNog.remove(p.getUniqueId());
+                plekVan(p).ifPresent(w -> meldWissel(p, w));
+            }
         }
         try {
             werkTabBij();
@@ -652,10 +772,12 @@ public final class Netwerk {
         Map<String, Integer> perServer = new LinkedHashMap<>();
         for (String s : namen.keySet()) if (proxy.getServer(s).isPresent() && !s.equals("staging")) perServer.put(s, 0);
         Map<UUID, String> waar = new HashMap<>();
+        Map<UUID, String> server = new HashMap<>();
         for (Player p : alle) {
             String s = serverVan(p).orElse(null);
             if (s == null) continue;
-            waar.put(p.getUniqueId(), s);
+            server.put(p.getUniqueId(), s);
+            waar.put(p.getUniqueId(), plekVan(p).orElse(s));
             perServer.merge(s, 1, Integer::sum);
         }
         Component voet = Component.empty();
@@ -669,7 +791,7 @@ public final class Netwerk {
         Component kopC = safe(kop);              // rustig: alleen de naam, geen tellers of commando's
         Component voetC = Component.empty();
         for (Player kijker : alle) {
-            String mijn = waar.get(kijker.getUniqueId());
+            String mijn = server.get(kijker.getUniqueId());
             if (mijn == null) continue;
             TabList tab = kijker.getTabList();
             tab.setHeaderAndFooter(kopC, voetC);
@@ -677,7 +799,7 @@ public final class Netwerk {
             for (Player ander : alle) {
                 String daar = waar.get(ander.getUniqueId());
                 if (daar == null || ander.equals(kijker)) continue;
-                if (daar.equals(mijn)) {          // zelfde server: de backend beheert die regel
+                if (server.get(ander.getUniqueId()).equals(mijn)) {          // zelfde server: de backend beheert die regel
                     ons.remove(ander.getUniqueId());
                     continue;
                 }
@@ -738,7 +860,8 @@ public final class Netwerk {
                     if (aftellingen.containsKey(en.getKey())) continue;
                     wachtend.remove(en.getKey());
                     stuurNaarBackend(p.get(), "wacht-stop", s);
-                    startAftelling(p.get(), s, false);
+                    String terug = laatste.get(en.getKey().toString());
+                    startAftelling(p.get(), terug != null && s.equals(serverVanPlek(terug)) ? terug : s, false);
                 }
                 schrijfWachtend();
             });
@@ -797,6 +920,19 @@ public final class Netwerk {
                     if (oud == null || !java.util.Objects.equals(oud.naam, pr.naam) || !java.util.Objects.equals(oud.prefix, pr.prefix) || oud.afk != pr.afk || oud.beheer != pr.beheer) {
                         profielen.put(id, pr);
                         profielenVuil = true;
+                    }
+                }
+                case "plek" -> {                               // de backend: waar deze speler nu is (een plek of de server zelf)
+                    UUID id = UUID.fromString(in.readUTF());
+                    String pk = in.readUTF();
+                    if (!bron.getPlayer().getUniqueId().equals(id) || !van.equals(serverVanPlek(pk))) return;
+                    String oud = plekVan(bron.getPlayer()).orElse(van);
+                    plek.put(id, pk);
+                    verwacht.remove(id);
+                    if (spel.contains(van)) zetLaatste(id, pk);
+                    if (!oud.equals(pk) && !meldNog.containsKey(id)) {     // op dezelfde server gewisseld (KitPvP ↔ Zelda): de anderen zien het
+                        Component c = formaat(wisselFormaat, bron.getPlayer(), pk);
+                        for (Player q : proxy.getAllPlayers()) if (!q.equals(bron.getPlayer())) q.sendMessage(c);
                     }
                 }
                 case "actie" -> {
@@ -994,7 +1130,7 @@ public final class Netwerk {
     /** /spelers: iedereen die het netwerk kent, met beroep en online/offline. */
     private void spelersLijst(CommandSource src) {
         Map<String, String> waar = new HashMap<>();
-        for (Player p : proxy.getAllPlayers()) waar.put(p.getUniqueId().toString(), serverVan(p).orElse(""));
+        for (Player p : proxy.getAllPlayers()) waar.put(p.getUniqueId().toString(), plekVan(p).orElse(""));
         Set<String> ids = new java.util.LinkedHashSet<>(waar.keySet());
         ids.addAll(profielen.keySet());
         List<String> lijst = new ArrayList<>(ids);
@@ -1065,6 +1201,7 @@ public final class Netwerk {
                 StringBuilder sb = new StringBuilder("netwerk status:");
                 for (Player p : proxy.getAllPlayers()) {
                     sb.append("\n  ").append(p.getUsername()).append(" @ ").append(serverVan(p).orElse("?"))
+                            .append(plek.containsKey(p.getUniqueId()) ? " plek=" + plek.get(p.getUniqueId()) : "")
                             .append(" laatste=").append(laatste.getOrDefault(p.getUniqueId().toString(), "-"))
                             .append(wachtend.containsKey(p.getUniqueId()) ? " wacht=" + wachtend.get(p.getUniqueId()) : "")
                             .append(aftellingen.containsKey(p.getUniqueId()) ? " aftellen" : "");

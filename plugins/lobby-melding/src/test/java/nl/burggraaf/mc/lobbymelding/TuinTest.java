@@ -117,9 +117,22 @@ class TuinTest {
             }
     }
 
+    /** De Zelda-poort (midden, achter het tulpenperk): recht vooruit vanaf de spawn, en er loopt een vrije weg naartoe. */
+    @Test
+    void zeldaPoortTeBelopen() {
+        Tuin.Poort z = t.poorten.stream().filter(p -> p.server().equals("zelda")).findFirst().orElseThrow();
+        assertEquals(-1, z.x1());
+        assertEquals(1, z.x2());
+        for (int zz = (int) Math.floor(t.spawnZ); zz >= z.z(); zz--)
+            for (int h = 1; h <= 2; h++) assertTrue(t.p.doorloopbaar(0, t.g + h, zz), "de weg naar de Zelda-poort is dicht op z " + zz + " (hoogte " + h + ")");
+        for (int zz = (int) Math.floor(t.spawnZ); zz >= z.z(); zz--) assertFalse(t.p.doorloopbaar(0, t.g, zz), "geen vloer op z " + zz);
+        // de andere poorten staan ernaast, niet ervoor
+        for (Tuin.Poort p : t.poorten) if (p != z) assertTrue(Math.abs(p.x1()) >= 3 && p.z() > z.z());
+    }
+
     @Test
     void poortenVrijEnDichtBijDeSpawn() {
-        assertEquals(2, t.poorten.size());
+        assertEquals(3, t.poorten.size());
         Set<String> servers = new HashSet<>();
         for (Tuin.Poort p : t.poorten) {
             servers.add(p.server());
@@ -132,7 +145,7 @@ class TuinTest {
             assertTrue(p.z() < t.spawnZ);
             assertTrue(Math.abs((p.x1() + p.x2()) / 2.0 + 0.5 - t.spawnX) < Math.abs(p.z() - t.spawnZ));
         }
-        assertEquals(Set.of("survival", "kitpvp"), servers);
+        assertEquals(Set.of("survival", "kitpvp", "zelda"), servers);
         // de spawn zelf: vrij, op een vloer
         int sx = (int) Math.floor(t.spawnX), sz = (int) Math.floor(t.spawnZ);
         assertTrue(t.p.doorloopbaar(sx, t.g + 1, sz) && t.p.doorloopbaar(sx, t.g + 2, sz));
