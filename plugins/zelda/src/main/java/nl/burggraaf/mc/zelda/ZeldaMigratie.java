@@ -144,7 +144,7 @@ final class ZeldaMigratie {
      * Zet de vier regiobestanden van het Zelda-gebied over van de map {@code van} (de kitpvp-wereld) naar {@code naar} (de
      * Zelda-wereld, die dan dicht moet zijn). Nooit overschrijven. Lukt het, dan gaan de bouwversies mee.
      */
-    void wereld(File van, File naar) {
+    boolean wereld(File van, File naar) {
         int gekopieerd = 0, al = 0;
         List<String> fout = new ArrayList<>();
         for (String soort : SOORTEN)
@@ -176,6 +176,13 @@ final class ZeldaMigratie {
         log.info("migratie: wereld " + uit);
         zet("wereld.klaar", uit);
         zet("wereld.tijd", nu());
+        return gekopieerd > 0 && fout.isEmpty() && al == 0;
+    }
+
+    /** Na de overzet stond er geen eiland (verkeerde map?): alles wordt gebouwd; dat staat er dan ook bij. */
+    void nietGelukt(String waarom) {
+        log.severe("migratie: de overgezette eilanden staan er niet (" + waarom + "): alles wordt uit code gebouwd");
+        zet("wereld.klaar", lees().getString("wereld.klaar", "") + "; maar " + waarom + ": opnieuw gebouwd");
     }
 
     /** De bouwversies van de Zelda-delen (en de grondhoogte) uit KitPvP's gebouwd.yml: wat er al staat, wordt niet herbouwd. */
@@ -206,21 +213,23 @@ final class ZeldaMigratie {
     }
 
     /**
-     * De map met {@code region/} van een wereld. Paper 26 bewaart een dimensie onder {@code <wereld>/dimensions/<ns>/<naam>};
-     * oudere versies direct in de wereldmap. Zoekt beide.
+     * De map met {@code region/} van een wereld. Paper 26 geeft voor een eigen wereld de dimensiemap zelf
+     * ({@code world/dimensions/minecraft/zelda}, waar {@code region/} pas komt als er iets bewaard is) en voor de hoofdwereld
+     * de wereldmap ({@code world}, met de dimensie onder {@code dimensions/minecraft/overworld}); oudere versies alles direct
+     * in de wereldmap.
      */
     static File dimensie(World w) {
-        File basis = w.getWorldFolder();
+        return dimensie(w.getWorldFolder(), w.getKey().getNamespace(), w.getKey().getKey());
+    }
+
+    static File dimensie(File basis, String ns, String naam) {
+        File ouder = basis.getAbsoluteFile().getParentFile();
+        if (basis.getName().equals(naam) && ouder != null && ouder.getName().equals(ns) && ouder.getParentFile() != null
+                && ouder.getParentFile().getName().equals("dimensions")) return basis;           // al de dimensiemap
+        File d = new File(basis, "dimensions/" + ns + "/" + naam);
+        if (new File(d, "region").isDirectory()) return d;
         if (new File(basis, "region").isDirectory()) return basis;
-        File d = new File(basis, "dimensions/" + w.getKey().getNamespace() + "/" + w.getKey().getKey());
-        if (d.isDirectory()) return d;
-        File[] ns = new File(basis, "dimensions").listFiles(File::isDirectory);
-        if (ns != null)
-            for (File n : ns) {
-                File k = new File(n, w.getKey().getKey());
-                if (new File(k, "region").isDirectory()) return k;
-            }
-        return d;
+        return d.isDirectory() ? d : basis;
     }
 
     /** Een oude plek (kitpvp 2.16): in de kitpvp-wereld, in het Zelda-gebied. Wie daar uitlogde, komt in Zelda terug. */

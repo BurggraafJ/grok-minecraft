@@ -1775,7 +1775,8 @@ final class ZeldaTest {
             moet(ZeldaRegels.flessen(stand()) == 3 && fl != null && fl.getAmount() == 3, "Verhaal: geen twee extra flesjes (" + (fl == null ? 0 : fl.getAmount()) + ")");
             p.teleport(buiten(h, h.rust.get(0).plek));
         }, 2, () -> true, 1);
-        stap("zonder harnas", () -> p.getInventory().setArmorContents(new org.bukkit.inventory.ItemStack[4]), 3, () -> true, 1);   // harnas telt een tik later niet meer
+        // harnas telt een tik later niet meer; en na een wissel van wereld (de poort) ben je in Minecraft 3 s onkwetsbaar
+        stap("zonder harnas", () -> p.getInventory().setArmorContents(new org.bukkit.inventory.ItemStack[4]), 65, () -> true, 1);
         stap("schade per niveau", () -> {
             var m = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
             max[0] = m == null ? 20 : m.getValue();

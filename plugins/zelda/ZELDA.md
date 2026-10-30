@@ -15,7 +15,83 @@ kaart in vak 9 (sessie `zelda-kaart`, kitpvp 2.14: het eiland van boven en de ze
 meerdere spellen (sessie `zelda-moeilijkheid`, kitpvp 2.16, zie «Niveaus, samen spelen en meerdere spellen»). **Terugkerende personages** (Tijmen de wegwijzer, Brecht, Hanne, …) knopen de eilanden aan
 elkaar: zie «Terugkerende personages».
 
-Techniek en klassen: `MODI.md` (hoe het in elkaar zit) en de javadoc van `Zelda*.java`.
+**Sinds sessie `zelda-apart` (Zelda 1.0.0, kitpvp 2.17) is Story of Zelda een eigen spel**: een eigen plugin
+(`plugins/zelda`), een eigen wereld en een eigen poort in de lobby. Zie «Een eigen spel» hieronder. Alles daarvóór in dit
+document noemt nog kitpvp-versies: zo heette het toen.
+
+Techniek en klassen: de javadoc van `Zelda*.java` (begin bij `ZeldaPlugin` en `Zelda`); `plugins/kitpvp/MODI.md` beschrijft
+hoe het tot kitpvp 2.16 als modus in de KitPvP-hub zat.
+
+## Een eigen spel (sessie `zelda-apart`, Zelda 1.0.0)
+
+Jelle 30-10: *"Story of zelda word een aparte portal. Dus apart ervan maken aub met eigen ding zodat het voelt alsof het iets
+anders is dan kitpvp…."*
+
+**De vorm, en waarom.**
+- **Een eigen plugin `Zelda`** (`plugins/zelda`, pakket `nl.burggraaf.mc.zelda`): alle `Zelda*.java`, de bazen en de tests
+  verhuisden uit kitpvp (met `git mv`, de geschiedenis blijft). KitPvP weet niets meer van Zelda.
+- **Een eigen wereld `zelda` op de kitpvp-server**, niet een eigen backend. Een extra backend kost geld of een handeling van
+  Jelle (Neptune heeft maar twee splits, beide in gebruik; kitpvp is al een losse server van 2 GB). Een eigen wereld kost
+  bijna niets extra: alleen de chunks rond spelers zijn geladen, net als toen Zelda in de kitpvp-wereld lag. Dezelfde regels
+  als kitpvp (moeilijkheid *easy*: de schade is daarop afgesteld; geen tijd, weer of mobs; meteen respawnen; geen
+  doodsberichten), die zet de plugin zelf.
+- **De eilanden liggen op dezelfde coördinaten** (x 1024…2047, z −512…511). Daardoor kon de migratie gewoon de vier
+  regiobestanden overzetten: er wordt niets herbouwd en alle code met coördinaten bleef gelijk.
+- **Een eigen poort in de lobby**: een oude, bemoste ruïne van een boog, midden achter Survival en KitPvP (waar de spar
+  stond), met een groen licht in de sluitsteen, klimop en stapstenen door het tulpenperk. Erboven «Story of Zelda» in de
+  kleur van de Glazen Zee (`#7fd1c4`, ook de deeltjes). In het stermenu: Survival · Story of Zelda · KitPvP · Parkour, de
+  brink eronder.
+- **Binnenkomen zonder KitPvP te zien**: de lobby zet het cookie `burggraaf:plek` = `zelda` en stuurt je naar de
+  kitpvp-server. Die leest het cookie terwijl je nog laadt (`AsyncPlayerSpawnLocationEvent`), dus je verschijnt meteen in de
+  Zelda-wereld en het spel zet je op je laatste rustplaats. Nooit eerst de KitPvP-hub. Zonder cookie (bv. `/terug` met een
+  oude proxy) kom je terug waar je wegging; wie onder kitpvp 2.16 in Zelda uitlogde (oude wereld, Zelda-gebied), komt ook in
+  Zelda. Komt het cookie niet op tijd (1 s), dan kijkt de plugin na het binnenkomen nog eens en zet je alsnog goed.
+
+**Een eigen identiteit, overal.**
+
+| waar | KitPvP | Story of Zelda |
+|---|---|---|
+| sidebar | ⚔ KitPvP: Kit, Kills · Doden, Reeks, Plek | «Story of Zelda»: waar je bent, hartstukjes x / 20, donkergrijs «Lobby: vak 8» |
+| tablijst | `K Boer Jelle` | `Z Boer Jelle` (opmaak `wereld-zelda-tablijst`; op de andere servers de proxy, plek `zelda`) |
+| chat | `[KitPvP] …` | `[Zelda] …` (opmaak `wereld-zelda-server-tag`) |
+| wissel | `» naam → [KitPvP]` | `» naam → [Zelda]`; zelf zie je alleen de regel van het spel (eiland · rustplaats · vak 8 = lobby) |
+| vak 8 | «Terug naar de hub» | «Naar de lobby» (herstelkompas; ook onderaan de kaart) |
+| /help | /modus · /kit · /arena · /stats | /hint, de kaart, vak 8 (opmaak `wereld-zelda-hulp`) |
+| commando's | /kit /modus /arena /stats | /zelda (naar Zelda; met beheer: zoals altijd), /hint |
+| huisdier | gaat mee | nooit (`kitpvp-stand` = `geen`) |
+
+Typt iemand in Zelda toch `/arena`, `/kit` of `/modus`, dan gaat hij naar de KitPvP-hub (dat vroeg hij).
+
+**Zelda en KitPvP op één server.** Elke plugin bemoeit zich alleen met spelers in zijn eigen wereld. Uit Zelda naar de
+KitPvP-wereld (`/kitpvp` via de proxy, `zelda uit <speler>`): Zelda ruimt eerst op (spullen, harten, muziek, sidebar), dan zet
+KitPvP je in de hub. Andersom: `ZeldaPlugin.binnen` (lobbypoort, `/zelda`, beheer, de test).
+
+**De proxy (plugin netwerk 1.1).** Zelda is daar een *plek* op kitpvp (`config.json` → `plekken`: `zelda` → `kitpvp`). De
+backend meldt waar je bent (`plek`); daarmee: letter Z, tag [Zelda], `/spelers`, `/terug`, het terugkeren na inloggen
+(«Naar Story of Zelda in 3») en na een herstart van kitpvp. `/zelda` = erheen (met het cookie; ben je al op kitpvp, dan
+wisselt de backend van wereld: `plek-naar`). `/zelda beheer` en zo gaan door naar de server. Zonder de nieuwe proxy werkt
+alles ook (de lobbypoort zet het cookie zelf); alleen ziet iedereen dan nog «→ [KitPvP]» en een K.
+
+**De KitPvP-hub** houdt al zijn arena's en modi. De westplek (de grote Zelda-poort) is nu een dichtgemetselde, bemoste
+boog met een bordje: «Story of Zelda · heeft nu een · eigen poort · in de lobby» (hub versie 2).
+
+**De verhuizing van de voortgang** (`ZeldaMigratie`, eenmalig bij de eerste start van Zelda 1.0.0, idempotent):
+- `plugins/KitPvP/zelda.yml` (alle spellen, niveaus, hartstukjes, de kaart, samen-spellen), `zelda-kaarten.yml` en
+  `zelda-kaart/` → `plugins/Zelda/`. Eerst een backup in `plugins/Zelda/migratie/kitpvp-<tijd>/`; de oude bestanden blijven
+  staan. Staat er al een `plugins/Zelda/zelda.yml`, dan wordt niets overschreven.
+- De vier regiobestanden (`region`, `entities`, `poi`: `r.2.-1`, `r.2.0`, `r.3.-1`, `r.3.0`) van de kitpvp-wereld → de
+  Zelda-wereld (nooit over een bestaand bestand heen), en de bouwversies van de Zelda-delen en de grondhoogte naar
+  `plugins/Zelda/gebouwd.yml`. Het oude gebied blijft in de kitpvp-wereld liggen (niemand komt er; handig om terug te vallen).
+- Wat er gebeurde staat in `plugins/Zelda/migratie.yml`; `zelda migratie` laat het zien.
+
+**Commando's** (console `zelda …` = vroeger `kitpvp zelda …`; `kitpvp zelda …` werkt nog en stuurt door):
+- spelers: `/zelda` (erheen), `/hint`;
+- beheer in de game (OP, `zelda.beheer`): `/zelda`, `/zelda beheer [aan|uit]`, `/zelda ga <plek>`, `/zelda plekken`,
+  `/zelda reset <speler> [spel]`, bijsturen (`spelers`, `niveau`, `steun`, `volg`, `doden`, `spel`, `samen`), en alles van de
+  console;
+- console: `zelda zelftest`, `zelda status`, `zelda test <speler> [alles …|dood|motor|niveau|spellen]`, `zelda lopen <eiland>`,
+  `zelda in|uit <speler>`, `zelda reset <speler> [spel]`, `zelda verder|rust|vaar|vlag|hint|beheer <speler> …`,
+  `zelda kaart [<speler>|opnieuw]`, `zelda bouw [deel|alles]`, `zelda plaatjes [begin]`, `zelda migratie`.
 
 ## Jelles wensen → wat het spel doet
 
@@ -361,7 +437,7 @@ x 1579, daar sluit 3b aan). Coördinaten: IJshoeve (1480, −294), het meer (143
   dicht gesneeuwd. Nog even geduld.»
 - **Rondjes**: dorp → Sparrenbos → kuil → rotswand → gang → kloof → Uitkijk → dorp; dorp → meer → (langs de oever)
   bosrand → dorp. De kloof is dicht: zonder de opgegraven deur kom je niet in de gang, en zonder klauwhaak niet uit de
-  kloof (behalve terug door de gang) en niet op de Bergpoort (`kitpvp zelda lopen witte-toppen dicht wachtersdeur
+  kloof (behalve terug door de gang) en niet op de Bergpoort (`zelda lopen witte-toppen dicht wachtersdeur
   zonder klauwhaak`).
 - **Personen** (twaalf): Brecht, Tijmen (de **sterrenlantaarn**: «In het Sparrenbos raast een storm»; na de klauwhaak:
   het Vorstbaken), Saar en Sven (*Zoekgeraakte geiten*: Bles bij het meer, Sokje langs de weg naar de fjord, Mekker op
@@ -520,7 +596,7 @@ de Lorriehal (1196, 330), de Vonkkamer (1197, 265), de Gloedader (1230, 323), de
   de Laadkade. Met het gloedijzer is de Daaltrap een korte weg, na de Askamer de Asgang. De kaart reist tussen de acht
   zielvuren. Wat de volgorde bewaakt: zonder klauwhaak kom je niet in de Vonkkamer, zonder de lampen (vuurstaf) niet
   naar beneden, zonder gloedijzer niet door het hek van de Daaltrap, zonder gloedharnas niet door de gloed
-  (`kitpvp zelda lopen gloedberg zonder klauwhaak dicht daaltrap dicht asgang`).
+  (`zelda lopen gloedberg zonder klauwhaak dicht daaltrap dicht asgang`).
 - **De vuurstaf** (vak 6, `ZeldaSpel.Vuurstaf`): rechtsklik = een vlam die rechtdoor vliegt (24 blokken; een paar graden
   ernaast mag, net als de klauwhaak). Een vuurschaal of lamp gaat aan (`Reeks.Hoe.VUUR`, en ook de gewone vuurschalen
   `KLIK`, zoals de drie vuren van de tempelruïne op het Lindewoud), betoverd ijs smelt (`Smelt`), een vijand krijgt een
@@ -592,7 +668,7 @@ uitkijk (1335, 321, KF+10).
   doorgang, dus de volgorde maakt niet uit); de Smidsehal ↔ Sintelgat via de Smidsepoort, de gloed en de Asgang of de
   Daaltrap; de kaart reist tussen de zielvuren. Wat de volgorde bewaakt: zonder klauwhaak geen vonk in de Kettingzaal en
   niet de schoorsteen op; zonder bom geen pad naar de vonk bij de dam; zonder vuurstaf zakt de gietrivier niet en brandt
-  het baken niet; zonder drie vonken en het Gloedschild gaat de Hartdeur niet open (`kitpvp zelda lopen gloedberg dicht
+  het baken niet; zonder drie vonken en het Gloedschild gaat de Hartdeur niet open (`zelda lopen gloedberg dicht
   hartdeur`, `… zonder klauwhaak`, `… dicht koelpad`).
 - **Lava doet geen echte schade** (motor, alle eilanden): wie in lava stapt, springt er meteen uit, terug naar waar hij
   veilig stond (geen lava vlakbij), met één hart schade (`ZeldaSpel.LAVA_SCHADE`), nooit dood,
@@ -699,7 +775,7 @@ de kegel van 4b). Hoogtes: G = zeeniveau + 1, **K = G+2** (de kerkers), **P = G+
 - **Rondjes**: kreek → klippen → muurvoet → weergang → kerkers → Vissersgat → kreek; kerkers → zuidgang → kapel → wachtersgang
   → nevelgang → kerkers; na de binnenplaats binnenplaats → voorburcht → hoofdpoort → muurvoet → klippen → kreek. Wat de
   volgorde bewaakt: de muurdeur (Wolf), de weergang (de enige weg naar binnen tot je in de kerkers was), de nevel
-  (lichtpijlen), de binnenpoort (wachtwoord en lichtharnas). `kitpvp zelda lopen nachtrots dicht muurdeur dicht vissersgat
+  (lichtpijlen), de binnenpoort (wachtwoord en lichtharnas). `zelda lopen nachtrots dicht muurdeur dicht vissersgat
   dicht hoofdpoort dicht westpoort` laat zien dat er geen andere weg is.
 - **Sluipen** (motor `ZeldaHoofdstuk.Sluip`): een wachter ziet wat in zijn lichtkegel komt (6 blokken, 32° opzij, niets
   ertussen); de kegel staat als warme stipjes op de vloer en houdt op waar het licht tegen iets schijnt. Gezien = een alarm,
@@ -775,7 +851,7 @@ is vierkant (x 1930 … 1950, z −10 … 10, midden 1940, 0), van het plateau (
   (een bom) → de zuidtrap (lichtpijl) → het balkon → Morgal → Zelda op het dak → naar huis (Brecht in de kreek, of de kaart) →
   het feest (praat met Zelda). Wat de volgorde bewaakt: het zegel (Tijmen, na de binnenplaats), de nevel (lichtpijlen), de
   haak (de klauwhaak; het haakpunt hangt zo hoog dat je het alleen vanaf de ingestorte trap raakt), de vuren en het puin, en
-  de ladder (alleen open voor wie boven was). `kitpvp zelda lopen nachtrots dicht torenpoort` laat zien dat je er alleen door
+  de ladder (alleen open voor wie boven was). `zelda lopen nachtrots dicht torenpoort` laat zien dat je er alleen door
   de poort komt; `… dicht trap1 dicht torenladder`, `… zonder klauwhaak dicht torenladder` en `… dicht trap2 dicht
   torenladder` dat elke kant nodig is.
 - **Rondjes en zijwegen**: voorhof → de trap om de toren → balkon → de ladder → voorhof; de torenhal (Ida) en Zelda's
@@ -920,7 +996,7 @@ stand zonder raster werkt gewoon.
 **Licht voor de server.**
 - **Eén keer meten per eiland.** Elk eiland wordt één keer van boven gemeten: per pixel van het blad één kolom. De chunks
   laden op de achtergrond, hoogstens drie tegelijk, nooit nieuw gemaakt. Dat gebeurt pas als het bouwen klaar is, ±10 s
-  per eiland. Het resultaat staat in `plugins/KitPvP/zelda-kaart/<eiland>.dat`, met als sleutel de versies van de delen
+  per eiland. Het resultaat staat in `plugins/Zelda/zelda-kaart/<eiland>.dat`, met als sleutel de versies van de delen
   en `ZeldaKaart.TEKENWIJZE`. Pas als een deel een nieuwe versie krijgt (of de tekenwijze verandert), wordt dat eiland
   opnieuw gemeten.
 - **Tekenen.** Minecraft vraagt de tekenaar elke tik om de kaart. Er gebeurt pas iets als je de kaart vasthoudt, en dan
@@ -952,9 +1028,9 @@ stand zonder raster werkt gewoon.
 zet je erop met `tekens()` in het deel (de zelftest kijkt of ze in het deel liggen).
 
 **Beheer.**
-- `kitpvp zelda kaart` maakt PNG's van elk eilandblad zonder mist en van de zeekaart, in `plugins/KitPvP/kaart/`.
-- `kitpvp zelda kaart <speler>` maakt zijn twee kanten zoals hij ze ziet (met eenvoudige tekentjes voor de pijlen).
-- `kitpvp zelda kaart opnieuw [eiland]` meet opnieuw.
+- `zelda kaart` maakt PNG's van elk eilandblad zonder mist en van de zeekaart, in `plugins/Zelda/kaart/`.
+- `zelda kaart <speler>` maakt zijn twee kanten zoals hij ze ziet (met eenvoudige tekentjes voor de pijlen).
+- `zelda kaart opnieuw [eiland]` meet opnieuw.
 
 ## De afronding (sessie `zelda-afronding`, kitpvp 2.15)
 
@@ -1085,9 +1161,9 @@ golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
   krijgt je maat binnen een seconde, en vóór elke keer bewaren; een flesje dat zo binnenkomt is leeg tot een bron of
   zielvuur (zoals altijd).
 
-### Bijsturen (Jelle; alleen OP/beheer, `kitpvp.beheer`)
+### Bijsturen (Jelle; alleen OP/beheer, `zelda.beheer`)
 
-| commando (in de game `/zelda …`, console `kitpvp zelda …`) | wat |
+| commando (in de game `/zelda …`, console `zelda …`) | wat |
 |---|---|
 | `spelers` | wie er in Zelda is: spel, waar, niveau (en steun), harten, doden in het gevecht waar hij nu vastzit, minuten zonder voortgang; in de game als menu met een hoofd per speler (klik = bijsturen) |
 | `niveau <wie> <verhaal\|avontuur\|held\|legende> [vast]` | het niveau van zijn spel; `vast` = hij kan het zelf niet meer veranderen; `niveau <wie> los` |
@@ -1104,7 +1180,7 @@ golven: je komt nergens sneller door). Alleen de steun voor de speler verschilt:
 
 - **Door een maat heen**: een bom, pijl of lichtpijl van een speler gaat door een medespeler heen (`ZeldaSpel.onDoorMaat`).
   De co-op-test vond het: een vriend die voor je staat, ving je bom, en de gebarsten muur bleef dicht.
-- **Testen met twee** (`kitpvp zelda test <speler> alles mee <speler2>`): één script speelt, de tweede neemt een samen-spel
+- **Testen met twee** (`zelda test <speler> alles mee <speler2>`): één script speelt, de tweede neemt een samen-spel
   aan en volgt overal (op een vloer: een testspeler valt niet vanzelf, anders kickt de server hem wegens vliegen), ook op
   zee. Aan het eind moet hij alles hebben wat de eerste heeft (ruim 500 vlaggen). Bij Grimmel mag de eerste dan wel geraakt
   worden: met twee spelers heeft Grimmel een helper.
@@ -1143,7 +1219,7 @@ moet regelen; een vaste wegwijzer bij wie je steeds terugkomt. Zo knopen we de e
 **Bouwregel voor elk volgend eiland:** zet Tijmen bij de hub (met `wegwijzer` als laatste gesprek), en maak minstens
 één **boodschap over zee**: een zijmissie van een bekende op een eerder eiland die pas begint als je op het nieuwe
 eiland was (`s.heeft("e:<eiland>")`), met de vondst op het nieuwe eiland (`vereist = "g:<gesprek>"`) en de beloning
-bij de bekende. `/hint` noemt zo'n missie ook op het andere eiland, en `kitpvp zelda test … alles` vaart aan het eind
+bij de bekende. `/hint` noemt zo'n missie ook op het andere eiland, en `zelda test … alles` vaart aan het eind
 twee rondes heen en weer om ze af te maken.
 
 ## Balans van gevechten (kitpvp 2.8.2, Jelle 27-10)
@@ -1197,7 +1273,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | muur op het pad | `barstOpPad`, `Barst.voor` | een gebarsten muur waar je door moet (de test gooit er een echte bom tegen) |
 | haken voor een deel | `tik(spel, spelers, nu)`, `boem(spel, p, plek)`, `wacht()` | elke seconde iets laten bewegen (vlieger, lichtbundel, eb en vloed); een bom op dit deel; wat Wiske zegt als het eiland nog niet af is |
 | na een uitdaging | `Uitdaging.daarna` | een `Actie` na het halen (missiestap) |
-| beheer | `kitpvp zelda vaar|vlag|hint <speler> …`, `kitpvp zelda test <speler> motor` | zie MODI.md |
+| beheer | `zelda vaar|vlag|hint <speler> …`, `zelda test <speler> motor` | zie MODI.md |
 | **open eiland** (versie 4 van het Lindewoud) | | |
 | poort voor wie iets heeft | `ZeldaHoofdstuk.Poort`, `poort(…)` | opent als er iemand in het gebied staat voor wie `mag` klopt (bv. het lichtwoord), voor iedereen; na een minuut leeg weer dicht; telt als open in `zelda lopen` |
 | oefenplek | `Kamer.alleenBel` | deuren open in rust; pas als je de bel luidt wordt er gevochten (eerst de gewone golven, daarna met de extra); telt niet als verplichte kamer |
@@ -1225,14 +1301,14 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | persoon voor sommigen | `Persoon.zichtbaar` | alleen te zien (en te praten) voor wie dit klopt: een geit in het veld tot je hem vond, daarna in de stal |
 | een dier krijgen | `spel.dier(p, soort)` | vlag, nog geen naam, deuntje, en meteen het naammenu |
 | nevelwolven | `Soort.NEVELWOLF` | betoverde sneeuwwolven (rode ogen, snel, niet taai) |
-| wat ligt erachter? | `kitpvp zelda lopen <eiland> zonder <voorwerp> dicht <poort>` | de loopcontrole met een poort dicht of zonder een voorwerp: zo zie je of je ergens omheen kunt |
+| wat ligt erachter? | `zelda lopen <eiland> zonder <voorwerp> dicht <poort>` | de loopcontrole met een poort dicht of zonder een voorwerp: zo zie je of je ergens omheen kunt |
 | **het IJspaleis** (eiland 3b) | | |
 | glijvloer | `ZeldaHoofdstuk.Glij`, `glij(…)`, `spel.glij`, `ZeldaRegels.glij` / `glijOplossing` | glad ijs: een stap erop = rechtdoor glijden tot je ergens tegenaan botst (een halve blok per tik, kijken kan gewoon) of van het ijs af bent; `oplossing` voor de test (de eerste zet is een echte stap) en de zelftest (met de blokken van de wereld); `zelda lopen` glijdt mee |
 | klauwhaak in een gevecht | `Kamer.haken` | in deze kamer werkt de klauwhaak ook tijdens het gevecht (wegtrekken als Grimmel stormt) |
 | licht voor spiegels | `Spiegels.licht` | het licht van een spiegelpuzzel brandt alleen als er iemand is voor wie dit klopt (de zonnesteen) |
 | Grimmel | `Grimmel` | een baas met ijszuilen: stormt (aanloop op zijn achterpoten, dan rechtdoor per tik), een zuil = duizelig (`ZeldaRegels.grimmelSchade`), de zuil groeit terug; sjokt na afloop naar zijn hol |
 | nieuwe vijanden | `Soort.IJSKNECHT`, `VORSTSCHUTTER`, `IJSKOBOLD`, `GRIMMEL` | een zombie met ijs, een stray (zijn pijlen maken je niet traag), een kleine snelle zombie, een ijsbeer (×2) |
-| kaartplaatjes van één deel | `kitpvp kaart <begin>` | alleen de plaatjes waarvan de naam zo begint (bv. `zelda-e3b`): lichter voor de server |
+| kaartplaatjes van één deel | `zelda plaatjes <begin>` | alleen de plaatjes waarvan de naam zo begint (bv. `zelda-e3b`): lichter voor de server |
 | **de Gloedberg** (eiland 4a) | | |
 | vuurstaf | `ZeldaSpel.Vuurstaf`, `spel.vlam`, `ZeldaRegels.VUUR_BEREIK` | vak 6; rechtsklik = een vlam (24 blokken, 6° ernaast mag, niets ertussen: `spel.zichtpunt`); steekt vuurschalen en lampen aan, smelt betoverd ijs, een tik voor vijanden (ijs het dubbele) |
 | vuurpuzzel | `Reeks.Hoe.VUUR`, `Reeks.voor` | dingen die alleen de vuurstaf aansteekt (hoog of ver weg); `voor` = de plek om te mikken (de zelftest kijkt of je elk ding ziet, de test schiet echt); ook `KLIK`-vuurschalen gaan aan met de vuurstaf |
@@ -1267,11 +1343,11 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | voltooid | `spel.voltooid`, `spel.stukjes` | de klaar-vlag van het laatste eiland; op de kaart «Story of Zelda · voltooid» met de hartstukjes; `/hint` en Tijmen zeggen hoeveel er nog liggen |
 | het feest | `ZeldaFeest` | personen, verhalen en een doel op het Lindewoud, zichtbaar voor wie Zelda bevrijdde; lichtjes en vuurwerk (getagd: doet niemand pijn) |
 | een naam bij beheer | `Persoon.beheerNaam` | zo heet hij bij `/zelda ga` (de gasten op het feest: `hendrik-feest`; Zelda daar: `feest`) |
-| test vanaf een deel | `kitpvp zelda test <speler> alles vanaf <deel>` | alles ervoor telt als gedaan; voor wie aan één deel werkt (de volledige route blijft de echte controle) |
+| test vanaf een deel | `zelda test <speler> alles vanaf <deel>` | alles ervoor telt als gedaan; voor wie aan één deel werkt (de volledige route blijft de echte controle) |
 | nieuwe vijanden | `Soort.NEVELGEEST`, `MORGAL` | een vex van nevel (licht doet dubbel), een evoker (Morgal zelf) |
 | **de kaart** (sessie `zelda-kaart`) | | |
 | kaart in vak 9 | `ZeldaKaart`, `ZeldaKaartBeeld` | een gevulde kaart per speler (`MapView`, nummer in `zelda-kaarten.yml`); vasthouden = het eilandblad, linksklik = de zeekaart, rechtsklik = het kaartmenu; met de kaart in de hand is je andere hand leeg (`spel.schild`) |
-| een eiland meten | `ZeldaKaart.Meting`, `TEKENWIJZE` | één keer per versie van de delen: de bovenkant van het eiland, chunks op de achtergrond; bewaard in `plugins/KitPvP/zelda-kaart/` |
+| een eiland meten | `ZeldaKaart.Meting`, `TEKENWIJZE` | één keer per versie van de delen: de bovenkant van het eiland, chunks op de achtergrond; bewaard in `plugins/Zelda/zelda-kaart/` |
 | ontdekken | `Stand.kaart`, `ZeldaKaart.ontdek`, `aanvullen` | vakjes van 8 × 8 blokken, 32 blokken om je heen; bij binnenkomen aangevuld uit je voortgang (oude standen); een eiland dat af is helemaal |
 | wat er op het blad staat | `ZeldaKaartBeeld.basis`, `blad`, `zeekaart`, `vlam`, `stippel`, `titel` | zee met schuim, reliëf, perkament over wat je niet zag, zielvuren, vaarroutes, de naam |
 | dorpen en kerkers | `ZeldaHoofdstuk.Teken`, `tekens()` | per deel; op de kaart zodra je er in de buurt was |
@@ -1306,10 +1382,10 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
    zet.
 4. Nieuwe vijanden: `ZeldaHoofdstuk.Soort` + `ZeldaSpel.spawn`; een baas: een `ZeldaBaas` (of subklasse).
 5. Nieuwe liedjes in `ZeldaMuziek` (en in `alle()`); de unit-test controleert bereik, lengte en volume.
-6. Test: `kitpvp zelftest`, `kitpvp zelda test <speler> alles` (loopt alle eilanden af in de volgorde van
+6. Test: `zelda zelftest`, `zelda test <speler> alles` (loopt alle eilanden af in de volgorde van
    `EILANDEN`: varen, elk deel in de volgorde van het pad, het einde van elk deel, Brecht, de zijmissies van het eiland
-   door te praten met wie iets nieuws heeft; vondsten met `voorwerp` moeten blijven liggen), `kitpvp zelda test
-   <speler> motor`, en `kitpvp kaart` voor plaatjes. Een nieuw eiland komt dus vanzelf in de route, als het open gaat
+   door te praten met wie iets nieuws heeft; vondsten met `voorwerp` moeten blijven liggen), `zelda test
+   <speler> motor`, en `zelda plaatjes` voor plaatjes. Een nieuw eiland komt dus vanzelf in de route, als het open gaat
    met de vlag van het eiland ervoor.
 7. Bommen (gebouwd in 2a): `spel.ontplof` breekt de gebarsten muur bij de knal open (`spel.barstBij`, `spel.breek`) en
    roept `boem()` van het deel aan. Klauwhaak (gebouwd in 3a): een `Haakpunt` (blok `HAAKPUNT` + landing) is vanzelf te
@@ -1328,7 +1404,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 8. Op de kaart: het eiland staat er vanzelf op (de speelgebieden van de delen). Zet dorpen en kerkers erop met `tekens()`
    (`new Teken("dorp", x, z)`, `"kerker"`, …); de zelftest kijkt of ze in het deel liggen. Na een nieuwe versie van een
    deel wordt het eiland vanzelf opnieuw gemeten.
-9. Is alles te belopen? `kitpvp zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
+9. Is alles te belopen? `zelda lopen <eiland>` (ook in `test … alles`, voor elk eiland, ook het Lindewoud): de
    test teleporteert, dus deze controle volgt vanaf de steiger elke plek waar een speler kan staan en noemt wat je
    zonder teleporteren niet haalt. Deuren, poorten en bruggen tellen als open (een brug als planken).
 10. De test vaart van eiland naar eiland met een klik in het menu van Brecht, haalt na elk eiland wat met de voorwerpen
@@ -1346,7 +1422,7 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
    kade), Hanne (*Moeraskruid* → `fles1`), Kees (*De verloren bijl* → hartstukje), Lotje, Brecht met gesprekken en de
    overstap naar eiland 2 (alleen als het bestaat), vier hartstukjes (twee nu te halen). **Klaar als** het hoofdstuk
    van begin tot eind speelt met hoogstens twee verplichte kamers vóór de baas, er twee zijmissies werken, `kitpvp
-   zelftest` OK is en `kitpvp zelda test <speler> alles` en `motor` OK zijn, en bestaande voortgang blijft werken.
+   zelftest` OK is en `zelda test <speler> alles` en `motor` OK zijn, en bestaande voortgang blijft werken.
 1b. **`zelda-lindewoud-v2`** (gebouwd, kitpvp 2.6) — Het Lindewoud opnieuw, als **open eiland**: Lindedorp in het
    midden met Tijmen (de wegwijzer), drie wegen in elke volgorde, rondjes, de doornen en het lichtwoord, alleen
    Grauwmoer (lichter) en de kade verplicht, oefenplekken met de bel, genezen overal, Hanne's boodschap over zee; motor:
@@ -1389,7 +1465,7 @@ lichte-testregel, `MODI.md`/`BOT.md` bijwerken, pluginversie omhoog, niet deploy
 9. **`zelda-eiland-5b`** (gebouwd, kitpvp 2.13) — De toren en Morgal: de Nevelbrug, de trap om de toren (licht, klauwhaak,
    vuurstaf, bom, licht), het balkon, Morgal in drie fases, Zelda op het dak, de terugvaart en het feest op het Lindewoud
    (vlag `zelda`, «voltooid»); daarna Morgals schatkamer; motor: nevelbruggen, een vangnet, muziek per speler, een bijzondere
-   overtocht. **Klaar als** het hele spel van Thuis tot het feest uit te spelen is (`kitpvp zelda test <speler> alles` over
+   overtocht. **Klaar als** het hele spel van Thuis tot het feest uit te spelen is (`zelda test <speler> alles` over
    alle eilanden), zelftest OK.
 9b. **`zelda-kaart`** (gebouwd, kitpvp 2.14) — Een eilandkaart zoals in Legend of Zelda: vak 9 is een echte kaart (het eiland
     van boven, mist over wat je niet zag, zielvuren, dorpen en kerkers, jij, medespelers en de X van `/hint`), linksklik =

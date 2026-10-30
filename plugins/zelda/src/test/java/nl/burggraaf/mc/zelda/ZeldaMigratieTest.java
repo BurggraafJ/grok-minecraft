@@ -152,6 +152,21 @@ class ZeldaMigratieTest {
         assertFalse(YamlConfiguration.loadConfiguration(new File(z, "gebouwd.yml")).contains("delen.zelda"), "half overgezet: alles opnieuw bouwen");
     }
 
+    /** Paper 26: de Zelda-wereld geeft zijn dimensiemap (nog zonder region/), de hoofdwereld de wereldmap. */
+    @Test
+    void deGoedeMapVanEenWereld() {
+        File wereld = tmp.resolve("world").toFile();
+        File zelda = new File(wereld, "dimensions/minecraft/zelda");
+        zelda.mkdirs();
+        assertEquals(zelda, ZeldaMigratie.dimensie(zelda, "minecraft", "zelda"), "een nieuwe wereld: de dimensiemap zelf");
+        File over = new File(wereld, "dimensions/minecraft/overworld/region");
+        over.mkdirs();
+        assertEquals(over.getParentFile(), ZeldaMigratie.dimensie(wereld, "minecraft", "overworld"));
+        File oud = tmp.resolve("oud").toFile();
+        new File(oud, "region").mkdirs();
+        assertEquals(oud, ZeldaMigratie.dimensie(oud, "minecraft", "overworld"), "oude indeling: region direct in de wereldmap");
+    }
+
     @Test
     void alleenZeldaDelen() {
         assertTrue(ZeldaMigratie.zeldaDeel("zelda"));

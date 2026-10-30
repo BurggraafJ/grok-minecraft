@@ -90,6 +90,7 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
     private final Set<UUID> geenAntwoord = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Scoreboard> borden = new HashMap<>();
     private long seconden;
+    private boolean overgezet;
 
     // ── aan en uit ──────────────────────────────────────────────────────────────────────────
 
@@ -106,11 +107,16 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
         zelda = new Zelda(this);
         w = laadWereld(migratie);
         g = migratie.grond(w);
+        boolean nagaan = overgezet;
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
         getServer().getMessenger().registerOutgoingPluginChannel(this, KANAAL);
         getServer().getMessenger().registerIncomingPluginChannel(this, KANAAL, (kanaal, via, data) -> vanNetwerk(data));
         bouw(Set.of());
+        if (nagaan && !wachtplek.clone().add(0, -1, 0).getBlock().getType().isSolid()) {   // vangnet: dan maar uit code
+            migratie.nietGelukt("geen vloer op " + wachtplek.getBlockX() + "," + wachtplek.getBlockY() + "," + wachtplek.getBlockZ());
+            bouw(Set.of("alles"));
+        }
         zelda.aan();
         for (Player p : Bukkit.getOnlinePlayers()) if (p.getWorld().equals(w)) binnen(p);
         Bukkit.getScheduler().runTaskTimer(this, this::elkeSeconde, 40L, 20L);
@@ -131,7 +137,7 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
             File naar = ZeldaMigratie.dimensie(wereld), van = ZeldaMigratie.dimensie(kit);
             getLogger().info("migratie: eilanden van " + van + " naar " + naar);
             if (!Bukkit.unloadWorld(wereld, true)) throw new IllegalStateException("de Zelda-wereld gaat niet dicht voor de migratie");
-            migratie.wereld(van, naar);
+            overgezet = migratie.wereld(van, naar);
             wereld = maakWereld();
         }
         World kit = Bukkit.getWorlds().get(0);
