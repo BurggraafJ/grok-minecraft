@@ -2,7 +2,7 @@ name: KitPvP
 version: '${version}'
 main: nl.burggraaf.mc.kitpvp.KitPvP
 api-version: '${apiVersion}'
-description: "KitPvP met een hub: modus kiezen (Story of Zelda: avontuur over eilanden; PvP Arena, PvP Castle), kitruimte, arena; kills/doden/reeksen, geen drops."
+description: "KitPvP met een hub: modus kiezen (PvP Arena, PvP Castle), kitruimte, arena; kills/doden/reeksen, geen drops. Story of Zelda is een eigen plugin (Zelda)."
 author: Minecraft Bot
 softdepend: [Opmaak]
 commands:
@@ -17,13 +17,8 @@ commands:
   stats:
     description: "Jouw KitPvP-statistieken"
     aliases: [kd]
-  hint:
-    description: "Story of Zelda: Wiske helpt je op weg"
-  zelda:
-    description: "Zelda-beheer (OP): /zelda beheer [aan|uit] · ga <plek> · plekken · reset <speler> [spel] · bijsturen: spelers · niveau · steun · volg · doden · spel · samen"
-    permission: kitpvp.beheer
   kitpvp:
-    description: "Beheer: kitpvp zelftest | test <speler> | zelda [in|reset|rust|test|verder|vaar|vlag|hint|beheer|spelers|niveau|steun|doden|spel|samen] | bouw [hub|arena|kasteel|zelda|zelda-zee|alles] | kaart | status | aftellen <s>"
+    description: "Beheer: kitpvp zelftest | test <speler> | bouw [hub|arena|kasteel|alles] | kaart | status | aftellen <s> (kitpvp zelda … = zelda …, plugin Zelda)"
     permission: kitpvp.beheer
 permissions:
   kitpvp.beheer:

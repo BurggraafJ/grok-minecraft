@@ -1,0 +1,15 @@
+name: Zelda
+version: '${version}'
+main: nl.burggraaf.mc.zelda.ZeldaPlugin
+api-version: '${apiVersion}'
+description: "Story of Zelda: een avontuur over de eilanden van de Glazen Zee, alleen of samen. Eigen wereld op de kitpvp-server; binnen via de Zelda-poort in de lobby."
+author: Minecraft Bot
+softdepend: [KitPvP, Opmaak]
+commands:
+  hint:
+    description: "Story of Zelda: Wiske helpt je op weg"
+  zelda:
+    description: "Naar Story of Zelda. Beheer (OP): /zelda beheer [aan|uit] · ga <plek> · plekken · reset <speler> [spel] · spelers · niveau · steun · volg · doden · spel · samen. Console: zelda zelftest | test <speler> … | lopen <eiland> | in|uit <speler> | bouw | plaatjes | migratie"
+permissions:
+  zelda.beheer:
+    default: op

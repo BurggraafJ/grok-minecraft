@@ -10,9 +10,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 
 /**
- * {@code kitpvp zelftest} (ook {@code arena zelftest}): register, hub en poorten (de Zelda-poort is open), elke
- * kitruimte (standaards, deuren, binnenkomst), alle spawns, ranglijsten, of het bouwen klaar is, en via de
- * zelftest-hook van elke modus hun eigen controles (Zelda: deel, rustplaatsen, kamers, puzzels, opslag).
+ * {@code kitpvp zelftest} (ook {@code arena zelftest}): register, hub en poorten (west leeg, met de verwijzing naar de
+ * Zelda-poort in de lobby), elke kitruimte (standaards, deuren, binnenkomst), alle spawns, ranglijsten, of het bouwen klaar
+ * is, en via de zelftest-hook van elke modus hun eigen controles. Story of Zelda heeft een eigen zelftest ({@code zelda zelftest}).
  */
 final class Zelftest {
 
@@ -24,17 +24,16 @@ final class Zelftest {
         // register
         List<Modus> alle = modi.alle();
         List<String> ids = alle.stream().map(Modus::id).toList();
-        if (!ids.equals(List.of("zelda", "arena", "kasteel"))) fouten.add("modi: " + ids + " (verwacht [zelda, arena, kasteel])");
+        if (!ids.equals(List.of("arena", "kasteel"))) fouten.add("modi: " + ids + " (verwacht [arena, kasteel]; Story of Zelda is een eigen plugin)");
         List<String> namen = alle.stream().map(Modus::naam).toList();
-        if (!namen.equals(List.of("Story of Zelda", "PvP Arena", "PvP Castle"))) fouten.add("namen: " + namen);
+        if (!namen.equals(List.of("PvP Arena", "PvP Castle"))) fouten.add("namen: " + namen);
         Set<String> plekken = new HashSet<>();
         for (Modus m : alle) {
             if (!plekken.add(m.poort().plek())) fouten.add("dubbele poortplek " + m.poort().plek());
             if (m.status() == Modus.Status.OPEN && m instanceof KitModus && m.kitruimtes().isEmpty()) fouten.add(m.id() + ": open zonder kitruimte");
             m.zelftest(fouten, info);
         }
-        Modus zelda = modi.get("zelda");
-        if (zelda == null || zelda.status() != Modus.Status.OPEN) fouten.add("zelda: hoort OPEN te zijn");
+        if (modi.opPlek("west") != null) fouten.add("west: hoort leeg te zijn (de verwijzing naar de Zelda-poort in de lobby)");
         // wereld
         if (plugin.w == null) {
             fouten.add("wereld nog niet geladen");
@@ -63,8 +62,7 @@ final class Zelftest {
     }
 
     /**
-     * {@code kitpvp test <speler>}: loop met een echte (test)speler de hele weg: hub, door de Zelda-poort naar binnen en
-     * met /arena terug, door de poort van PvP Arena, zijdeur naar de oefenarena, kit kiezen, /arena terug, PvP Castle via het menu, kit, gevecht-tag
+     * {@code kitpvp test <speler>}: loop met een echte (test)speler de hele weg: hub (geen Zelda meer), door de poort van PvP Arena, zijdeur naar de oefenarena, kit kiezen, /arena terug, PvP Castle via het menu, kit, gevecht-tag
      * houdt /arena tegen, terug naar de hub. Alles gaat via dezelfde methodes als poort, deur, standaard en commando.
      */
     static void loop(KitPvP pl, Player p, List<String> fouten, List<String> stappen) {
@@ -76,21 +74,9 @@ final class Zelftest {
         moet(fouten, pl.hub.binnen(p.getLocation()), "staat niet in de hub: " + plek(p));
         moet(fouten, pl.stand(p).equals("wacht"), "stand in de hub is " + pl.stand(p));
         moet(fouten, p.getInventory().getItem(4) != null && p.getInventory().getItem(4).getType() == Material.COMPASS, "geen kompas in vak 5");
-        Modus zelda = pl.modi.get("zelda"), arena = pl.modi.get("arena"), kasteel = pl.modi.get("kasteel");
-        Hub.Raak rz = pl.hub.raak(pl.hub.poortPunt(zelda));
-        moet(fouten, rz != null && !rz.dicht() && rz.modus() == zelda, "Zelda-poort stuurt niet naar Zelda");
-        if (rz != null && !rz.dicht()) pl.kiesModus(p, rz.modus());
-        moet(fouten, s.van(id).plek() == Toestand.Plek.SPEL && "zelda".equals(s.van(id).modus()), "door de Zelda-poort niet in Zelda: " + s.van(id));
-        moet(fouten, pl.stand(p).equals("geen"), "stand in Zelda is " + pl.stand(p) + " (geen huisdier in Zelda)");
-        moet(fouten, p.getLocation().getX() >= Zelda.GEBIED[0] && p.getLocation().getX() <= Zelda.GEBIED[2], "niet in het Zelda-gebied: " + plek(p));
-        stappen.add("zelda");
-        moet(fouten, isHubItem(pl, p.getInventory().getItem(Menus.HUB_VAK)), "in Zelda geen «Terug naar de hub» in vak 8");
-        commando(pl, p, "arena");
-        moet(fouten, s.van(id).plek() == Toestand.Plek.HUB && pl.hub.binnen(p.getLocation()), "/arena bracht je niet uit Zelda naar de hub: " + s.van(id));
-        moet(fouten, p.getInventory().getItem(4) != null && p.getInventory().getItem(4).getType() == Material.COMPASS, "na Zelda geen kompas in vak 5");
-        var max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-        moet(fouten, max != null && max.getValue() == 20, "na Zelda nog Zelda-harten: " + (max == null ? "?" : max.getValue()));
-        stappen.add("/arena");
+        Modus arena = pl.modi.get("arena"), kasteel = pl.modi.get("kasteel");
+        moet(fouten, pl.modi.get("zelda") == null && pl.modi.opPlek("west") == null, "Story of Zelda staat nog in de hub (hoort een eigen poort in de lobby te hebben)");
+        moet(fouten, p.getScoreboard().getObjective("kitpvp") != null, "geen KitPvP-sidebar in de hub");
         Hub.Raak ra = pl.hub.raak(pl.hub.poortPunt(arena));
         moet(fouten, ra != null && !ra.dicht() && ra.modus() == arena, "poort PvP Arena stuurt niet door");
         if (ra != null) pl.kiesModus(p, ra.modus());

@@ -8,7 +8,7 @@ import java.util.Objects;
  *   <li>{@code HUB}: in de hub (binnenkomst, na /arena);</li>
  *   <li>{@code KITRUIMTE}: in de kitruimte {@code ruimte} van modus {@code modus}, nog zonder kit;</li>
  *   <li>{@code ARENA}: in arena {@code ruimte} van modus {@code modus}, met kit {@code kit};</li>
- *   <li>{@code SPEL}: in een eigen spel van modus {@code modus} (bv. Story of Zelda); {@code ruimte} kiest de modus zelf.
+ *   <li>{@code SPEL}: in een eigen spel van modus {@code modus} (zo was Story of Zelda tot 2.16); {@code ruimte} kiest de modus zelf.
  *       De algemene KitPvP-regels (geen schade, geen honger, grenzen) gelden dan niet: dat regelt de modus.</li>
  * </ul>
  */

@@ -1,0 +1,43 @@
+// Gebouwd door `mc plugin build` of `mc apply`; die geven paperApiVersion, mcVersion en javaRelease mee.
+plugins {
+    id 'java'
+}
+
+group = 'nl.burggraaf.mc'
+version = '1.0.0'
+
+def paperApi = findProperty('paperApiVersion') ?: '26.3.build.223-stable'
+def mcVersion = findProperty('mcVersion') ?: '26.3'
+def javaRelease = (findProperty('javaRelease') ?: '25') as int
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly "io.papermc.paper:paper-api:${paperApi}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaRelease
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    def props = [version: version, apiVersion: mcVersion]
+    inputs.properties(props)
+    filesMatching('plugin.yml') { expand(props) }
+}
+
+// unit-tests (regels, voortgang, kaart, migratie); paper-api ook op het test-classpath
+dependencies {
+    testImplementation "io.papermc.paper:paper-api:${paperApi}"
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

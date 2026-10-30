@@ -73,7 +73,10 @@ import org.bukkit.scoreboard.Team;
  * KitPvP met een hub. Je komt binnen in de hub ({@link Hub}) en kiest een modus: door een poort lopen, het kompas of
  * {@code /modus}. Een kitmodus brengt je naar zijn kitruimte ({@link Kitruimte}): klik een standaard (of de ster,
  * {@code /kit}) en je springt de arena in met even bescherming. Modi staan in {@link ModusRegister} (zie MODI.md):
- * Story of Zelda (avontuur, {@link Zelda}), PvP Arena (colosseum + oefenarena met bots), PvP Castle (kasteel).
+ * PvP Arena (colosseum + oefenarena met bots) en PvP Castle (kasteel).
+ *
+ * <p>Story of Zelda is sinds 2.17 een eigen spel (plugin Zelda, eigen wereld op deze server, eigen poort in de lobby).
+ * KitPvP bemoeit zich alleen met spelers in zijn eigen wereld ({@link #hier}); wie de KitPvP-wereld in komt, staat in de hub.
  *
  * <p>Geen drops, geen honger, direct respawnen in de kitruimte van je arena. Kills, doden, reeksen en bots in
  * stats.yml, top 10 op borden, eigen statistieken in de sidebar. Gevecht-tag 10 s (ook op de proxy).
@@ -122,8 +125,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         gevecht = new Gevecht(this);
         bots = new Bots(this);
         menus = new Menus(this);
-        // de modi, in menuvolgorde; een nieuwe modus = hier één regel erbij (zie MODI.md)
-        modi.registreer(new Zelda(this));
+        // de modi, in menuvolgorde; een nieuwe modus = hier één regel erbij (zie MODI.md). Story of Zelda is een eigen plugin.
         modi.registreer(new ArenaModus(this));
         modi.registreer(new KasteelModus(this));
         hub = new Hub(this);
@@ -139,7 +141,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 for (int cz = Math.floorDiv(Hub.HZ - 36, 16); cz <= Math.floorDiv(Hub.HZ + 36, 16); cz++) w.addPluginChunkTicket(cx, cz, this);
             bouw(Set.of());
             for (Modus m : modi.alle()) m.aan(this);
-            for (Player p : Bukkit.getOnlinePlayers()) naarHub(p);
+            for (Player p : Bukkit.getOnlinePlayers()) if (hier(p)) naarHub(p);
         });
         Bukkit.getScheduler().runTaskTimer(this, this::elkeSeconde, 40L, 20L);
         Bukkit.getScheduler().runTaskTimer(this, this::meldStand, 40L, 5L);
@@ -156,9 +158,15 @@ public final class KitPvP extends JavaPlugin implements Listener {
         }
     }
 
+    /** Is deze speler in de KitPvP-wereld? Alleen dan gelden de KitPvP-regels (Story of Zelda heeft een eigen wereld). */
+    boolean hier(Player p) {
+        return w != null && p.getWorld().equals(w);
+    }
+
     /** Voor de plugin Huisdieren: waar staat iedereen (wacht = hub of kitruimte, pvp, bots; zie Spelers.stand). */
     private void meldStand() {
         for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!hier(p)) continue;                              // in Zelda zet de plugin Zelda de stand («geen»)
             String s = stand(p);
             var m = p.getMetadata("kitpvp-stand");
             if (m.isEmpty() || !s.equals(m.get(0).asString())) p.setMetadata("kitpvp-stand", new org.bukkit.metadata.FixedMetadataValue(this, s));
@@ -297,7 +305,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
     }
 
     /**
-     * Voor modi met een eigen spel (Zelda, sessie 2): zet de speler in {@link Toestand.Plek#SPEL} van modus {@code m}.
+     * Voor modi met een eigen spel in de hub (zoals Zelda tot 2.16): zet de speler in {@link Toestand.Plek#SPEL} van modus {@code m}.
      * Teleporteren, items en regels doet de modus zelf; KitPvP bemoeit zich dan niet met schade, honger of grenzen.
      */
     public void naarSpel(Player p, Modus m, String ruimte) {
@@ -435,7 +443,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             return;
         }
-        if (e.getWhoClicked() instanceof Player p && !spelers.van(p.getUniqueId()).beheerd()) return;
+        if (e.getWhoClicked() instanceof Player p && (!hier(p) || !spelers.van(p.getUniqueId()).beheerd())) return;
         if (itemSoort(e.getCurrentItem()) != null || itemSoort(e.getCursor()) != null) e.setCancelled(true);
         if (e.getHotbarButton() >= 0 && e.getWhoClicked() instanceof Player p && itemSoort(p.getInventory().getItem(e.getHotbarButton())) != null) e.setCancelled(true);
         if (e.getWhoClicked() instanceof Player p && spelers.van(p.getUniqueId()).veilig() && e.getHotbarButton() >= 0) e.setCancelled(true);
@@ -448,7 +456,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.LOW)
     public void onKlik(PlayerInteractEvent e) {
-        if (!actief || e.getAction() == Action.PHYSICAL) return;
+        if (!actief || e.getAction() == Action.PHYSICAL || !hier(e.getPlayer())) return;
         String soort = itemSoort(e.getItem());
         if (soort == null) return;
         e.setCancelled(true);
@@ -538,7 +546,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onSchade(EntityDamageEvent e) {
-        if (!actief || !(e.getEntity() instanceof Player p)) return;
+        if (!actief || !(e.getEntity() instanceof Player p) || !hier(p)) return;
         Toestand t = spelers.van(p.getUniqueId());
         if (!t.beheerd()) return;                                  // eigen spel van een modus: die regelt het
         if (!t.inArena()) {                                        // hub en kitruimte: veilig
@@ -568,7 +576,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDood(PlayerDeathEvent e) {
-        if (!actief) return;
+        if (!actief || !hier(e.getPlayer())) return;
         Player dood = e.getPlayer();
         Toestand t = spelers.van(dood.getUniqueId());
         if (!t.beheerd()) return;
@@ -631,7 +639,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
-        if (!actief || hub.aankomst() == null) return;
+        if (!actief || hub.aankomst() == null || !hier(e.getPlayer())) return;
         Player p = e.getPlayer();
         Toestand t = spelers.van(p.getUniqueId());
         if (!t.beheerd()) {
@@ -653,36 +661,36 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onHonger(FoodLevelChangeEvent e) {
-        if (!actief || e.getEntity() instanceof Player p && !spelers.van(p.getUniqueId()).beheerd()) return;
+        if (!actief || e.getEntity() instanceof Player p && (!hier(p) || !spelers.van(p.getUniqueId()).beheerd())) return;
         e.setCancelled(true);
         if (e.getEntity() instanceof Player p && p.getFoodLevel() != 18) p.setFoodLevel(18);
     }
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (actief && spelers.van(e.getPlayer().getUniqueId()).beheerd()) e.setCancelled(true);
+        if (actief && hier(e.getPlayer()) && spelers.van(e.getPlayer().getUniqueId()).beheerd()) e.setCancelled(true);
     }
 
     @EventHandler
     public void onOppakken(PlayerAttemptPickupItemEvent e) {
-        if (actief && spelers.van(e.getPlayer().getUniqueId()).beheerd()) e.setCancelled(true);
+        if (actief && hier(e.getPlayer()) && spelers.van(e.getPlayer().getUniqueId()).beheerd()) e.setCancelled(true);
     }
 
     @EventHandler
     public void onWissel(PlayerSwapHandItemsEvent e) {
-        if (actief && spelers.van(e.getPlayer().getUniqueId()).veilig()) e.setCancelled(true);
+        if (actief && hier(e.getPlayer()) && spelers.van(e.getPlayer().getUniqueId()).veilig()) e.setCancelled(true);
     }
 
     @EventHandler
     public void onSchiet(ProjectileLaunchEvent e) {
-        if (actief && e.getEntity() instanceof AbstractArrow a && !(e.getEntity() instanceof org.bukkit.entity.Trident)) {
+        if (actief && e.getEntity().getWorld().equals(w) && e.getEntity() instanceof AbstractArrow a && !(e.getEntity() instanceof org.bukkit.entity.Trident)) {
             a.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
         }
     }
 
-    @EventHandler(ignoreCancelled = true)                    // een pijl die in Zelda door een medespeler gaat, vliegt door
+    @EventHandler(ignoreCancelled = true)                    // pijlen in de arena's ruimen we op (Zelda doet dat in zijn eigen wereld zelf)
     public void onRaak(ProjectileHitEvent e) {
-        if (actief && e.getEntity() instanceof AbstractArrow a && !(a instanceof org.bukkit.entity.Trident)) {
+        if (actief && e.getEntity().getWorld().equals(w) && e.getEntity() instanceof AbstractArrow a && !(a instanceof org.bukkit.entity.Trident)) {
             Bukkit.getScheduler().runTaskLater(this, () -> { if (a.isValid()) a.remove(); }, e.getHitBlock() != null ? 40L : 1L);
         }
     }
@@ -718,7 +726,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onJoin(PlayerJoinEvent e) {
-        if (!actief) return;
+        if (!actief || !hier(e.getPlayer())) return;            // binnen via de Zelda-poort: dan staat hij al in de Zelda-wereld
         Player p = e.getPlayer();
         naarHub(p);
         // rustig binnenkomen: geen titel of chatblok, één korte actiebalkregel
@@ -760,7 +768,31 @@ public final class KitPvP extends JavaPlugin implements Listener {
         borden.remove(id);
         arenaKeuze.remove(id);
         binnenkortGemeld.remove(id);
-        if (oud.beheerd()) p.getInventory().clear();
+        if (oud.beheerd() && hier(p)) p.getInventory().clear();
+    }
+
+    /**
+     * Van of naar een andere wereld op deze server (Story of Zelda). Weg uit de KitPvP-wereld: KitPvP vergeet je (je spullen
+     * laat het aan Zelda). Erin: je staat in de hub (Zelda heeft zijn spullen dan al opgeruimd).
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onAndereWereld(org.bukkit.event.player.PlayerChangedWorldEvent e) {
+        if (!actief || w == null) return;
+        Player p = e.getPlayer();
+        UUID id = p.getUniqueId();
+        if (e.getFrom().equals(w) && !hier(p)) {
+            Toestand oud = spelers.weg(id);
+            if (oud.modus() != null && modi.get(oud.modus()) != null) modi.get(oud.modus()).leave(p);
+            gevecht.untag(p);
+            gevecht.vergeet(id);
+            beschermdTot.remove(id);
+            laatsteAanvaller.remove(id);
+            borden.remove(id);
+            arenaKeuze.remove(id);
+            p.removeMetadata("kitpvp-stand", this);
+        } else if (hier(p)) {
+            naarHub(p);
+        }
     }
 
     // ── sidebar ─────────────────────────────────────────────────────────────────────────────
@@ -840,6 +872,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         long nu = System.currentTimeMillis();
         List<Player> inHub = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!hier(p)) continue;                                // Story of Zelda (eigen wereld): eigen regels, eigen sidebar
             UUID id = p.getUniqueId();
             Toestand t = spelers.van(id);
             if (t.beheerd() && p.getFoodLevel() != 18) p.setFoodLevel(18);
@@ -883,6 +916,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
             return true;
         }
         String c = command.getName().toLowerCase();
+        if (sender instanceof Player p && !hier(p) && List.of("kit", "modus", "arena").contains(c)
+                && !(c.equals("arena") && args.length >= 1 && sender.hasPermission("kitpvp.beheer"))) {
+            if (w != null) p.teleport(hub.aankomst() != null ? hub.aankomst() : w.getSpawnLocation());   // vanuit Zelda: naar de KitPvP-hub (de wereldwissel zet je klaar)
+            return true;
+        }
         switch (c) {
             case "kit" -> {
                 if (!(sender instanceof Player p)) return true;
@@ -920,15 +958,6 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 beheer(sender, args);
                 return true;
             }
-            case "hint" -> {
-                if (sender instanceof Player p && modi.get("zelda") instanceof Zelda z) z.spel.hint(p);
-                return true;
-            }
-            case "zelda" -> {                                        // beheermodus (kitpvp.beheer, zie plugin.yml)
-                if (!(sender instanceof Player p)) sender.sendMessage("alleen in de game; console: kitpvp zelda …");
-                else if (modi.get("zelda") instanceof Zelda z) z.spel.beheer.commando(p, args);
-                return true;
-            }
             default -> { }
         }
         // arena: beheer (zoals vroeger) of terug naar de hub
@@ -946,8 +975,6 @@ public final class KitPvP extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (actief && command.getName().equalsIgnoreCase("zelda") && sender.hasPermission("kitpvp.beheer") && modi.get("zelda") instanceof Zelda z)
-            return z.spel.beheer.tab(args);
         return List.of();
     }
 
@@ -957,7 +984,7 @@ public final class KitPvP extends JavaPlugin implements Listener {
         return null;
     }
 
-    /** Console/OP: kitpvp zelftest | test | zelda … | bouw [hub|arena|kasteel|zelda|alles] | kaart | status | aftellen [s]. */
+    /** Console/OP: kitpvp zelftest | test | bouw [hub|arena|kasteel|alles] | kaart | status | aftellen [s]. ({@code kitpvp zelda …} = {@code zelda …}.) */
     private void beheer(CommandSender sender, String[] args) {
         if (!sender.hasPermission("kitpvp.beheer")) {
             sender.sendMessage("Geen toegang.");
@@ -991,8 +1018,9 @@ public final class KitPvP extends JavaPlugin implements Listener {
                 sender.sendMessage("kitpvp zelftest: " + (fouten.isEmpty() ? "OK" : "FOUT (" + fouten.size() + ")") + " · " + String.join(" ", info));
                 for (String f : fouten) sender.sendMessage("  ✗ " + f);
             }
-            case "zelda" -> {
-                if (modi.get("zelda") instanceof Zelda z) z.beheer(sender, args);
+            case "zelda" -> {                                      // verhuisd naar de plugin Zelda: kitpvp zelda … = zelda …
+                if (Bukkit.getPluginManager().getPlugin("Zelda") == null) sender.sendMessage("Story of Zelda is een eigen plugin (Zelda) en staat hier niet aan.");
+                else Bukkit.dispatchCommand(sender, "zelda " + String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
             }
             case "kaart" -> {                                      // kitpvp kaart [begin]: alleen plaatjes waarvan de naam zo begint
                 Kaart.alleen = args.length >= 2 ? args[1] : null;
@@ -1023,11 +1051,11 @@ public final class KitPvP extends JavaPlugin implements Listener {
             }
             default -> sender.sendMessage("kitpvp: grond=" + g + " modi=" + modi.alle().size() + " in-arena=" + spelers.aantalInArena()
                     + " spelers=" + Bukkit.getOnlinePlayers().size() + " bouwen=" + (bouwer != null && bouwer.bezig() ? bouwer.inRij() + " stappen" : "klaar")
-                    + " · kitpvp zelftest | test <speler> | zelda | bouw [hub|arena|kasteel|zelda|alles] | kaart [begin] | aftellen [s]");
+                    + " · kitpvp zelftest | test <speler> | bouw [hub|arena|kasteel|alles] | kaart [begin] | aftellen [s] · Story of Zelda: zelda …");
         }
     }
 
-    /** Plaatjes van hub, arena's, kasteel en Zelda in plugins/KitPvP/kaart/ (om te controleren zonder in te loggen). */
+    /** Plaatjes van hub, arena's en kasteel in plugins/KitPvP/kaart/ (om te controleren zonder in te loggen; Zelda: zelda plaatjes). */
     private List<String> kaarten() throws IOException {
         File map = new File(getDataFolder(), "kaart");
         int hx = Hub.HX, hz = Hub.HZ, kz = KasteelModus.KZ;
@@ -1042,114 +1070,6 @@ public final class KitPvP extends JavaPlugin implements Listener {
         f.add(Kaart.voor(w, map, "kasteel-noord", 0, -1, kz + 30, -44, 44, g - 3, g + 22, 80, 6));
         f.add(Kaart.voor(w, map, "kasteel-veld", 0, -1, kz + 13, -26, 26, g - 1, g + 14, 30, 10));
         f.add(Kaart.voor(w, map, "kitruimte-arena", 0, 1, -58, -10, 10, g + 7, g + 17, 30, 12));
-        // Story of Zelda, eiland 1 (het open Lindewoud): het hele eiland van boven, de streken van dichtbij, en van opzij
-        int zx = ZeldaHoofdstuk1.X0, zg = g + 8;
-        f.add(Kaart.boven(w, map, "zelda-boven", zx - 60, -110, zx + 400, 110, g - 2, zg + 50, 2));
-        f.add(Kaart.boven(w, map, "zelda-thuis", zx - 10, -22, zx + 90, 22, g - 2, zg + 22, 6));
-        f.add(Kaart.boven(w, map, "zelda-dorp", zx + 82, -24, zx + 142, 28, g - 2, zg + 22, 8));
-        f.add(Kaart.boven(w, map, "zelda-noord", zx + 78, -82, zx + 186, -10, g - 2, zg + 22, 5));
-        f.add(Kaart.boven(w, map, "zelda-tempel", zx + 160, -24, zx + 276, 24, g - 2, zg + 22, 5));
-        f.add(Kaart.boven(w, map, "zelda-veen", zx + 112, 32, zx + 240, 92, g - 2, zg + 22, 5));
-        f.add(Kaart.boven(w, map, "zelda-haven", zx + 250, -30, zx + 392, 66, g - 2, zg + 22, 4));
-        f.add(Kaart.voor(w, map, "zelda-zij", 0, 1, -100, zx - 50, zx + 470, g, zg + 50, 200, 2));
-        f.add(Kaart.voor(w, map, "zelda-kloof-zij", 0, 1, -6, zx + 212, zx + 262, g, zg + 10, 14, 10));
-        f.add(Kaart.voor(w, map, "zelda-ruine-zij", 0, 1, -12, zx + 164, zx + 210, g + 6, zg + 12, 30, 10));
-        f.add(Kaart.voor(w, map, "zelda-toren-zij", 0, 1, -16, zx + 88, zx + 136, g + 6, zg + 22, 30, 10));    // de sterrentoren en de linde
-        f.add(Kaart.voor(w, map, "zelda-haven-zij", 0, 1, -24, zx + 320, zx + 390, g + 2, zg + 22, 40, 8));
-        f.add(Kaart.voor(w, map, "zelda-kring-zij", 0, 1, 50, zx + 195, zx + 231, g + 6, zg + 14, 34, 10));
-        f.add(Kaart.boven(w, map, "zelda-eik", zx + 79, -78, zx + 109, -46, g - 2, zg + 5, 10));                // holle eik en houtkap (onder de kruin)
-        f.add(Kaart.voor(w, map, "zelda-richel", 1, 0, zx + 239, -20, 2, g, zg + 8, 20, 10));                   // oostwand van de Kloof
-        f.add(Kaart.voor(w, map, "zelda-barst", 0, 1, 2, zx + 194, zx + 208, zg - 1, zg + 9, 10, 12));          // gebarsten muur in het heiligdom
-        // eiland 2a, het Zilverstrand west: alles van boven, het dorp, de kelder (net onder het plafond), de kaap en de duinen
-        f.add(Kaart.boven(w, map, "zelda-e2a-boven", ZeldaEiland2a.X1, -440, ZeldaEiland2a.X2, -200, g - 2, zg + 45, 3));
-        f.add(Kaart.boven(w, map, "zelda-e2a-dorp", 1108, -322, 1172, -210, g - 2, zg + 22, 6));
-        f.add(Kaart.boven(w, map, "zelda-e2a-kelder", 1077, -347, 1101, -302, g, zg + 7, 14));
-        f.add(Kaart.voor(w, map, "zelda-e2a-kaap-zij", 0, -1, -296, 1068, 1130, g, zg + 45, 60, 6));
-        f.add(Kaart.voor(w, map, "zelda-e2a-kaap-noord", 0, 1, -350, 1068, 1130, g, zg + 45, 60, 6));
-        f.add(Kaart.boven(w, map, "zelda-e2a-duinen", 1100, -416, 1222, -340, g - 2, zg + 24, 6));
-        f.add(Kaart.voor(w, map, "zelda-e2a-rots-zij", 0, -1, -376, 1180, 1216, g, zg + 24, 30, 10));
-        f.add(Kaart.voor(w, map, "zelda-e2a-duinen-zij", 0, -1, -345, 1096, 1224, g, zg + 24, 80, 4));
-        // eiland 2b, de Getijdentempel: alles van boven, het plein en de tempel, de zaal en de kelders (onder het dak),
-        // de Draaikolk, de toren van opzij, het wrak, de poelen (en de gang eronder)
-        f.add(Kaart.boven(w, map, "zelda-e2b-boven", ZeldaEiland2b.X1, -430, ZeldaEiland2b.X2, -262, g - 2, zg + 30, 3));
-        f.add(Kaart.boven(w, map, "zelda-e2b-tempel", 1256, -362, 1358, -312, g - 2, zg + 11, 6));
-        f.add(Kaart.boven(w, map, "zelda-e2b-kelders", 1284, -362, 1322, -316, g, zg - 2, 12));
-        f.add(Kaart.voor(w, map, "zelda-e2b-zaal-zij", 0, 1, -330, 1284, 1358, g, zg + 34, 40, 6));
-        f.add(Kaart.voor(w, map, "zelda-e2b-kelders-zij", 1, 0, 1300, -362, -316, g, zg + 4, 30, 10));
-        f.add(Kaart.boven(w, map, "zelda-e2b-wrak", 1296, -416, 1338, -392, g - 2, zg + 14, 10));
-        f.add(Kaart.boven(w, map, "zelda-e2b-poelen", 1270, -300, 1330, -268, g - 2, zg + 8, 8));
-        f.add(Kaart.voor(w, map, "zelda-e2b-duik-zij", 0, 1, -284, 1276, 1326, g, zg + 4, 6, 10));
-        // eiland 3a, de Witte Toppen (dal en dorp): alles van boven, IJshoeve, het meer, het Sparrenbos met de kuil, de
-        // Wachtersgang (net onder het plafond), de kloof van opzij (beide wanden), en de Bergpoort van opzij
-        f.add(Kaart.boven(w, map, "zelda-e3a-boven", ZeldaEiland3a.X1, ZeldaEiland3a.Z1, ZeldaEiland3a.X2, ZeldaEiland3a.Z2, g - 2, zg + 34, 2));
-        f.add(Kaart.boven(w, map, "zelda-e3a-dorp", 1440, -326, 1510, -276, g - 2, zg + 16, 7));
-        f.add(Kaart.boven(w, map, "zelda-e3a-meer", 1408, -320, 1456, -280, g - 2, zg + 14, 8));
-        f.add(Kaart.boven(w, map, "zelda-e3a-bos", 1404, -428, 1478, -322, g - 2, zg + 26, 5));
-        f.add(Kaart.boven(w, map, "zelda-e3a-kuil", 1424, -394, 1448, -364, g, zg + 1, 12));
-        f.add(Kaart.boven(w, map, "zelda-e3a-gang", 1448, -440, 1490, -418, g, zg + 3, 10));
-        f.add(Kaart.boven(w, map, "zelda-e3a-kloof", 1480, -450, 1536, -400, g - 2, zg + 12, 8));
-        f.add(Kaart.voor(w, map, "zelda-e3a-kloof-noord", 0, -1, -430, 1480, 1536, g, zg + 14, 20, 8));
-        f.add(Kaart.voor(w, map, "zelda-e3a-kloof-zuid", 0, 1, -446, 1480, 1536, g, zg + 14, 20, 8));
-        f.add(Kaart.boven(w, map, "zelda-e3a-bergpoort", 1530, -312, 1579, -276, g - 2, zg + 30, 8));
-        f.add(Kaart.voor(w, map, "zelda-e3a-bergpoort-zij", 0, -1, -294, 1530, 1579, g, zg + 30, 40, 8));
-        // eiland 3b, het IJspaleis: alles van boven, het bergpad, het voorplein met de IJstuin, het paleis (net onder de
-        // plafonds), de Glijzaal en de IJstuin van dichtbij, de Troonzaal, het geheel en de toren van opzij
-        int f3 = zg + 26;
-        f.add(Kaart.boven(w, map, "zelda-e3b-boven", ZeldaEiland3b.X1, ZeldaEiland3b.Z1, ZeldaEiland3b.X2, ZeldaEiland3b.Z2, g - 2, zg + 64, 2));
-        f.add(Kaart.boven(w, map, "zelda-e3b-bergpad", 1576, -312, 1640, -256, g - 2, zg + 40, 6));
-        f.add(Kaart.boven(w, map, "zelda-e3b-paleis", 1606, -338, 1714, -252, f3 - 8, f3 + 7, 4));
-        f.add(Kaart.boven(w, map, "zelda-e3b-glijzaal", 1645, -336, 1671, -306, f3 - 4, f3 + 5, 10));
-        f.add(Kaart.boven(w, map, "zelda-e3b-tuin", 1608, -337, 1631, -305, f3 - 2, f3 + 7, 10));
-        f.add(Kaart.boven(w, map, "zelda-e3b-troon", 1676, -320, 1712, -280, f3 - 2, f3 + 10, 8));
-        f.add(Kaart.voor(w, map, "zelda-e3b-zij", 0, -1, -250, 1578, 1718, g, zg + 64, 120, 3));
-        f.add(Kaart.voor(w, map, "zelda-e3b-toren-zij", 0, -1, -300, 1676, 1712, f3 - 2, zg + 64, 30, 6));
-        // eiland 4a, de Gloedberg (Sintelgat en de mijnen): alles van boven, het dorp, de bovenmijn en de gloed (net onder de
-        // plafonds), de hete gangen en de Gloedader, de mijn van opzij (door de Lorriehal en door de Vonkkamer), en het geheel
-        int d4 = zg + 2, f4 = zg - 5;
-        f.add(Kaart.boven(w, map, "zelda-e4a-boven", ZeldaEiland4a.X1, ZeldaEiland4a.Z1, ZeldaEiland4a.VX2, ZeldaEiland4a.Z2, g - 2, zg + 72, 2));
-        f.add(Kaart.boven(w, map, "zelda-e4a-dorp", 1098, 296, 1172, 362, g - 2, d4 + 14, 7));
-        f.add(Kaart.boven(w, map, "zelda-e4a-baai", 1058, 316, 1110, 352, g - 2, zg + 16, 8));
-        f.add(Kaart.boven(w, map, "zelda-e4a-mijn", 1162, 254, 1262, 368, d4 - 1, d4 + 5, 5));
-        f.add(Kaart.boven(w, map, "zelda-e4a-hete-gangen", 1204, 256, 1262, 336, f4 - 1, f4 + 4, 8));
-        f.add(Kaart.voor(w, map, "zelda-e4a-mijn-zij", 0, 1, 325, 1160, 1262, g, zg + 40, 14, 5));      // van binnen, door de Daaltrap en de Gloedader
-        f.add(Kaart.voor(w, map, "zelda-e4a-vonk-zij", 1, 0, 1197, 252, 300, g, zg + 34, 12, 8));       // door de Schachtput en de Vonkkamer
-        f.add(Kaart.voor(w, map, "zelda-e4a-zij", 0, -1, 470, 1060, 1400, g, zg + 72, 300, 2));
-        // eiland 4b, de Smidse: alles van boven, de zalen (net onder de plafonds), de kloof van de Kettingzaal, het Hart, de krater,
-        // en van opzij: door het Hart en de schoorsteen, en door de Smidsehal
-        f.add(Kaart.boven(w, map, "zelda-e4b-boven", ZeldaEiland4b.X1, ZeldaEiland4b.Z1, ZeldaEiland4b.X2, ZeldaEiland4b.Z2, g - 2, zg + 80, 2));
-        f.add(Kaart.boven(w, map, "zelda-e4b-zalen", 1256, 236, 1342, 346, d4 - 1, d4 + 4, 5));
-        f.add(Kaart.boven(w, map, "zelda-e4b-kloof", 1256, 242, 1300, 272, zg - 8, d4 - 1, 8));
-        f.add(Kaart.boven(w, map, "zelda-e4b-krater", 1296, 312, 1342, 346, zg + 48, zg + 62, 8));
-        f.add(Kaart.voor(w, map, "zelda-e4b-hart-zij", 0, 1, 330, 1256, 1342, zg - 4, zg + 66, 8, 5));
-        f.add(Kaart.voor(w, map, "zelda-e4b-hal-zij", 1, 0, 1262, 236, 346, zg - 8, zg + 20, 14, 5));
-        // eiland 5a, Nachtrots (de muren): alles van boven (met de toren van 5b), de kreek en de klippen, de weergang, de burcht
-        // (op het plateau), de kerkers (net boven de vloer), en van opzij: door de cellengang, door de kapel en de burcht
-        int k5 = zg + 2, p5 = zg + 14, w5 = p5 + 10;
-        f.add(Kaart.boven(w, map, "zelda-e5a-boven", ZeldaEiland5a.X1, -110, ZeldaEiland5a.TX2, 110, g - 2, zg + 80, 2));
-        f.add(Kaart.boven(w, map, "zelda-e5a-kreek", 1660, -30, 1765, 62, g - 2, p5 + 8, 5));
-        f.add(Kaart.boven(w, map, "zelda-e5a-weergang", 1750, -32, 1790, 60, w5 - 1, w5 + 3, 6));
-        f.add(Kaart.boven(w, map, "zelda-e5a-burcht", 1738, -66, 1872, 66, p5 - 1, p5 + 4, 4));
-        f.add(Kaart.boven(w, map, "zelda-e5a-kerkers", 1700, -38, 1810, 34, k5 - 1, k5 + 3, 5));
-        f.add(Kaart.voor(w, map, "zelda-e5a-cellen-zij", 0, 1, -24, 1700, 1810, zg - 6, w5 + 10, 8, 5));
-        f.add(Kaart.voor(w, map, "zelda-e5a-kapel-zij", 0, 1, 20, 1700, 1810, zg - 6, w5 + 10, 12, 5));
-        f.add(Kaart.voor(w, map, "zelda-e5a-zij", 0, -1, 100, ZeldaEiland5a.X1, ZeldaEiland5a.TX2, g, zg + 80, 200, 2));
-        f.add(Kaart.boven(w, map, "zelda-e5a-omgeving", 1560, -260, 2047, 260, g - 2, zg + 80, 1));   // met de randen van het vak (wat je van ver ziet)
-        // eiland 5b, de toren: alles van boven, de nevelbrug en de torenrots, de trap om de toren (net boven elke richel), de
-        // torenhal en de schatkamer, de troonzaal en het dak, en van opzij: de toren van vier kanten en de brug
-        f.add(Kaart.boven(w, map, "zelda-e5b-boven", 1850, -60, 2000, 60, g - 2, zg + 90, 3));
-        f.add(Kaart.boven(w, map, "zelda-e5b-brug", 1855, -12, 1915, 12, g - 2, p5 + 6, 8));
-        for (int[] r : new int[][]{{p5, 1}, {p5 + 10, 2}, {p5 + 20, 3}, {p5 + 30, 4}, {p5 + 40, 5}})
-            f.add(Kaart.boven(w, map, "zelda-e5b-trap" + r[1], 1916, -20, 1964, 20, r[0] - 1, r[0] + 10, 8));
-        f.add(Kaart.boven(w, map, "zelda-e5b-hal", 1926, -12, 1952, 12, p5 - 7, p5 + 4, 10));
-        f.add(Kaart.boven(w, map, "zelda-e5b-schat", 1926, -12, 1952, 12, p5 - 7, p5 - 2, 10));
-        f.add(Kaart.boven(w, map, "zelda-e5b-troon", 1926, -12, 1952, 12, p5 + 40, p5 + 46, 10));
-        f.add(Kaart.boven(w, map, "zelda-e5b-dak", 1926, -12, 1952, 12, p5 + 52, p5 + 62, 10));
-        f.add(Kaart.voor(w, map, "zelda-e5b-west", 1, 0, 1905, -24, 24, zg - 2, p5 + 62, 60, 6));
-        f.add(Kaart.voor(w, map, "zelda-e5b-noord", 0, 1, -30, 1910, 1970, zg - 2, p5 + 62, 60, 6));
-        f.add(Kaart.voor(w, map, "zelda-e5b-oost", -1, 0, 1975, -24, 24, zg - 2, p5 + 62, 60, 6));
-        f.add(Kaart.voor(w, map, "zelda-e5b-zuid", 0, -1, 30, 1910, 1970, zg - 2, p5 + 62, 60, 6));
-        f.add(Kaart.voor(w, map, "zelda-e5b-zij", 0, -1, 40, 1840, 2000, g, zg + 90, 200, 3));
-        f.add(Kaart.boven(w, map, "zelda-feest", 1222, -78, 1258, -42, zg - 2, zg + 12, 10));
         List<String> uit = new ArrayList<>();
         for (File x : f) if (x != null) uit.add(x.getPath());
         return uit;

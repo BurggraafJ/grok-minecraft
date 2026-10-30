@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 /**
  * De hub: waar je op kitpvp binnenkomt en een modus kiest. Een binnenplaats van 55×55 (midden {@link #HX}/{@link #HZ},
  * ten westen van het colosseum) met een overdekte zuilengang rondom, een fontein in het midden, vier tuinen met
- * kersenbomen en lichtpaden naar drie poorten. Je komt binnen aan de oostkant en kijkt naar het westen:
+ * kersenbomen en lichtpaden naar de poorten. Je komt binnen aan de oostkant en kijkt naar het westen:
  *
  * <pre>
  *            noord (rechts)            de poorten vult {@link ModusRegister}: elke modus heeft een plek
@@ -28,12 +28,16 @@ import org.bukkit.entity.Player;
  * Een poort van een OPEN modus heeft een open doorgang met deeltjes; erdoorheen lopen = die modus kiezen. Een
  * BINNENKORT-poort is dicht (tralies en een bordje); ertegenaan lopen geeft één grijze regel. De staat van de poort
  * zet de hub bij elke start opnieuw, dus een modus openzetten hoeft de hub niet te herbouwen.
+ *
+ * <p>Sinds versie 2 (kitpvp 2.17) is de westplek leeg: Story of Zelda kreeg een eigen poort in de lobby. Daar staat nu een
+ * dichtgemetselde, bemoste boog met een bordje dat naar de lobby verwijst ({@link #verwijzing}); geen lichtschacht meer.
  */
 final class Hub {
 
     static final int HX = -160, HZ = 0;          // midden van de hub
     static final int H = 28;                     // buitenmuur op |dx| of |dz| = H
-    static final int VERSIE = 1;
+    /** 1: drie poorten (west = Story of Zelda). 2: west leeg, met een verwijzing naar de Zelda-poort in de lobby (2.17). */
+    static final int VERSIE = 2;
 
     /** Een plek voor een poort: midden van de muur (ox, oz) en de richting de hub in (ix, iz). */
     record Slot(int ox, int oz, int ix, int iz, boolean groot) {
@@ -97,7 +101,9 @@ final class Hub {
             zuilengang();
             buitenmuur();
             for (Modus m : plugin.modi.alle()) poortBouwen(SLOTS.get(m.poort().plek()), m.poort());
+            if (plugin.modi.opPlek("west") == null) verwijzing(SLOTS.get("west"));
         }
+        if (plugin.modi.opPlek("west") == null) bordje(SLOTS.get("west"));
         for (Modus m : plugin.modi.alle()) poortStaat(SLOTS.get(m.poort().plek()), m);
         for (Modus m : plugin.modi.alle()) {
             Slot s = SLOTS.get(m.poort().plek());
@@ -229,7 +235,7 @@ final class Hub {
             for (int dz = -27; dz <= 27; dz++) {
                 int m = Math.max(Math.abs(dx), Math.abs(dz));
                 if (m < 22) continue;
-                boolean schacht = dx <= -22 && Math.abs(dz) <= west.ow() + 4;      // lichtschacht voor de grote poort
+                boolean schacht = plugin.modi.opPlek("west") != null && dx <= -22 && Math.abs(dz) <= west.ow() + 4;   // lichtschacht voor de grote poort
                 if (schacht) continue;
                 h(dx, g + 12, dz, Material.SMOOTH_QUARTZ);
                 int langs = Math.abs(dx) >= Math.abs(dz) ? dz : dx;
@@ -325,6 +331,49 @@ final class Hub {
         int hy = g + (s.groot() ? 7 : 5);
         if (st.vaandelLinks() != null) p(s, -ow - 4, 1, hy, Bouwer.gericht(st.vaandelLinks(), binnen));
         if (st.vaandelRechts() != null) p(s, ow + 4, 1, hy, Bouwer.gericht(st.vaandelRechts(), binnen));
+    }
+
+    /**
+     * Een lege poortplek (west, sinds Story of Zelda een eigen poort in de lobby heeft): een oude, dichtgemetselde boog van
+     * bemoste steen tegen de muur, met klimop, en een bordje dat de weg wijst ({@link #bordje}). Rustig: geen licht, geen deeltjes.
+     */
+    private void verwijzing(Slot s) {
+        int ow = 2;
+        for (int u = -ow; u <= ow; u++)
+            for (int y = g + 1; y <= g + 5; y++) {
+                boolean rand = Math.abs(u) == ow || y == g + 5;
+                Material m = rand ? (Bouwer.hash(u, y) % 3 == 0 ? Material.CRACKED_STONE_BRICKS : Material.MOSSY_STONE_BRICKS)
+                        : (Bouwer.hash(u * 7, y) % 4 == 0 ? Material.MOSSY_COBBLESTONE : Material.COBBLESTONE);
+                p(s, u, 0, y, m);                                // dichtgemetseld in de muur
+                if (rand) p(s, u, 1, y, m);                      // de boog steekt een blok naar voren
+            }
+        p(s, 0, 1, g + 5, Material.CHISELED_STONE_BRICKS);
+        p(s, -1, 1, g + 4, Bouwer.trap(Material.MOSSY_STONE_BRICK_STAIRS, richting(-s.rx(), -s.rz()), true));   // de boog: naar de zuilen toe
+        p(s, 1, 1, g + 4, Bouwer.trap(Material.MOSSY_STONE_BRICK_STAIRS, richting(s.rx(), s.rz()), true));
+        p(s, 0, 1, g + 4, Bouwer.plaat(Material.MOSSY_STONE_BRICK_SLAB, true));
+        for (int u = -ow + 1; u <= ow - 1; u++) p(s, u, 1, g + 1, Material.AIR);
+        p(s, -1, 1, g + 3, Material.AIR);
+        p(s, 1, 1, g + 3, Material.AIR);
+        p(s, 0, 1, g + 3, Material.AIR);
+        p(s, -1, 1, g + 2, Material.AIR);
+        p(s, 1, 1, g + 2, Material.AIR);
+        for (int u = -1; u <= 1; u++) p(s, u, 1, g, Material.MOSS_BLOCK);
+        p(s, -1, 1, g + 1, Material.FERN);
+        p(s, 1, 1, g + 1, Material.FERN);
+    }
+
+    /** Het bordje in de dichte boog (altijd gezet, ook zonder herbouw): «Story of Zelda · heeft nu een · eigen poort · in de lobby». */
+    private void bordje(Slot s) {
+        int bx = px(s, 0, 1), bz = pz(s, 0, 1), by = g + 2;
+        b.zetAltijd(bx, by, bz, Bouwer.gericht(Material.SPRUCE_WALL_SIGN, richting(s.ix(), s.iz())));
+        b.daarna(() -> {
+            if (w.getBlockAt(bx, by, bz).getState() instanceof Sign bord) {
+                String[] r = {"Story of Zelda", "heeft nu een", "eigen poort", "in de lobby"};
+                for (int i = 0; i < r.length; i++) bord.getSide(Side.FRONT).line(i, Component.text(r[i], NamedTextColor.BLACK));
+                bord.setWaxed(true);
+                bord.update(true, false);
+            }
+        });
     }
 
     /** Open = doorgang vrij; binnenkort = tralies en een bordje. Altijd gezet (ook zonder herbouw). */
@@ -439,6 +488,13 @@ final class Hub {
                 if (r == null || r.modus() != m || !r.dicht()) fouten.add("poort " + m.id() + ": tegen de tralies lopen geeft geen melding");
             }
             poorten++;
+        }
+        if (plugin.modi.opPlek("west") == null) {                // de lege westplek: de verwijzing naar de Zelda-poort in de lobby
+            Slot s = SLOTS.get("west");
+            Block bord = w.getBlockAt(px(s, 0, 1), g + 2, pz(s, 0, 1));
+            if (!(bord.getState() instanceof Sign sg) || !"Story of Zelda".equals(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(sg.getSide(Side.FRONT).line(0))))
+                fouten.add("hub west: het bordje naar de Zelda-poort in de lobby ontbreekt");
+            if (w.getBlockAt(px(s, 0, 0), g + 2, pz(s, 0, 0)).isPassable()) fouten.add("hub west: de oude poort staat nog open");
         }
         info.add("hub=" + HX + "," + HZ + " poorten=" + poorten);
     }

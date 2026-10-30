@@ -7,11 +7,11 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 /**
- * Een modus op kitpvp (Story of Zelda, PvP Arena, PvP Castle, ...). Registreer hem in {@link KitPvP#onEnable} met
+ * Een modus op kitpvp (PvP Arena, PvP Castle, ...). Registreer hem in {@link KitPvP#onEnable} met
  * {@code modi.registreer(...)}: de hub bouwt dan zijn poort (op {@link PoortStijl#plek}), het modusmenu en
  * {@code /modus} tonen hem, en de zelftest controleert hem. Zie {@code MODI.md}.
  *
- * <p>Een modus met kits (arena's en kitruimtes) erft van {@link KitModus}. Een modus met een eigen spel (zoals Zelda)
+ * <p>Een modus met kits (arena's en kitruimtes) erft van {@link KitModus}. Een modus met een eigen spel (zoals Zelda tot 2.16)
  * zet zijn spelers in {@link Toestand.Plek#SPEL} via {@link KitPvP#naarSpel} en regelt dan zelf schade,
  * honger, doodgaan en grenzen met eigen listeners (registreer die in {@link #aan}).
  */
