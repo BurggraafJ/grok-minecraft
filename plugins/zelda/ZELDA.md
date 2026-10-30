@@ -19,8 +19,8 @@ elkaar: zie «Terugkerende personages».
 (`plugins/zelda`), een eigen wereld en een eigen poort in de lobby. Zie «Een eigen spel» hieronder. Alles daarvóór in dit
 document noemt nog kitpvp-versies: zo heette het toen.
 
-Techniek en klassen: de javadoc van `Zelda*.java` (begin bij `ZeldaPlugin` en `Zelda`); `plugins/kitpvp/MODI.md` beschrijft
-hoe het tot kitpvp 2.16 als modus in de KitPvP-hub zat.
+Techniek en klassen: `TECHNIEK.md` (stond tot 2.16 in `plugins/kitpvp/MODI.md`) en de javadoc van `Zelda*.java` (begin bij
+`ZeldaPlugin` en `Zelda`).
 
 ## Een eigen spel (sessie `zelda-apart`, Zelda 1.0.0)
 
@@ -1273,7 +1273,7 @@ Alles zit in `plugins/kitpvp` en werkt al op het Lindewoud; de eilanden haken er
 | muur op het pad | `barstOpPad`, `Barst.voor` | een gebarsten muur waar je door moet (de test gooit er een echte bom tegen) |
 | haken voor een deel | `tik(spel, spelers, nu)`, `boem(spel, p, plek)`, `wacht()` | elke seconde iets laten bewegen (vlieger, lichtbundel, eb en vloed); een bom op dit deel; wat Wiske zegt als het eiland nog niet af is |
 | na een uitdaging | `Uitdaging.daarna` | een `Actie` na het halen (missiestap) |
-| beheer | `zelda vaar|vlag|hint <speler> …`, `zelda test <speler> motor` | zie MODI.md |
+| beheer | `zelda vaar|vlag|hint <speler> …`, `zelda test <speler> motor` | zie TECHNIEK.md |
 | **open eiland** (versie 4 van het Lindewoud) | | |
 | poort voor wie iets heeft | `ZeldaHoofdstuk.Poort`, `poort(…)` | opent als er iemand in het gebied staat voor wie `mag` klopt (bv. het lichtwoord), voor iedereen; na een minuut leeg weer dicht; telt als open in `zelda lopen` |
 | oefenplek | `Kamer.alleenBel` | deuren open in rust; pas als je de bel luidt wordt er gevochten (eerst de gewone golven, daarna met de extra); telt niet als verplichte kamer |

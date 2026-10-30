@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -36,7 +35,6 @@ import org.bukkit.WorldType;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -85,9 +83,10 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
     private boolean actief = true;
     /** Waar je verschijnt als je binnenkomt (daarna zet het spel je op je rustplaats); ook gelezen buiten de hoofdthread. */
     private volatile Location wachtplek;
-    /** Wat het cookie zei (of null als het niet op tijd kwam): de join kijkt er nog eens naar. */
-    private final Map<UUID, String> wens = new ConcurrentHashMap<>();
+    /** Het cookie kwam niet op tijd: de join kijkt er nog eens naar. */
     private final Set<UUID> geenAntwoord = ConcurrentHashMap.newKeySet();
+    /** De KitPvP-wereld (de hoofdwereld); ook gelezen buiten de hoofdthread. */
+    private volatile World hoofd;
     private final Map<UUID, Scoreboard> borden = new HashMap<>();
     private long seconden;
     private boolean overgezet;
@@ -103,8 +102,14 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
             return;
         }
         ZeldaMigratie migratie = new ZeldaMigratie(getDataFolder(), new File(getDataFolder().getParentFile(), "KitPvP"), getLogger());
-        migratie.data();                                       // voortgang, kaarten, gemeten kaart: vóór het spel ze leest
+        String overzet = migratie.data();                      // voortgang, kaarten, gemeten kaart: vóór het spel ze leest
+        if (ZeldaMigratie.mislukt(overzet)) {                  // nooit met een lege stand verder: liever even geen Zelda
+            actief = false;
+            getLogger().severe("Story of Zelda staat uit: de voortgang kon niet overgezet worden (" + overzet + "). De oude staat nog in plugins/KitPvP; los het op en herstart.");
+            return;
+        }
         zelda = new Zelda(this);
+        hoofd = Bukkit.getWorlds().get(0);
         w = laadWereld(migratie);
         g = migratie.grond(w);
         boolean nagaan = overgezet;
@@ -232,16 +237,16 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onSpawnPlek(AsyncPlayerSpawnLocationEvent e) {
-        World zw = w;
+        World zw = w, kit = hoofd;
         Location wacht = wachtplek;
-        if (!actief || zw == null || wacht == null) return;
+        if (!actief || zw == null || wacht == null || kit == null) return;
         UUID id = e.getConnection().getProfile().getId();
         String plek = leesCookie(e.getConnection(), id);
         Location was = e.getSpawnLocation();
         boolean zelda = plek != null ? plek.equals("zelda")
                 : !e.isNewPlayer() && was != null && (zw.equals(was.getWorld()) || ZeldaMigratie.inOudGebied(was, zw));
-        if (zelda) e.setSpawnLocation(wacht);
-        else if (was != null && zw.equals(was.getWorld())) e.setSpawnLocation(Bukkit.getWorlds().get(0).getSpawnLocation());
+        if (zelda) e.setSpawnLocation(wacht.clone());
+        else if (was != null && zw.equals(was.getWorld())) e.setSpawnLocation(kit.getSpawnLocation());
     }
 
     /** Het cookie lezen (hooguit 1 s) en wissen. null = geen of geen antwoord (dan kijkt de join nog eens). */
@@ -251,11 +256,7 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
             byte[] b = c.retrieveCookie(PLEK_COOKIE).get(1000, TimeUnit.MILLISECONDS);
             String s = b == null ? "" : new String(b, StandardCharsets.UTF_8).trim();
             if (!s.isEmpty()) c.storeCookie(PLEK_COOKIE, new byte[0]);
-            if (s.equals("zelda") || s.equals("kitpvp")) {
-                wens.put(id, s);
-                return s;
-            }
-            return null;
+            return s.equals("zelda") || s.equals("kitpvp") ? s : null;
         } catch (Exception ex) {
             geenAntwoord.add(id);
             return null;
@@ -267,7 +268,6 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
         if (!actief) return;
         Player p = e.getPlayer();
         UUID id = p.getUniqueId();
-        wens.remove(id);
         if (inZelda(p)) binnen(p);
         else p.removeMetadata("kitpvp-stand", this);
         if (geenAntwoord.remove(id)) {                       // het cookie kwam niet op tijd: nu (in het spel) nog eens
@@ -291,7 +291,6 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
         if (zelda.spel.speelt(p)) zelda.spel.weg(p);
         borden.remove(p.getUniqueId());
-        wens.remove(p.getUniqueId());
         geenAntwoord.remove(p.getUniqueId());
     }
 
@@ -565,16 +564,5 @@ public final class ZeldaPlugin extends JavaPlugin implements Listener {
 
     Map<UUID, Scoreboard> borden() {
         return borden;
-    }
-
-    static List<String> lijst(String... s) {
-        return Arrays.asList(s);
-    }
-
-    /** Alle Zelda-entiteiten in de Zelda-wereld. */
-    int entiteiten() {
-        int n = 0;
-        if (w != null) for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains(ZeldaSpel.TAG)) n++;
-        return n;
     }
 }

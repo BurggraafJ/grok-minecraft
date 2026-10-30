@@ -90,7 +90,7 @@ per 6 uur). Zelf kijken: GitHub-API `repos/BurggraafJ/grok-minecraft/actions/run
 niet via `op <naam>` op de console: de splits hebben geen internet om de naam op te zoeken), de LuckPerms-groep
 `admin` op survival (via de console, live), en `velocity/plugins/netwerk/beheerders.json` (wie beroepen mag geven,
 de proxy leest het elke 30 s). LuckPerms draait alleen op survival; lobby en kitpvp kennen alleen OP-rechten
-(`kitpvp.beheer`, `lobbymelding`: default op), dus daar is ops.json de hele rechtenlijst. Een gedeelde
+(`kitpvp.beheer`, `zelda.beheer`, `lobbymelding`: default op), dus daar is ops.json de hele rechtenlijst. Een gedeelde
 LuckPerms-database is daarom niet nodig (en de splits kunnen geen externe database bereiken).
 - **Beroepen** wonen op de proxy (plugin netwerk, `beroepen.json`, uuid → beroep) en gelden daardoor meteen op elke
   server: de proxy stuurt het beroep als prefix in het profiel naar elke backend. Standaard **Wildvreemde**; verder
@@ -288,6 +288,8 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
 ## Chat, groepen en meldingen
 
 - Plugin `opmaak` (eigen code): join/leave als `[+] naam` / `[-] naam`, chat als `[Groep] naam » bericht`, advancements als `[★] naam heeft [X] behaald`.
+  Per wereld anders (opmaak 1.1, voor Story of Zelda): `wereld-<wereld>-server-tag`, `-tablijst`, `-chat`, `-hulp` (losse
+  sleutels, zodat `patches` ze kan zetten); op kitpvp staat zo voor de wereld `zelda` [Zelda], Z en een eigen /help.
 - Groepen staan in `server.json` → `groepen` (LuckPerms, alleen voor rechten); `leden: "admins"` volgt de admins in
   `data/spelers.json`. De zichtbare rang is géén groep meer maar een **beroep** (zie Centrale rechten en beroepen).
 - `mc apply` en `mc restart` melden in de game `[Server] Herladen gestart…` en `[Server] Klaar!`.
@@ -302,8 +304,13 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
     een herstart. Laatste server per speler in `laatste.json`. De lobby-actiebalk is verder stil (alleen even
     «Je blijft in de lobby · ster = server kiezen» na annuleren).
   - **Wisselen:** `/lobby` (`/hub`), `/survival`, `/kitpvp`, `/server <naam>`, `/terug` (= je laatste spelserver), de
-    ster in vak 5 in de lobby (menu Survival · KitPvP · Parkour · De brink), de twee poorten op de brink, en de
-    deur in vak 9 op kitpvp.
+    ster in vak 5 in de lobby (menu Survival · Story of Zelda · KitPvP · Parkour, De brink eronder), de drie poorten op de
+    brink, en de deur in vak 9 op kitpvp. **Plekken** (netwerk 1.1, sessie zelda-apart): Story of Zelda is een eigen
+    bestemming op de kitpvp-server (`config.json` → `plekken`: `zelda` → `kitpvp`; naam «Story of Zelda», tag `[Zelda]`,
+    letter Z). De backend meldt waar je bent (`plek`); `/zelda` = erheen (cookie `burggraaf:plek` + verbinden, of als je al
+    op kitpvp bent: `plek-naar`, de backend wisselt van wereld); `/zelda <iets>` gaat door naar de server (beheer).
+    `laatste.json` bewaart de plek, dus het aftellen na inloggen («Naar Story of Zelda in 3») en het terugkeren na een
+    herstart van kitpvp brengen je weer in Zelda; `wachtend.json` houdt servernamen (voor mc).
   - **Herstarts:** `mc restart survival|kitpvp` telt op die server af (`lobbyreis aftellen 5` / `arena aftellen 5`),
     dan `netwerk wacht <server>` (console): iedereen naar de lobby, gemarkeerd als wachtend (`wachtend.json`, `mc` leest
     het). Zodra de server twee keer achter elkaar antwoordt telt de proxy af en gaat iedereen terug. Rode wol in vak 5
@@ -320,19 +327,19 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
     `» naam → KitPvP`); opmaak/Essentials/vanilla zwijgen (`netwerk: true` in opmaak). `netwerk stil 30` (console) =
     30 s geen join/leave-regels.
   - **TAB (rustig):** kop alleen «Burggraaf Craft», geen voet. Regel: `S Boer Jelle` = één grijze serverletter
-    (H hub/lobby, S survival, K kitpvp), beroep, naam; netwerkbreed iedereen. Spelers op je eigen server zet de backend
+    (H hub/lobby, S survival, K kitpvp, Z Story of Zelda), beroep, naam; netwerkbreed iedereen. Spelers op je eigen server zet de backend
     (Opmaak `tablijst` per server in server.json, met de letter vast erin), de rest de proxy (Netwerk `tablijst`
     met `<letter>`, config.json `versie` 3, `letters` om te wijzigen). Chat: `[Lobby] Ondernemer Jelle » …` (enkele spaties; opmaak knipt de
     spatie achter `server-tag`). OP's hebben geen rode naam meer (Essentials `ops-name-color: none`).
   - **Rang en nick** komen van survival (LuckPerms/Essentials): opmaak daar stuurt elk profiel naar de proxy
     (`profielen.json`), die het aan lobby en kitpvp doorgeeft.
   - Console: `mc cmd velocity netwerk status` (wie waar, laatste, wachtend), `netwerk wacht <server>`, `netwerk stil <s>`.
-- **Lobby = de tuin** (plugin `lobby-melding` 2.0, `BOUW_VERSIE` 8, klasse `Tuin` + `Banen`; Jelle 27-10: dorps- en
+- **Lobby = de tuin** (plugin `lobby-melding` 2.1, `BOUW_VERSIE` 8, klasse `Tuin` + `Banen`; Jelle 27-10: dorps- en
   tuingevoel, geen grote gebouwen): een klein tuindorp van ±116×116 blokken (x/z −58…58). Midden de **brink**: plein
   van kinderkopjes met een waterput, de linde met een rond bankje, het theehuis «De Linde» (terras met parasols) en de
   bakker (luifel, toonbank), prikbord met de records per level en een wegwijzer. Spawn 0.5/9.5, je kijkt naar het
-  noorden recht op de **twee poorten** (links Survival: rozenboog van azalea, rechts KitPvP: zwarte stenen boog met
-  rood), met een tulpenperk ertussen — erdoorheen lopen = naar die server. Om de brink een ring van kinderkopjes (de
+  noorden recht op de **poorten** (links Survival: rozenboog van azalea, rechts KitPvP: zwarte stenen boog met
+  rood, midden erachter Story of Zelda: een bemoste ruïne, zie Lobby-poorten), met een tulpenperk ertussen — erdoorheen lopen = naar die server. Om de brink een ring van kinderkopjes (de
   dorpsstraat), daarbuiten de erven, elk met een eigen tuin en een parkour-level: vijver met visserhuisje en wilgen,
   buxustuin met tulpenperken, boomgaard met bijen, boerderij met schuur, kippen en schapen, ommuurde moestuin met kasje,
   rozenpergola, drie huisjes met voortuin, speeltuin, bos met de grote eik en boomhut, de molen in het korenveld,
@@ -368,20 +375,23 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   tijdens aftellen barrière, tijdens wachten rode wol), vak 9 «Opnieuw» (= `/parkour`: start van je level;
   `/parkour kies` = het menu). `/parkour` vanuit survival: plek onthouden (plugin `lobbyreis`), naar je volgende
   level; `/terug` brengt je terug.
-- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.16.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`, Zelda 2.0 in `plugins/kitpvp/ZELDA.md`): vlakke
+- **KitPvP** (server `kitpvp`, plugin `kitpvp` 2.17.0, eigen code; ontwerp in `plugins/kitpvp/MODI.md`; Story of Zelda draait
+  op dezelfde server maar is een eigen spel, zie hieronder): vlakke
   wereld, adventure, geen mobs/weer/dag-nacht, `immediate_respawn`. **Je komt binnen in de hub** (Jelle 26-10; ook na
   een wissel, `/arena` of een dood buiten een arena): binnenplaats van 55×55 ten westen van het colosseum (midden
   −160/0) met zuilengang, fontein, vier tuinen met kersenbomen en lichtpaden. Binnenkomst in het oosten, je kijkt naar
-  het westen. **Drie modi** (poort of kompas in vak 5 / `/modus`, menu en poort doen hetzelfde):
-  **Story of Zelda** (grote poort recht vooruit, zie hieronder), **PvP Arena** (poort links, zwart/rood) en **PvP Castle** (poort rechts,
-  steen/blauw). Door een open poort lopen = naar de **kitruimte** van die modus: een galerij die over de arena
+  het westen. **Twee modi** (poort of kompas in vak 5 / `/modus`, menu en poort doen hetzelfde):
+  **PvP Arena** (poort links, zwart/rood) en **PvP Castle** (poort rechts, steen/blauw). Recht vooruit, waar tot 2.16 de
+  grote Zelda-poort stond, staat een dichtgemetselde bemoste boog met een bordje «Story of Zelda · heeft nu een · eigen
+  poort · in de lobby» (hub versie 2). KitPvP bemoeit zich alleen met spelers in zijn eigen wereld; `/kit`, `/modus` en
+  `/arena` vanuit Zelda = naar de hub. Door een open poort lopen = naar de **kitruimte** van die modus: een galerij die over de arena
   uitkijkt, je loopt tussen de 7 kits als pantserstandaards door (krijger, boog, tank, ninja, speer, heler, hamer);
   klik = die kit en de arena in, met 3 s bescherming. Fallback: ster in vak 5 / `/kit` (kitmenu; bij PvP Arena ook de
   keuze colosseum of oefenarena), kompas in vak 1 = ander modus. Achterin de kitruimte een deur «Hub».
   Na een ronde (dood) respawn je in de kitruimte van je arena; `/arena` = terug naar de hub (in gevecht geweigerd).
-  **Weg terug (Jelle 27-10):** in elke arena en in Zelda ligt in vak 8 een herstelkompas «Terug naar de hub» (zelfde
+  **Weg terug (Jelle 27-10):** in elke arena ligt in vak 8 een herstelkompas «Terug naar de hub» (zelfde
   als `/arena`, geweigerd tijdens de gevecht-tag); bij binnenkomst staat op de actiebalk «… · vak 8 = terug naar de
-  hub» en onderaan de sidebar één donkergrijze regel «Hub: vak 8 of /arena» (alleen in arena en Zelda).
+  hub» en onderaan de sidebar één donkergrijze regel «Hub: vak 8 of /arena» (alleen in een arena).
   **PvP Arena**: colosseum (straal 30, midden 0/0, kitruimte boven de noordmuur) en, via de zijdeur «Oefenarena» in
   de kitruimte (of het kitmenu), de **oefenarena** (midden 0/110, straal 18, eigen kitruimte, zijdeur terug).
   **PvP Castle** (`Kasteel.java`, midden 0/−150, kitruimte erachter in het zuiden): twee kasteelmuren tegenover elkaar
@@ -396,7 +406,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   een bot verslaan = +4 hartjes en `bots` in stats.yml; doodgaan daar telt niet mee. Rustig binnenkomen: geen
   titel of chatblok, één actiebalkregel («KitPvP · kies een modus»). Sidebar: Kit, Kills · Doden, Reeks, Plek.
   Metadata `kitpvp-stand` voor Huisdieren: `wacht` (hub, kitruimte), `pvp` (colosseum, kasteel), `bots` (oefenarena),
-  `geen` (Zelda: geen huisdier mee, Jelle 27-10, "het leidt af"; Huisdieren 1.1.1 haalt de kopie dan weg);
+  `geen` (Story of Zelda, gezet door de plugin Zelda: geen huisdier mee, Jelle 27-10, "het leidt af"; Huisdieren 1.1.1 haalt de kopie dan weg);
   de wolf vecht alleen bij `pvp`/`bots`.
   **Gevecht-tag:** 10 s na een treffer (gegeven of gekregen, ook van/aan bots) kun je niet weg: `/arena`, `/modus`, de
   deur, en op de proxy `/lobby /hub /survival /kitpvp /server /terug /spawn` geweigerd (kitpvp meldt `gevecht:<ms>`
@@ -404,9 +414,25 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   voor de laatste aanvaller, «liep weg uit het gevecht»). `/stats` (`/kd`); top-10 borden in de hub en elke
   kitruimte; `stats.yml` (ongewijzigd). Geen drops of oprapen, honger vast, pijlen verdwijnen; kill = volle
   gezondheid + gouden appel.
-  **Story of Zelda** (`Zelda*.java`; plan en bouwsessies in `ZELDA.md`, techniek in `MODI.md`): avontuur over de
-  eilanden van de Glazen Zee, alleen of samen. Door de poort = naar je **laatste rustplaats** (voortgang per speler in
-  `plugins/KitPvP/zelda.yml`; oude standen beginnen bij hun verste). Vijf eilanden, het verhaal is af (2.13: de toren, Morgal, het feest). **Eiland 1, «Het Lindewoud»**
+  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 2, `arena` 4, `kasteel` 4;
+  `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
+  over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, het bordje naar de Zelda-poort,
+  kitruimtes, spawns; eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`,
+  `kitpvp status`, `kitpvp kaart [begin]` (plaatjes van wat er staat, `plugins/KitPvP/kaart/*.png`), `kitpvp test <speler>`
+  (loopt de hele route met een online speler: poorten, deuren, kits, `/arena`, gevecht-tag; niet bij spelers die aan het
+  spelen zijn); `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. `kitpvp zelda …` = `zelda …` (doorgestuurd).
+- **Story of Zelda** (een eigen spel sinds sessie zelda-apart, Jelle 30-10 "een aparte portal … zodat het voelt alsof het
+  iets anders is dan kitpvp": plugin `zelda` 1.0.0, eigen code `plugins/zelda`, op de kitpvp-server in een **eigen wereld
+  `zelda`**; ontwerp en verhaal in `plugins/zelda/ZELDA.md`, techniek in `plugins/zelda/TECHNIEK.md`). **Binnen via de
+  Zelda-poort in de lobby** (of de ster, `/zelda`, `/terug`): de lobby of de proxy zet het cookie `burggraaf:plek` =
+  `zelda`, de kitpvp-server leest het al tijdens het laden en je verschijnt meteen in de Zelda-wereld op je **laatste
+  rustplaats** (nooit eerst de KitPvP-hub). Zonder cookie kom je terug waar je wegging. Eigen identiteit: sidebar «Story of
+  Zelda» (waar je bent, hartstukjes, donkergrijs «Lobby: vak 8»), tablijst `Z Boer Jelle`, chat `[Zelda]` (opmaak
+  `wereld-zelda-…` in `patches.kitpvp`), wissel `» naam → [Zelda]` (proxy, plek `zelda`), vak 8 en de kaart = «Naar de
+  lobby», `/help` met `/hint`. Zelfde regels als kitpvp (easy, geen tijd/weer/mobs, meteen respawnen), die zet de plugin
+  zelf in zijn wereld. Voortgang per speler in `plugins/Zelda/zelda.yml` (bij de eerste start eenmalig overgezet uit
+  `plugins/KitPvP/zelda.yml`, met backup in `plugins/Zelda/migratie/`; de eilanden kwamen als vier regiobestanden mee, zie
+  «Deploy van zelda-apart» hieronder). Avontuur over de eilanden van de Glazen Zee, alleen of samen. Vijf eilanden, het verhaal is af (2.13: de toren, Morgal, het feest). **Eiland 1, «Het Lindewoud»**
   (deel `zelda` versie 4, sessie zelda-lindewoud-v2, kitpvp 2.6; Jelle 27-10: "te veel vechten, te moeilijk, je moet kunnen
   rehealen, kunnen teruglopen"): een **open eiland** (bouwvak x 1024…1639, z −179…179; land x 1045…1492, z −105…105).
   Je wordt wakker in je huisje aan de bosrand (west); het pad brengt je naar **Lindedorp** in het midden (grote linde,
@@ -551,7 +577,7 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   (pijl), medespelers (groen) en een rode X waar `/hint` heen wijst; linksklik = de zeekaart (eilanden, vaarroutes, op zee
   je schip); rechtsklik = het kaartmenu van altijd (reizen, opnieuw, varen, …). Ontdekken per speler in `zelda.yml`
   (oude standen aangevuld uit hun voortgang); elk eiland wordt één keer per versie gemeten (`plugins/KitPvP/zelda-kaart/`,
-  ±1 min na een start met nieuwe delen), een kaartnummer per speler in `zelda-kaarten.yml`. PNG's: `kitpvp zelda kaart
+  ±1 min na een start met nieuwe delen), een kaartnummer per speler in `zelda-kaarten.yml`. PNG's: `zelda kaart
   [<speler>]`. **Afronding** (sessie zelda-afronding, kitpvp 2.15): zee waar de vlakke wereld lag (rond alle eilanden, deel
   `zelda-zee` versie 2), de oostkust van het IJspaleis rond (`zelda-e3b` versie 2), de schoorstenen van IJshoeve (`zelda-e3a`
   versie 3); `/hint` en Tijmen zeggen op een afgemaakt eiland waar het verhaal verder gaat en waar je nog een hartstukje
@@ -565,16 +591,16 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   Held = een gouden heldenrand op je harnas. Drie spellen per speler (kaart: «Spellen»: verder, nieuw, wissen) en een
   samen-spel (uitnodigen; wie aanneemt deelt vanaf dan alles wat nieuw is; ieder zijn eigen niveau). Samen net iets
   zwaarder (een vijand per extra speler per golf, bazen meer leven). Oude `zelda.yml` = spel 1 op Avontuur. **Bijsturen**
-  (OP, `/zelda …` of `kitpvp zelda …`): `spelers` (wie waar, niveau, doden, minuten zonder voortgang; in de game een menu),
+  (OP, in de game `/zelda …`, console `zelda …`): `spelers` (wie waar, niveau, doden, minuten zonder voortgang; in de game een menu),
   `niveau <wie|hier|allen> <niveau> [vast]` / `los`, `steun <wie> <-2…2>` (stil), `volg` (een chatregel als iemand vastloopt),
-  `doden` (waar het knelt), `spel <speler> [n]`, `samen <speler> <met>|los`, `reset <speler> [spel]`. Tests: `kitpvp zelda
+  `doden` (waar het knelt), `spel <speler> [n]`, `samen <speler> <met>|los`, `reset <speler> [spel]`. Tests: `zelda
   test <speler> niveau`, `… spellen [<speler2>]`, `… alles niveau <n>`, `… alles mee <speler2>` (co-op). Tekst alleen op de actiebalk (één grijze regel tegelijk), muziek via nootblokgeluiden (schuif
-  «Nootblokken»). `/arena` en vak 8 werken ook. Geen schade tussen spelers; geen huisdier in Zelda
+  «Nootblokken»). Vak 8 (en onderaan de kaart) = naar de lobby; `/arena` brengt je naar de KitPvP-hub. Geen schade tussen spelers; geen huisdier in Zelda
   (`kitpvp-stand` = `geen`; ook vrije Zelda-dieren blijven uit met `ZeldaDier.AAN = false`, vlaggen `dier:*` blijven
   bewaard; alleen het sneeuwvosje uit het verhaal loopt mee).
-  **Beheermodus (OP/admins, `kitpvp.beheer`, kitpvp 2.4.1, Jelle 27-10 "door de map vliegen"):** `/zelda` of
+  **Beheermodus (OP/admins, `zelda.beheer` (default op), kitpvp 2.4.1, Jelle 27-10 "door de map vliegen"):** `/zelda` of
   `/zelda beheer [aan|uit]` = vliegen, onkwetsbaar, vijanden negeren je; kamers, rustplaatsen, vondsten, verhaal en
-  uitdagingen reageren niet op je en je mag buiten het eiland; bij uit (of naar de hub, uitloggen, herstart) staat je
+  uitdagingen reageren niet op je en je mag buiten het eiland; bij uit (of weg uit Zelda, uitloggen, herstart) staat je
   voortgang in zelda.yml weer precies zoals ervoor en ga je terug naar je rustplaats. `/zelda ga <plek>` (tab vult aan;
   een uniek begin is genoeg) = erheen, zet beheer zo nodig aan: eiland (`lindewoud`), deel (`h1`), rustplaats (`thuis`,
   `dorp`, `eik`, `ruine`, `kloofrand`, `moerashut`, `haven`), kamer (`open-plek`, `veen`, `heksenkring`, `kade`), persoon
@@ -589,27 +615,36 @@ laten staan zolang er gespeeld wordt. Wil hij 24/7 zonder app, dan hoort de serv
   `wachthuis`, `torenpoort`, `binnenplaats`, sluipstukken `weergang` en `kerkerwacht`, `wolf-e5a`, nevel `nevel-<id>`, cellen
   `cel-<naam>`; de toren: `voorhof`, `balkon`, `nachttroon`, `zelda-e5b`, `nevel-brug1`…`3`, `nevel-trap1`/`2`, `kooi`,
   `torenladder`, `schatkamer`), het feest (`feest`, gasten `<naam>-feest`), `zee`. `/zelda plekken` = de lijst. Eén grijze actiebalkregel. **`/zelda reset <speler>`** (kitpvp 2.7.1, Jelle 27-10; tab vult namen aan, ook spelers die offline
-  zijn) = Zelda-voortgang terug naar het begin; zit hij in Zelda, dan eerst naar de hub (spullen weg, beheer uit) en
-  opnieuw naar binnen bij het begin. Console: `kitpvp zelda reset <speler>`. Raakt alleen zelda.yml van die speler. Console:
-  `kitpvp zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `kitpvp zelda`
-  (status), `kitpvp zelda reset|rust <speler> [n]`, `kitpvp zelda test <speler> [alles|dood|motor|niveau|spellen]` (loopt met een
+  zijn) = Zelda-voortgang terug naar het begin; zit hij in Zelda, dan eerst uit het spel (spullen weg, beheer uit) en
+  opnieuw naar binnen bij het begin. Console: `zelda reset <speler>`. Raakt alleen zelda.yml van die speler. Console:
+  `zelda beheer <speler> [aan|uit|ga <plek>|plekken]`. Vijanden alleen tijdens een gevecht (tag `zelda`, niet bewaard). Console: `zelda`
+  (status), `zelda reset|rust <speler> [n]`, `zelda test <speler> [alles|dood|motor|niveau|spellen]` (loopt met een
   echte speler; wist eerst diens voortgang; `alles` loopt alle eilanden af van Thuis tot het feest, vaart heen en weer voor
-  boodschappen en controleert of alles te belopen is; `alles vanaf <deel>` begint later, alleen voor tests), `kitpvp zelda verder|vaar|vlag|hint|beheer <speler> …`, `kitpvp zelda lopen
+  boodschappen en controleert of alles te belopen is; `alles vanaf <deel>` begint later, alleen voor tests), `zelda verder|vaar|vlag|hint|beheer <speler> …`, `zelda lopen
   <eiland> [zonder <voorwerp>] [dicht <poort>]` (is alles te belopen? en wat ligt er achter een poort of voorwerp?),
-  `kitpvp bouw zelda`, `kitpvp bouw zelda-e2a` … `zelda-e5a`, `kitpvp bouw zelda-e5b` (de toren), `kitpvp bouw zelda-zee`.
-  **Bouwen:** alles uit code, per deel een versie in `plugins/KitPvP/gebouwd.yml` (`hub` 1, `arena` 4, `kasteel` 4, `zelda` 4, `zelda-e2a` 2, `zelda-e2b` 5, `zelda-e3a` 2, `zelda-e3b` 1, `zelda-e4a` 1, `zelda-e4b` 1, `zelda-e5a` 1, `zelda-e5b` 1, `zelda-zee` 1;
-  `BOUW_VERSIE` 4 in `KitPvP.java`, `Hub.VERSIE`); een hogere versie herbouwt bij de start alleen dat deel, verdeeld
-  over ticks (geen lag-piek). Console: `kitpvp zelftest` (register, hub, poorten, kitruimtes, spawns, Zelda;
-  eerste regel `OK` of `FOUT (n)` met de fouten eronder), `kitpvp bouw [hub|arena|kasteel|alles]`, `kitpvp status`,
-  `kitpvp kaart [begin]` (plaatjes van wat er staat, `plugins/KitPvP/kaart/*.png`; met `begin` alleen die plaatjes, bv.
-  `zelda-e3b`), `kitpvp test <speler>` (loopt de hele route
-  met een online speler: poorten, deuren, kits, `/arena`, gevecht-tag; niet bij spelers die aan het spelen zijn);
-  `arena aftellen N`, `arena bouw`, `arena zelftest` werken nog. Gereserveerd voor Zelda: x 1024…2047,
-  z −512…511.
+  `zelda bouw zelda`, `zelda bouw zelda-e2a` … `zelda-e5b` (de toren), `zelda bouw zelda-zee`; `zelda zelftest` (wereld,
+  migratie en alles van het spel; eerste regel `OK` of `FOUT (n)`), `zelda status`, `zelda in|uit <speler>` (naar binnen /
+  naar de KitPvP-hub), `zelda plaatjes [begin]` (PNG's van de eilanden, `plugins/Zelda/plaatjes/`), `zelda migratie`.
+  Bouwversies in `plugins/Zelda/gebouwd.yml` (`zelda` 4, `zelda-e2a` 2, `zelda-e2b` 5, `zelda-e3a` 3, `zelda-e3b` 2,
+  `zelda-e4a` … `zelda-e5b` 1, `zelda-zee` 2). De eilanden op x 1024…2047, z −512…511 van de wereld `zelda`; in de
+  kitpvp-wereld ligt daar nog de oude kopie (niemand komt er).
 - **Lobby-poorten** (Survival links, KitPvP rechts, aan de noordkant van de brink, ±16 blokken recht vooruit vanaf de
-  spawn): zwevend label boven de poort, een lichtblok (froglight) in de kroon, onzichtbaar licht in de doorgang en
-  een paar zachte gekleurde deeltjes (elke seconde, alleen als er iemand in de lobby is). Erdoorheen = `Connect` via
-  het BungeeCord-kanaal naar die server, actiebalk «Naar Survival…».
+  spawn; **Story of Zelda** midden, drie blokken erachter voor de haag: een oude bemoste ruïne van een boog met een groen
+  licht in de sluitsteen en klimop, stapstenen door het tulpenperk; sessie zelda-apart): zwevend label boven de poort,
+  een lichtblok (froglight) in de kroon, onzichtbaar licht in de doorgang en een paar zachte gekleurde deeltjes (elke
+  seconde, alleen als er iemand in de lobby is; Zelda in `#7fd1c4`). Erdoorheen = `Connect` via het BungeeCord-kanaal
+  naar die server, actiebalk «Naar Survival…». KitPvP en Zelda zetten eerst het cookie `burggraaf:plek` (`kitpvp` of
+  `zelda`) en gaan allebei naar de kitpvp-server.
+- **Deploy van zelda-apart** (eenmalig): `server.json` krijgt de plugin `zelda` (op kitpvp) en de opmaak-patches; kitpvp
+  2.17, zelda 1.0, lobby-melding 2.1, opmaak 1.1 en netwerk 1.1 veranderen. `mc apply` herstart kitpvp, lobby en (door
+  opmaak) survival; de proxy-jar wacht tot er niemand online is (`velocity_wacht`, `mc ensure` doet het dan). Bij de
+  eerste start van kitpvp zet de plugin Zelda alles over (`plugins/Zelda/migratie.yml`, `zelda migratie`): voortgang en
+  kaart uit `plugins/KitPvP/` (backup in `plugins/Zelda/migratie/kitpvp-<tijd>/`, de oude blijven staan) en de vier
+  regiobestanden van de eilanden naar de wereld `zelda` (er wordt niets herbouwd; lukt dat niet, dan bouwt hij alles uit
+  code). Controleren: `mc cmd kitpvp zelda zelftest`, `kitpvp zelftest`, `zelda migratie`, `zelda spelers`; op de
+  proxy `netwerk status` (plek=zelda). Terug: de vorige versies van de vijf plugins en `zelda` uit `server.json`; kitpvp
+  2.16 leest dan weer `plugins/KitPvP/zelda.yml` (zonder wat er sindsdien in Zelda gespeeld is; wie dat wil houden:
+  `plugins/Zelda/zelda.yml` terugkopiëren naar `plugins/KitPvP/` vóór de start).
 - `mc apply` met spelers online altijd los starten (`setsid nohup mc apply > data/state/apply-laatste.out &`): wordt een
   apply halverwege afgebroken, dan zien spelers «Herladen mislukt» en blijft de stand half staan. Velocity herstart pas
   als er niemand online is, tenzij `--nu`.

@@ -93,10 +93,11 @@ final class ZeldaMigratie {
                     kopie(van.toPath(), new File(backup, b).toPath());
                     mee.add(b);
                 }
-                for (String b : mee) {
+                for (String b : mee) {                         // zelda.yml als laatste: pas als die er (heel) staat, telt het
                     File naar = new File(map, b);
-                    if (!naar.exists()) kopie(new File(kitpvp, b).toPath(), naar.toPath());
+                    if (!b.equals("zelda.yml") && !naar.exists()) kopie(new File(kitpvp, b).toPath(), naar.toPath());
                 }
+                kopie(oud.toPath(), new File(map, "zelda.yml").toPath());
                 if (!lijktGelijk(oud, new File(map, "zelda.yml"))) throw new IOException("zelda.yml is na het kopiëren niet gelijk");
                 uit = "overgezet: " + String.join(", ", mee) + " (backup in " + map.getName() + "/migratie/" + backup.getName() + ")";
             } catch (IOException e) {
@@ -114,23 +115,34 @@ final class ZeldaMigratie {
         return Files.mismatch(a.toPath(), b.toPath()) == -1;
     }
 
-    /** Een bestand of hele map kopiëren (bestaande bestanden in het doel blijven staan). */
+    /** Mislukt (dan staat {@code data.klaar} er niet en probeert de volgende start het opnieuw)? */
+    static boolean mislukt(String uitkomst) {
+        return uitkomst.startsWith("mislukt");
+    }
+
+    /**
+     * Een bestand of hele map kopiëren (bestaande bestanden in het doel blijven staan). Elk bestand eerst als {@code .tmp} en
+     * dan in één keer op zijn plek: een afgebroken kopie laat nooit een half bestand onder de echte naam achter.
+     */
     static void kopie(Path van, Path naar) throws IOException {
         if (Files.isDirectory(van)) {
             try (Stream<Path> s = Files.walk(van)) {
                 for (Path p : (Iterable<Path>) s::iterator) {
                     Path doel = naar.resolve(van.relativize(p).toString());
                     if (Files.isDirectory(p)) Files.createDirectories(doel);
-                    else if (!Files.exists(doel)) {
-                        Files.createDirectories(doel.getParent());
-                        Files.copy(p, doel, StandardCopyOption.COPY_ATTRIBUTES);
-                    }
+                    else if (!Files.exists(doel)) heel(p, doel);
                 }
             }
         } else {
-            Files.createDirectories(naar.getParent());
-            Files.copy(van, naar, StandardCopyOption.COPY_ATTRIBUTES);
+            heel(van, naar);
         }
+    }
+
+    private static void heel(Path van, Path naar) throws IOException {
+        Files.createDirectories(naar.getParent());
+        Path tmp = naar.resolveSibling(naar.getFileName() + ".tmp");
+        Files.copy(van, tmp, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING);
+        Files.move(tmp, naar, StandardCopyOption.ATOMIC_MOVE);
     }
 
     // ── 2. de wereld ────────────────────────────────────────────────────────────────────────

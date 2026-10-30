@@ -130,6 +130,8 @@ public final class Netwerk {
     private final Map<UUID, String> verwacht = new ConcurrentHashMap<>();
     /** Net op een server met plekken binnen: de wisselregel wacht even op de plek (tot dit tijdstip). */
     private final Map<UUID, Long> meldNog = new ConcurrentHashMap<>();
+    /** Verbonden, maar de wisselregel is nog niet beslist (een vroege «plek» meldt dan niets: geen dubbele regel). */
+    private final Set<UUID> netBinnen = ConcurrentHashMap.newKeySet();
     /** Server gaat zo uit (herstart): pas weer "klaar" als hij eerst echt weg was (of na 90 s). */
     private final Map<String, Long> gaatUit = new ConcurrentHashMap<>();
     private final Map<UUID, Aftelling> aftellingen = new ConcurrentHashMap<>();
@@ -420,6 +422,7 @@ public final class Netwerk {
         Player p = e.getPlayer();
         String naar = e.getServer().getServerInfo().getName();
         plek.remove(p.getUniqueId());
+        netBinnen.add(p.getUniqueId());
         String vw = verwacht.get(p.getUniqueId());
         if (vw != null && !serverVanPlek(vw).equals(naar)) verwacht.remove(p.getUniqueId());
         if (!naar.equals(lobby)) {
@@ -440,6 +443,7 @@ public final class Netwerk {
         String naar = serverVan(p).orElse(null);
         if (naar == null) return;
         stuurProfiel(p);
+        netBinnen.remove(p.getUniqueId());
         doorOnsInTab.computeIfAbsent(p.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).clear();
         if (e.getPreviousServer() == null) {
             if (System.currentTimeMillis() > stilTot) iedereen(formaat(joinFormaat, p, naar));
@@ -448,7 +452,7 @@ public final class Netwerk {
             }
         } else if (!stilleWissel.remove(p.getUniqueId())) {
             if (naar.equals(lobby)) stuurNaarBackend(p, "hub");   // lobby: naar je hoogste parkourlevel
-            if (heeftPlekken(naar) && !verwacht.containsKey(p.getUniqueId())) {
+            if (heeftPlekken(naar) && !verwacht.containsKey(p.getUniqueId()) && !plek.containsKey(p.getUniqueId())) {
                 meldNog.put(p.getUniqueId(), System.currentTimeMillis() + 2000);   // eerst horen waar hij is (Zelda of KitPvP)
             } else {
                 meldWissel(p, plekVan(p).orElse(naar));
@@ -521,9 +525,12 @@ public final class Netwerk {
         if (e.kickedDuringServerConnect()) {
             // kon niet naar die server (bv. herstart): melden; wie in de lobby staat wacht erop
             if (spel.contains(van) && serverVan(p).map(lobby::equals).orElse(false)) {
+                String vw = verwacht.remove(p.getUniqueId());           // op weg naar een plek (Zelda): daarheen als hij er weer is
+                boolean naarPlek = vw != null && van.equals(serverVanPlek(vw));
+                if (naarPlek) zetLaatste(p.getUniqueId(), vw);
                 wachtend.put(p.getUniqueId(), van);
                 schrijfWachtend();
-                e.setResult(KickedFromServerEvent.Notify.create(Component.text(serverNaam(van)
+                e.setResult(KickedFromServerEvent.Notify.create(Component.text(serverNaam(naarPlek ? vw : van)
                         + " is even niet bereikbaar; je gaat vanzelf zodra hij er weer is (/annuleer = blijven).", NamedTextColor.YELLOW)));
             }
             return;
@@ -559,6 +566,7 @@ public final class Netwerk {
         plek.remove(p.getUniqueId());
         verwacht.remove(p.getUniqueId());
         meldNog.remove(p.getUniqueId());
+        netBinnen.remove(p.getUniqueId());
         aftellingen.remove(p.getUniqueId());
         gevechtTot.remove(p.getUniqueId());
         stilleWissel.remove(p.getUniqueId());
@@ -925,12 +933,13 @@ public final class Netwerk {
                 case "plek" -> {                               // de backend: waar deze speler nu is (een plek of de server zelf)
                     UUID id = UUID.fromString(in.readUTF());
                     String pk = in.readUTF();
-                    if (!bron.getPlayer().getUniqueId().equals(id) || !van.equals(serverVanPlek(pk))) return;
+                    if (!bron.getPlayer().getUniqueId().equals(id) || !van.equals(serverVanPlek(pk))
+                            || !serverVan(bron.getPlayer()).map(van::equals).orElse(false)) return;   // te laat, van een vorige server
                     String oud = plekVan(bron.getPlayer()).orElse(van);
                     plek.put(id, pk);
                     verwacht.remove(id);
                     if (spel.contains(van)) zetLaatste(id, pk);
-                    if (!oud.equals(pk) && !meldNog.containsKey(id)) {     // op dezelfde server gewisseld (KitPvP ↔ Zelda): de anderen zien het
+                    if (!oud.equals(pk) && !meldNog.containsKey(id) && !netBinnen.contains(id)) {   // op dezelfde server gewisseld (KitPvP ↔ Zelda): de anderen zien het
                         Component c = formaat(wisselFormaat, bron.getPlayer(), pk);
                         for (Player q : proxy.getAllPlayers()) if (!q.equals(bron.getPlayer())) q.sendMessage(c);
                     }
