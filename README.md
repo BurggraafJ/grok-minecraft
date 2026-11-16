@@ -33,6 +33,7 @@ vrienden ─► tunnel (bore.pub, of ngrok als de box alleen HTTPS naar buiten l
 | [AGENTS.md](AGENTS.md), [plugins/README.md](plugins/README.md) | Cursor en andere coding agents |
 | [docs/plugins.md](docs/plugins.md) | welke plugins erin zitten en wat je er nog bij kunt zetten |
 | [docs/ontwerp.md](docs/ontwerp.md) | waarom het zo gebouwd is |
+| [claude-skill/minecraft-bot](claude-skill/minecraft-bot/SKILL.md) | Claude (Code of claude.ai): kennis en werkboek van het hele project |
 
 ## Zelf proberen (zonder Bot)
 
